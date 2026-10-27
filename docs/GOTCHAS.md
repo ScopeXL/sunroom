@@ -159,6 +159,12 @@ size limit.
   information on every file, and a copy keeps it. `ditto --noextattr --norsrc` copies it clean.
 - A test that loaded `install.sh`'s functions with `. <(sed '$d' kiosk/install.sh)` defined
   nothing on macOS: bash 3.2 can't source a process substitution. Write them to a file first.
+- Windows' install line failed at once with "Program 'powershell.exe' failed to run: Access is
+  denied", and Defender reported a threat: its machine learning stops a PowerShell *started*
+  with a command line that downloads a script and runs it (ClickFix's shape), and the line was
+  `powershell -ExecutionPolicy Bypass -c "irm … | iex"`. The bare line is typed in the window,
+  `install.ps1` starts no PowerShell of its own, and it avoids script-module cmdlets, since a
+  window's policy is Restricted (ADR 0041).
 - A Windows screen asked to be paired after every restart: Edge's `--kiosk`, with or without
   `--edge-kiosk-type`, is an InPrivate session. Edge runs `--start-fullscreen` on the screen's
   profile instead, and the watchdog keeps it full screen (ADR 0040).

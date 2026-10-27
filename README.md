@@ -45,8 +45,8 @@ Pi, and on the screen choose **On This Computer**. No terminal at all;
    curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
    ```
 
-   On Windows, in PowerShell:
-   `powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex"`.
+   On Windows, open PowerShell (Start, then type PowerShell) and run this in its window:
+   `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex`.
    It installs what the screen needs and starts it (a Pi restarts first).
 3. **The screen asks where your family's Sunroom will run:** choose **On This Computer**.
    Setting Up Sunroom takes a few minutes. (On a Mac or Windows, if the computer asks whether
@@ -112,7 +112,7 @@ tablet works as one (Android: Fully Kiosk Browser; iPad: Safari with Guided Acce
 | On | Command |
 |---|---|
 | A Pi, a Linux computer or a Mac: the screen | `curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh \| bash` |
-| Windows: the screen | `powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 \| iex"` |
+| Windows: the screen | `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 \| iex`, in a PowerShell window |
 | A Pi: Sunroom (in Docker) and the screen | the first, ending `\| bash -s -- --with-sunroom` |
 | A Pi: only Sunroom, no screen | the first, ending `\| bash -s -- --server-only` |
 

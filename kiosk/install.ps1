@@ -1,20 +1,27 @@
 # Sunroom Screen's installer for Windows 10 and 11: this computer becomes a Sunroom kitchen
 # screen for the person signed in to it, with no administrator rights and no service
-# (docs/KIOSK.md, docs/M7.md T14).
+# (docs/KIOSK.md, docs/M7.md T14). In a PowerShell window (Start, then type PowerShell):
 #
-#   powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex"
+#   irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex
 #
-# With options (iex takes none; a script block made from the same download does):
-#   powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1))) -Url https://calendar.example.com"
+# With options (iex takes none; a script block made from the same download does), in the window:
+#   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1))) -Url https://calendar.example.com
 # or with a copy of this file:
 #   powershell -ExecutionPolicy Bypass -File install.ps1 [-Url https://calendar.example.com]
 #       [-DryRun] [-AgentWheel FILE] [-ServerWheel FILE] [-Uninstall] [-Yes]
 #
-# It installs uv (a pinned version, into %USERPROFILE%\.local\bin, only when there's no uv), then
-# Sunroom Screen with uv from this version's GitHub Release, its wheel checked against the
-# Release's SHA256SUMS before anything installs it; puts a shortcut in the Startup folder, so it
-# starts at sign-in without a console window; and starts it. Sunroom Screen opens Microsoft Edge
-# (or Google Chrome) full screen, and writes the browser's policy itself, for this user only.
+# Never as `powershell -c "irm ... | iex"`, nor from the Run box: Microsoft Defender stops a
+# PowerShell started with a command line that downloads a script and runs it, the way "ClickFix"
+# attacks begin, and says it found a threat (ADR 0041). So this runs in the window it's typed in,
+# under that window's execution policy (Restricted, unless someone changed it), and it starts no
+# other PowerShell itself.
+#
+# It installs uv (a pinned version, into %USERPROFILE%\.local\bin, only when there's no uv: uv's
+# own zip from its GitHub release, checked against the sums below), then Sunroom Screen with uv
+# from this version's GitHub Release, its wheel checked against the Release's SHA256SUMS before
+# anything installs it; puts a shortcut in the Startup folder, so it starts at sign-in without a
+# console window; and starts it. Sunroom Screen opens Microsoft Edge (or Google Chrome) full
+# screen, and writes the browser's policy itself, for this user only.
 #
 # Running it again is safe: it keeps the screen's settings and its pairing. -Uninstall takes it
 # off again, and asks before it deletes the pairing; Sunroom run on this computer (ADR 0038) is
@@ -52,7 +59,14 @@ $Options = [pscustomobject]@{
 
     $KioskVersion = "0.16.0" # Sunroom's VERSION (`just bump` sets it), as in install.sh
     $SunroomRepo = "ScopeXL/sunroom"
-    $UvVersion = "0.12.23" # the uv installer it fetches when there's no uv (astral.sh/uv/<version>)
+    # uv when there's none: its own zip for this computer from uv's GitHub release, checked
+    # against these sums (that release's .sha256 files) before it's unpacked. Change them together.
+    $UvVersion = "0.12.23"
+    $UvSums = @{
+        "x86_64" = "75d05de6762778c31ee183398de7dd15093fad0ed90b1f236d8205ea5ec00c90"
+        "aarch64" = "13294e232ececbe709c06b74e6ced06f2a225ea5591476685362f22be56a50d5"
+        "i686" = "22a92f4374e4716c2848acaa0392f2f8e4a13b0ff65d080e2a5ade167bce96a8"
+    }
     $AgentPort = 7800
 
     $BinDir = Join-Path $HOME ".local\bin"
@@ -141,13 +155,36 @@ $Options = [pscustomobject]@{
         return $null
     }
 
+    # uv's build for this computer, from Windows' own architecture, as uv's own installer picks it
+    # (an Intel PowerShell on an Arm computer says AMD64 of itself).
+    function Get-UvTarget {
+        $key = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+        $machine = Get-ItemPropertyValue -LiteralPath $key -Name "PROCESSOR_ARCHITECTURE"
+        if ($machine -eq "ARM64") { return "aarch64" }
+        if ($machine -eq "x86") { return "i686" }
+        return "x86_64"
+    }
+
+    # A file's SHA-256 with .NET alone: Get-FileHash is a script module's function on Windows
+    # PowerShell 5.1, and this runs under the window's own execution policy.
+    function Get-Sha256([string]$Path) {
+        $sha = [Security.Cryptography.SHA256]::Create()
+        $stream = [IO.File]::OpenRead($Path)
+        try {
+            return ([BitConverter]::ToString($sha.ComputeHash($stream)) -replace "-", "").ToLowerInvariant()
+        } finally {
+            $stream.Dispose()
+            $sha.Dispose()
+        }
+    }
+
     # This installer again with options: its own file when it ran from one, else the same download
-    # as a script block (piped into iex, there's no file to point at).
+    # as a script block, for the PowerShell window (piped into iex, there's no file to point at).
     function Get-InstallerCommand([string]$Arguments) {
         if ($PSCommandPath) {
             return "powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" $Arguments"
         }
-        return "powershell -ExecutionPolicy Bypass -c `"& ([scriptblock]::Create((irm $InstallerUrl))) $Arguments`""
+        return "& ([scriptblock]::Create((irm $InstallerUrl))) $Arguments"
     }
 
     function Test-ScreenRunning {
@@ -161,31 +198,43 @@ $Options = [pscustomobject]@{
 
     # ---------------------------------------------------------------------------- the steps
 
-    # uv installs Sunroom Screen and the Python it runs on (3.14, kept apart from any other).
+    # uv installs Sunroom Screen and the Python it runs on (3.14, kept apart from any other). Its
+    # zip is checked before it's unpacked (with .NET: Expand-Archive is a script module's too), and
+    # no script of uv's runs, so no second PowerShell starts (ADR 0041).
     function Install-Uv {
         $found = Find-Uv
         if ($found) { return $found }
         Write-Note "Installing uv $UvVersion, which installs Sunroom Screen..."
-        $script = Join-Path ([IO.Path]::GetTempPath()) "uv-install-$UvVersion.ps1"
+        $target = Get-UvTarget
+        $name = "uv-$target-pc-windows-msvc.zip"
+        $zip = Join-Path ([IO.Path]::GetTempPath()) $name
         try {
-            Invoke-WebRequest -Uri "https://astral.sh/uv/$UvVersion/install.ps1" -OutFile $script -UseBasicParsing
+            Invoke-WebRequest -Uri "https://github.com/astral-sh/uv/releases/download/$UvVersion/$name" -OutFile $zip -UseBasicParsing
         } catch {
-            Exit-Install @("Couldn't download uv's installer. Check the internet connection, then run this again.")
+            Exit-Install @("Couldn't download uv from GitHub. Check the internet connection, then run this again.")
         }
-        $env:UV_INSTALL_DIR = $BinDir
-        $env:UV_NO_MODIFY_PATH = "1"
+        if ((Get-Sha256 $zip) -ne $UvSums[$target]) {
+            Remove-Item -LiteralPath $zip -ErrorAction SilentlyContinue
+            Exit-Install @(
+                "The download of uv didn't match its checksum, so it wasn't installed.",
+                "Run the installer again; if it happens again, tell us on GitHub."
+            )
+        }
+        $unpacked = Join-Path ([IO.Path]::GetTempPath()) "sunroom-uv-$UvVersion"
         try {
-            $ran = Invoke-Native "powershell" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $script)
+            Remove-Item -LiteralPath $unpacked -Recurse -Force -ErrorAction SilentlyContinue
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [IO.Compression.ZipFile]::ExtractToDirectory($zip, $unpacked)
+            $null = New-Item -ItemType Directory -Force -Path $BinDir
+            foreach ($file in "uv.exe", "uvx.exe", "uvw.exe") {
+                Copy-Item -LiteralPath (Join-Path $unpacked $file) -Destination $BinDir -Force
+            }
+        } catch {
+            Exit-Install @("Couldn't put uv in $BinDir. Running this again is safe.")
         } finally {
-            Remove-Item -LiteralPath "Env:UV_INSTALL_DIR", "Env:UV_NO_MODIFY_PATH" -ErrorAction SilentlyContinue
-            Remove-Item -LiteralPath $script -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $zip, $unpacked -Recurse -Force -ErrorAction SilentlyContinue
         }
-        $installed = Join-Path $BinDir "uv.exe"
-        if (-not (Test-Path -LiteralPath $installed)) {
-            Write-Host $ran.Output
-            Exit-Install @("uv's installer didn't finish; its messages are above. Running this again is safe.")
-        }
-        return $installed
+        return (Join-Path $BinDir "uv.exe")
     }
 
     # Sunroom Screen's wheel: -AgentWheel's, or this version's from its GitHub Release, checked
@@ -227,8 +276,7 @@ $Options = [pscustomobject]@{
         } catch {
             Exit-Install @("Couldn't download Sunroom Screen $KioskVersion from GitHub. Check the internet connection, then run this again.")
         }
-        $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $download).Hash.ToLowerInvariant()
-        if ($actual -ne $expected) {
+        if ((Get-Sha256 $download) -ne $expected) {
             Remove-Item -LiteralPath $download -ErrorAction SilentlyContinue
             Exit-Install @(
                 "The download of Sunroom Screen didn't match its checksum, so it wasn't installed.",
@@ -342,8 +390,9 @@ $Options = [pscustomobject]@{
             Write-Host "  - stop: it needs Microsoft Edge or Google Chrome, and neither is installed"
             return
         }
-        Write-Host "  - install uv $UvVersion in $BinDir when there's no uv, and with it Sunroom Screen"
-        Write-Host "    $KioskVersion ($from)"
+        Write-Host "  - install uv $UvVersion in $BinDir when there's no uv: its zip for $(Get-UvTarget)"
+        Write-Host "    from GitHub, checked against its checksum"
+        Write-Host "  - install Sunroom Screen $KioskVersion with uv ($from)"
         if ($Options.ServerWheel) {
             Write-Host "  - keep Sunroom's own wheel from $($Options.ServerWheel) for On This Computer"
         }
@@ -387,7 +436,7 @@ $Options = [pscustomobject]@{
         Write-Host "The kitchen screen is set up. When it starts, it shows a six-character code: on a phone"
         Write-Host "signed in to Sunroom, open More, then Pair a display, and type that code."
         Open-SunroomScreen
-        Write-Host "Remove it later with:  $(Get-InstallerCommand '-Uninstall')"
+        Write-Host "Remove it later, in PowerShell:  $(Get-InstallerCommand '-Uninstall')"
         Write-Host "This install's log:  $LogFile"
     }
 
@@ -424,7 +473,8 @@ $Options = [pscustomobject]@{
             }
         }
         Write-Host ""
-        Write-Host "Sunroom Screen is removed. uv stays; remove it with: uv self uninstall"
+        Write-Host "Sunroom Screen is removed. uv stays, in $BinDir; uv's own guide says how to remove it:"
+        Write-Host "https://docs.astral.sh/uv/getting-started/installation/#uninstallation"
     }
 
     # ---------------------------------------------------------------------------- main

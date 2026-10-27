@@ -6,6 +6,16 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Installing the kitchen screen on Windows no longer gets stopped by Microsoft Defender ("Access
+  is denied", and a warning that it found a threat). The line is now typed straight into a
+  PowerShell window: `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex`.
+  The installer starts no second PowerShell either: it downloads uv itself and checks it before
+  unpacking it.
+- Removing the kitchen screen from Windows no longer suggests `uv self uninstall`, which doesn't
+  exist; it points at uv's own guide for removing uv.
+
 ## [0.16.0] - 2026-10-23
 
 ### Added

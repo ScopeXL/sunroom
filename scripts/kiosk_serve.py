@@ -51,20 +51,19 @@ try_sunroom "$@"
 """
 
 POWERSHELL = """# Sunroom Screen's installer from {base}, before a release (scripts/kiosk_serve.py):
-# this checkout's install.ps1 and Sunroom Screen's wheel, then the installer from that copy.
+# Sunroom Screen's wheel and Sunroom's, then this checkout's install.ps1 in this same window, as
+# the real line runs it (a second PowerShell is what Microsoft Defender stops, ADR 0041).
 $sunroomTry = Join-Path ([IO.Path]::GetTempPath()) "sunroom-try"
 $null = New-Item -ItemType Directory -Force -Path $sunroomTry
-$tryScript = Join-Path $sunroomTry "install.ps1"
 $tryWheel = Join-Path $sunroomTry "{wheel}"
 $tryServer = Join-Path $sunroomTry "{server}"
 $ProgressPreference = "SilentlyContinue"
-Invoke-WebRequest -Uri "{base}/kiosk/install.ps1" -OutFile $tryScript -UseBasicParsing
 Invoke-WebRequest -Uri "{base}/kiosk/agent/dist/{wheel}" -OutFile $tryWheel -UseBasicParsing
 Invoke-WebRequest -Uri "{base}/server/{server}" -OutFile $tryServer -UseBasicParsing
 Invoke-WebRequest -Uri "{base}/server/{constraints}" -UseBasicParsing `
     -OutFile (Join-Path $sunroomTry "{constraints}")
-powershell -NoProfile -ExecutionPolicy Bypass -File $tryScript -AgentWheel $tryWheel `
-    -ServerWheel $tryServer @args
+$tryScript = Invoke-RestMethod -Uri "{base}/kiosk/install.ps1" -UseBasicParsing
+& ([scriptblock]::Create($tryScript)) -AgentWheel $tryWheel -ServerWheel $tryServer @args
 """
 
 
@@ -138,7 +137,7 @@ def main() -> int:
     print("On a Linux computer or a Mac (options go after `bash -s --`):")
     print(f"  curl -fsSL {base}/install.sh | bash")
     print("On Windows, in PowerShell:")
-    print(f'  powershell -ExecutionPolicy Bypass -c "irm {base}/install.ps1 | iex"')
+    print(f"  irm {base}/install.ps1 | iex")
     print("\nA virtual machine on this Mac can use the same address. Ctrl+C stops it.", flush=True)
     try:
         server.serve_forever()

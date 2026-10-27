@@ -159,16 +159,23 @@ sunroom-kiosk` in a terminal does the same.
 
 ## Windows
 
-On Windows 10 or 11, sign in as the person the screen runs for, and in PowerShell run:
+On Windows 10 or 11, sign in as the person the screen runs for, open PowerShell (Start, then type
+PowerShell), and run this in its window:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex"
+irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex
 ```
 
-It needs no administrator and installs no service. It installs uv and Sunroom Screen (the same
-release and checks as above) for this user, puts **Sunroom Screen** in the Startup folder (it
-starts at sign-in with no console window), and starts it: Microsoft Edge full screen, or Google
-Chrome when there's no Edge. Sunroom Screen writes the browser's policy for this user itself
+Type it in the window itself. Wrapped in a second PowerShell (`powershell -c "…"`), or typed in
+the Run box, Microsoft Defender stops it with "Access is denied" and says it found a threat: a
+PowerShell started with a command that downloads a script and runs it is how "ClickFix" attacks
+begin (ADR 0041). The installer itself starts no other PowerShell.
+
+It needs no administrator and installs no service. It installs uv (uv's own zip from GitHub,
+checked against its checksum) and Sunroom Screen (the same release and checks as above) for this
+user, puts **Sunroom Screen** in the Startup folder (it starts at sign-in with no console
+window), and starts it: Microsoft Edge full screen, or Google Chrome when there's no Edge.
+Sunroom Screen writes the browser's policy for this user itself
 (`HKEY_CURRENT_USER\Software\Policies\…`), so Sunroom reaches it without a prompt.
 
 Edge runs full screen on the screen's own profile, not in Edge's kiosk mode: that mode is an
@@ -181,10 +188,10 @@ Settings** instead of Wi-Fi, no Rotation, and the page dims itself in the evenin
 Screen** closes it until the next sign-in. Updates work as on a Pi.
 
 With options (`-Url https://calendar.example.com`, `-DryRun`, `-AgentWheel FILE`, `-Uninstall`),
-run the same download as a script block:
+run the same download as a script block, in the PowerShell window too:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1))) -Url https://calendar.example.com"
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1))) -Url https://calendar.example.com
 ```
 
 or save the file and run `powershell -ExecutionPolicy Bypass -File install.ps1 -Url …`.
@@ -387,6 +394,12 @@ is found again.
 
 **The desktop picture stays.** Sunroom Screen isn't running: `journalctl --user -u
 sunroom-kiosk` says why (for example, no browser found).
+
+**Windows says "Access is denied", and Microsoft Defender found a threat.** The install line ran
+inside a second PowerShell (`powershell -ExecutionPolicy Bypass -c "irm … | iex"`, as it read
+before ADR 0041) or from the Run box, and Defender stopped that PowerShell before it started.
+Nothing was installed, and the alert can be dismissed. Open PowerShell and type the line in its
+window instead (see Windows, above).
 
 **The screen shows a code again.** Its sign-in was ended: a new household password, a new secret
 key, a restore, or **Unpair** in Settings → Devices. Pair it again from a phone. A restart, an

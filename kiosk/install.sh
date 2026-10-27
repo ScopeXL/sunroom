@@ -50,7 +50,8 @@ CHROME_LINUX_BASE="https://dl.google.com/linux/direct"
 CHROME_MAC_DMG="https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg"
 # Google's Developer ID: the Mac's copy of Chrome must be signed by it before it's installed.
 CHROME_MAC_REQUIREMENT='anchor apple generic and certificate leaf[subject.OU] = "EQHXZ8M8AV"'
-WINDOWS_COMMAND="powershell -ExecutionPolicy Bypass -c \"irm https://raw.githubusercontent.com/$SUNROOM_REPO/main/kiosk/install.ps1 | iex\""
+# Typed in a PowerShell window, never wrapped in `powershell -c`, which Defender stops (ADR 0041).
+WINDOWS_COMMAND="irm https://raw.githubusercontent.com/$SUNROOM_REPO/main/kiosk/install.ps1 | iex"
 
 SCRIPT_PATH="${BASH_SOURCE[0]:-}" # empty when the script is piped into bash
 
