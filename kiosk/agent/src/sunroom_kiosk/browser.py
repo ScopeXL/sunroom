@@ -42,6 +42,7 @@ from typing import Any, cast
 import httpx
 
 from sunroom_kiosk import logs
+from sunroom_kiosk.platform.base import NO_WINDOW
 from sunroom_kiosk.policy import BrowserKind
 
 log = logs.get("browser")
@@ -539,6 +540,7 @@ class Supervisor:
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
+                creationflags=NO_WINDOW,
             )
             return await closer.wait() == 0  # not 0: it has no window to ask yet
         except OSError:

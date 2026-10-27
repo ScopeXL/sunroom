@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import os
 import socket
+import subprocess
 import sys
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
@@ -21,6 +22,9 @@ from sunroom_kiosk.policy import BrowserKind
 from sunroom_kiosk.schemas import ScreenCapability, ScreenNetworkKind, ScreenPlatform, ScreenSession
 
 COMMAND_TIMEOUT_S = 20.0
+# Windows: the agent runs without a console (sunroom-kioskw), so a console program it starts
+# (netsh every 30 s, taskkill, uv) would get a console window of its own, flashed on the wall.
+NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 
 @dataclass(frozen=True)
@@ -53,6 +57,7 @@ async def run_command(
             stdin=asyncio.subprocess.PIPE if stdin is not None else asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            creationflags=NO_WINDOW,
         )
     except FileNotFoundError:
         return CommandResult(127, f"{argv[0]} isn't installed")
@@ -92,6 +97,7 @@ async def stream_command(
             stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            creationflags=NO_WINDOW,
         )
     except FileNotFoundError:
         return 127

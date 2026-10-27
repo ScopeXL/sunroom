@@ -165,6 +165,10 @@ size limit.
   `powershell -ExecutionPolicy Bypass -c "irm … | iex"`. The bare line is typed in the window,
   `install.ps1` starts no PowerShell of its own, and it avoids script-module cmdlets, since a
   window's policy is Restricted (ADR 0041).
+- A console window flashed on a Windows wall every 30 s: the agent runs without a console
+  (`sunroom-kioskw`), so each console program it starts (`netsh` for the Network row, `taskkill`,
+  `uv`) got a window of its own. Every launch passes `platform/base.py`'s `NO_WINDOW`
+  (`CREATE_NO_WINDOW`; `apply.py` has its own copy, being standard library only).
 - A Windows screen asked to be paired after every restart: Edge's `--kiosk`, with or without
   `--edge-kiosk-type`, is an InPrivate session. Edge runs `--start-fullscreen` on the screen's
   profile instead, and the watchdog keeps it full screen (ADR 0040).

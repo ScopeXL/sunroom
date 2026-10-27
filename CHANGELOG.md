@@ -15,6 +15,9 @@ Everything that changes in Sunroom, written in plain English. The format follows
   unpacking it.
 - Removing the kitchen screen from Windows no longer suggests `uv self uninstall`, which doesn't
   exist; it points at uv's own guide for removing uv.
+- A Windows kitchen screen no longer flashes a black command window every half minute while it
+  checks the network, nor when its browser restarts, Sunroom Screen updates, or Sunroom is set up
+  on that computer.
 
 ## [0.16.0] - 2026-10-23
 

@@ -1,7 +1,7 @@
 """The wall's browser (browser.py): which one, its flags, the clean-exit mark, the nightly
 restart's time, the supervisor starting it again after it exits and asking it to close before it
-forces it, and Edge kept full screen. The "browser" here is a tiny script; nothing real is
-started. Synthetic data only."""
+forces it (on Windows, with no console window), and Edge kept full screen. The "browser" here is
+a tiny script; nothing real is started. Synthetic data only."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 from zoneinfo import ZoneInfo
 
@@ -27,6 +28,7 @@ from sunroom_kiosk.browser import (
     mark_clean_exit,
     next_nightly,
 )
+from sunroom_kiosk.platform.base import NO_WINDOW
 
 CHROMIUM = Browser("chromium", "/usr/bin/chromium", "Chromium")
 EDGE = Browser(
@@ -164,6 +166,33 @@ def test_closing_asks_the_way_the_system_does() -> None:
     assert close_command(4242, "win32") == ["taskkill", "/PID", "4242"]
     assert close_command(4242, "darwin") is None  # SIGTERM
     assert close_command(4242, "linux") is None
+
+
+async def test_asking_it_to_close_opens_no_console_window(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """taskkill, started by the agent that runs without a console, would flash one on the wall."""
+    asked: list[tuple[tuple[str, ...], object]] = []
+
+    class Closer:
+        async def wait(self) -> int:
+            return 0
+
+    async def start(*argv: str, **options: object) -> Closer:
+        asked.append((argv, options.get("creationflags")))
+        return Closer()
+
+    def taskkill(pid: int) -> list[str]:
+        return ["taskkill", "/PID", str(pid)]
+
+    monkeypatch.setattr(browser_module, "close_command", taskkill)
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", start)
+    supervisor = Supervisor(
+        EDGE, profile=tmp_path / "profile", argv=lambda: [], page=lambda: "http://127.0.0.1:7800/"
+    )
+    process = cast(asyncio.subprocess.Process, SimpleNamespace(pid=4242))
+    assert await supervisor._ask_to_close(process)
+    assert asked == [(("taskkill", "/PID", "4242"), NO_WINDOW)]
 
 
 def test_the_last_exit_is_marked_clean(tmp_path: Path) -> None:

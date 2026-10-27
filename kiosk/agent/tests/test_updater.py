@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -228,6 +230,23 @@ def test_on_windows_the_apply_step_runs_outside_the_agents_own_files(paths: Path
     )
     elsewhere = Updater(http=GitHub([]).client, paths=paths, current="0.12.0", system="linux")
     assert elsewhere.apply_command(wheel, None)[1:5] == ["-m", "sunroom_kiosk", "update", "--apply"]
+
+
+def test_the_apply_steps_uv_opens_no_console_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Windows runs the apply step without a console (pythonw), so uv would open one of its own
+    on the wall for as long as it installs."""
+    from sunroom_kiosk import apply as apply_step
+
+    asked: list[object] = []
+
+    def run(argv: list[str], **options: object) -> subprocess.CompletedProcess[str]:
+        asked.append(options.get("creationflags"))
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(apply_step.subprocess, "run", run)
+    assert apply_step.run(["uv", "tool", "install", "sunroom_kiosk-0.13.0-py3-none-any.whl"])
+    assert asked == [apply_step.NO_WINDOW]
+    assert apply_step.NO_WINDOW == (0x08000000 if sys.platform == "win32" else 0)
 
 
 def test_the_apply_step_stops_the_agent_before_each_install(paths: Paths) -> None:

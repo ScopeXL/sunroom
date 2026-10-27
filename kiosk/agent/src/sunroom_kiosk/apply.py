@@ -31,6 +31,9 @@ SERVICE = "sunroom-kiosk.service"
 LAUNCH_AGENT = "app.sunroom.kiosk"
 STARTS_WITHIN_S = 60.0
 QUITS_WITHIN_S = 30.0
+# Windows: this runs without a console (pythonw), so uv would get a console window of its own,
+# open on the wall for as long as it installs (platform/base.py's NO_WINDOW; 0 elsewhere).
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 @dataclass(frozen=True)
@@ -63,7 +66,9 @@ def uv() -> str:
 
 
 def run(argv: list[str]) -> bool:
-    done = subprocess.run(argv, capture_output=True, text=True, check=False)  # noqa: S603
+    done = subprocess.run(  # noqa: S603
+        argv, capture_output=True, text=True, check=False, creationflags=NO_WINDOW
+    )
     if done.returncode != 0:
         print(f"{' '.join(argv[:3])} didn't work: {(done.stderr or done.stdout).strip()[:300]}")
     return done.returncode == 0

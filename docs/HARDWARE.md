@@ -190,7 +190,7 @@ Raspberry Pi Imager version with each Sunroom OS result.
 | 32 | Run It on This Screen, on a fresh card | "Downloading Sunroom…" counts up, then Sunroom's own Welcome with its QR code; a phone sets it up and pairs the screen | Not tested yet |
 | 33 | Overnight on Sunroom OS | Security updates install in the night; the screen restarts only inside the sleep hours, and only when an update needs it | Not tested yet |
 | 34 | A Mac, `install.sh` with no option | With no browser it installs Google Chrome first; the screen starts at once and at each sign-in, full screen, and pairs; This Screen's Quit closes it until the next sign-in | Not tested yet |
-| 35 | A Windows computer, `install.ps1` | The line, typed in a PowerShell window with Microsoft Defender on, installs with no threat found (ADR 0041); it starts at sign-in with no console window, in Edge, full screen, and pairs; This Screen's Quit closes it; `-Uninstall` takes it off | Not tested yet |
+| 35 | A Windows computer, `install.ps1` | The line, typed in a PowerShell window with Microsoft Defender on, installs with no threat found (ADR 0041); it starts at sign-in with no console window, and none flashes while it runs; in Edge, full screen, and pairs; This Screen's Quit closes it; `-Uninstall` takes it off | Not tested yet |
 
 The one-command installer ([ADR 0037](adr/0037-one-command-sets-up-a-screen.md)): the kitchen screen
 alone is the default everywhere, and Sunroom on a Pi takes `--with-sunroom`.

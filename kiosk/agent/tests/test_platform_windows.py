@@ -1,17 +1,25 @@
 """The Windows adapter (platform/windows.py) against a scripted command runner and a pretend
 registry: what it can do, the exact command line of each action, the Network row from netsh, the
 computer's name from its firmware, and the browser's policy for this user only, rewritten without
-touching anyone else's keys. Nothing real runs, so it passes on every system. Synthetic data
-only."""
+touching anyone else's keys; and the commands it starts open no console window. Nothing real
+runs, so it passes on every system. Synthetic data only."""
 
 from __future__ import annotations
 
+import asyncio
+import sys
 from dataclasses import dataclass, field
 
 import pytest
 
 from sunroom_kiosk import policy
-from sunroom_kiosk.platform.base import CommandResult, PlatformError
+from sunroom_kiosk.platform.base import (
+    NO_WINDOW,
+    CommandResult,
+    PlatformError,
+    run_command,
+    stream_command,
+)
 from sunroom_kiosk.platform.windows import (
     BIOS_KEY,
     NETWORK_SETTINGS,
@@ -166,3 +174,21 @@ async def test_edge_gets_its_own_quiet_keys_and_chrome_doesnt() -> None:
     assert "PromotionalTabsEnabled" not in registry.keys[chrome]
     assert await platform.remove_policy("edge")
     assert registry.keys[edge] == {}
+
+
+async def test_its_commands_open_no_console_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sunroom Screen runs without a console on Windows (sunroom-kioskw), so each console program
+    it starts, netsh every 30 s, would flash a console window of its own unless asked for none."""
+    asked: list[object] = []
+
+    async def start(*argv: str, **options: object) -> object:
+        asked.append(options.get("creationflags"))
+        raise FileNotFoundError(argv[0])
+
+    async def line(text: str) -> None: ...
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", start)
+    assert (await run_command(["netsh", "wlan", "show", "interfaces"])).code == 127
+    assert await stream_command(["uv", "--version"], line) == 127
+    assert asked == [NO_WINDOW, NO_WINDOW]
+    assert NO_WINDOW == (0x08000000 if sys.platform == "win32" else 0)  # CREATE_NO_WINDOW
