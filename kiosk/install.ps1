@@ -57,7 +57,7 @@ $Options = [pscustomobject]@{
     $ErrorActionPreference = "Stop"
     $ProgressPreference = "SilentlyContinue" # Invoke-WebRequest's progress bar is very slow on 5.1
 
-    $KioskVersion = "0.16.0" # Sunroom's VERSION (`just bump` sets it), as in install.sh
+    $KioskVersion = "0.16.1" # Sunroom's VERSION (`just bump` sets it), as in install.sh
     $SunroomRepo = "ScopeXL/sunroom"
     # uv when there's none: its own zip for this computer from uv's GitHub release, checked
     # against these sums (that release's .sha256 files) before it's unpacked. Change them together.

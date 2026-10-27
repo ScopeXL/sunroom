@@ -6,18 +6,23 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-10-27
+
+### Changed
+
+- Behind the scenes: the Windows installer no longer starts a second PowerShell, which Microsoft
+  Defender could stop too; it downloads uv's own zip and checks it before unpacking it.
+
 ### Fixed
 
+- A Windows kitchen screen no longer flashes a black command window every half minute, nor when
+  its browser restarts, when it updates, or while it sets Sunroom up on that computer.
 - Installing the kitchen screen on Windows no longer gets stopped by Microsoft Defender ("Access
-  is denied", and a warning that it found a threat). The line is now typed straight into a
-  PowerShell window: `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex`.
-  The installer starts no second PowerShell either: it downloads uv itself and checks it before
-  unpacking it.
-- Removing the kitchen screen from Windows no longer suggests `uv self uninstall`, which doesn't
-  exist; it points at uv's own guide for removing uv.
-- A Windows kitchen screen no longer flashes a black command window every half minute while it
-  checks the network, nor when its browser restarts, Sunroom Screen updates, or Sunroom is set up
-  on that computer.
+  is denied", and a warning that it found a threat). Type the install line straight into a
+  PowerShell window:
+  `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex`.
+- Removing the kitchen screen from Windows no longer suggests a command that doesn't exist; it
+  points to the right steps instead.
 
 ## [0.16.0] - 2026-10-23
 
@@ -728,5 +733,7 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 [0.15.0]: https://github.com/ScopeXL/sunroom/compare/v0.14.0...v0.15.0
 
-[Unreleased]: https://github.com/ScopeXL/sunroom/compare/v0.16.0...HEAD
 [0.16.0]: https://github.com/ScopeXL/sunroom/compare/v0.15.0...v0.16.0
+
+[Unreleased]: https://github.com/ScopeXL/sunroom/compare/v0.16.1...HEAD
+[0.16.1]: https://github.com/ScopeXL/sunroom/compare/v0.16.0...v0.16.1
