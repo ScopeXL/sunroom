@@ -170,15 +170,12 @@ async def test_a_fresh_pairing_is_written_to_disk_at_once(
 async def test_what_a_screen_cant_do_is_refused_in_words(
     client: httpx.AsyncClient, platform: FakePlatform
 ) -> None:
-    """A Pi has no Quit; a computer can't turn its picture or join Wi-Fi from here, and no screen
-    opens the computer's network settings (ADR 0042: the Network row shows the connection)."""
+    """A Pi has no Quit; a computer joins Wi-Fi itself, and no screen opens the computer's
+    network settings (ADR 0042: the Network row shows the connection)."""
     quit_ = await client.post("/api/screen/quit", headers=CHANGE)
     assert quit_.status_code == 409
     assert quit_.json()["error"]["message"] == "Quitting isn't something this screen can do."
     platform.kind = "desktop"
-    assert (
-        await client.put("/api/screen/display", json={"rotation": 90}, headers=CHANGE)
-    ).status_code == 409
     assert (await client.get("/api/screen/wifi")).status_code == 409
     gone = await client.post("/api/screen/open-network-settings", headers=CHANGE)
     assert gone.status_code in (404, 405)
@@ -189,6 +186,7 @@ async def test_what_a_screen_cant_do_is_refused_in_words(
 async def test_rotation_turns_the_picture_and_is_kept(
     client: httpx.AsyncClient, platform: FakePlatform, config_path: Path
 ) -> None:
+    """On a Pi, and on a computer too since ADR 0042 (Windows and Linux desktops)."""
     response = await client.put("/api/screen/display", json={"rotation": 270}, headers=CHANGE)
     assert response.json()["display"]["rotation"] == 270
     assert platform.rotation == 270

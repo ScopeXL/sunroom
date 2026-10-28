@@ -12,7 +12,16 @@ from pathlib import Path
 import pytest
 
 from sunroom_kiosk.platform.base import CommandResult, PlatformError
-from sunroom_kiosk.platform.linux import ROOT_HELPER, LinuxPlatform, split_terse, wifi_from
+from sunroom_kiosk.platform.linux import (
+    ROOT_HELPER,
+    LinuxPlatform,
+    kde_output,
+    split_terse,
+    touch_screens,
+    wifi_from,
+    wlr_outputs,
+    x11_outputs,
+)
 from sunroom_kiosk.platform.pi import PiPlatform, is_pi
 from tests.support import Shell, ok
 
@@ -156,6 +165,109 @@ async def test_x11_switches_off_blanking_before_the_browser() -> None:
     shell = Shell()
     await linux(shell, XDG_SESSION_TYPE="x11").prepare_session(0, "")
     assert shell.lines()[:3] == ["xset s off", "xset dpms 0 0 0", "xset s noblank"]
+
+
+# ---------------------------------------------------------------------------- rotation
+
+XRANDR = """\
+Screen 0: minimum 320 x 200, current 1920 x 1080, maximum 16384 x 16384
+eDP-1 connected 1366x768+0+0 (normal left inverted right x axis y axis) 309mm x 173mm
+HDMI-1 connected primary 1920x1080+1366+0 (normal left inverted right x axis y axis)
+DP-1 disconnected (normal left inverted right x axis y axis)
+"""
+
+WLR_RANDR = """\
+eDP-1 "Sample Panel (eDP-1)"
+  Enabled: no
+HDMI-A-1 "Sample Monitor (HDMI-A-1)"
+  Physical size: 600x340 mm
+  Enabled: yes
+  Modes:
+    1920x1080 px, 60.000000 Hz (preferred, current)
+"""
+
+KSCREEN = json.dumps(
+    {
+        "outputs": [
+            {"name": "eDP-1", "enabled": True, "connected": True, "priority": 2},
+            {"name": "DP-2", "enabled": True, "connected": True, "priority": 1},
+            {"name": "HDMI-A-1", "enabled": False, "connected": False, "priority": 0},
+        ]
+    }
+)
+
+XINPUT = """\
+⎡ Virtual core pointer                    \tid=2\t[master pointer  (3)]
+⎜   ↳ Sample Touch Screen                 \tid=11\t[slave  pointer  (2)]
+\tReporting 3 classes:
+\t\tClass originated from: 11. Type: XITouchClass
+\t\tTouch mode: direct
+\t\tMax number of touches: 10
+⎜   ↳ Sample Touchpad                     \tid=12\t[slave  pointer  (2)]
+\t\tTouch mode: dependent
+"""
+
+
+def test_what_turns_the_picture_reads_right() -> None:
+    assert x11_outputs(XRANDR) == (["eDP-1", "HDMI-1"], "HDMI-1")
+    assert wlr_outputs(WLR_RANDR) == ["HDMI-A-1"]
+    assert kde_output(KSCREEN) == "DP-2"  # Plasma puts priority 1 first
+    older = json.dumps({"outputs": [{"name": "VGA-1", "enabled": True, "connected": True}]})
+    assert kde_output(older) == "VGA-1"
+    assert kde_output("not json") is None
+    assert touch_screens(XINPUT) == ["11"]  # the screen, not the touchpad
+
+
+def test_a_desktop_can_turn_its_picture_where_a_tool_does_it() -> None:
+    """KDE Plasma, X11 and a wlroots compositor can (ADR 0042); GNOME on Wayland can't."""
+    kde = linux(Shell(), "kscreen-doctor", XDG_CURRENT_DESKTOP="KDE", WAYLAND_DISPLAY="w-0")
+    assert kde.rotation_tool() == "kscreen-doctor"
+    assert "rotate" in kde.capabilities()
+    x11 = linux(Shell(), "xrandr", XDG_SESSION_TYPE="x11", XDG_CURRENT_DESKTOP="XFCE")
+    assert x11.rotation_tool() == "xrandr"
+    sway = linux(Shell(), "wlr-randr", WAYLAND_DISPLAY="w-0", XDG_CURRENT_DESKTOP="sway")
+    assert sway.rotation_tool() == "wlr-randr"
+    gnome = linux(Shell(), "wlr-randr", WAYLAND_DISPLAY="w-0", XDG_CURRENT_DESKTOP="ubuntu:GNOME")
+    assert gnome.rotation_tool() is None
+    assert gnome.capabilities() == ["restart", "shutdown", "update", "quit"]
+
+
+async def test_kde_turns_the_output_plasma_puts_first() -> None:
+    shell = Shell(answers={"kscreen-doctor --json": ok(KSCREEN)})
+    kde = linux(shell, "kscreen-doctor", XDG_CURRENT_DESKTOP="KDE", WAYLAND_DISPLAY="w-0")
+    await kde.rotate(90, "")
+    assert shell.lines()[-1] == "kscreen-doctor output.DP-2.rotation.left"
+    await kde.rotate(0, "HDMI-A-1")  # the installer's --output, as named
+    assert shell.lines()[-1] == "kscreen-doctor output.HDMI-A-1.rotation.normal"
+
+
+async def test_x11_turns_the_primary_output_and_its_touch_screen_follows() -> None:
+    shell = Shell(answers={"xrandr --query": ok(XRANDR), "xinput list --long": ok(XINPUT)})
+    x11 = linux(shell, "xrandr", "xinput", XDG_SESSION_TYPE="x11")
+    await x11.rotate(270, "")
+    assert shell.lines()[-3:] == [
+        "xrandr --output HDMI-1 --rotate right",
+        "xinput list --long",
+        "xinput map-to-output 11 HDMI-1",
+    ]
+
+
+async def test_a_wlroots_desktop_turns_its_first_enabled_output() -> None:
+    shell = Shell(answers={"wlr-randr": ok(WLR_RANDR)})
+    sway = linux(shell, "wlr-randr", WAYLAND_DISPLAY="w-0", XDG_CURRENT_DESKTOP="sway")
+    await sway.rotate(180, "")
+    assert shell.lines()[-1] == "wlr-randr --output HDMI-A-1 --transform 180"
+    nothing = linux(
+        Shell(), "wlr-randr", WAYLAND_DISPLAY="w-0", XDG_CURRENT_DESKTOP="sway"
+    )  # no output enabled
+    with pytest.raises(PlatformError, match="No screen was found to turn"):
+        await nothing.rotate(90, "")
+
+
+async def test_the_saved_rotation_is_applied_as_the_desktop_starts() -> None:
+    shell = Shell(answers={"xrandr --query": ok(XRANDR)})
+    await linux(shell, "xrandr", XDG_SESSION_TYPE="x11").prepare_session(90, "")
+    assert "xrandr --output HDMI-1 --rotate left" in shell.lines()
 
 
 # ---------------------------------------------------------------------------- the Pi

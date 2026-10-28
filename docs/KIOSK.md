@@ -63,7 +63,7 @@ Other options (`--help` lists them all):
 - `--dry-run` says what the installer would do on this computer, and changes nothing.
 - `--rotate 90|180|270` turns the picture for a screen mounted on its side (90 = left, 180 =
   upside down, 270 = right), and touch with it. **Settings → This Screen → Rotation** changes it
-  later.
+  later; on another computer it's the only way (a Mac turns its picture in System Settings).
 - `--force-hdmi 1920x1080` keeps the HDMI output on at that size even when the monitor is off at
   startup (see "Blank after a restart" below).
 - `--output HDMI-A-2` picks the connector when two are in use.
@@ -156,13 +156,16 @@ snap's browser is never used: its sandbox can't open the screen's profile or rea
 
 Then it installs uv and Sunroom Screen as above, the user service, and
 `~/.config/autostart/sunroom-kiosk.desktop`, which starts it when you sign in. With `sudo` it
-writes the browser's policy and puts in the root helper (below), which lets Sunroom Screen
-rewrite that policy whenever the screen's address changes, so the browser never asks on the
-screen to let Sunroom reach Sunroom Screen (without `sudo`, it asks once). Nothing else on the
-computer changes. When the desktop is signed in, the
-one it ran on or, over `ssh`, the one this user is signed in to, it starts the screen at once.
-The computer's own settings turn and dim its screen; This Screen has **Quit Sunroom Screen**,
-which closes it until the next sign-in. Before the screen is paired, `systemctl --user stop
+writes the browser's policy and puts in the root helper (below), which lets Sunroom Screen write
+that policy again as it starts, so the browser never asks on the screen to let Sunroom reach
+Sunroom Screen (without `sudo`, it asks once). Nothing else on the computer changes. When the
+desktop is signed in, the one it ran on or, over `ssh`, the one this user is signed in to, it
+starts the screen at once. The computer dims its screen itself. **Settings → This Screen →
+Rotation** turns the picture for a display mounted on its side that the computer doesn't know
+about (ADR 0042): with `kscreen-doctor` on KDE Plasma, `xrandr` on X11 (a touch screen follows
+the turned picture), or `wlr-randr` on a wlroots desktop such as sway or labwc; GNOME on Wayland
+has none of those, so turn the picture in GNOME's own Settings → Displays there. This Screen has
+**Quit Sunroom Screen**, which closes it until the next sign-in. Before the screen is paired, `systemctl --user stop
 sunroom-kiosk` in a terminal does the same.
 
 ## Windows
@@ -193,6 +196,9 @@ take it out of full screen; it goes back by itself within half a minute.
 Its settings, browser profile (the pairing) and log are in `%LOCALAPPDATA%\sunroom-kiosk`. Windows
 joins Wi-Fi and sets the brightness itself, so This Screen's Network row says how it's connected
 (Wi-Fi and its network, or Wired) with no Change Wi-Fi, and the page dims itself in the evening.
+**Rotation** in This Screen turns the main display's picture through Windows' own display
+settings (no administrator needed), for a display mounted on its side, and it holds at the next
+sign-in.
 Since Windows 11 24H2, Windows tells programs about Wi-Fi only with Location access on (Settings →
 Privacy & security → Location); without it the row says Wired. **Quit Sunroom Screen** closes it
 until the next sign-in. Updates work as on a Pi.
@@ -228,8 +234,9 @@ only), keeps the display awake while the household's times say on (`caffeinate`)
 at night (`pmset displaysleepnow`); the page dims itself in the evening. This Screen's Network row
 says Wi-Fi or Wired (macOS keeps the Wi-Fi network's name from programs without Location access,
 so it says "Wi-Fi: connected"). The first Restart or Shut Down asks once
-whether Sunroom Screen may control System Events. **Quit Sunroom Screen** in This Screen closes
-it until the next sign-in. Its log: `~/Library/Logs/sunroom-kiosk.log`. `--url`, `--dry-run` and
+whether Sunroom Screen may control System Events. A Mac has no Rotation in This Screen (macOS
+lets no program turn a display): turn the picture in System Settings → Displays → Rotation.
+**Quit Sunroom Screen** in This Screen closes it until the next sign-in. Its log: `~/Library/Logs/sunroom-kiosk.log`. `--url`, `--dry-run` and
 `--agent-wheel` work as on Linux; `bash ~/.local/share/sunroom-kiosk/uninstall.sh` takes it off
 (Google Chrome stays).
 

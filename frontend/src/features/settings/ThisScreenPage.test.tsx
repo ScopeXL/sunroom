@@ -299,6 +299,19 @@ describe("Settings → This Screen (ADR 0035)", () => {
     ]);
   });
 
+  it("turns a computer's picture too, where it can (ADR 0042)", () => {
+    draw(
+      piState({
+        platform: "windows",
+        session: "desktop",
+        capabilities: ["restart", "shutdown", "update", "rotate", "quit"],
+        network: { kind: "wired", ssid: null, ip: "192.168.1.31", strength: null },
+      }),
+    );
+    expect(screen.getByRole("group", { name: "Rotation" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Quit Sunroom Screen" })).toBeTruthy();
+  });
+
   it("turns the picture, and keeps the update setting", async () => {
     draw();
     fireEvent.click(screen.getByRole("button", { name: "Portrait, left" }));

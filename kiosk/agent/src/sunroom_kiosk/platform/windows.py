@@ -8,15 +8,23 @@ for that person from the Startup folder, with no administrator rights and no ser
   says Wired too).
 * **The browser's policy** under ``HKEY_CURRENT_USER\\Software\\Policies\\…`` (policy.py's
   ``windows_values``), which a user may write for themselves and Edge and Chrome both read.
-* **Quit** closes Sunroom Screen until the next sign-in. No rotation (Windows' own display
-  settings turn the picture) and no brightness: the page dims itself (``?dimmer=page``).
+* **Rotation** (ADR 0042), for a display mounted on its side that Windows doesn't know about:
+  the main display's mode read with ``EnumDisplaySettingsW`` and written back with
+  ``ChangeDisplaySettingsExW``, its orientation changed (and its width and height swapped between
+  landscape and portrait), kept in the registry so it holds across sign-ins; no administrator
+  needed. Touch follows the display on Windows.
+* **Quit** closes Sunroom Screen until the next sign-in. No brightness: the page dims itself
+  (``?dimmer=page``).
 """
 
 from __future__ import annotations
 
+import asyncio
+import ctypes
 import re
 import sys
 from collections.abc import Callable
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
@@ -103,6 +111,124 @@ def windows_build() -> int:
     return 0
 
 
+# DEVMODEW's dmDisplayOrientation is measured counter-clockwise from the display's natural one
+# (Microsoft's DEVMODEW reference), as xrandr's "left" is: the agent's 90, "Portrait, left" (the
+# top of the picture at the left), is DMDO_90. Not yet tried on a real Windows display.
+ORIENTATIONS = {0: 0, 90: 1, 180: 2, 270: 3}  # DMDO_DEFAULT, DMDO_90, DMDO_180, DMDO_270
+DISP_CHANGE_SUCCESSFUL = 0
+
+
+@dataclass(frozen=True)
+class DisplayMode:
+    """The main display's mode, as far as turning it goes."""
+
+    width: int
+    height: int
+    orientation: int  # DMDO_*
+
+
+def turned(mode: DisplayMode, rotation: int) -> DisplayMode:
+    """``mode`` turned to ``rotation``: between landscape and portrait the width and height
+    swap, as Windows' own display settings do."""
+    orientation = ORIENTATIONS[rotation]
+    if orientation % 2 == mode.orientation % 2:
+        return replace(mode, orientation=orientation)
+    return DisplayMode(width=mode.height, height=mode.width, orientation=orientation)
+
+
+class Display(Protocol):
+    """Windows' display settings: the main display's mode, and a change to it (``DISP_CHANGE_*``:
+    0 when it worked)."""
+
+    def current(self) -> DisplayMode: ...
+    def apply(self, mode: DisplayMode) -> int: ...
+
+
+if sys.platform == "win32":
+    from ctypes import wintypes
+
+    ENUM_CURRENT_SETTINGS = -1
+    DM_DISPLAYORIENTATION = 0x00000080
+    DM_PELSWIDTH = 0x00080000
+    DM_PELSHEIGHT = 0x00100000
+    CDS_UPDATEREGISTRY = 0x00000001
+
+    class DEVMODEW(ctypes.Structure):
+        """wingdi.h's DEVMODEW for a display (the union's display part); 220 bytes."""
+
+        _fields_ = [
+            ("dmDeviceName", wintypes.WCHAR * 32),
+            ("dmSpecVersion", wintypes.WORD),
+            ("dmDriverVersion", wintypes.WORD),
+            ("dmSize", wintypes.WORD),
+            ("dmDriverExtra", wintypes.WORD),
+            ("dmFields", wintypes.DWORD),
+            ("dmPositionX", wintypes.LONG),
+            ("dmPositionY", wintypes.LONG),
+            ("dmDisplayOrientation", wintypes.DWORD),
+            ("dmDisplayFixedOutput", wintypes.DWORD),
+            ("dmColor", ctypes.c_short),
+            ("dmDuplex", ctypes.c_short),
+            ("dmYResolution", ctypes.c_short),
+            ("dmTTOption", ctypes.c_short),
+            ("dmCollate", ctypes.c_short),
+            ("dmFormName", wintypes.WCHAR * 32),
+            ("dmLogPixels", wintypes.WORD),
+            ("dmBitsPerPel", wintypes.DWORD),
+            ("dmPelsWidth", wintypes.DWORD),
+            ("dmPelsHeight", wintypes.DWORD),
+            ("dmDisplayFlags", wintypes.DWORD),
+            ("dmDisplayFrequency", wintypes.DWORD),
+            ("dmICMMethod", wintypes.DWORD),
+            ("dmICMIntent", wintypes.DWORD),
+            ("dmMediaType", wintypes.DWORD),
+            ("dmDitherType", wintypes.DWORD),
+            ("dmReserved1", wintypes.DWORD),
+            ("dmReserved2", wintypes.DWORD),
+            ("dmPanningWidth", wintypes.DWORD),
+            ("dmPanningHeight", wintypes.DWORD),
+        ]
+
+    class _WindowsDisplay:
+        def __init__(self) -> None:
+            self.user32 = ctypes.WinDLL("user32", use_last_error=True)
+
+        def _read(self) -> DEVMODEW:
+            mode = DEVMODEW()
+            mode.dmSize = ctypes.sizeof(DEVMODEW)
+            if not self.user32.EnumDisplaySettingsW(
+                None, ENUM_CURRENT_SETTINGS, ctypes.byref(mode)
+            ):
+                raise OSError(ctypes.get_last_error(), "EnumDisplaySettingsW")
+            return mode
+
+        def current(self) -> DisplayMode:
+            mode = self._read()
+            return DisplayMode(
+                width=int(mode.dmPelsWidth),
+                height=int(mode.dmPelsHeight),
+                orientation=int(mode.dmDisplayOrientation),
+            )
+
+        def apply(self, mode: DisplayMode) -> int:
+            wanted = self._read()
+            wanted.dmPelsWidth = mode.width
+            wanted.dmPelsHeight = mode.height
+            wanted.dmDisplayOrientation = mode.orientation
+            wanted.dmFields = DM_DISPLAYORIENTATION | DM_PELSWIDTH | DM_PELSHEIGHT
+            return int(
+                self.user32.ChangeDisplaySettingsExW(
+                    None, ctypes.byref(wanted), None, CDS_UPDATEREGISTRY, None
+                )
+            )
+
+
+def system_display() -> Display:
+    if sys.platform == "win32":
+        return _WindowsDisplay()
+    raise PlatformError("The display settings are Windows' own.")
+
+
 def wifi_from_netsh(text: str) -> tuple[str, int] | None:
     """The joined network's name and signal from ``netsh wlan show interfaces``, or None."""
     fields: dict[str, str] = {}
@@ -126,11 +252,13 @@ class WindowsPlatform(Platform):
         registry: Callable[[], Registry] = system_registry,
         build: Callable[[], int] = windows_build,
         address: Callable[[], str | None] = local_ip,
+        display: Callable[[], Display] = system_display,
     ) -> None:
         super().__init__(runner, root)
         self.registry = registry
         self.build = build
         self.address = address
+        self.display = display
 
     # ------------------------------------------------------------------ what it is
 
@@ -159,7 +287,7 @@ class WindowsPlatform(Platform):
         return "Windows 11" if build >= WINDOWS_11_BUILD else "Windows 10"
 
     def capabilities(self) -> list[ScreenCapability]:
-        return ["restart", "shutdown", "update", "quit"]
+        return ["restart", "shutdown", "update", "rotate", "quit"]
 
     # ------------------------------------------------------------------ the machine
 
@@ -175,6 +303,21 @@ class WindowsPlatform(Platform):
 
     async def shutdown(self) -> None:
         await self._must(["shutdown", "/s", "/t", "5"], "Shutting down")
+
+    # ------------------------------------------------------------------ the screen
+
+    async def rotate(self, rotation: int, output: str) -> None:
+        """Turn the main display's picture; kept in the registry, so it holds at sign-in."""
+        try:
+            display = self.display()
+            now = await asyncio.to_thread(display.current)
+            answer = await asyncio.to_thread(display.apply, turned(now, rotation))
+        except (OSError, PlatformError) as error:
+            log.info("The display settings didn't answer: %s", error)
+            raise PlatformError("The picture didn't turn. Try again in a moment.") from error
+        if answer != DISP_CHANGE_SUCCESSFUL:
+            log.info("ChangeDisplaySettingsExW answered %d.", answer)
+            raise PlatformError("The picture didn't turn. Try again in a moment.")
 
     # ------------------------------------------------------------------ the network
 

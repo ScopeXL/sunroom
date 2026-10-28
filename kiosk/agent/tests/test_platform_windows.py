@@ -21,6 +21,7 @@ from sunroom_kiosk.platform.base import (
 )
 from sunroom_kiosk.platform.windows import (
     BIOS_KEY,
+    DisplayMode,
     RegistryKind,
     WindowsPlatform,
     wifi_from_netsh,
@@ -80,10 +81,10 @@ def windows(
     return WindowsPlatform(shell, registry=lambda: held, build=lambda: build, address=lambda: ip)
 
 
-def test_a_windows_computer_restarts_shuts_down_and_quits_but_has_no_wifi_or_rotation() -> None:
+def test_a_windows_computer_restarts_shuts_down_turns_and_quits_but_has_no_wifi() -> None:
     platform = windows(Shell())
     assert platform.name == "windows"
-    assert platform.capabilities() == ["restart", "shutdown", "update", "quit"]
+    assert platform.capabilities() == ["restart", "shutdown", "update", "rotate", "quit"]
     assert platform.system == "Windows 11"
     assert windows(Shell(), build=19045).system == "Windows 10"
 
@@ -181,3 +182,49 @@ async def test_its_commands_open_no_console_window(monkeypatch: pytest.MonkeyPat
     assert (await run_command(["netsh", "wlan", "show", "interfaces"])).code == 127
     assert asked == [NO_WINDOW]
     assert NO_WINDOW == (0x08000000 if sys.platform == "win32" else 0)  # CREATE_NO_WINDOW
+
+
+@dataclass
+class FakeDisplay:
+    """Windows' display settings, pretended: the main display's mode and what was asked of it."""
+
+    mode: DisplayMode = field(default_factory=lambda: DisplayMode(1920, 1080, 0))
+    answer: int = 0  # DISP_CHANGE_SUCCESSFUL
+    applied: list[DisplayMode] = field(default_factory=list[DisplayMode])
+
+    def current(self) -> DisplayMode:
+        return self.mode
+
+    def apply(self, mode: DisplayMode) -> int:
+        self.applied.append(mode)
+        if self.answer == 0:
+            self.mode = mode
+        return self.answer
+
+
+async def test_windows_turns_the_main_displays_picture() -> None:
+    """ChangeDisplaySettingsExW with the orientation (counter-clockwise, as DEVMODEW measures it:
+    the agent's 90, Portrait left, is DMDO_90) and the width and height swapped between landscape
+    and portrait (ADR 0042)."""
+    display = FakeDisplay()
+    platform = WindowsPlatform(Shell(), display=lambda: display)
+    await platform.rotate(90, "")
+    assert display.applied[-1] == DisplayMode(1080, 1920, 1)
+    await platform.rotate(270, "")  # portrait to portrait: no swap
+    assert display.applied[-1] == DisplayMode(1080, 1920, 3)
+    await platform.rotate(180, "")
+    assert display.applied[-1] == DisplayMode(1920, 1080, 2)
+    await platform.rotate(0, "")
+    assert display.applied[-1] == DisplayMode(1920, 1080, 0)
+
+
+async def test_a_turn_windows_refuses_says_so() -> None:
+    refused = FakeDisplay(answer=-2)  # DISP_CHANGE_BADMODE
+    with pytest.raises(PlatformError, match=r"^The picture didn't turn\. Try again in a moment\.$"):
+        await WindowsPlatform(Shell(), display=lambda: refused).rotate(90, "")
+
+    def away() -> FakeDisplay:
+        raise OSError(87, "EnumDisplaySettingsW")
+
+    with pytest.raises(PlatformError, match=r"^The picture didn't turn"):
+        await WindowsPlatform(Shell(), display=away).rotate(90, "")

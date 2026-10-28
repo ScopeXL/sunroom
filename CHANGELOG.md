@@ -8,6 +8,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- This Screen's Rotation turns the picture on Windows and Linux computers too, for a display
+  mounted on its side that the computer doesn't know about.
 - Shut Down's question says it turns off the computer this screen runs on, and its other button
   is Cancel.
 - Every screen installs Sunroom Screen's updates overnight by itself unless Updates is turned off

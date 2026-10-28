@@ -11,12 +11,17 @@
   the pointer with ``unclutter``.
 * **The root helper** ``/usr/local/sbin/sunroom-kiosk-root`` (kiosk/files, allowed by
   ``/etc/sudoers.d/sunroom-kiosk`` for this user only), which the installer puts on every Linux
-  screen since ADR 0038: the browser's policy follows the address the screen shows, one it found
-  itself too, so Chrome's Local Network Access never asks on the screen.
+  screen since ADR 0038: it writes the browser's policy, so Chrome's Local Network Access never
+  asks on the screen.
+* **Rotation** (ADR 0042), for a display mounted on its side that the computer doesn't know
+  about: ``kscreen-doctor`` on KDE Plasma, ``xrandr`` on X11 (touch screens mapped to the turned
+  output with ``xinput map-to-output``), ``wlr-randr`` on a wlroots compositor (labwc, sway). The
+  output is the installer's ``--output`` or, without one, the one the tool says is primary, else
+  the first connected; the saved rotation is applied again as the agent starts. GNOME on Wayland
+  has none of these tools, so its screens have no Rotation row.
 
-A desktop that isn't a Pi can Quit (Sunroom Screen stops until the next sign-in); it doesn't turn
-its picture (its own display settings do), and the root helper does nothing else for it (its
-system updates aren't ours).
+A desktop that isn't a Pi can Quit (Sunroom Screen stops until the next sign-in), and the root
+helper does nothing else for it (its system updates aren't ours).
 """
 
 from __future__ import annotations
@@ -27,7 +32,7 @@ import os
 import shutil
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 from sunroom_kiosk import logs, policy
 from sunroom_kiosk.platform.base import (
@@ -48,6 +53,11 @@ log = logs.get("platform")
 ROOT_HELPER = "/usr/local/sbin/sunroom-kiosk-root"
 DESKTOP_WAIT_S = 2.0
 CLOCK_TRIES = 30  # 2 s apart: a minute
+# The agent's rotations (counter-clockwise: 90 puts the picture's top at the left) in each tool's
+# words: xrandr and kscreen-doctor say left for it, wlr-randr's transform the degrees.
+X11_TURNS = {0: "normal", 90: "left", 180: "inverted", 270: "right"}
+KDE_TURNS = X11_TURNS
+type RotationTool = Literal["kscreen-doctor", "xrandr", "wlr-randr"]
 
 
 def split_terse(line: str) -> list[str]:
@@ -100,6 +110,76 @@ def wifi_from(listing: str, saved_names: set[str]) -> list[WifiNetwork]:
         ):
             best[ssid] = network
     return list(best.values())
+
+
+def x11_outputs(query: str) -> tuple[list[str], str | None]:
+    """``xrandr --query``: the connected outputs in order, and the primary one."""
+    connected: list[str] = []
+    primary: str | None = None
+    for line in query.splitlines():
+        words = line.split()
+        if len(words) > 1 and words[1] == "connected":
+            connected.append(words[0])
+            if len(words) > 2 and words[2] == "primary":
+                primary = words[0]
+    return connected, primary
+
+
+def wlr_outputs(listing: str) -> list[str]:
+    """``wlr-randr``'s plain listing: the enabled outputs in order (each starts a line, its
+    properties indented under it)."""
+    enabled: list[str] = []
+    name: str | None = None
+    for line in listing.splitlines():
+        if line and not line[0].isspace():
+            name = line.split()[0]
+        elif name and line.strip() == "Enabled: yes":
+            enabled.append(name)
+    return enabled
+
+
+def kde_output(listing: str) -> str | None:
+    """``kscreen-doctor --json``: the enabled, connected output Plasma puts first (``priority``
+    1; ``primary`` before Plasma 5.25), else the first such."""
+    try:
+        found = json.loads(listing)
+    except ValueError:
+        return None
+    if not isinstance(found, dict):
+        return None
+    outputs = cast(dict[str, Any], found).get("outputs")
+    if not isinstance(outputs, list):
+        return None
+    ready: list[dict[str, Any]] = [
+        cast(dict[str, Any], output)
+        for output in cast(list[object], outputs)
+        if isinstance(output, dict)
+        and cast(dict[str, Any], output).get("enabled")
+        and cast(dict[str, Any], output).get("connected")
+        and isinstance(cast(dict[str, Any], output).get("name"), str)
+    ]
+    if not ready:
+        return None
+
+    def first(output: dict[str, Any]) -> int:
+        if output.get("primary") is True:
+            return 0
+        priority = output.get("priority")
+        return priority if isinstance(priority, int) and priority > 0 else 1000
+
+    return str(min(ready, key=first)["name"])
+
+
+def touch_screens(listing: str) -> list[str]:
+    """``xinput list --long``: the ids of direct-touch devices (a touch screen, not a pad)."""
+    ids: list[str] = []
+    current: str | None = None
+    for line in listing.splitlines():
+        if "id=" in line:
+            current = line.split("id=", 1)[1].split()[0]
+        elif current and line.strip() == "Touch mode: direct" and current not in ids:
+            ids.append(current)
+    return ids
 
 
 def join_problem(ssid: str, result: CommandResult) -> str:
@@ -162,6 +242,20 @@ class LinuxPlatform(Platform):
     def has_wifi(self) -> bool:
         return self.which("nmcli") is not None
 
+    def rotation_tool(self) -> RotationTool | None:
+        """What turns this desktop's picture, if anything does (ADR 0042)."""
+        desktop = self.environ.get("XDG_CURRENT_DESKTOP", "").lower()
+        if "kde" in desktop and self.which("kscreen-doctor") is not None:
+            return "kscreen-doctor"
+        if self.session == "x11":
+            return "xrandr" if self.which("xrandr") is not None else None
+        if self.session == "wayland" and not any(name in desktop for name in ("gnome", "kde")):
+            return "wlr-randr" if self.which("wlr-randr") is not None else None
+        return None
+
+    def can_rotate(self) -> bool:
+        return self.rotation_tool() is not None
+
     def _root_helper(self) -> bool:
         return (self.root / ROOT_HELPER.lstrip("/")).exists()
 
@@ -169,6 +263,8 @@ class LinuxPlatform(Platform):
         have: list[ScreenCapability] = ["restart", "shutdown", "update"]
         if self.has_wifi():
             have.append("wifi")
+        if self.can_rotate():
+            have.append("rotate")
         have.append("quit")
         return have
 
@@ -205,6 +301,51 @@ class LinuxPlatform(Platform):
 
     async def shutdown(self) -> None:
         await self._must(["systemctl", "poweroff"], "Shutting down")
+
+    # ------------------------------------------------------------------ the screen
+
+    async def _output(self, tool: RotationTool, want: str) -> str | None:
+        """The output to turn: the one the installer named (as the tool calls it), else the
+        primary one, else the first connected."""
+        if tool == "xrandr":
+            connected, primary = x11_outputs((await self.run(["xrandr", "--query"])).output)
+            # X11's names differ from the kernel's: HDMI-A-1 there is usually HDMI-1 here.
+            for name in (want, want.replace("HDMI-A-", "HDMI-")):
+                if name and name in connected:
+                    return name
+            return primary or (connected[0] if connected else None)
+        if want:
+            return want
+        if tool == "wlr-randr":
+            enabled = wlr_outputs((await self.run(["wlr-randr"])).output)
+            return enabled[0] if enabled else None
+        return kde_output((await self.run(["kscreen-doctor", "--json"])).output)
+
+    async def turn(self, rotation: int, output: str) -> None:
+        """Turn the picture now (touch follows on X11; a Pi's labwc rule follows it there)."""
+        tool = self.rotation_tool()
+        if tool is None:
+            raise PlatformError("Turning the picture isn't something this screen can do.")
+        name = await self._output(tool, output)
+        if name is None:
+            raise PlatformError("No screen was found to turn.")
+        if tool == "xrandr":
+            argv = ["xrandr", "--output", name, "--rotate", X11_TURNS[rotation]]
+        elif tool == "wlr-randr":
+            transform = str(rotation) if rotation else "normal"
+            argv = ["wlr-randr", "--output", name, "--transform", transform]
+        else:
+            argv = ["kscreen-doctor", f"output.{name}.rotation.{KDE_TURNS[rotation]}"]
+        result = await self.run(argv)
+        if not result.ok:
+            log.info("%s didn't work: %s", " ".join(argv), result.first_line())
+            raise PlatformError("The picture didn't turn. Try again in a moment.")
+        if tool == "xrandr" and self.which("xinput") is not None:
+            for device in touch_screens((await self.run(["xinput", "list", "--long"])).output):
+                await self.run(["xinput", "map-to-output", device, name])
+
+    async def rotate(self, rotation: int, output: str) -> None:
+        await self.turn(rotation, output)
 
     # ------------------------------------------------------------------ the network
 
@@ -334,6 +475,14 @@ class LinuxPlatform(Platform):
         log.info("The clock hasn't been set after a minute; starting anyway.")
 
     async def prepare_session(self, rotation: int, output: str) -> None:
+        await self._blank_off()
+        if rotation and self.can_rotate():
+            try:
+                await self.turn(rotation, output)
+            except PlatformError as error:
+                log.info("%s", error)
+
+    async def _blank_off(self) -> None:
         if self.session != "x11":
             return
         for argv in (

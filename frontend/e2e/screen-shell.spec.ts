@@ -214,7 +214,8 @@ test("This Screen's twin works when Sunroom can't load, and Quit shows on a comp
   await expect(page.getByRole("button", { name: "Quit Sunroom Screen" })).toHaveCount(
     desktop ? 1 : 0,
   );
-  await expect(page.getByRole("group", { name: "Rotation" })).toHaveCount(desktop ? 0 : 1);
+  // A computer turns its picture too, as a Pi does (ADR 0042).
+  await expect(page.getByRole("group", { name: "Rotation" })).toHaveCount(1);
   await check(page, "This Screen (the screen's own page)");
   await page.getByRole("button", { name: "Restart" }).click();
   await expect(toast(page, "Restarting…")).toBeVisible();

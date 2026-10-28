@@ -98,6 +98,7 @@ class FakePlatform(Platform):
             "restart",
             "shutdown",
             "update",
+            "rotate",  # Windows and Linux desktops turn their picture too (ADR 0042)
             "quit",
             "run_sunroom",
             "update_sunroom",

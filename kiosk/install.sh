@@ -520,7 +520,11 @@ validate_args() {
 		say "Note: --version picks the Sunroom that runs on a Pi (--with-sunroom); the screen alone ignores it."
 	fi
 	if [[ $PLATFORM != pi ]] && { ((OUTPUT_GIVEN || FORCE_X11)) || [[ $ROTATE != 0 || -n $FORCE_HDMI ]]; }; then
-		say "Note: --output, --rotate, --force-hdmi and --x11 are for a Raspberry Pi; on $MACHINE, its own display settings do that."
+		if [[ $PLATFORM == macos ]]; then
+			say "Note: --output, --rotate, --force-hdmi and --x11 are for a Raspberry Pi; on $MACHINE, System Settings → Displays turns the picture."
+		else
+			say "Note: --output, --rotate, --force-hdmi and --x11 are for a Raspberry Pi; on $MACHINE, the screen's Settings → This Screen → Rotation turns the picture."
+		fi
 		OUTPUT=""
 		ROTATE=0
 		FORCE_HDMI=""
