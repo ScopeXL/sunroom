@@ -6,6 +6,12 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+### Removed
+
+- Sunroom OS, the ready-made card image for a Raspberry Pi, is retired: set a Pi up with the
+  one-command installer on Raspberry Pi OS instead (docs/KIOSK.md). The 0.16.1 release keeps the
+  last image, and Raspberry Pi Imager's Sunroom entry stops updating.
+
 ## [0.16.1] - 2026-10-27
 
 ### Changed

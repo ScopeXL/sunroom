@@ -493,10 +493,6 @@
               }
             ]
           },
-          "sunroom_os": {
-            "title": "Sunroom Os",
-            "type": "boolean"
-          },
           "update": {
             "$ref": "#/components/schemas/ScreenUpdateOut"
           },
@@ -510,7 +506,6 @@
           "platform",
           "model",
           "session",
-          "sunroom_os",
           "capabilities",
           "sunroom",
           "network",

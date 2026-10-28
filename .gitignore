@@ -45,6 +45,3 @@ node_modules/
 .DS_Store
 .idea/
 .vscode/
-# Sunroom OS's build: the pinned pi-gen checkout it assembles, and the image (kiosk/os/build.sh)
-kiosk/os/.pi-gen/
-kiosk/os/deploy/

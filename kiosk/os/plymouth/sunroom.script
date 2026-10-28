@@ -1,7 +1,0 @@
-# Sunroom OS's start: the sun mark on the app's own paper colour (#f5f5f2), centred.
-Window.SetBackgroundTopColor(0.961, 0.961, 0.949);
-Window.SetBackgroundBottomColor(0.961, 0.961, 0.949);
-mark.image = Image("sunroom.png");
-mark.sprite = Sprite(mark.image);
-mark.sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - mark.image.GetWidth() / 2);
-mark.sprite.SetY(Window.GetY() + Window.GetHeight() / 2 - mark.image.GetHeight() / 2);

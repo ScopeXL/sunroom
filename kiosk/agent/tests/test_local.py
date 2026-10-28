@@ -7,7 +7,6 @@ data only."""
 from __future__ import annotations
 
 import hashlib
-import json
 import plistlib
 from collections.abc import Callable
 from pathlib import Path
@@ -534,10 +533,3 @@ async def test_the_agent_runs_sunroom_here_through_it_on_a_computer(
     # Shown now: no running it again, and Update Sunroom Too while it's this screen's own.
     assert "run_sunroom" not in agent.capabilities()
     assert "update_sunroom" in agent.capabilities()
-
-
-def test_sunroom_os_keeps_its_own_way(make_agent: Callable[..., Agent]) -> None:
-    # The image's Docker setup (M7 T16): the program isn't offered there.
-    agent = make_agent(local=FakeLocal("http://localhost:8080"))
-    assert agent.local is None
-    assert json.dumps(agent.capabilities())  # the platform's own list, as before

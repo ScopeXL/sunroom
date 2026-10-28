@@ -1,8 +1,9 @@
 """``--fake``: a pretend machine for the agent's tests, the e2e runs and ``just kiosk-dev``.
 
 Three Wi-Fi networks, a power button that only records what it was asked, a screen that turns,
-and no files outside the agent's own folder. ``kind`` is ``pi`` (Sunroom OS on a Raspberry Pi,
-every capability) or ``desktop`` (a computer: Quit, and the system's own network settings).
+and no files outside the agent's own folder. ``kind`` is ``pi`` (a Raspberry Pi set up with the
+installer, every capability) or ``desktop`` (a computer: Quit, and the system's own network
+settings).
 Either can run Sunroom here (ADR 0038): the run "starts" the first ``--fake-sunroom`` (the e2e
 server), or holds part way, or stops, as a test asks. Names are synthetic, like every fixture
 (CLAUDE.md, hard rule 1).
@@ -72,16 +73,12 @@ class FakePlatform(Platform):
         return "wayland" if self.kind == "pi" else "desktop"
 
     @property
-    def sunroom_os(self) -> bool:
-        return self.kind == "pi"
-
-    @property
     def model(self) -> str:
         return "Raspberry Pi 5 Model B" if self.kind == "pi" else "Computer"
 
     @property
     def system(self) -> str:
-        return "Sunroom OS (pretend)" if self.kind == "pi" else "A pretend computer"
+        return "Raspberry Pi OS (pretend)" if self.kind == "pi" else "A pretend computer"
 
     def hostname(self) -> str:
         return "sunroom"

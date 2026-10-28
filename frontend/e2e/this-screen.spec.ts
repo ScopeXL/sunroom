@@ -30,7 +30,6 @@ function state(overrides: Record<string, unknown> = {}): Record<string, unknown>
     platform: "pi",
     model: "Raspberry Pi 5 Model B",
     session: "wayland",
-    sunroom_os: true,
     capabilities: ["restart", "shutdown", "update", "wifi", "rotate", "brightness"],
     sunroom: {
       url: "http://192.168.1.20:8080",
@@ -127,7 +126,7 @@ class FakeAgent {
         version: "0.13.0",
         platform: "pi",
         model: "Raspberry Pi 5 Model B",
-        system: "Sunroom OS",
+        system: "Debian GNU/Linux 13 (trixie)",
         browser: "Chromium",
         hostname: "sunroom",
         ip: "192.168.1.30",

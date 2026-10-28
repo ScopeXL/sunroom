@@ -64,8 +64,8 @@ lint: kiosk-lint
 # shellcheck on the installer and its helpers; the labwc rule and the root helper compile; Sunroom
 # Screen's agent (kiosk/agent) passes ruff and pyright strict
 kiosk-lint:
-    {{shellcheck}} -x kiosk/install.sh kiosk/uninstall.sh kiosk/update.sh kiosk/os/build.sh kiosk/os/stage-sunroom/prerun.sh kiosk/os/stage-sunroom/*/*.sh
-    {{py}} -m py_compile kiosk/labwc-rule.py kiosk/files/sunroom-kiosk-root kiosk/os/imager.py
+    {{shellcheck}} -x kiosk/install.sh kiosk/uninstall.sh kiosk/update.sh
+    {{py}} -m py_compile kiosk/labwc-rule.py kiosk/files/sunroom-kiosk-root
     @if command -v pwsh >/dev/null 2>&1; then pwsh -NoProfile -Command 'if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { "PSScriptAnalyzer is not installed here; CI runs it on Windows."; exit 0 }; $found = Invoke-ScriptAnalyzer -Path kiosk/install.ps1 -Severity Warning,Error -ExcludeRule PSAvoidUsingWriteHost; $found | Format-Table -AutoSize RuleName,Line,Message; if ($found) { exit 1 }'; else echo "install.ps1: no pwsh here; CI runs PSScriptAnalyzer on Windows."; fi
     cd kiosk/agent && uv run --quiet ruff check . && uv run --quiet ruff format --check . && uv run --quiet pyright
 
@@ -94,11 +94,6 @@ server-build:
 # release: both wheels, then the installers served with them and each system's one line
 kiosk-serve PORT="8765": kiosk-build server-build
     {{py}} scripts/kiosk_serve.py {{PORT}}
-
-# Sunroom OS's image, built here (docs/SUNROOM-OS.md): pi-gen in Docker (OrbStack is arm64: no
-# emulation) into kiosk/os/deploy/. About an hour and 20 GB; CI builds it for each release.
-kiosk-image: kiosk-build
-    kiosk/os/build.sh "kiosk/agent/dist/sunroom_kiosk-$(cat VERSION)-py3-none-any.whl"
 
 # Sunroom Screen's agent: its tests, on the pretend platform (no network, no machine changes)
 [positional-arguments]

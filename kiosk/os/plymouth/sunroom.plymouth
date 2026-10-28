@@ -1,8 +1,0 @@
-[Plymouth Theme]
-Name=Sunroom
-Description=The Sunroom mark while the screen starts
-ModuleName=script
-
-[script]
-ImageDir=/usr/share/plymouth/themes/sunroom
-ScriptFile=/usr/share/plymouth/themes/sunroom/sunroom.script

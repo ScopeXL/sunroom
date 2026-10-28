@@ -6,59 +6,29 @@
   time it starts, after the desktop does.
 * **The root helper** ``/usr/local/sbin/sunroom-kiosk-root`` (kiosk/files, allowed by
   ``/etc/sudoers.d/sunroom-kiosk`` for this user only, and only it): the browser's policy file,
-  the system's security updates, and ``/opt/sunroom/update.sh`` on an all-in-one Pi. Nothing else
-  here needs root: logind lets the session restart and power off, and the user is in netdev.
-* **Sunroom OS** is the flashed image (``/etc/sunroom-os`` says so): it updates itself overnight
-  by default, and can run Sunroom on this screen (batch 2).
+  and ``/opt/sunroom/update.sh`` on an all-in-one Pi. Nothing else here needs root: logind lets
+  the session restart and power off, and the user is in netdev.
+* **Sunroom here**: an all-in-one Pi (``install.sh --with-sunroom``) runs it in Docker, which the
+  agent updates through the helper; any other Pi runs it as a program, as any computer does
+  (local.py, ADR 0038).
 """
 
 from __future__ import annotations
 
-import re
 import shutil
 import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from sunroom_kiosk import logs
-from sunroom_kiosk.platform.base import (
-    PlatformError,
-    Progress,
-    Runner,
-    Streamer,
-    UnsupportedError,
-    run_command,
-    stream_command,
-    user_id,
-)
-from sunroom_kiosk.platform.linux import ROOT_HELPER, LinuxPlatform
+from sunroom_kiosk.platform.base import PlatformError, Runner, run_command, user_id
+from sunroom_kiosk.platform.linux import LinuxPlatform
 from sunroom_kiosk.schemas import ScreenCapability, ScreenPlatform
 
 log = logs.get("platform")
 
-SUNROOM_OS_MARK = "etc/sunroom-os"
 LABWC_RULE = Path.home() / ".local" / "share" / "sunroom-kiosk" / "labwc-rule.py"
 X11_TURNS = {0: "normal", 90: "left", 180: "inverted", 270: "right"}
-LOCAL_SUNROOM = "http://localhost:8080"  # the image's /opt/sunroom/docker-compose.yml
-PULL_LIMIT_S = 1800.0  # a slow line: half an hour for the first download
-LAYER = re.compile(r"^\s*(?:#\d+\s+)?([0-9a-f]{12})\s+(.+?)\s*$")
-
-
-class PullProgress:
-    """Docker's plain progress for ``compose pull``, as a percent: the image's layers that have
-    finished (pulled, or already here) out of those it has named so far, 5 to 90."""
-
-    def __init__(self) -> None:
-        self.layers: dict[str, bool] = {}
-
-    def read(self, line: str) -> int | None:
-        found = LAYER.match(line)
-        if found is None:
-            return None
-        layer, what = found.groups()
-        finished = what.startswith(("Pull complete", "Already exists"))
-        self.layers[layer] = self.layers.get(layer, False) or finished
-        return 5 + (85 * sum(self.layers.values())) // len(self.layers)
 
 
 def is_pi(root: Path = Path("/")) -> bool:
@@ -79,12 +49,10 @@ class PiPlatform(LinuxPlatform):
         which: Callable[[str], str | None] = shutil.which,
         labwc_rule: Path = LABWC_RULE,
         version: str = "dev",
-        stream: Streamer = stream_command,
     ) -> None:
         super().__init__(runner, root, environ=environ, which=which)
         self.labwc_rule = labwc_rule
         self.version = version
-        self.stream = stream
 
     # ------------------------------------------------------------------ what it is
 
@@ -96,20 +64,9 @@ class PiPlatform(LinuxPlatform):
     def model(self) -> str:
         return self._read("proc/device-tree/model") or "Raspberry Pi"
 
-    @property
-    def sunroom_os(self) -> bool:
-        return (self.root / SUNROOM_OS_MARK).exists()
-
     def can_rotate(self) -> bool:
         tool = "xrandr" if self.session == "x11" else "wlr-randr"
         return self.which(tool) is not None
-
-    def can_run_sunroom(self) -> bool:
-        return (
-            self.sunroom_os
-            and self.which("docker") is not None
-            and (self.root / "opt/sunroom/docker-compose.yml").exists()
-        )
 
     def capabilities(self) -> list[ScreenCapability]:
         have: list[ScreenCapability] = ["restart", "shutdown", "update"]
@@ -118,8 +75,6 @@ class PiPlatform(LinuxPlatform):
         if self.can_rotate():
             have.append("rotate")
         have.append("brightness")  # the agent drops it when the helper found no way to dim
-        if self.can_run_sunroom():
-            have.append("run_sunroom")
         if self._root_helper() and (self.root / "opt/sunroom/update.sh").exists():
             have.append("update_sunroom")  # the agent keeps it only while it shows that Sunroom
         return have
@@ -190,35 +145,6 @@ class PiPlatform(LinuxPlatform):
     # ------------------------------------------------------------------ root's part
     # (the browser's policy goes through the root helper as on any Linux screen)
 
-    async def update_system(self) -> bool:
-        return await self._as_root("apt-upgrade", limit=3600.0)
-
     async def update_sunroom(self) -> bool:
         """An all-in-one Pi's own Sunroom, through /opt/sunroom/update.sh."""
         return await self._as_root("update-sunroom", limit=900.0)
-
-    async def run_sunroom(self, progress: Progress) -> str:
-        """Sunroom OS: start the Sunroom the image set up (``/opt/sunroom``), through the root
-        helper, docker's download as a percent; the agent then waits for it to answer."""
-        if not self.can_run_sunroom() or not self._root_helper():
-            raise UnsupportedError("Running Sunroom here")
-        pulled = PullProgress()
-        said = -1
-
-        async def line(text: str) -> None:
-            nonlocal said
-            percent = pulled.read(text)
-            if percent is not None and percent != said:
-                said = percent
-                await progress(percent, "Downloading Sunroom…")
-
-        await progress(2, "Downloading Sunroom…")
-        code = await self.stream(
-            ["sudo", "-n", ROOT_HELPER, "run-sunroom"], line, limit=PULL_LIMIT_S
-        )
-        if code != 0:
-            log.info("Starting Sunroom here didn't work (exit status %d).", code)
-            raise PlatformError(
-                "Sunroom didn't start. Check this screen's internet connection, then try again."
-            )
-        return LOCAL_SUNROOM

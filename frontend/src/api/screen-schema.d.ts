@@ -502,8 +502,6 @@ export interface components {
             platform: components["schemas"]["ScreenPlatform"];
             session: components["schemas"]["ScreenSession"];
             sunroom: components["schemas"]["ScreenSunroomOut"] | null;
-            /** Sunroom Os */
-            sunroom_os: boolean;
             update: components["schemas"]["ScreenUpdateOut"];
             /** Version */
             version: string;

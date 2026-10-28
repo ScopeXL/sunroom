@@ -77,48 +77,6 @@ async def run_command(
     return CommandResult(process.returncode or 0, "\n".join(printed))
 
 
-type LineSink = Callable[[str], Awaitable[None]]
-
-
-class Streamer(Protocol):
-    async def __call__(
-        self, argv: Sequence[str], line: LineSink, *, limit: float = COMMAND_TIMEOUT_S
-    ) -> int: ...
-
-
-async def stream_command(
-    argv: Sequence[str], line: LineSink, *, limit: float = COMMAND_TIMEOUT_S
-) -> int:
-    """Run a command and hand each line it prints (stdout and stderr together) to ``line`` as it
-    comes; its exit status (127: not installed, 124: too slow)."""
-    try:
-        process = await asyncio.create_subprocess_exec(
-            *argv,
-            stdin=asyncio.subprocess.DEVNULL,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-            creationflags=NO_WINDOW,
-        )
-    except FileNotFoundError:
-        return 127
-    except OSError:
-        return 126
-
-    async def read() -> None:
-        if process.stdout is not None:
-            while raw := await process.stdout.readline():
-                await line(raw.decode(errors="replace").rstrip())
-        await process.wait()
-
-    try:
-        await asyncio.wait_for(read(), limit)
-    except TimeoutError:
-        process.kill()
-        await process.wait()
-        return 124
-    return process.returncode or 0
-
-
 class PlatformError(Exception):
     """A device action that didn't work. The message is for the family: plain words, no codes."""
 
@@ -186,11 +144,6 @@ class Platform:
     @property
     def session(self) -> ScreenSession:
         return "desktop"
-
-    @property
-    def sunroom_os(self) -> bool:
-        """The flashed image (kiosk/os), not an install on an existing system."""
-        return False
 
     @property
     def model(self) -> str:
@@ -262,16 +215,13 @@ class Platform:
         False when it isn't the agent's to take out here (on Linux the uninstaller does it)."""
         return False
 
-    async def update_system(self) -> bool:
-        """Install the system's own security updates (Sunroom OS). False when it isn't ours."""
-        return False
-
     async def update_sunroom(self) -> bool:
         """Update the Sunroom that runs on this machine (an all-in-one Pi)."""
         return False
 
     async def run_sunroom(self, progress: Progress) -> str:
-        """Start Sunroom on this machine (Sunroom OS, batch 2); returns its address."""
+        """Start Sunroom on this machine; returns its address. Only the pretend machine does it
+        itself (``--fake``): a real one runs Sunroom as a program, through local.py."""
         raise UnsupportedError("Running Sunroom here")
 
     def environment(self) -> dict[str, str]:

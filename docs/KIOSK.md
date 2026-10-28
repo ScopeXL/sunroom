@@ -353,12 +353,12 @@ screen instead.
 ## Every day
 
 - **The screen's own software (Sunroom Screen) updates itself** when Settings → This Screen →
-  Updates says Install overnight (Sunroom OS starts that way; a screen set up with the installer
-  starts with it Off): at the start of the household's sleep hours (03:30 without them) it asks
-  GitHub for the newest version, downloads it, checks it against the release's checksums and
-  starts it; if the new version doesn't start within a minute, the one before comes back and
-  This Screen says so. **Update Now** there does the same at once; `sunroom-kiosk update` on the
-  Pi says whether there's one. On an all-in-one Pi, This Screen's **Update Sunroom Too** updates
+  Updates says Install overnight, as every screen starts (Off updates it only when asked): at the
+  start of the household's sleep hours (03:30 without them) it asks GitHub for the newest
+  version, downloads it, checks it against the release's checksums and starts it; if the new
+  version doesn't start within a minute, the one before comes back and This Screen says so.
+  **Update Now** there does the same at once; `sunroom-kiosk update` on the Pi says whether
+  there's one. On an all-in-one Pi, This Screen's **Update Sunroom Too** updates
   Sunroom itself, as `update.sh` does.
 - **Update Sunroom on the Pi:** `sudo /opt/sunroom/update.sh` (or `sudo /opt/sunroom/update.sh
   0.2.0` for exactly that version, which is also how to go back). Your family's data stays.

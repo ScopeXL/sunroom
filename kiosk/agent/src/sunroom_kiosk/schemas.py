@@ -88,7 +88,6 @@ class ScreenStateOut(BaseModel):
     platform: ScreenPlatform
     model: str  # "Raspberry Pi 5 Model B", "Mac", "PC"
     session: ScreenSession
-    sunroom_os: bool  # the flashed image (Sunroom OS), not an install on an existing system
     capabilities: list[ScreenCapability]
     sunroom: ScreenSunroomOut | None
     network: ScreenNetworkOut

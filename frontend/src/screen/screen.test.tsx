@@ -32,7 +32,6 @@ function state(overrides: Partial<ScreenState> = {}): ScreenState {
     platform: "pi",
     model: "Raspberry Pi 5 Model B",
     session: "wayland",
-    sunroom_os: true,
     capabilities: ["restart", "shutdown", "update", "wifi", "rotate", "run_sunroom"],
     sunroom: null,
     network: { kind: "wifi", ssid: "HomeNet", ip: "192.168.1.30", strength: 82 },
@@ -119,18 +118,12 @@ function draw(page: ReactNode, cache: (client: QueryClient) => void = () => unde
 }
 
 describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
-  it("joins Wi-Fi first only on Sunroom OS with no network at all", () => {
-    expect(
-      needsWifi(state({ network: { kind: "none", ssid: null, ip: null, strength: null } })),
-    ).toBe(true);
+  it("joins Wi-Fi first only with no network at all, where the screen can join one", () => {
+    const offline = { kind: "none", ssid: null, ip: null, strength: null } as const;
+    expect(needsWifi(state({ network: offline }))).toBe(true);
     expect(needsWifi(state())).toBe(false);
     expect(
-      needsWifi(
-        state({
-          sunroom_os: false,
-          network: { kind: "none", ssid: null, ip: null, strength: null },
-        }),
-      ),
+      needsWifi(state({ network: offline, capabilities: ["restart", "shutdown", "update"] })),
     ).toBe(false);
   });
 

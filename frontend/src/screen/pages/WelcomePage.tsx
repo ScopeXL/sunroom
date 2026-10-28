@@ -6,9 +6,9 @@ import { Button } from "../../ui/Button";
 import { Choice } from "../../ui/Choice";
 import { afterWifi, go } from "../route";
 
-/** Sunroom OS with neither a cable nor Wi-Fi from Imager: join a network before either way. */
+/** A screen with neither a cable nor Wi-Fi, that can join Wi-Fi: a network before either way. */
 export function needsWifi(state: ScreenState): boolean {
-  return state.sunroom_os && state.network.kind === "none" && state.capabilities.includes("wifi");
+  return state.network.kind === "none" && state.capabilities.includes("wifi");
 }
 
 /**

@@ -56,7 +56,7 @@ class Config:
     ddc_bus: str = ""
     backlight: str = ""
     mode: str = ""  # the installer's: all, display or server
-    update_check: UpdateCheck | None = None  # None: the default for this kind of install
+    update_check: UpdateCheck | None = None  # None: the default, Install overnight
 
     def with_sunroom(self, url: str | None, sunroom_id: str | None, found: Found | None) -> Config:
         return replace(self, url=url, sunroom_id=sunroom_id, found=found)

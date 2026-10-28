@@ -18,7 +18,6 @@ from sunroom_kiosk.platform.base import (
     CommandResult,
     PlatformError,
     run_command,
-    stream_command,
 )
 from sunroom_kiosk.platform.windows import (
     BIOS_KEY,
@@ -185,10 +184,7 @@ async def test_its_commands_open_no_console_window(monkeypatch: pytest.MonkeyPat
         asked.append(options.get("creationflags"))
         raise FileNotFoundError(argv[0])
 
-    async def line(text: str) -> None: ...
-
     monkeypatch.setattr(asyncio, "create_subprocess_exec", start)
     assert (await run_command(["netsh", "wlan", "show", "interfaces"])).code == 127
-    assert await stream_command(["uv", "--version"], line) == 127
-    assert asked == [NO_WINDOW, NO_WINDOW]
+    assert asked == [NO_WINDOW]
     assert NO_WINDOW == (0x08000000 if sys.platform == "win32" else 0)  # CREATE_NO_WINDOW

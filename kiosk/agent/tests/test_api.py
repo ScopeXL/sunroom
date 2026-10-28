@@ -39,7 +39,7 @@ async def settle() -> None:
 
 async def test_the_state_says_what_this_screen_is_and_can_do(client: httpx.AsyncClient) -> None:
     body = (await client.get("/api/screen")).json()
-    assert body["platform"] == "pi" and body["sunroom_os"] is True
+    assert body["platform"] == "pi"
     assert body["capabilities"] == [
         "restart",
         "shutdown",
@@ -50,7 +50,7 @@ async def test_the_state_says_what_this_screen_is_and_can_do(client: httpx.Async
         "run_sunroom",
     ]
     assert body["sunroom"] is None and body["open_url"] is None
-    assert body["update"]["check"] == "nightly"  # Sunroom OS stays patched by default
+    assert body["update"]["check"] == "nightly"  # every screen installs overnight by default
     assert body["display"] == {"rotation": 0, "brightness_method": "none"}
 
 

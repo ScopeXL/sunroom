@@ -6,14 +6,14 @@ runs. Synthetic data only."""
 from __future__ import annotations
 
 import json
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from sunroom_kiosk.platform.base import CommandResult, PlatformError
 from sunroom_kiosk.platform.linux import ROOT_HELPER, LinuxPlatform, split_terse, wifi_from
-from sunroom_kiosk.platform.pi import LOCAL_SUNROOM, PiPlatform, PullProgress, is_pi
+from sunroom_kiosk.platform.pi import PiPlatform, is_pi
 from tests.support import Shell, ok
 
 WIFI_LIST = "\n".join(
@@ -161,14 +161,9 @@ async def test_x11_switches_off_blanking_before_the_browser() -> None:
 # ---------------------------------------------------------------------------- the Pi
 
 
-def pi_root(tmp_path: Path, *, sunroom_os: bool = False, helper: bool = True) -> Path:
+def pi_root(tmp_path: Path, *, helper: bool = True) -> Path:
     (tmp_path / "proc/device-tree").mkdir(parents=True)
     (tmp_path / "proc/device-tree/model").write_text("Raspberry Pi 5 Model B Rev 1.0\x00")
-    if sunroom_os:
-        (tmp_path / "etc").mkdir()
-        (tmp_path / "etc/sunroom-os").write_text("0.14.0\n")
-        (tmp_path / "opt/sunroom").mkdir(parents=True)
-        (tmp_path / "opt/sunroom/docker-compose.yml").write_text("name: sunroom\n")
     if helper:
         (tmp_path / ROOT_HELPER.lstrip("/")).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / ROOT_HELPER.lstrip("/")).write_text("#!/bin/sh\n")
@@ -195,7 +190,6 @@ def test_a_pi_is_known_by_its_device_tree(tmp_path: Path) -> None:
     platform = pi(Shell(), root)
     assert platform.name == "pi"
     assert platform.model == "Raspberry Pi 5 Model B Rev 1.0"
-    assert not platform.sunroom_os
 
 
 def test_what_a_pi_can_do_follows_what_it_has(tmp_path: Path) -> None:
@@ -209,9 +203,8 @@ def test_what_a_pi_can_do_follows_what_it_has(tmp_path: Path) -> None:
         "rotate",
         "brightness",
     ]
-    os_root = pi_root(tmp_path / "os", sunroom_os=True)
-    assert "run_sunroom" in pi(Shell(), os_root, "docker").capabilities()
-    assert "run_sunroom" not in pi(Shell(), os_root).capabilities()  # no Docker
+    # Sunroom on a Pi runs as a program, as on any computer (local.py), never by the adapter.
+    assert "run_sunroom" not in pi(Shell(), root, "docker").capabilities()
     assert "quit" not in pi(Shell(), root).capabilities()  # a wall never quits
 
 
@@ -257,65 +250,9 @@ async def test_the_policy_and_updates_go_through_the_root_helper(tmp_path: Path)
     policy = "/etc/chromium/policies/managed/sunroom-kiosk.json"
     assert argv == ["sudo", "-n", ROOT_HELPER, "write-policy", policy]
     assert json.loads(stdin or "") == {"BrowserSignin": 0}
-    assert await platform.update_system()
-    assert shell.calls[-1][0] == ["sudo", "-n", ROOT_HELPER, "apt-upgrade"]
+    assert await platform.update_sunroom()
+    assert shell.calls[-1][0] == ["sudo", "-n", ROOT_HELPER, "update-sunroom"]
     # A Pi set up before 0.13.0 has no helper: nothing is tried.
     bare = Shell()
     assert not await pi(bare, pi_root(tmp_path / "old", helper=False)).write_policy("chromium", {})
     assert bare.calls == []
-
-
-PULL = """\
- sunroom Pulling
- a2318d6c47ec Pulling fs layer
- 0c6b2b4cd5f8 Pulling fs layer
- a2318d6c47ec Downloading [=====>             ]  10.2MB/29.1MB
- a2318d6c47ec Pull complete
- 0c6b2b4cd5f8 Already exists
- sunroom Pulled
- Container sunroom  Started
-"""
-
-
-def test_dockers_progress_reads_as_a_percent() -> None:
-    pulled = PullProgress()
-    said = [pulled.read(line) for line in PULL.splitlines()]
-    assert said == [None, 5, 5, 5, 47, 90, None, None]
-
-
-async def test_run_it_here_starts_the_images_sunroom_through_the_root_helper(
-    tmp_path: Path,
-) -> None:
-    ran: list[list[str]] = []
-
-    async def stream(
-        argv: Sequence[str], line: Callable[[str], Awaitable[None]], *, limit: float = 20.0
-    ) -> int:
-        ran.append(list(argv))
-        for text in PULL.splitlines():
-            await line(text)
-        return 0
-
-    platform = pi(Shell(), pi_root(tmp_path, sunroom_os=True), "docker")
-    platform.stream = stream
-    progress: list[tuple[int, str]] = []
-
-    async def say(percent: int, step: str) -> None:
-        progress.append((percent, step))
-
-    assert await platform.run_sunroom(say) == LOCAL_SUNROOM
-    assert ran == [["sudo", "-n", ROOT_HELPER, "run-sunroom"]]
-    assert [percent for percent, _ in progress] == [2, 5, 47, 90]
-    assert {step for _, step in progress} == {"Downloading Sunroom…"}
-
-    async def fails(
-        argv: Sequence[str], line: Callable[[str], Awaitable[None]], *, limit: float = 20.0
-    ) -> int:
-        return 1
-
-    platform.stream = fails
-    with pytest.raises(PlatformError, match="Sunroom didn't start"):
-        await platform.run_sunroom(say)
-    plain = pi(Shell(), pi_root(tmp_path / "plain"), "docker")  # not Sunroom OS
-    with pytest.raises(PlatformError, match="isn't something this screen can do"):
-        await plain.run_sunroom(say)

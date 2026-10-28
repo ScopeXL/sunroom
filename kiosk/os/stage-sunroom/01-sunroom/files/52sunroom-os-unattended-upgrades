@@ -1,6 +1,0 @@
-// Sunroom OS: Raspberry Pi's own archive's updates too, beside Debian's security ones. Never a
-// restart from here: Sunroom Screen restarts the screen in the night when one is needed.
-Unattended-Upgrade::Origins-Pattern {
-        "origin=Raspberry Pi Foundation,codename=${distro_codename},label=Raspberry Pi Foundation";
-};
-Unattended-Upgrade::Automatic-Reboot "false";

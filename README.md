@@ -31,10 +31,6 @@ The screen and Sunroom on one computer: a Raspberry Pi 4 or 5 with a touch scree
 USB touch cable, and the official power supply; [docs/HARDWARE.md](docs/HARDWARE.md) helps you
 choose), or a Linux computer, a Mac with Apple silicon or a Windows computer by the kitchen.
 
-**The simplest way on a Pi: write Sunroom OS** to the card with Raspberry Pi Imager, start the
-Pi, and on the screen choose **On This Computer**. No terminal at all;
-[docs/SUNROOM-OS.md](docs/SUNROOM-OS.md) shows each step. Or:
-
 1. **A Pi:** with [Raspberry Pi Imager](https://www.raspberrypi.com/software/), write
    **Raspberry Pi OS (64-bit)**, the one with the desktop. In Imager's settings, set the hostname
    to `sunroom`, your user name and password, your Wi-Fi, your time zone, and turn on SSH.

@@ -21,7 +21,6 @@ function piState(overrides: Partial<ScreenState> = {}): ScreenState {
     platform: "pi",
     model: "Raspberry Pi 5 Model B",
     session: "wayland",
-    sunroom_os: true,
     capabilities: ["restart", "shutdown", "update", "wifi", "rotate", "brightness"],
     sunroom: {
       url: "http://192.168.1.20:8080",
@@ -155,7 +154,6 @@ describe("Settings → This Screen (ADR 0035)", () => {
       piState({
         platform: "linux",
         session: "desktop",
-        sunroom_os: false,
         capabilities: ["restart", "shutdown", "update", "quit", "open_network_settings"],
         network: { kind: "wired", ssid: null, ip: "192.168.1.31", strength: null },
         sunroom: {

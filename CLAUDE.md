@@ -23,7 +23,7 @@ batch 4 (docs/M6-batch-4.md, ADR 0032) in 0.10.0, batch 5 (docs/M6-batch-5.md, A
 ADR 0036) for 0.14.0; more M6 comes from use.
 M7 (docs/M7.md, ADR 0035) is Sunroom Screen: batch 0 (two wall fixes) released as 0.12.1;
 batch 1 (the agent, This Screen, discovery, the installer, GitHub Releases) and batch 2 (Windows,
-macOS, Run It on This Screen, the Sunroom OS image, docs/SUNROOM-OS.md) released as 0.13.0.
+macOS, Run It on This Screen, the Sunroom OS image, retired in M9) released as 0.13.0.
 M8 (docs/M8.md, ADR 0038), Sunroom on this computer, released as 0.15.0; M8 batch 2
 (docs/M8-batch-2.md, ADR 0039: setting up on the screen, This Screen first) is built for the
 next release.
@@ -136,7 +136,7 @@ frontend/src/
   features/      display (pairing), onboarding, auth, calendar, phone, settings; registry.ts
   screen/        Sunroom Screen's own pages (Welcome, Find, Can't Reach…), built into the agent
 kiosk/           install.sh (Pi, Linux, macOS; --dry-run), install.ps1, files/, labwc-rule.py,
-                 update.sh, uninstall.sh; os/: Sunroom OS (pi-gen stage, build.sh, imager.py)
+                 update.sh, uninstall.sh
   agent/         Sunroom Screen (`sunroom-kiosk`): API on 127.0.0.1:7800, browser, screen sleep,
                  discovery, policy, updates, Sunroom run here (local.py); platform/ adapters
 ```

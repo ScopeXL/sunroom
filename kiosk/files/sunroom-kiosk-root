@@ -8,21 +8,13 @@ else; it checks everything it's given (docs/KIOSK.md, docs/M7.md T7):
   write-policy PATH   the browser's managed policy, JSON on stdin: PATH must be
                       sunroom-kiosk.json in one browser's policy folder, and the keys only
                       Sunroom Screen's own (kiosk/agent policy.py lists the same)
-  apt-upgrade         the system's own updates: unattended-upgrade when it's installed (Sunroom
-                      OS), else apt-get's upgrade
   update-sunroom      /opt/sunroom/update.sh, the all-in-one Pi's own Sunroom
-  run-sunroom         Sunroom OS: start the Sunroom the image set up in /opt/sunroom (docker
-                      compose pull, printing its progress for the percent, then up -d) under this
-                      screen's own name (Imager may have renamed it), and announce it (avahi)
 
 The system's Python, standard library only; root-owned in /usr/local/sbin.
 """
 
 import json
 import os
-import re
-import shutil
-import socket
 import subprocess
 import sys
 import tempfile
@@ -45,11 +37,6 @@ ALLOWED_KEYS = {
     "LocalNetworkAccessRestrictionsEnabled",
 }
 UPDATE_SH = "/opt/sunroom/update.sh"
-SERVER_DIR = "/opt/sunroom"
-COMPOSE_FILE = SERVER_DIR + "/docker-compose.yml"
-# The image renders kiosk/files/avahi/sunroom.service here; it's announced only once Sunroom runs.
-AVAHI_FILE = "/usr/local/share/sunroom-kiosk/sunroom.service"
-AVAHI_SERVICE = "/etc/avahi/services/sunroom.service"
 MOST_BYTES = 64 * 1024
 
 
@@ -89,52 +76,10 @@ def write_policy(path):
     return 0
 
 
-def apt_upgrade():
-    env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
-    if shutil.which("unattended-upgrade"):
-        return subprocess.call(["unattended-upgrade"], env=env)
-    if subprocess.call(["apt-get", "-q", "update"], env=env) != 0:
-        return 1
-    return subprocess.call(["apt-get", "-q", "-y", "upgrade"], env=env)
-
-
 def update_sunroom():
     if not os.path.isfile(UPDATE_SH):
         return refuse("Sunroom doesn't run on this Pi.")
     return subprocess.call([UPDATE_SH])
-
-
-ADVERTISED = re.compile(r'(SUNROOM_ADVERTISED_URL: ")[^"]*(")')
-
-
-def name_it():
-    """The address phones open (and the QR codes show): this screen's own name, as it is now."""
-    host = socket.gethostname().split(".")[0].lower()
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", host):
-        return
-    with open(COMPOSE_FILE, encoding="utf-8") as handle:
-        text = handle.read()
-    named = ADVERTISED.sub(lambda m: m.group(1) + "http://" + host + ".local:8080" + m.group(2), text)
-    if named != text:
-        with open(COMPOSE_FILE, "w", encoding="utf-8") as handle:
-            handle.write(named)
-
-
-def run_sunroom():
-    if not os.path.isfile(COMPOSE_FILE):
-        return refuse("Sunroom isn't set up to run on this screen.")
-    name_it()
-    compose = [
-        "docker", "compose", "--project-directory", SERVER_DIR, "-f", COMPOSE_FILE,
-        "--progress", "plain",
-    ]
-    sys.stdout.flush()
-    if subprocess.call(compose + ["pull"]) != 0 or subprocess.call(compose + ["up", "-d"]) != 0:
-        return 1
-    if os.path.isfile(AVAHI_FILE) and os.path.isdir(os.path.dirname(AVAHI_SERVICE)):
-        shutil.copyfile(AVAHI_FILE, AVAHI_SERVICE)
-        os.chmod(AVAHI_SERVICE, 0o644)
-    return 0
 
 
 def main(argv):
@@ -142,15 +87,9 @@ def main(argv):
         return refuse("Run me with sudo.")
     if argv[:1] == ["write-policy"] and len(argv) == 2:
         return write_policy(argv[1])
-    if argv == ["apt-upgrade"]:
-        return apt_upgrade()
     if argv == ["update-sunroom"]:
         return update_sunroom()
-    if argv == ["run-sunroom"]:
-        return run_sunroom()
-    return refuse(
-        "Usage: sunroom-kiosk-root write-policy PATH | apt-upgrade | update-sunroom | run-sunroom"
-    )
+    return refuse("Usage: sunroom-kiosk-root write-policy PATH | update-sunroom")
 
 
 if __name__ == "__main__":

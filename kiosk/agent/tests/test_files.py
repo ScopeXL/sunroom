@@ -17,7 +17,7 @@ from typing import Any
 import pytest
 
 from sunroom_kiosk import cli, policy
-from sunroom_kiosk.platform import pi
+from sunroom_kiosk.platform import linux
 
 FILES = Path(__file__).resolve().parents[2] / "files"
 URL = "http://192.168.1.20:8080"
@@ -91,15 +91,18 @@ def test_the_root_helper_refuses_another_path_and_other_commands(
     assert root_helper.write_policy(str(tmp_path / "elsewhere.json")) == 2
     assert not (tmp_path / "elsewhere.json").exists()
     monkeypatch.setattr(root_helper.os, "geteuid", lambda: 1000, raising=False)
-    assert root_helper.main(["apt-upgrade"]) == 2  # not as root: nothing runs
+    assert root_helper.main(["update-sunroom"]) == 2  # not as root: nothing runs
     monkeypatch.setattr(root_helper.os, "geteuid", lambda: 0, raising=False)
     assert root_helper.main(["write-policy"]) == 2
     assert root_helper.main(["apt-get", "install", "sample"]) == 2
+    # Sunroom OS's own commands went with it (ADR 0042).
+    assert root_helper.main(["apt-upgrade"]) == 2
+    assert root_helper.main(["run-sunroom"]) == 2
 
 
 def test_sudoers_allows_the_root_helper_and_nothing_else() -> None:
     rules = [line for line in lines("sudoers/sunroom-kiosk") if line and not line.startswith("#")]
-    assert rules == [f"@USER@ ALL=(root) NOPASSWD: {pi.ROOT_HELPER}"]
+    assert rules == [f"@USER@ ALL=(root) NOPASSWD: {linux.ROOT_HELPER}"]
 
 
 # ---------------------------------------------------------------------------- starting it
@@ -142,56 +145,3 @@ def test_the_policy_command_prints_the_policy_for_an_address(
     assert json.loads(capsys.readouterr().out)["LocalNetworkAccessAllowedForUrls"] == [URL]
     assert cli.main(["policy"]) == 0
     assert "LocalNetworkAccessAllowedForUrls" not in json.loads(capsys.readouterr().out)
-
-
-def test_the_root_helper_runs_the_images_sunroom_and_announces_it(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    compose = tmp_path / "opt" / "sunroom" / "docker-compose.yml"
-    announcement = tmp_path / "share" / "sunroom.service"
-    services = tmp_path / "avahi" / "services"
-    monkeypatch.setattr(root_helper, "COMPOSE_FILE", str(compose))
-    monkeypatch.setattr(root_helper, "AVAHI_FILE", str(announcement))
-    monkeypatch.setattr(root_helper, "AVAHI_SERVICE", str(services / "sunroom.service"))
-    ran: list[list[str]] = []
-
-    def call(argv: list[str]) -> int:
-        ran.append(argv)
-        return 0
-
-    monkeypatch.setattr(root_helper.subprocess, "call", call)
-    assert root_helper.run_sunroom() == 2  # nothing set up: nothing runs
-    assert ran == []
-    compose.parent.mkdir(parents=True)
-    compose.write_text('    SUNROOM_ADVERTISED_URL: "http://sunroom.local:8080"\n')
-    monkeypatch.setattr(root_helper.socket, "gethostname", lambda: "kitchen.lan")
-    announcement.parent.mkdir(parents=True)
-    announcement.write_text("<service-group/>\n")
-    services.mkdir(parents=True)
-    assert root_helper.run_sunroom() == 0
-    assert [argv[-1] for argv in ran] == ["pull", "-d"]
-    assert ran[0][:2] == ["docker", "compose"] and "plain" in ran[0]
-    assert (services / "sunroom.service").read_text() == "<service-group/>\n"
-    # Imager named this screen "kitchen": phones are told that name.
-    assert 'SUNROOM_ADVERTISED_URL: "http://kitchen.local:8080"' in compose.read_text()
-
-
-def test_imagers_repository_file_describes_the_image(tmp_path: Path) -> None:
-    import datetime as dt
-    import hashlib
-    import lzma
-
-    imager: Any = _load(FILES.parent / "os" / "imager.py", "sunroom_imager")
-    raw = b"a pretend disk image " * 1000
-    image = tmp_path / "sunroom-os-0.14.0-pi-arm64.img.xz"
-    image.write_bytes(lzma.compress(raw))
-    (entry,) = imager.describe("0.14.0", image, dt.date(2026, 10, 20))["os_list"]
-    assert entry["url"] == (
-        "https://github.com/ScopeXL/sunroom/releases/download/v0.14.0/"
-        "sunroom-os-0.14.0-pi-arm64.img.xz"
-    )
-    assert entry["extract_size"] == len(raw)
-    assert entry["extract_sha256"] == hashlib.sha256(raw).hexdigest()
-    assert entry["image_download_size"] == image.stat().st_size
-    assert entry["init_format"] == "cloudinit-rpi"
-    assert entry["release_date"] == "2026-10-20"

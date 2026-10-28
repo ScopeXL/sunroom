@@ -116,8 +116,8 @@ class Agent:
         self.fake = fake
         self.dev_origins = dev_origins  # just kiosk-dev: Vite's page, in front of the agent
         # Sunroom run on this computer as a program (ADR 0038); None where it can't be (a
-        # checkout, --fake) or where the platform runs it its own way (Sunroom OS: Docker).
-        self.local = local if not platform.sunroom_os else None
+        # checkout, --fake: the pretend platform runs it itself).
+        self.local = local
         self.reachable = False
         self.running_sunroom = False  # one run at a time (POST /run-sunroom)
         self.known = Known()
@@ -183,7 +183,6 @@ class Agent:
             platform=self.platform.name,
             model=self.platform.model,
             session=self.platform.session,
-            sunroom_os=self.platform.sunroom_os,
             capabilities=self.capabilities(),
             sunroom=sunroom,
             network=self.network,
@@ -234,10 +233,10 @@ class Agent:
         return have
 
     def update_check(self) -> str:
-        """Nightly by default on Sunroom OS (an appliance stays patched), off elsewhere."""
+        """Install overnight unless This Screen's Updates says Off (ADR 0042)."""
         if self.config.update_check is not None:
             return self.config.update_check
-        return "nightly" if self.platform.sunroom_os else "off"
+        return "nightly"
 
     def publish_state(self) -> None:
         self.hub.publish("state", self.snapshot())
@@ -457,9 +456,9 @@ class Agent:
         self.spawn(self.run_sunroom())
 
     async def run_sunroom(self) -> None:
-        """Sunroom on this computer (ADR 0038; Sunroom OS's Run It on This Screen before it): set
-        it up and start it, then show it. One run at a time, and a run that stops says why in its
-        last progress, which the page shows with Try Again."""
+        """Sunroom on this computer (ADR 0038): set it up and start it, then show it. One run at
+        a time, and a run that stops says why in its last progress, which the page shows with Try
+        Again."""
 
         async def progress(percent: int, step: str, message: str | None = None) -> None:
             self.hub.publish("run.progress", {"percent": percent, "step": step, "message": message})

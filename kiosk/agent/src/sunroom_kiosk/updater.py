@@ -15,9 +15,7 @@
   back.").
 * **Nightly:** at the start of the household's sleep hours (from Sunroom's
   ``/api/display/state``; 03:30 without them) the check runs, and with Updates on Install
-  overnight an update installs. On Sunroom OS the system's own security updates come from
-  ``unattended-upgrades``, and when one needs a restart (``/run/reboot-required``) the screen
-  restarts then, inside the sleep hours.
+  overnight (every screen's default) an update installs.
 
 ``NoUpdates`` (nothing to update from: a checkout) and ``FakeUpdater`` (``--fake``) stand in.
 """
@@ -56,7 +54,6 @@ TAGS_URL = f"https://api.github.com/repos/{REPO}/tags?per_page=100"
 DOWNLOAD = f"https://github.com/{REPO}/releases/download"
 APPLY_UNIT = "sunroom-kiosk-update"
 NIGHTLY_DEFAULT = (3, 30)
-REBOOT_REQUIRED = Path("/run/reboot-required")
 _VERSION = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 
 type UpdateState = Literal["unknown", "up_to_date", "available", "installing", "failed"]
@@ -416,11 +413,6 @@ class Updater:
         agent.publish_state()
         if agent.update_check() == "nightly" and self.current.state == "available":
             await self.install(agent)
-            return
-        # Sunroom OS's own security updates, from unattended-upgrades: restart if one asks to.
-        if agent.platform.sunroom_os and await asyncio.to_thread(REBOOT_REQUIRED.exists):
-            log.info("A system update asks for a restart; restarting in the sleep hours.")
-            await agent.platform.restart()
 
 
 class UpdateError(Exception):
