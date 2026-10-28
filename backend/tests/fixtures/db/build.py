@@ -63,7 +63,8 @@ def _v0_1_0() -> list[Statement]:
         "last_seen_at, revoked_at) VALUES "
         f"('{PHONE}', 'iPhone, Safari', 'phone', '{PARENT}', 0, 'password', "
         "'2026-10-07 12:00:00', '2026-10-07 12:30:00', NULL), "
-        f"('{SCREEN}', 'Wall screen', 'kiosk', NULL, 0, 'kiosk_code', "
+        # A seed never changes once its file is committed: 0.1.0's screen had this name.
+        f"('{SCREEN}', 'Kitchen screen', 'kiosk', NULL, 0, 'kiosk_code', "
         "'2026-10-07 12:10:00', '2026-10-07 12:40:00', NULL)",
         "INSERT INTO join_codes (code_hash, kind, created_by_device_id, poll_token_hash, "
         "created_at, expires_at, used_at, used_by_device_id) VALUES "
@@ -383,11 +384,14 @@ def _v0_10_0() -> list[Statement]:
     ]
 
 
+ROLLING_WEEK_ON = "UPDATE household SET display_rolling_week = 1"
+
+
 def _v0_11_0() -> list[Statement]:
     """0.11.0 (M6 batch 5): 0.10.0's rows, with the Week view on Rolling week."""
     return [
         *_v0_10_0(),
-        "UPDATE household SET display_rolling_week = 1",
+        ROLLING_WEEK_ON,
     ]
 
 
@@ -450,6 +454,16 @@ def _v0_14_0() -> list[Statement]:
     ]
 
 
+def _v0_17_0() -> list[Statement]:
+    """0.17.0 (M9): 0.14.0's rows (0.15.0 to 0.16.1 added no migration), where Rolling week is a
+    home view of its own: its switch's column is gone, so the household starts on Rolling Week
+    instead (ADR 0042)."""
+    return [
+        *(statement for statement in _v0_14_0() if statement != ROLLING_WEEK_ON),
+        "UPDATE household SET display_home_view = 'rolling'",
+    ]
+
+
 SEEDS: dict[str, Callable[[], list[Statement]]] = {
     "202610071800": _v0_1_0,
     "202610081454": _v0_2_0,
@@ -465,6 +479,7 @@ SEEDS: dict[str, Callable[[], list[Statement]]] = {
     "202610161644": _v0_12_0,
     "202610201813": _v0_13_0,
     "202610211809": _v0_14_0,
+    "202610282014": _v0_17_0,
 }
 
 
