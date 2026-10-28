@@ -1,4 +1,4 @@
-# Hardware for the kitchen screen
+# Hardware for the wall screen
 
 What to buy for Sunroom's wall screen, and why. If everything runs on one Raspberry Pi (path a
 in the [README](../README.md#install)), that Pi also keeps the family's data. If Sunroom runs on
@@ -71,7 +71,7 @@ decent card does.
 | Mounting | Few have VESA holes: a stand, or a mount made for it | VESA 100, with the Pi on the back | A case or frame made for it |
 | Sunroom can change its brightness | If it supports DDC/CI | Often, through DDC/CI | Yes, through its backlight |
 
-- **Size.** A family's week has to read from across the kitchen: 21.5 inches or more. A 15.6
+- **Size.** A family's week has to read from across the room: 21.5 inches or more. A 15.6
   inch screen reads well at arm's length, less so from the doorway. Desktop touch monitors are
   sold for offices and shop counters; ViewSonic's TD series is one example.
 - **The Touch Display 2.** The 5 and 7 inch models (720 × 1280) are too small for a family's
@@ -116,7 +116,8 @@ decent card does.
 
 A spare tablet can be the wall screen. Sunroom then runs on another computer (path b or c in
 the README), and the tablet opens `http://<server>:8080/display` in a browser. Pairing is the
-same: the tablet shows a code, and you type it on a phone under **More → Pair a display**.
+same: the tablet shows a code, and you type it on a signed-in device under **Settings → Devices →
+Pair a Display** (under **More** on a phone).
 
 - **Android:** Fully Kiosk Browser, with `http://<server>:8080/display` as its Start URL and Keep
   Screen On. Locking the tablet to Sunroom (its kiosk mode) and switching the screen off on a
@@ -133,11 +134,11 @@ same: the tablet shows a code, and you type it on a phone under **More → Pair 
   `https://` address, [REMOTE-ACCESS.md](REMOTE-ACCESS.md)), so the tablet's own "never sleep"
   setting does it. Sunroom's Sleep setting still darkens the page at night, but it can't switch a
   tablet's screen off.
-- **Size:** a 10 or 11 inch tablet suits a hallway or a desk more than a kitchen wall.
+- **Size:** a 10 or 11 inch tablet suits a hallway or a desk more than the family's main wall.
 
 ## Hardware test matrix
 
-Each of these is tried on real hardware before the first kitchen-screen release is called
+Each of these is tried on real hardware before the first wall-screen release is called
 finished (PLAN §13.10). The owner fills in the results; nothing here is a guess. Write each result
 with its date, the Sunroom version and the Raspberry Pi OS release, and never a household name,
 an address or a photo of the family's own screen.
@@ -150,7 +151,7 @@ an address or a photo of the family's own screen.
 | 4 | Raspberry Pi Touch Display 2, 10 inch, on a Pi 5 | Touch works; "Dim in the evening" turns its backlight down (sysfs); "Screen off" switches the backlight off at night | Not tested yet |
 | 5 | Pull the power plug, five times | The screen comes back paired each time, with no "Restore pages?" bubble; on a Pi that runs Sunroom, `sudo docker exec sunroom sunroom inspect-backup /data/sunroom.db` shows `"quick_check": "ok"` | Not tested yet |
 | 6 | A 72-hour soak | Still smooth after three days; memory samples (for example `free -m` once an hour) climb during the day and fall back at each 04:00 restart | Not tested yet |
-| 7 | Wi-Fi only, no network cable | Live updates stay connected for a day; a change made on a phone shows on the wall within a few seconds | Not tested yet |
+| 7 | Wi-Fi only, no network cable | Live updates stay connected for a day; a change made on another device shows on the wall within a few seconds | Not tested yet |
 | 8 | Tap to wake with the panel off | With "While asleep" set to "Screen off", the panel goes dark at the sleep time, and a tap turns it on for 2 minutes | Not tested yet |
 | 9 | squeekboard (Raspberry Pi's on-screen keyboard) | Sunroom's own keyboard opens for its fields, and squeekboard doesn't pop up over it | Not tested yet |
 | 10 | `.local` from an iPhone | `http://sunroom.local:8080` opens | Not tested yet |
@@ -183,13 +184,13 @@ the installer, as in rows 13 to 23.
 | 34 | A Mac, `install.sh` with no option | With no browser it installs Google Chrome first; the screen starts at once and at each sign-in, full screen, and pairs; This Screen's Quit closes it until the next sign-in | Not tested yet |
 | 35 | A Windows computer, `install.ps1` | The line, typed in a PowerShell window with Microsoft Defender on, installs with no threat found (ADR 0041); it starts at sign-in with no console window, and none flashes while it runs; in Edge, full screen, and pairs; This Screen's Quit closes it; `-Uninstall` takes it off | Not tested yet |
 
-The one-command installer ([ADR 0037](adr/0037-one-command-sets-up-a-screen.md)): the kitchen screen
+The one-command installer ([ADR 0037](adr/0037-one-command-sets-up-a-screen.md)): the wall screen
 alone is the default everywhere, and Sunroom on a Pi takes `--with-sunroom`.
 
 | # | Setup or test | It passes when | Result |
 |---|---|---|---|
 | 36 | A Pi that runs Sunroom from an earlier installer, run again with no option | It says the Pi keeps Sunroom; Sunroom and the screen come back as they were | Not tested yet |
-| 37 | A fresh Pi, `--with-sunroom` | The phone address and QR code as before; after the restart, the screen shows its pair code | Not tested yet |
+| 37 | A fresh Pi, `--with-sunroom` | The address and QR code as before; after the restart, the screen shows its pair code | Not tested yet |
 
 On This Computer, Sunroom run as a program by Sunroom Screen ([ADR 0038](adr/0038-sunroom-on-this-computer.md)).
 Each from a fresh install with no option, then **On This Computer** → **Run Sunroom Here**.
@@ -197,6 +198,6 @@ Each from a fresh install with no option, then **On This Computer** → **Run Su
 | # | Setup or test | It passes when | Result |
 |---|---|---|---|
 | 38 | A Pi with 64-bit Raspberry Pi OS | Setting Up Sunroom counts up, Sunroom's setup QR code opens on a phone, the screen pairs; after a power cut Sunroom and the screen come back by themselves | Not tested yet |
-| 39 | A Linux desktop (Debian or Ubuntu) | As row 38; `systemctl --user status sunroom` is active, and Sunroom answers phones after a restart before anyone signs in | Not tested yet |
+| 39 | A Linux desktop (Debian or Ubuntu) | As row 38; `systemctl --user status sunroom` is active, and Sunroom answers other devices after a restart before anyone signs in | Not tested yet |
 | 40 | A Mac with Apple silicon | As row 38; macOS asks once to let Sunroom accept connections (Allow), and the Mac doesn't sleep while Sunroom runs | Not tested yet |
 | 41 | A Windows computer (x64, and ARM) | As row 38; Windows asks once to let Sunroom through its firewall (Allow), Sunroom starts again at sign-in and after a restore, and `-Uninstall` stops it and keeps its data | Not tested yet |

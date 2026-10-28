@@ -1,7 +1,7 @@
 /**
  * The done moment's sound (UX §9): a soft 120 ms pop, synthesized, so there's no file to ship.
- * Off unless Settings → Display → Sounds is on, and only on the wall screen (kitchens are loud
- * enough, UX §11).
+ * Off unless Settings → Display → Sounds is on, and only on the wall screen (a family's home is
+ * loud enough, UX §11).
  */
 let audio: AudioContext | null = null;
 

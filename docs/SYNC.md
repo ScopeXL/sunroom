@@ -2,9 +2,9 @@
 
 How Sunroom keeps Google, iCloud, other calendar servers, calendar addresses and holidays on
 the board (PLAN §8, ADRs 0004, 0005, 0020, 0024 and 0028), and every server quirk met so far. For
-a household: Settings → Calendars & Accounts → **Add an Account**, on a phone, a computer or the
-kitchen screen. On the kitchen screen, Google's helper (a key file) and Sign in with Google
-(Google's own page) show a code to scan and finish on a phone.
+a household: Settings → Calendars & Accounts → **Add an Account**, on any device or on the
+wall screen. On the wall screen, Google's helper (a key file) and Sign in with Google
+(Google's own page) show a QR code that opens them on a device.
 
 ## The kinds of account
 
@@ -13,7 +13,7 @@ kitchen screen. On the kitchen screen, Google's helper (a key file) and Sign in 
 | A calendar address (.ics) | Paste the link. `webcal://` works | Shows events only | Checked every 30 minutes by default (15 minutes to 6 hours), never more often than every 5 |
 | Google: the secret address | Paste "Secret address in iCal format" from Google Calendar's settings | Shows events only | Google itself updates this address slowly: see "Measured freshness" below |
 | Google: a helper | A service account in the family's own Google Cloud project; each calendar is shared with its address ("Make changes to events") and added by its ID | Both ways | Every 5 minutes, plus Refresh now |
-| Google: sign in | The household's own OAuth client, on a phone or computer at an https:// address (or at `localhost`) | Both ways | Every 5 minutes, plus Refresh now |
+| Google: sign in | The household's own OAuth client, on a device at an https:// address (or at `localhost`) | Both ways | Every 5 minutes, plus Refresh now |
 | iCloud | The Apple ID email and an app-specific password | Both ways | Every 5 minutes, plus Refresh now |
 | A calendar server | Nextcloud, Fastmail, Radicale, Baïkal and others: the server's address, a user name and a password | Both ways | Every 5 minutes, plus Refresh now |
 | Holidays | A country, and optionally a state or region | Shows events only | Made offline, again when the year turns |
@@ -53,7 +53,7 @@ kitchen screen. On the kitchen screen, Google's helper (a key file) and Sign in 
 
 ## Secrets
 
-- Passwords, keys and tokens are typed on a phone, a computer or the kitchen screen (a masked
+- Passwords, keys and tokens are typed on a device or on the wall screen (a masked
   field on its own keyboard, behind the parent PIN), checked against the server, and stored
   encrypted (`credentials_enc`, Fernet under the plugin's key). They never come back to a browser.
 - Back from Google's sign-in page, the browser lands on Calendars & Accounts with
@@ -98,7 +98,7 @@ technical name here.
   doesn't work, so Sunroom reads by href (`calendar-multiget`).
 - **Reminders** aren't reachable over CalDAV.
 - **Colors** come as `#RRGGBBAA`.
-- **Checked on a real account** with 0.3.0, from the kitchen screen: an event added on the wall
+- **Checked on a real account** with 0.3.0, from the wall screen: an event added on the wall
   reached Apple Calendar within seconds, and Apple Calendar's events came to the board.
 
 ### Google

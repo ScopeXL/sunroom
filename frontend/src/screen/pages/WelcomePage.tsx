@@ -54,7 +54,7 @@ export function WelcomePage({ state }: { state: ScreenState }) {
             }
           >
             <p className="text-d-body">
-              This computer keeps your family’s calendar, lists and photos, and everyone’s phones
+              This computer keeps your family’s calendar, lists and photos, and everyone’s devices
               open Sunroom from it. There’s nothing else to set up.
             </p>
             <p className="text-d-body text-ink-soft">

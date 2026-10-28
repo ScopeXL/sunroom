@@ -54,7 +54,7 @@ test.describe("a phone", () => {
     await seed(request);
     await signInPhone(page);
     await noSidewaysScroll(page, "Today");
-    await expect(page.getByRole("link", { name: "Using this phone: Ana" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Using this device: Ana" })).toBeVisible();
     await page.getByRole("link", { name: "Calendar" }).click();
     await expect(page.getByRole("group", { name: "Days" })).toBeVisible();
     // Connected, the Calendar's header has no live-updates icon: it shows only when something's
@@ -1186,7 +1186,7 @@ test.describe("a laptop", () => {
     await sheet.getByRole("button", { name: "Pair", exact: true }).click();
     await expect(sheet).toBeHidden();
     await expect(
-      page.locator("[data-toast]").filter({ hasText: "Kitchen screen paired" }),
+      page.locator("[data-toast]").filter({ hasText: "Wall screen paired" }),
     ).toBeVisible();
     await expect(screen.getByRole("heading", { name: "Name this screen" })).toBeVisible();
     await screen.getByRole("button", { name: "Hallway" }).click();

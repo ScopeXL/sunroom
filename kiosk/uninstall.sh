@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sunroom uninstaller: takes off this Pi (or another Linux computer, or a Mac) what
-# kiosk/install.sh set up for the kitchen screen.
+# kiosk/install.sh set up for the screen.
 #
 #   bash uninstall.sh [--purge] [--yes]
 #   (the same as: bash install.sh --uninstall [--purge] [--yes]; the installer keeps a copy
@@ -98,7 +98,7 @@ tidy() {
 
 usage() {
 	cat <<'EOF'
-Remove the Sunroom kitchen screen setup from this computer.
+Remove the Sunroom screen setup from this computer.
 
 Usage: bash uninstall.sh [--purge] [--yes]
 
@@ -221,7 +221,7 @@ remove_units() {
 	user_systemctl daemon-reload >/dev/null 2>&1 || true
 	user_systemctl reset-failed "${UNITS[@]}" >/dev/null 2>&1 || true
 	if ((removed)); then
-		note "Stopped the kitchen screen and removed its services and nightly restart."
+		note "Stopped Sunroom Screen and removed its services and nightly restart."
 	fi
 	remove_agent
 	if [[ -e $BIN_DIR/sunroom-screen ]]; then
@@ -246,7 +246,7 @@ remove_launch_agent() {
 	launchctl bootout "gui/$(id -u)/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 || true
 	if [[ -e $LAUNCH_AGENT ]]; then
 		rm -f "$LAUNCH_AGENT"
-		note "Stopped the kitchen screen and removed $(tidy "$LAUNCH_AGENT")."
+		note "Stopped Sunroom Screen and removed $(tidy "$LAUNCH_AGENT")."
 	fi
 }
 
@@ -316,7 +316,7 @@ remove_autostart() {
 			note "Removed $(tidy "$file") (the installer had created it)."
 		else
 			cat "$TMP_DIR/autostart" >"$file"
-			note "Took the kitchen screen out of $(tidy "$file")."
+			note "Took Sunroom Screen out of $(tidy "$file")."
 		fi
 	fi
 	if [[ -e $XDG_AUTOSTART_FILE ]]; then
@@ -348,13 +348,13 @@ remove_labwc_settings() {
 		return 0
 	fi
 	if ! rule=$(find_labwc_rule) || ! command -v python3 >/dev/null 2>&1; then
-		warn "couldn't find labwc-rule.py, so $(tidy "$LABWC_DIR/rc.xml") still has the kitchen screen's" \
+		warn "couldn't find labwc-rule.py, so $(tidy "$LABWC_DIR/rc.xml") still has the screen's" \
 			"pointer and touch settings (marked sunroom-kiosk). Your copy from before is $(tidy "$LABWC_DIR/rc.xml.sunroom-backup")."
 		return 0
 	fi
 	python3 "$rule" --remove 2>&1 | sed 's/^/    /' || status=$?
 	if ((status != 0)); then
-		warn "couldn't fully take the kitchen screen's settings out of $(tidy "$LABWC_DIR/rc.xml")."
+		warn "couldn't fully take the screen's settings out of $(tidy "$LABWC_DIR/rc.xml")."
 	fi
 	pkill -HUP -u "$(id -u)" -x labwc 2>/dev/null || true
 }
@@ -434,17 +434,17 @@ restore_cmdline() {
 remove_config() {
 	if [[ -d $CONFIG_DIR/profile ]]; then
 		say ""
-		say "The kitchen screen's browser data holds its pairing with Sunroom."
+		say "The screen's browser data holds its pairing with Sunroom."
 		if ask_yes_no "Delete it too? The screen would need to be paired again." n; then
 			rm -rf "$CONFIG_DIR"
-			note "Deleted the kitchen screen's browser data and settings."
+			note "Deleted the screen's browser data and settings."
 			return 0
 		fi
 		note "Kept the browser data (and the pairing) in $(tidy "$CONFIG_DIR/profile")."
 	fi
 	if [[ -e $CONFIG_DIR/config ]]; then
 		rm -f "$CONFIG_DIR/config"
-		note "Removed the kitchen screen's settings."
+		note "Removed the screen's settings."
 	fi
 	rmdir "$CONFIG_DIR" 2>/dev/null || true
 }
@@ -517,7 +517,7 @@ finish() {
 		rm -rf "$SHARE_DIR"
 	fi
 	say ""
-	say "The Sunroom kitchen screen setup is removed."
+	say "The Sunroom screen setup is removed."
 	if command -v raspi-config >/dev/null 2>&1; then
 		say "Left as they are: uv, Docker, the desktop logging in by itself and screen blanking being off"
 		say "(change those in Raspberry Pi Configuration if you like)."
@@ -547,7 +547,7 @@ main() {
 	parse_args "$@"
 	setup
 	load_state
-	say "Removing the Sunroom kitchen screen setup..."
+	say "Removing the Sunroom screen setup..."
 	remove_launch_agent
 	remove_units
 	remove_root_files

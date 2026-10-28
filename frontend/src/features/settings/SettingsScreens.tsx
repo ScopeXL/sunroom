@@ -47,7 +47,7 @@ interface Page {
 }
 
 /** This Screen is the wall's own device, not the household's (ADR 0039): what its link and its
- * page say, apart from the pages every phone and screen share. */
+ * page say, apart from the pages every device and screen share. */
 const THIS_SCREEN = "this-screen";
 const DEVICE_HINT = "Network, updates and power";
 const DEVICE_LEAD =
@@ -179,7 +179,7 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
         className="w-96 shrink-0 overflow-y-auto border-r border-line py-4"
       >
         {/* This Screen in a box of its own over a rule, then the household's pages under its
-            Sunroom's name: the device apart from what every phone and screen share (ADR 0039). */}
+            Sunroom's name: this screen apart from what every device and screen share (ADR 0039). */}
         {device.length ? (
           <>
             <ul className="flex flex-col gap-1 border-b border-line px-3 pb-4">

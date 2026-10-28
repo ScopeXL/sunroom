@@ -172,7 +172,7 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
     const status = screen.getByRole("status");
     expect(status.textContent).toMatch(/^Downloading Sunroom… /);
     expect(within(status).getByText("40%")).toBeTruthy(); // what a screen reader hears
-    expect(screen.getByText(/choose Allow, so your family’s phones can reach it/)).toBeTruthy();
+    expect(screen.getByText(/choose Allow, so your family’s devices can reach it/)).toBeTruthy();
   });
 
   it("says why setting Sunroom up stopped, and Try Again runs it again", async () => {

@@ -213,7 +213,7 @@ async def test_a_phone_with_nobody_chosen_asks_who_is_using_it(
     chore = await add_chore(parent, "Water the plants", rrule="FREQ=DAILY", assignee_mode="any")
     await parent.put("/api/auth/member", json={"member_id": None}, headers=CSRF)
     refused = await complete(parent, chore["id"])
-    assert error(refused) == (422, "who_needed", "Pick who's using this phone first.")
+    assert error(refused) == (422, "who_needed", "Pick who's using this device first.")
 
 
 async def test_complete_then_undo_takes_the_stamp_and_the_stars_back(

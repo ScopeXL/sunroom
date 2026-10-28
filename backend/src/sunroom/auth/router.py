@@ -119,7 +119,7 @@ async def make_join_code(request: Request, state: StateDep, actor: ActorDep) -> 
 async def join_with_code(
     body: JoinIn, request: Request, response: Response, state: StateDep
 ) -> SessionOut:
-    """Sign in a new phone with a code from a signed-in device. Wrong codes count as wrong
+    """Sign in a new device with a code from a signed-in device. Wrong codes count as wrong
     passwords do, so codes can't be guessed."""
     require_setup(state)
     ip = client_ip(request)
@@ -158,7 +158,8 @@ async def join_with_code(
     raise AppError(
         401,
         "join_code_invalid",
-        "That code didn't work. A code works once, for 10 minutes. Make a new one on the phone.",
+        "That code didn't work. A code works once, for 10 minutes. Make a new one on a "
+        "signed-in device.",
     )
 
 
@@ -172,7 +173,7 @@ async def get_session(request: Request, state: StateDep, actor: ActorDep) -> Ses
 async def choose_member(
     body: MemberChoice, request: Request, state: StateDep, actor: ActorDep
 ) -> SessionOut:
-    """Who's using this phone? A wall screen is everyone's: it picks a person per action."""
+    """Who's using this device? A wall screen is everyone's: it picks a person per action."""
     if actor.is_kiosk:
         raise AppError(409, "kiosk_has_no_member", "A paired screen is for everyone.")
     async with state.db.write() as tx:

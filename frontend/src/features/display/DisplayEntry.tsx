@@ -44,7 +44,7 @@ type WallStep = Exclude<SetupStep, "welcome"> | "name";
 
 /**
  * What the wall screen shows at /display (PLAN §12.3, UX §4 "Welcome and Pair this screen"):
- * Set Up Sunroom when it isn't yet, here or on a phone; its pair code when it isn't paired;
+ * Set Up Sunroom when it isn't yet, here or on another device; its pair code when it isn't paired;
  * "Name this screen" right after pairing; then the board. Any other browser opening /display
  * after signing in gets the display shell as a preview (ADR 0014).
  */
@@ -66,7 +66,7 @@ export function DisplayEntry() {
   const [wallStep, setWallStep] = useState<WallStep | null>(null);
 
   if (!status || isPending) return <Frame>{null}</Frame>;
-  // Setting up here: until a phone finishes setup first, then as the screen it made this one.
+  // Setting up here: until another device finishes setup first, then as the screen it made.
   if (wallStep !== null && (!status.setup_complete || session?.device_kind === "kiosk")) {
     return (
       <Frame bare>
@@ -191,8 +191,8 @@ function Frame({
   );
 }
 
-/** Set Up Sunroom (ADR 0039): right here on the wall's keyboard, or on a phone, side by side
- * in landscape and one above the other in portrait, like the screen's own Welcome. */
+/** Set Up Sunroom (ADR 0039): right here on the wall's keyboard, or on another device, side by
+ * side in landscape and one above the other in portrait, like the screen's own Welcome. */
 function Welcome({ address, onSetUpHere }: { address: string; onSetUpHere: () => void }) {
   return (
     <div className="flex w-full max-w-[110rem] flex-col items-center gap-8">
@@ -209,13 +209,13 @@ function Welcome({ address, onSetUpHere }: { address: string; onSetUpHere: () =>
             everything can be changed later.
           </p>
           <p className="text-d-body text-ink-soft">
-            This screen becomes your family’s kitchen screen, and phones join afterwards.
+            This screen becomes your family’s shared screen, and other devices join afterwards.
           </p>
         </Choice>
-        <Choice heading="On Your Phone" lead="Scan this code with your phone’s camera.">
+        <Choice heading="On Another Device" lead="Scan this code with your phone’s camera.">
           {isLoopbackAddress(address) ? (
             <p className="text-d-body">
-              Open Sunroom on your phone with this computer’s name or network address instead of{" "}
+              Open Sunroom on another device with this computer’s name or network address instead of{" "}
               <span className="font-bold">{new URL(address).hostname}</span>. Then come back here:
               this screen will show a code to pair it.
             </p>
@@ -223,7 +223,7 @@ function Welcome({ address, onSetUpHere }: { address: string; onSetUpHere: () =>
             <div className="flex flex-wrap items-center gap-6">
               <QrCode value={address} label={`A code that opens ${address}`} className="size-56" />
               <p className="min-w-0 flex-1 basis-64 text-d-body">
-                Or open <span className="font-bold break-all">{address}</span> on your phone. Then
+                Or open <span className="font-bold break-all">{address}</span> on any device. Then
                 come back here: this screen will show a code to pair it.
               </p>
             </div>
@@ -292,7 +292,7 @@ function PairThisScreen({ onPaired }: { onPaired: () => void }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
 
-  // Ask for a code, then wait for a phone to claim it; a new code every 10 minutes.
+  // Ask for a code, then wait for a signed-in device to claim it; a new code every 10 minutes.
   useEffect(() => {
     const loop = { stopped: false };
     const stopped = () => loop.stopped;
@@ -385,7 +385,7 @@ function PasswordPairing({ onCancel, onPaired }: { onCancel: () => void; onPaire
     mutationFn: async () =>
       unwrap(
         await api.POST("/api/auth/kiosk/pair-with-password", {
-          body: { password, label: "Kitchen screen" },
+          body: { password, label: "Wall screen" },
         }),
       ),
     onSuccess: (session) => {
@@ -451,6 +451,11 @@ function PasswordPairing({ onCancel, onPaired }: { onCancel: () => void; onPaire
   );
 }
 
+/**
+ * Name This Screen, right after pairing: a place picked from the chips names it ("Hallway
+ * screen"), or Other and a name of its own. Nothing is chosen at first, so the screen assumes no
+ * room (ADR 0042): Done with no place picked keeps the name it was paired with, "Wall screen".
+ */
 function NameThisScreen({
   onDone,
   action = "Done",
@@ -460,7 +465,7 @@ function NameThisScreen({
   action?: "Done" | "Next";
 }) {
   const queryClient = useQueryClient();
-  const [name, setName] = useState<string>("Kitchen");
+  const [name, setName] = useState<string | null>(null);
   const [other, setOther] = useState("");
   const rename = useMutation({
     mutationFn: async (label: string) =>
@@ -470,13 +475,14 @@ function NameThisScreen({
       onDone();
     },
   });
-  const label = name === "Other" ? other.trim() : `${name} screen`;
+  const label = name === null ? null : name === "Other" ? other.trim() : `${name} screen`;
   return (
     <form
       className="flex w-full max-w-3xl flex-col items-center gap-8"
       onSubmit={(event) => {
         event.preventDefault();
-        if (label) rename.mutate(label);
+        if (label === null) onDone();
+        else if (label) rename.mutate(label);
       }}
     >
       <Brand size="entry" />
@@ -506,7 +512,7 @@ function NameThisScreen({
           />
         </div>
       ) : null}
-      <Button type="submit" pending={rename.isPending} disabled={!label} className="min-w-64">
+      <Button type="submit" pending={rename.isPending} disabled={label === ""} className="min-w-64">
         {action}
       </Button>
       {rename.isError ? (

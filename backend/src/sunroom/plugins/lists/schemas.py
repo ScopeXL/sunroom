@@ -19,7 +19,7 @@ class LastChange(BaseModel):
 
     action: Literal["added", "checked"]
     text: str
-    member_id: str | None  # None: Everyone (the kitchen screen, nobody tapped)
+    member_id: str | None  # None: Everyone (the wall screen, nobody tapped)
     at: datetime
 
 

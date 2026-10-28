@@ -311,7 +311,7 @@ export interface paths {
         put?: never;
         /**
          * Join With Code
-         * @description Sign in a new phone with a code from a signed-in device. Wrong codes count as wrong
+         * @description Sign in a new device with a code from a signed-in device. Wrong codes count as wrong
          *     passwords do, so codes can't be guessed.
          */
         post: operations["join_with_code_api_auth_join_post"];
@@ -460,7 +460,7 @@ export interface paths {
         get?: never;
         /**
          * Choose Member
-         * @description Who's using this phone? A wall screen is everyone's: it picks a person per action.
+         * @description Who's using this device? A wall screen is everyone's: it picks a person per action.
          */
         put: operations["choose_member_api_auth_member_put"];
         post?: never;
@@ -4063,7 +4063,7 @@ export interface components {
             code: string;
             /**
              * Label
-             * @default Kitchen screen
+             * @default Wall screen
              */
             label: string;
         };
@@ -4119,7 +4119,7 @@ export interface components {
         KioskPasswordPairIn: {
             /**
              * Label
-             * @default Kitchen screen
+             * @default Wall screen
              */
             label: string;
             /** Password */

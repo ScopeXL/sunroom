@@ -44,7 +44,7 @@ async def password_ok(state: AppState, session: AsyncSession, given: str) -> boo
 def require_setup(state: AppState) -> None:
     if not state.household.setup_complete:
         raise AppError(
-            409, "setup_required", "Sunroom isn't set up yet. Open it on a phone to set it up."
+            409, "setup_required", "Sunroom isn't set up yet. Open it on a device to set it up."
         )
 
 

@@ -21,7 +21,7 @@ class SessionOut(BaseModel):
     device_id: str
     device_kind: DeviceKindName
     device_label: str
-    member: MemberOut | None  # who's using this phone (always None on a wall screen)
+    member: MemberOut | None  # who's using this device (always None on a wall screen)
     members: list[MemberOut]
     household_name: str
     is_parent: bool
@@ -101,9 +101,9 @@ class KioskPollOut(BaseModel):
 
 class KioskPairIn(BaseModel):
     code: Annotated[str, StringConstraints(max_length=40)]
-    label: Label = "Kitchen screen"
+    label: Label = "Wall screen"
 
 
 class KioskPasswordPairIn(BaseModel):
     password: Annotated[str, StringConstraints(max_length=256)]
-    label: Label = "Kitchen screen"
+    label: Label = "Wall screen"

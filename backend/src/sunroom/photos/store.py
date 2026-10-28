@@ -7,7 +7,7 @@
     $DATA_DIR/photos/.orphans/           files the reconcile found without a row
 
 Re-encoding is the privacy step: a phone's photo carries EXIF (often the GPS position of the
-kitchen), and WebP written without ``exif=`` keeps none of it. The camera's rotation is applied
+home), and WebP written without ``exif=`` keeps none of it. The camera's rotation is applied
 first, and the time it was taken is read before the rest is dropped. iPhone HEIC files are read
 through pillow-heif. An upload identical to one already stored (same kind, same SHA-256) is the
 same photo, brought back if it had been removed.

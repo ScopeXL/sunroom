@@ -10,12 +10,12 @@ import { Button } from "../../ui/Button";
 import { AddPersonRow, type RoleChoice } from "../settings/AddPersonRow";
 import { MemberButton } from "./MemberButton";
 
-/** Where Who's using this phone was opened from, so it can go back there. */
+/** Where Who's using this device was opened from, so it can go back there. */
 export type WhoFrom = "more" | "settings";
 
 /**
- * "Who's using this phone?" (UX §5): attribution for what this phone adds and checks off.
- * Whoever uses this phone shows as "Using this phone". A guest picks nobody. Opened from More or
+ * "Who's using this device?" (UX §5): attribution for what this device adds and checks off.
+ * Whoever uses this device shows as "Using this device". A guest picks nobody. Opened from More or
  * Settings, it goes back there after a choice (or Back); right after signing in, on to Today
  * (or Skip for now).
  */
@@ -69,7 +69,7 @@ export function WhoScreen({ from }: { from?: WhoFrom | undefined }) {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 pt-[calc(env(safe-area-inset-top)+32px)] pb-12">
-      <h1 className="text-title font-bold">Who’s Using This Phone?</h1>
+      <h1 className="text-title font-bold">Who’s Using This Device?</h1>
       <p className="mt-2 mb-6 text-body text-ink-soft">
         Pick your name so everyone can see who added or checked off what.
       </p>

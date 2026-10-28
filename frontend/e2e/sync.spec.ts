@@ -377,7 +377,7 @@ test("an account opens from its row: Sync, whose and color, Show on the screen, 
   const { page: screen, context } = await wall(browser, watch);
   await pairWall(screen);
   const shown = sheet.getByRole("switch", { name: "School", exact: true });
-  await expect(sheet.getByRole("heading", { name: "Show on Kitchen screen" })).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: "Show on Wall screen" })).toBeVisible();
   await expect(shown).toBeChecked();
   await shown.click();
   await expect(shown).not.toBeChecked();

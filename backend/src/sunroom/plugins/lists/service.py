@@ -132,7 +132,7 @@ def usuals(history: Iterable[tuple[str, datetime]], open_now: set[str], kind: st
 
 
 def household_today(ctx: PluginContext) -> date:
-    """The household's date now: "due today" is the kitchen's today, not UTC's."""
+    """The household's date now: "due today" is the household's today, not UTC's."""
     return to_local(ctx.now(), ctx.zone()).date()
 
 

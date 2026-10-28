@@ -1,6 +1,6 @@
 """Google accounts (ADR 0004, UX §6): a helper (a service account the family makes once, never
 called that in the app), a calendar added to it by its ID, and Sign in with Google where Google
-allows the way back (an https:// address, or the kitchen screen at ``localhost``).
+allows the way back (an https:// address, or the wall screen at ``localhost``).
 
 The helper's key and a sign-in's refresh token are stored encrypted and never shown again. A
 sign-in's state is single-use, lives ten minutes, and is stored only as a hash.

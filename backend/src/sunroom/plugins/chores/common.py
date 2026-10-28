@@ -125,7 +125,7 @@ def credited(actor: Actor, member_id: str | None, members: Sequence[MemberView])
         return named
     person = known.get(actor.member_id or "")
     if person is None:
-        raise AppError(422, "who_needed", "Pick who's using this phone first.")
+        raise AppError(422, "who_needed", "Pick who's using this device first.")
     return person
 
 

@@ -56,7 +56,7 @@ async def _screen(other: httpx.AsyncClient) -> httpx.AsyncClient:
     """The wall screen, paired; with no PIN in the household it counts as a parent."""
     paired = await other.post(
         "/api/auth/kiosk/pair-with-password",
-        json={"password": PASSWORD, "label": "Kitchen screen"},
+        json={"password": PASSWORD, "label": "Wall screen"},
         headers=CSRF,
     )
     assert paired.status_code == 200, paired.text

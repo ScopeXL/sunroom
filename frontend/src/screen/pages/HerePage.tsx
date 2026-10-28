@@ -73,7 +73,7 @@ export function HerePage({ state }: { state: ScreenState }) {
       {asks && !problem ? (
         <p className="text-d-body text-ink-soft">
           If this computer asks whether Sunroom may accept connections, choose Allow, so your
-          family’s phones can reach it.
+          family’s devices can reach it.
         </p>
       ) : null}
       {problem ? (

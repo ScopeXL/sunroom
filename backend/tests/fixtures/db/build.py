@@ -63,7 +63,7 @@ def _v0_1_0() -> list[Statement]:
         "last_seen_at, revoked_at) VALUES "
         f"('{PHONE}', 'iPhone, Safari', 'phone', '{PARENT}', 0, 'password', "
         "'2026-10-07 12:00:00', '2026-10-07 12:30:00', NULL), "
-        f"('{SCREEN}', 'Kitchen screen', 'kiosk', NULL, 0, 'kiosk_code', "
+        f"('{SCREEN}', 'Wall screen', 'kiosk', NULL, 0, 'kiosk_code', "
         "'2026-10-07 12:10:00', '2026-10-07 12:40:00', NULL)",
         "INSERT INTO join_codes (code_hash, kind, created_by_device_id, poll_token_hash, "
         "created_at, expires_at, used_at, used_by_device_id) VALUES "

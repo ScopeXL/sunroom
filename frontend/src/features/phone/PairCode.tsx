@@ -19,13 +19,13 @@ export function usePairDisplay() {
       asParent(async () =>
         unwrap(
           await api.POST("/api/auth/kiosk/pair", {
-            body: { code, label: "Kitchen screen" },
+            body: { code, label: "Wall screen" },
           }),
         ),
       ),
-    onSuccess: async () => {
+    onSuccess: async (paired) => {
       await queryClient.invalidateQueries({ queryKey: qk.devices() });
-      showToast("Kitchen screen paired");
+      showToast(`${paired.label ?? "Wall screen"} paired`);
     },
   });
 }

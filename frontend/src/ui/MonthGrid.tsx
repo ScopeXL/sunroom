@@ -15,7 +15,7 @@ import { useShell } from "./shell";
 /**
  * A month to pick a day from (UX §4): whole weeks starting on the household's day, with
  * Previous month and Next month. It stands in for the native date input everywhere, the wall
- * and phones alike: one look, tap-sized cells, and no system dialog the kitchen screen can't
+ * and phones alike: one look, tap-sized cells, and no system dialog the wall screen can't
  * work. Each cell is named as a date read aloud ("October 8"), which no other button on a form
  * is called; today is marked, days of the neighbouring months are quieter, and days before
  * `min` can't be picked.

@@ -39,7 +39,7 @@ from sunroom.state import StateDep
 
 router = APIRouter(prefix="/api/setup", tags=["setup"])
 log = get_logger(__name__)
-SCREEN_LABEL = "Kitchen screen"  # until Name This Screen, as a screen paired with the password
+SCREEN_LABEL = "Wall screen"  # until Name This Screen, as a screen paired with the password
 
 
 class SetupStatusOut(BaseModel):

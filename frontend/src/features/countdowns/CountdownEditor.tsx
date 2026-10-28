@@ -28,7 +28,7 @@ export function AddCountdown({ day, initialTitle, onDone }: AddEditorProps) {
 
 /**
  * A countdown's fields (UX §4): what it counts down to, the day, whose it is (or everyone's),
- * an emoji and a color if wanted, every year, and whether the kitchen screen shows it (off for
+ * an emoji and a color if wanted, every year, and whether the wall screen shows it (off for
  * a surprise). Nothing asks for the PIN: countdowns are the family's.
  */
 export function CountdownEditor({

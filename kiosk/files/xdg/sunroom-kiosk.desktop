@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Sunroom Screen
-Comment=Starts the Sunroom kitchen screen
+Comment=Starts the Sunroom screen
 Exec=sh -c "systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP; systemctl --user --no-block restart sunroom-kiosk.service"
 NoDisplay=true
 X-GNOME-Autostart-enabled=true

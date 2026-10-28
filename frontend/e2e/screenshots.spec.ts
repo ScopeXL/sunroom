@@ -799,7 +799,7 @@ test("empty rooms: Lists, Tasks and Photos", async ({ page, request }, testInfo)
   if (name.startsWith("display")) {
     const paired = await page.request.post("/api/auth/kiosk/pair-with-password", {
       headers: CSRF,
-      data: { password: PASSWORD, label: "Kitchen screen" },
+      data: { password: PASSWORD, label: "Wall screen" },
     });
     expect(paired.status()).toBe(200);
   } else {
@@ -826,7 +826,7 @@ test("the wall's lists and chores", async ({ page }, testInfo) => {
   await seed(page.request);
   const paired = await page.request.post("/api/auth/kiosk/pair-with-password", {
     headers: CSRF,
-    data: { password: PASSWORD, label: "Kitchen screen" },
+    data: { password: PASSWORD, label: "Wall screen" },
   });
   expect(paired.status()).toBe(200);
   for (const theme of ["light", "dark"]) {
@@ -889,7 +889,7 @@ test("the wall's meals, countdowns, photos and screensaver", async ({ page }, te
   await seed(page.request);
   const paired = await page.request.post("/api/auth/kiosk/pair-with-password", {
     headers: CSRF,
-    data: { password: PASSWORD, label: "Kitchen screen" },
+    data: { password: PASSWORD, label: "Wall screen" },
   });
   expect(paired.status()).toBe(200);
   // The pretend Immich (ADR 0036): its photos come first in the Photos room, so the viewer
@@ -1043,7 +1043,7 @@ test("Settings → This Screen on a wall run by Sunroom Screen (ADR 0035)", asyn
   expect(shows.status()).toBe(204);
   const paired = await page.request.post("/api/auth/kiosk/pair-with-password", {
     headers: CSRF,
-    data: { password: PASSWORD, label: "Kitchen screen" },
+    data: { password: PASSWORD, label: "Wall screen" },
   });
   expect(paired.status()).toBe(200);
   for (const theme of ["light", "dark"] as const) {

@@ -104,7 +104,7 @@ def _parser() -> argparse.ArgumentParser:
     which.add_argument("--remove", action="store_true", help="take Sunroom Screen's policy out")
 
     settings = commands.add_parser("config", help="the screen's settings, or its Sunroom's address")
-    settings.add_argument("--url", default=None, help="the address you open on a phone")
+    settings.add_argument("--url", default=None, help="the address you open on your devices")
     settings.add_argument("--config", type=Path, default=None, help="the settings file")
 
     update = commands.add_parser("update", help="ask GitHub for a newer version (or apply one)")

@@ -213,7 +213,7 @@ def test_device_forms() -> None:
         ("Device", "phone"),
     ]:
         assert device_form("phone", label) == form, label
-    assert device_form("kiosk", "Kitchen screen") == "screen"
+    assert device_form("kiosk", "Wall screen") == "screen"
     assert device_form("kiosk", "Mac, Chrome") == "screen"
 
 

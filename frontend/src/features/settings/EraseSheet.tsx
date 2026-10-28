@@ -14,7 +14,7 @@ import { TextField } from "../../ui/TextField";
  * asks first, because no Undo covers it. Two steps: keep a copy (the whole household as a zip,
  * photos included, or "I have a copy"), then the household password. The server keeps a copy of
  * the database itself before it erases; the photos are what only the zip saves. Afterwards this
- * device reloads fresh and lands on setup, like every other phone and screen.
+ * device reloads fresh and lands on setup, like every other device and screen.
  */
 export function EraseSheet({
   open,

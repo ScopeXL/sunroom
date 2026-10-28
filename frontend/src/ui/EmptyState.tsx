@@ -20,7 +20,7 @@ export function EmptyState({
   /** "No lists yet": empty-state copy, so sentence case (UX §2). */
   line: string;
   note?: string;
-  /** The one button: a primary `Button`, or what stands in for it (the kitchen screen's QR). */
+  /** The one button: a primary `Button`, or what stands in for it (the wall screen's QR). */
   action?: ReactNode;
 }) {
   const display = useShell() === "display";

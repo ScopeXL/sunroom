@@ -14,7 +14,7 @@ import { WeekStrip } from "./WeekStrip";
  * A day, picked by touch (UX §4, ADR 0029): the week as seven cells in the household's order,
  * then Previous week, Today and Next week to move it, and Pick a date for any other day, which
  * opens a month grid in place. Neither the wall nor a phone meets the native date input: one
- * code path, one set of names, and nothing the kitchen screen can't work without a keyboard.
+ * code path, one set of names, and nothing the wall screen can't work without a keyboard.
  * The strip follows the chosen day when it leaves the week on show (a tap on the board, a day
  * word typed into quick add).
  */

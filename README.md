@@ -1,14 +1,15 @@
 # Sunroom
 
-A family wall calendar for the kitchen screen and everyone's phones. It runs on your own
+A family wall calendar for a shared screen at home and everyone's devices. It runs on your own
 computer at home, with no account anywhere and no subscription.
 
-- **The week at a glance** on a touch screen in the kitchen: the clock, today lit up, and a line
-  for now, readable from across the room.
-- **Every phone** adds and changes things, and the screen follows within a second.
+- **The week at a glance** on a touch screen on the wall: the clock, today lit up, and a line for
+  now, readable from across the room.
+- **Every phone, tablet and computer** adds and changes things, and the screen follows within a
+  second.
 - **Made for a family:** one household password, a parent PIN for Settings on the shared screen,
   children with their own colors, and nothing that needs a technical grown-up every week.
-- **Your data stays home,** on the kitchen computer itself or in one Docker container, with
+- **Your data stays home,** on the screen's own computer or in one Docker container, with
   nightly backups.
 
 **Status:** working, and still growing toward 1.0. It has the calendar (with Apple, Google and
@@ -20,16 +21,16 @@ adds, and [CHANGELOG.md](CHANGELOG.md) what each release did.
 
 **Do you already run Docker somewhere at home** (a NAS, a mini PC, Portainer, Unraid)?
 
-- No: put everything on the kitchen computer (a Raspberry Pi, or a Linux, Mac or Windows
-  computer by the kitchen), [path a](#a-all-on-the-kitchen-computer).
+- No: put everything on the screen's computer (a Raspberry Pi, or a Linux, Mac or Windows
+  computer), [path a](#a-all-on-one-computer).
 - Yes: run Sunroom there and use a Pi only as the screen, [path b](#b-sunroom-on-your-server-the-pi-is-the-screen).
 - Only trying it out: [path c](#c-any-computer-no-pi).
 
-### a. All on the kitchen computer
+### a. All on one computer
 
 The screen and Sunroom on one computer: a Raspberry Pi 4 or 5 with a touch screen (HDMI plus its
 USB touch cable, and the official power supply; [docs/HARDWARE.md](docs/HARDWARE.md) helps you
-choose), or a Linux computer, a Mac with Apple silicon or a Windows computer by the kitchen.
+choose), or a Linux computer, a Mac with Apple silicon or a Windows computer.
 
 1. **A Pi:** with [Raspberry Pi Imager](https://www.raspberrypi.com/software/), write
    **Raspberry Pi OS (64-bit)**, the one with the desktop. In Imager's settings, set the hostname
@@ -49,18 +50,20 @@ choose), or a Linux computer, a Mac with Apple silicon or a Windows computer by 
    Sunroom may accept connections, choose Allow.)
 4. **Set up the household right on the screen:** choose **Set Up Here** and type on the keyboard
    that opens. Choose a household password, add the people who live here, and set a parent PIN.
-   The screen becomes your kitchen screen by itself.
-5. **Add the phones:** the last page shows a QR code. Scan it with each phone and sign in with the
-   household password, then add Sunroom to the home screen (Safari: Share → Add to Home Screen).
+   The screen becomes your family's shared screen by itself.
+5. **Add your other devices:** the last page shows a QR code. Scan it with each phone, or open the
+   address on any device, and sign in with the household password; on a phone, add Sunroom to the
+   home screen (Safari: Share → Add to Home Screen).
 
-Rather set up on your phone? Scan the QR code beside **Set Up Here** instead. The screen then
-shows a six-character code: on your phone, open **More → Pair a display** and type it.
+Rather set up on another device? Scan the QR code beside **Set Up Here**, or open the address it
+shows. The screen then shows a six-character code: on a signed-in device, open **Settings →
+Devices → Pair a Display** (under **More** on a phone) and type it.
 
-Keep that computer on and connected: phones open Sunroom from it. On a Pi,
+Keep that computer on and connected: your devices open Sunroom from it. On a Pi,
 `… | bash -s -- --with-sunroom` instead runs Sunroom in Docker, set up by the installer, which
 prints the address and QR code at the end. If a `.local` address doesn't open, use the numbered
-one: phones on a VPN or on mobile data can't see `.local` names. [docs/KIOSK.md](docs/KIOSK.md)
-covers rotation, screens that stay blank, updates and removal.
+one: a device on a VPN, or a phone on mobile data, can't see `.local` names.
+[docs/KIOSK.md](docs/KIOSK.md) covers rotation, screens that stay blank, updates and removal.
 
 ### b. Sunroom on your server, the Pi is the screen
 
@@ -76,10 +79,10 @@ everything in the `sunroom_data` volume.
   8080, and a volume (or folder) for `/data`. If you map a folder, it must be writable by the
   container's user (`--user 99:100` on Unraid's appdata).
 
-Open `http://<server>:8080` on your phone and set up the household: there is nothing to
-configure first. Your own HTTPS proxy, Tailscale or Cloudflare work with nothing to
-set; [docs/REMOTE-ACCESS.md](docs/REMOTE-ACCESS.md) shows each way, and when to lock Sunroom to a
-name with `APP_ALLOWED_HOSTS`.
+Open `http://<server>:8080` on a phone or computer and set up the household: there is nothing to
+configure first. Your own HTTPS proxy, Tailscale or Cloudflare work with nothing to set;
+[docs/REMOTE-ACCESS.md](docs/REMOTE-ACCESS.md) shows each way, and when to lock Sunroom to a name
+with `APP_ALLOWED_HOSTS`.
 
 Then set up the screen with one command. On the Pi (or another Linux computer, or a Mac):
 
@@ -89,8 +92,9 @@ curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.
 
 It installs what the screen needs, a browser too, and starts it (a Pi restarts first). On the
 screen, choose **On Another Computer**: it looks for Sunroom on your network, so tap **Use This
-Sunroom**, or type the address you open on a phone (an `https://` name works too). Then pair the
-screen: it shows a six-character code; on your phone, open **More → Pair a display** and type it.
+Sunroom**, or type the address you open on your other devices (an `https://` name works too).
+Then pair the screen: it shows a six-character code; on a signed-in device, open **Settings →
+Devices → Pair a Display** (under **More** on a phone) and type it.
 (Haven't set up the household yet? The screen can: choose **Set Up Here**, as in path a.)
 
 ### c. Any computer, no Pi
@@ -99,9 +103,9 @@ screen: it shows a six-character code; on your phone, open **More → Pair a dis
 docker run -d --name sunroom --restart unless-stopped -p 8080:8080 -v sunroom_data:/data scopexl/sunroom:latest
 ```
 
-Open `http://<computer>:8080` on a phone. Any browser shows the wall screen at `/display`; an old
-tablet works as one (Android: Fully Kiosk Browser; iPad: Safari with Guided Access; see
-[docs/HARDWARE.md](docs/HARDWARE.md#an-old-tablet-instead)).
+Open `http://<computer>:8080` on a phone or computer. Any browser shows the wall screen at
+`/display`; an old tablet works as one (Android: Fully Kiosk Browser; iPad: Safari with Guided
+Access; see [docs/HARDWARE.md](docs/HARDWARE.md#an-old-tablet-instead)).
 
 ### The installer, in short
 
@@ -121,8 +125,8 @@ then asks where your family's Sunroom will run: **On This Computer** sets it up 
 ## Lost the household password?
 
 Set `APP_PASSWORD` in the container's environment (it always wins), or run
-`sudo docker exec -it sunroom sunroom reset-password`. Either way, phones sign in again and the
-kitchen screen shows a new code to pair.
+`sudo docker exec -it sunroom sunroom reset-password`. Either way, every device signs in again and
+the wall screen shows a new code to pair.
 
 ## Documentation
 
@@ -130,7 +134,7 @@ kitchen screen shows a new code to pair.
   [Adding a plugin](docs/PLUGINS.md) gives the steps.
 - [UX](docs/UX.md): screens, flows and visual design.
 - [Decision records](docs/adr/README.md): why things are the way they are.
-- [The kitchen screen](docs/KIOSK.md), [Hardware](docs/HARDWARE.md), [Deploying](docs/DEPLOY.md),
+- [The wall screen](docs/KIOSK.md), [Hardware](docs/HARDWARE.md), [Deploying](docs/DEPLOY.md),
   [Remote access and HTTPS](docs/REMOTE-ACCESS.md), [Restoring a backup](docs/RESTORE.md) and
   [Releasing](docs/RELEASING.md).
 - [CLAUDE.md](CLAUDE.md): working rules for the AI sessions that build and maintain Sunroom.

@@ -152,7 +152,9 @@ def cmd_reset_password(args: argparse.Namespace) -> None:
         )
         raise SystemExit(1)
     if not settings.db_path.exists():
-        print("Sunroom isn't set up yet: open it on a phone to choose a password.", file=sys.stderr)
+        print(
+            "Sunroom isn't set up yet: open it on a device to choose a password.", file=sys.stderr
+        )
         raise SystemExit(1)
     first = getpass.getpass("New household password: ")
     second = getpass.getpass("Type it again: ")
@@ -174,8 +176,8 @@ def cmd_reset_password(args: argparse.Namespace) -> None:
     finally:
         conn.close()
     print(
-        "Done. Phones sign in again with the new password, and wall screens show a pair code "
-        "again (a phone pairs them in a few seconds)."
+        "Done. Every device signs in again with the new password, and wall screens show a pair "
+        "code again (a signed-in device pairs them in a few seconds)."
     )
 
 
@@ -245,7 +247,7 @@ def cmd_restore(args: argparse.Namespace) -> None:
         print("A .db backup holds no photos: the photos on the volume stay as they are.")
     needs = prepared.info.get("app_version") or prepared.manifest.get("app_version")
     print(f"It needs Sunroom {needs or 'any version'} or newer. Start the container.")
-    print("Every phone signs in again, and wall screens show a pair code again.")
+    print("Every device signs in again, and wall screens show a pair code again.")
     if photos_problem is not None:
         raise SystemExit(1)
 
@@ -273,9 +275,9 @@ def cmd_status(args: argparse.Namespace) -> None:
         onboarded, devices = None, []
     finally:
         conn.close()
-    print(f"set up: {'yes' if onboarded and onboarded[0] else 'no (open it on a phone)'}")
+    print(f"set up: {'yes' if onboarded and onboarded[0] else 'no (open it on a device)'}")
     counts = {kind: count for kind, count in devices}
-    print(f"signed in: {counts.get('phone', 0)} phone(s), {counts.get('kiosk', 0)} screen(s)")
+    print(f"signed in: {counts.get('phone', 0)} device(s), {counts.get('kiosk', 0)} screen(s)")
     files = backup.nightly_files(settings.backup_dir)
     print(f"newest nightly backup: {files[-1][1].name if files else 'none yet'}")
     free = shutil.disk_usage(settings.data_dir).free

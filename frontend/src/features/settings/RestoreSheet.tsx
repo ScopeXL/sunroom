@@ -242,7 +242,7 @@ export function RestoreSheet({
       {step === "restarting" ? (
         <div className="flex flex-col gap-4 pb-2">
           <p role="status" className={body}>
-            Restoring… Sunroom restarts with the copy. Every phone signs in again, and wall screens
+            Restoring… Sunroom restarts with the copy. Every device signs in again, and wall screens
             show a pair code.
           </p>
           {slow ? (

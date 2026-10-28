@@ -5,7 +5,7 @@ verified copy of the database goes to ``backups/pre-erase/``, a folder the night
 looks in; if that copy can't be made, nothing is erased. Then every table is emptied and the rows
 a new install starts with are put back, every plugin returns to its default switch and settings,
 the photo files are deleted (not ``photos/inbox``, which the family fills by hand), and every
-phone and screen is signed out.
+device and screen is signed out.
 
 The test server's reset uses the two halves that must not drift apart: which tables go
 (``empty_tables``), and what the process forgets (``forget``).

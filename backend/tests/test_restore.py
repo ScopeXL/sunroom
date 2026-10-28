@@ -120,7 +120,7 @@ async def test_a_restore_from_download_everything_on_a_fresh_volume_brings_it_al
         "Restored sunroom-2026-10-07.zip. There was no database here before.",
         "4 photos came back.",
         f"It needs Sunroom {build_info().version} or newer. Start the container.",
-        "Every phone signs in again, and wall screens show a pair code again.",
+        "Every device signs in again, and wall screens show a pair code again.",
     ]
     assert scalar(volume / "sunroom.db", "SELECT auth_epoch FROM app_meta") == epoch_before + 1
     for name in seeded.photo_names():

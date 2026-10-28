@@ -1,7 +1,7 @@
 # Sunroom — working rules for AI sessions
 
-Sunroom is a self-hosted family wall calendar: a touchscreen in the kitchen, phones as the second
-screen, one Docker container, no accounts anywhere.
+Sunroom is a self-hosted family wall calendar: a shared touchscreen at home, everyone's devices as
+the second screen, one Docker container, no accounts anywhere.
 - **Backend:** FastAPI, async SQLAlchemy, SQLite and Alembic (Python 3.14, uv).
 - **Frontend:** React, TypeScript, Vite, Tailwind and TanStack; one app with two shells (the
   wall display and the phone), and the screen's own pages.
@@ -38,7 +38,8 @@ Keep this file under 15 KB; detail belongs in `docs/`.
 
 ## Priorities (when trade-offs collide)
 
-1. Easy and pleasant for a non-technical family member, on the kitchen screen first, a phone second.
+1. Easy and pleasant for a non-technical family member, on the shared screen first, their own
+   device second.
 2. The calendar is correct: times, time zones, recurrences and synced events are right, and
    nothing silently disappears.
 3. Easy to set up and keep running for a self-hoster who is not a developer.

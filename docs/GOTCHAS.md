@@ -124,7 +124,7 @@ size limit.
   `max(0.5rem, 8px)`; Hours chips size by `tapPx(rem)`.
 - The now line painted over the Hours day heads when zoomed: a day's body had no stacking
   context, so the line's z-30 beat the sticky head's z-20. The body is `isolate`.
-- The Hours grid's scrollbar flickered once a minute on the kitchen screen: Chromium's overlay
+- The Hours grid's scrollbar flickered once a minute on the wall screen: Chromium's overlay
   bar shows on every scroll, and a resting grid sets `scrollTop` each minute to follow now. That
   scroller is `scrollbar-width: none`.
 - `motion` still fades under Reduce Motion, and an endless CSS animation at 0.01 ms flickers:

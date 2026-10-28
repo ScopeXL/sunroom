@@ -241,7 +241,7 @@
   --text-d-big--line-height: 4.5rem;
   --text-d-key: 1.75rem;
   --text-d-pin: 2.25rem;
-  /* The wall's pair code (UX §4 "Pair this screen"): read from across the kitchen. */
+  /* The wall's pair code (UX §4 "Pair this screen"): read from across the room. */
   --text-d-code: 160px;
   --text-d-code--line-height: 1;
   --text-d-month: 1.25rem;

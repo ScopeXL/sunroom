@@ -6,7 +6,7 @@ you can always go back.
 
 ## From the app
 
-While Sunroom runs, a parent can restore a file they downloaded, from a phone or a computer
+While Sunroom runs, a parent can restore a file they downloaded, from any signed-in device
 (never from the wall screen):
 
 1. **More**, then **Settings**, then **Backup**, then **Choose a File…** under **Restore from a
@@ -16,7 +16,7 @@ While Sunroom runs, a parent can restore a file they downloaded, from a phone or
    **Keep Everything** forgets the file.
 3. **Restore This Copy…**, then the household password, then **Restore**.
 4. Sunroom restarts with the copy, which takes a few seconds (a copy from an older Sunroom is
-   brought up to date as it starts). Every phone signs in again with the household password of
+   brought up to date as it starts). Every device signs in again with the household password of
    the copy, and wall screens show a code to pair again.
 
 The data that was on the server is kept as a copy: **Copies on the Server** lists it as "Before
@@ -34,8 +34,8 @@ start, restore with the server stopped instead, as below.
 | Nightly copies | `backups/sunroom.YYYY-MM-DD.db` in the `sunroom_data` volume (as many daily and weekly as Settings → Backup keeps: 14 and 8 unless changed). Settings → Backup lists every copy here, to download or remove | The database |
 | The copy before each upgrade | `backups/pre-migrate/sunroom.<revision>.<time>.db` in the volume | The database |
 | The copy before **Erase Everything** | `backups/pre-erase/sunroom.<time>.db` in the volume. Never tidied away: delete it yourself once you're sure | The database, as it was just before it was erased |
-| **Download → Data Only** | Settings → Backup on a phone or computer: `sunroom-YYYY-MM-DD.db`, a checked copy made at that moment, a few MB | The database |
-| **Download → Data & Photos** | Settings → Backup on a phone or computer: `sunroom-YYYY-MM-DD.zip` | The database, every photo, and a `manifest.json` |
+| **Download → Data Only** | Settings → Backup on a signed-in device: `sunroom-YYYY-MM-DD.db`, a checked copy made at that moment, a few MB | The database |
+| **Download → Data & Photos** | Settings → Backup on a signed-in device: `sunroom-YYYY-MM-DD.zip` | The database, every photo, and a `manifest.json` |
 
 The database holds everything the family added: people, calendars and events, lists, tasks,
 meals, countdowns, settings and the household password. Photos are files beside it, so only
@@ -55,9 +55,9 @@ the `photos/inbox` folder.
 
 ## 1. Download Data & Photos, now and then
 
-On a parent's phone or a computer: **More**, then **Settings**, then **Backup**, then
-**Download…**, then **Data & Photos**. (The kitchen screen has no downloads: use a phone or a
-computer.) Every photo is in the zip, so it can take a while and be large. Keep it somewhere other than the Sunroom server: a
+On a parent's device: **Settings** (under **More** on a phone), then **Backup**, then **Download…**,
+then **Data & Photos**. (The wall screen has no downloads: use another device.) Every photo is in
+the zip, so it can take a while and be large. Keep it somewhere other than the Sunroom server: a
 computer, a USB stick, or cloud storage.
 
 - Keep the `.zip` exactly as it is. `restore` refuses a zip that was unzipped and zipped again.
@@ -136,7 +136,7 @@ checks all of that before it changes anything. Then it:
 2. moves the current database and its `-wal` and `-shm` files aside together, as
    `sunroom.pre-restore.<time>.db` (a stale `-wal` next to a restored file would corrupt it),
    folds what the `-wal` held into that one file, and swaps the backup in;
-3. signs every device out: phones sign in again, and wall screens show a code to pair again;
+3. signs every device out: devices sign in again, and wall screens show a code to pair again;
 4. from a zip, puts the photos back into the volume's `photos` folder, keeps any photo that is
    already there exactly as it is, and says how many came back;
 5. prints the oldest Sunroom version that can open the restored database.
@@ -155,10 +155,10 @@ database refuses to start (exit 65) instead of guessing.
 ## 6. Check
 
 - `<your address>/api/version` shows the version you started.
-- Every phone signs in again with the household password: the one set when the backup was made
+- Every device signs in again with the household password: the one set when the backup was made
   (unless `APP_PASSWORD` is set in the server's settings; it always wins).
-- The kitchen screen shows a code. On a phone, open Sunroom, then **More**, then **Pair a
-  display**, and type the code.
+- The wall screen shows a code. On a signed-in device, open **Settings → Devices → Pair a
+  Display** (under **More** on a phone), and type the code.
 - On a new volume, open **More**, then **Settings**, then **Calendars & accounts**, and tap
   **Connect Again** on each synced calendar.
 - Look at this week's events, a list or two, and Photos.

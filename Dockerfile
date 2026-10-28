@@ -37,7 +37,7 @@ ARG VERSION
 ARG REVISION=unknown
 ARG CREATED=unknown
 LABEL org.opencontainers.image.title="Sunroom" \
-      org.opencontainers.image.description="A family wall calendar for the kitchen screen and everyone's phones." \
+      org.opencontainers.image.description="A family wall calendar for a shared screen at home and everyone's devices." \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.created="${CREATED}" \

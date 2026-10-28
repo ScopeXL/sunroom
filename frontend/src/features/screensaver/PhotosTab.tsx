@@ -22,7 +22,7 @@ import { photosCount } from "./PhotosRoom";
 /**
  * Photos on a phone (UX §5 "More"): where photos are added, from the camera or the library,
  * several at once, and removed (with Undo); a photo library's is hidden instead, since the
- * library is where it's changed (ADR 0036). A parent can start the screensaver on the kitchen
+ * library is where it's changed (ADR 0036). A parent can start the screensaver on the wall
  * screen from here.
  */
 export function PhotosTab() {

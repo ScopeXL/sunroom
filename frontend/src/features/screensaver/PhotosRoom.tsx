@@ -29,7 +29,7 @@ export function photosCount(count: number): string {
 
 /**
  * The Photos room in the wall's shell (UX §4): how many there are, Start screensaver, its
- * Settings (behind the PIN), and the photos newest first. The kitchen screen shows a code for
+ * Settings (behind the PIN), and the photos newest first. The wall screen shows a code for
  * adding photos from a phone; a computer adds them itself with Add photos (ADR 0028). A photo
  * opens full screen with Previous, Next and Hide from screensaver: this room can hide photos
  * but never removes them (phones do, with Undo). A photo library's says where it's from.

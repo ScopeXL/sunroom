@@ -31,7 +31,7 @@ export function whenText(at: string, today: string): string {
   return age > 0 && age < 7 ? shortWeekday(day) : monthDay(day);
 }
 
-/** "Mia added Milk · 2:10 PM"; nobody named (the kitchen screen): "Added Milk · 2:10 PM". */
+/** "Mia added Milk · 2:10 PM"; nobody named (the wall screen): "Added Milk · 2:10 PM". */
 export function lastChangeLine(
   change: { action: "added" | "checked"; text: string; member_id: string | null; at: string },
   nameOf: (id: string) => string | undefined,

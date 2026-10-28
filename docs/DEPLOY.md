@@ -1,7 +1,7 @@
 # Deploying Sunroom
 
 How to run Sunroom with Docker Compose on a home server, behind your own HTTPS reverse proxy, with
-a Raspberry Pi as the kitchen screen: path b in the [README](../README.md#install). Sunroom lives
+a Raspberry Pi as the wall screen: path b in the [README](../README.md#install). Sunroom lives
 in a folder of its own on the server, with a `docker-compose.yml` you edit by hand and start with
 `docker compose up -d`. Household-specific values go in that file (or a `.env` beside it), never
 into this repository. Portainer, if you use it, can show the logs and stop or start the container;
@@ -33,7 +33,7 @@ On a plain home network you can skip the proxy entirely: leave every variable em
    | Variable | Value |
    |---|---|
    | `APP_ALLOWED_HOSTS` | Optional. A lock: with it set, Sunroom answers only to these names (e.g. `calendar.example.com`; comma-separated for several; `*.example.com` covers every name under it) and local ones. Left empty it answers to any name, which is all most homes need ([REMOTE-ACCESS.md](REMOTE-ACCESS.md) says when the lock is worth it) |
-   | `TZ` | Your time zone, e.g. `America/New_York`. The setup on your phone suggests one too |
+   | `TZ` | Your time zone, e.g. `America/New_York`. The setup suggests one too |
    | `APP_PASSWORD` | Optional. A household password that always wins over the one chosen in setup, 8 characters or more |
    | `APP_SECRET_KEY` | Optional. Without it, Sunroom makes one and keeps it on the volume. If you set it (`openssl rand -base64 48`), keep a copy in a password manager: changing it signs everyone out |
    | `SUNROOM_INSTALL_KIND` | Optional. `portainer` when Portainer manages the stack, so Settings → About says how to update that way (the default, `docker`, means Compose in this folder) |
@@ -61,7 +61,7 @@ On a plain home network you can skip the proxy entirely: leave every variable em
   `sunroom:8080`). The proxy must pass the `Host` header through unchanged and set
   `X-Forwarded-Proto` (every common proxy does both by default).
 - Turn on **HTTP/2** for the host. Browsers allow only six HTTP/1.1 connections per site, and
-  the live-update stream keeps one open on every phone and screen.
+  the live-update stream keeps one open on every device and screen.
 - Live updates use server-sent events on `/api/events`. They must not be buffered or compressed:
 
   | Proxy | What to set |
@@ -101,18 +101,18 @@ An older compose file's `TRUSTED_PROXIES` line can stay: it's ignored, and the l
 
 ## 4. First visit
 
-Open the address on a phone and follow the setup: a household password, your household's name
+Open the address on any device and follow the setup: a household password, your household's name
 and time zone, the people who live here, a parent PIN. Then:
 
 - **iPhone:** Share → **Add to Home Screen**, and open Sunroom from there.
 - **Android:** Chrome's menu → **Install app**.
 
-**More → Settings → About** shows the version, "Live updates: connected", and the URL this
-phone used.
+**Settings → About** (under **More** on a phone) shows the version, "Live updates: connected",
+and the URL this device used.
 
-## 5. The kitchen screen
+## 5. The wall screen
 
-No server at home? The kitchen computer can run Sunroom itself, with no Docker: install the
+No server at home? The screen's own computer can run Sunroom itself, with no Docker: install the
 screen and choose **On This Computer** on it ([KIOSK.md](KIOSK.md#sunroom-on-this-computer)). This
 section is for a screen that shows the Sunroom you run here.
 
@@ -127,8 +127,9 @@ curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.
 Then (on a Pi, after its restart) the screen looks for Sunroom on its network and lists what it
 finds; a Sunroom behind a proxy that picks a site by its name isn't found that way, so type its
 address there (`https://calendar.example.com`), or give it to the installer: `curl … | bash -s --
---url https://calendar.example.com`. Then the screen shows a code; type it on your phone under
-**More → Pair a display**. [KIOSK.md](KIOSK.md) has the details.
+--url https://calendar.example.com`. Then the screen shows a code; type it on a signed-in device
+under **Settings → Devices → Pair a Display** (under **More** on a phone). [KIOSK.md](KIOSK.md) has
+the details.
 
 **Optional: let screens find this server by name.** A Sunroom screen looking for Sunroom checks
 every address on its network on port 8080, which finds this setup as it is. A server that runs
@@ -160,8 +161,8 @@ day Sunroom asks GitHub for its latest version (GitHub sees your server's addres
 says when one is out, with these steps. It's off until you turn it on.
 
 Before migrating, Sunroom copies the database into `/data/backups/pre-migrate/`. If a migration
-fails, it refuses to start and the data is left exactly as it was. Every open kitchen screen and
-phone refreshes itself within a minute of the update; a screen in the middle of an edit waits
+fails, it refuses to start and the data is left exactly as it was. Every open wall screen and
+device refreshes itself within a minute of the update; a screen in the middle of an edit waits
 for it.
 
 **If Portainer manages it instead** (a stack pasted from the example): update the stack with

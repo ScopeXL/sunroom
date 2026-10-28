@@ -573,7 +573,7 @@ async def screen(parent: httpx.AsyncClient, other: httpx.AsyncClient) -> httpx.A
     await set_pin(parent)
     paired = await other.post(
         "/api/auth/kiosk/pair-with-password",
-        json={"password": PASSWORD, "label": "Kitchen screen"},
+        json={"password": PASSWORD, "label": "Wall screen"},
         headers=CSRF,
     )
     assert paired.status_code == 200, paired.text

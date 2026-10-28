@@ -63,7 +63,7 @@ def not_in_family() -> AppError:
 
 
 def household_today(ctx: PluginContext) -> date:
-    """The household's date now: a countdown's day is the kitchen's, not UTC's."""
+    """The household's date now: a countdown's day is the household's, not UTC's."""
     return to_local(ctx.now(), ctx.zone()).date()
 
 

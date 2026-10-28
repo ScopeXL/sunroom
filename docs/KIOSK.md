@@ -1,4 +1,4 @@
-# The kitchen screen: Sunroom Screen
+# The wall screen: Sunroom Screen
 
 How `kiosk/install.sh` turns a Raspberry Pi (or another Linux computer, or a Mac; Windows has
 `install.ps1`) into Sunroom's wall screen, what it changes, how the screen sleeps and dims at night, and what to do when something
@@ -35,16 +35,17 @@ root; it asks for `sudo` itself.
 | Sunroom and the screen, both on this Pi | the same, ending `\| bash -s -- --with-sunroom` |
 | Only Sunroom, no screen (Pi OS Lite) | the same, ending `\| bash -s -- --server-only` |
 
-The installer finishes by saying what's next (with Sunroom on the Pi, the phone address and a QR
-code), then offers to restart.
+The installer finishes by saying what's next (with Sunroom on the Pi, the address your devices
+open and a QR code), then offers to restart.
 
 The screen looks for Sunroom on your network after the restart and lists what it finds: tap
-**Use This Sunroom**, or type the address you open on a phone and tap **Check Address**.
-`--url https://calendar.example.com` (or `http://192.168.1.20:8080`) gives it the address and
-skips the search. Then the screen shows a six-character code: on a phone signed in to Sunroom,
-open **More → Pair a display** and type it. A Sunroom that isn't set up yet shows **Set Up
-Sunroom** instead: **Set Up Here** sets the household up on the screen itself, on its keyboard,
-and the screen pairs itself (ADR 0039); or scan its QR code and set it up on a phone.
+**Use This Sunroom**, or type the address you open on your other devices and tap **Check
+Address**. `--url https://calendar.example.com` (or `http://192.168.1.20:8080`) gives it the
+address and skips the search. Then the screen shows a six-character code: on a device signed in to
+Sunroom, open **Settings → Devices → Pair a Display** (under **More** on a phone) and type it. A
+Sunroom that isn't set up yet shows **Set Up Sunroom** instead: **Set Up Here** sets the household
+up on the screen itself, on its keyboard, and the screen pairs itself (ADR 0039); or scan its QR
+code and set it up on another device.
 
 Earlier installers put Sunroom and the screen on a Pi when run with no option (ADR 0037 changed
 that). A Pi set up that way, or with `--server-only`, keeps Sunroom when the installer runs again
@@ -224,7 +225,7 @@ it until the next sign-in. Its log: `~/Library/Logs/sunroom-kiosk.log`. `--url`,
 
 ## Sleep and dimming
 
-Set the times in Sunroom, on a phone or on the screen: **Settings → Display → Sleep**.
+Set the times in Sunroom, on any device or on the screen: **Settings → Display → Sleep**.
 
 - **Sleep at night**, from and until a time. **While asleep** shows either a **Dim clock** (the
   time on black, with the screen turned down low) or **Screen off** (black, with the screen itself
@@ -291,12 +292,12 @@ Screen on: tapped awake for 2 minutes.
 
 The screen's first page asks **Where will your family's Sunroom run?** (ADR 0038). **On This
 Computer** → **Run Sunroom Here** sets Sunroom up on the computer the screen runs on, so it is the
-family's Sunroom as well as its kitchen screen. **Setting Up Sunroom** shows how far it is
+family's Sunroom as well as its wall screen. **Setting Up Sunroom** shows how far it is
 ("Downloading Sunroom… 40%", "Installing Sunroom…", "Starting Sunroom…"; the first time takes a
 few minutes), then the screen opens Sunroom's own **Set Up Sunroom**: **Set Up Here** sets the
 household up right there, on the screen's keyboard, and the screen pairs itself; its last page
-has the QR code that phones scan to join (ADR 0039). Or scan the QR code beside it and set up on a
-phone. If Setting Up Sunroom stops, the page says why, with **Try Again**.
+has the QR code that phones scan to join, and the address for any device (ADR 0039). Or scan the
+QR code beside it and set up on another device. If Setting Up Sunroom stops, the page says why, with **Try Again**.
 
 - **What it is:** Sunroom as a program for the screen's user, not Docker: Sunroom Screen installs
   this release's `sunroom` wheel with uv, as it installs itself, held to the release's versions
@@ -315,12 +316,12 @@ phone. If Setting Up Sunroom stops, the page says why, with **Try Again**.
   it stops answering (its log: `%LOCALAPPDATA%\Sunroom\sunroom.log`). Each keeps the computer
   from going to sleep while Sunroom runs, and the screen still sleeps on its schedule. A Linux
   desktop may refuse (Sunroom Screen's log says so): then turn off automatic suspend in its power
-  settings, so phones reach Sunroom at night.
-- **Phones:** Sunroom answers on port 8080 (or the next free one), at `http://<computer>.local:8080`
-  on a Mac and on Linux with avahi, else at the computer's numbered address; the QR codes on Set
-  Up Sunroom and on setup's last page have it. Sunroom Screen announces it on the network, so other screens find it too. On a Mac
-  or Windows the first start may ask whether Sunroom may accept connections: choose Allow, or
-  phones can't reach it.
+  settings, so your devices reach Sunroom at night.
+- **Your devices:** Sunroom answers on port 8080 (or the next free one), at
+  `http://<computer>.local:8080` on a Mac and on Linux with avahi, else at the computer's numbered
+  address; the QR codes on Set Up Sunroom and on setup's last page have it. Sunroom Screen
+  announces it on the network, so other screens find it too. On a Mac or Windows the first start
+  may ask whether Sunroom may accept connections: choose Allow, or your devices can't reach it.
 - **Updates:** it stays at Sunroom Screen's version: when Sunroom Screen updates itself, Sunroom
   follows. This Screen's **Update Sunroom Too** installs the newest; a version that doesn't
   answer within five minutes is put back.
@@ -388,7 +389,7 @@ checked against a release, so use it only for testing. `--dry-run` shows the pla
 
 **The screen says it can't reach Sunroom.** Sunroom Screen tries again every 10 seconds and goes
 back to Sunroom by itself the moment it answers. On a Pi that runs Sunroom, `sudo docker logs
-sunroom` says why it isn't up; otherwise open the address on a phone. **Change Address** on that
+sunroom` says why it isn't up; otherwise open the address on another device. **Change Address** on that
 page finds or takes another one. A Sunroom the screen found by itself that moved to a new address
 is found again.
 
@@ -402,7 +403,7 @@ Nothing was installed, and the alert can be dismissed. Open PowerShell and type 
 window instead (see Windows, above).
 
 **The screen shows a code again.** Its sign-in was ended: a new household password, a new secret
-key, a restore, or **Unpair** in Settings → Devices. Pair it again from a phone. A restart, an
+key, a restore, or **Unpair** in Settings → Devices. Pair it again from a signed-in device. A restart, an
 update or Quit keeps the pairing, straight after pairing too: the browser saves it the moment the
 screen is paired (ADR 0040). A Linux screen set up before this saves it within half a minute
 until the install command is run again.
@@ -449,8 +450,9 @@ mouse stops, and at once when the screen is touched; moving the mouse brings it 
 and, on X11, `unclutter` keep it hidden before the page loads; if you see it then, bring the Pi up
 to date with `sudo apt update && sudo apt full-upgrade`.
 
-**`sunroom.local` doesn't open on a phone.** Use the numbered address the installer printed.
-Phones on a VPN or on mobile data can't see `.local` names, and some routers block them.
+**`sunroom.local` doesn't open on a device.** Use the numbered address the installer printed.
+A device on a VPN, or a phone on mobile data, can't see `.local` names, and some routers block
+them.
 
 **"This Pi's desktop uses Wayfire".** Older Bookworm images start Wayfire; the installer prints
 the one line that switches to labwc.

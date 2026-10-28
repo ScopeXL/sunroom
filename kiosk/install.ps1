@@ -1,4 +1,4 @@
-# Sunroom Screen's installer for Windows 10 and 11: this computer becomes a Sunroom kitchen
+# Sunroom Screen's installer for Windows 10 and 11: this computer becomes a Sunroom
 # screen for the person signed in to it, with no administrator rights and no service
 # (docs/KIOSK.md, docs/M7.md T14). In a PowerShell window (Start, then type PowerShell):
 #
@@ -343,11 +343,11 @@ $Options = [pscustomobject]@{
         if ($Options.Url) {
             $ran = Invoke-Native $Agent @("config", "--url", $Options.Url)
             if ($ran.Code -ne 0) {
-                Exit-Install @($ran.Output, "Use the address you open on a phone, for example http://192.168.1.20:8080")
+                Exit-Install @($ran.Output, "Use the address you open on your other devices, for example http://192.168.1.20:8080")
             }
-            Write-Note "The kitchen screen will show Sunroom from $($Options.Url)."
+            Write-Note "The screen will show Sunroom from $($Options.Url)."
         } else {
-            Write-Note "The kitchen screen finds Sunroom on your network itself, or asks for its address."
+            Write-Note "The screen finds Sunroom on your network itself, or asks for its address."
         }
     }
 
@@ -358,7 +358,7 @@ $Options = [pscustomobject]@{
         $link.TargetPath = $AgentWindowless
         $link.Arguments = "run"
         $link.WorkingDirectory = $DataDir
-        $link.Description = "Sunroom Screen: the Sunroom kitchen screen"
+        $link.Description = "Sunroom Screen: the family calendar on this screen"
         $link.Save()
         Write-Note "Sunroom Screen now starts when you sign in (a shortcut in the Startup folder)."
     }
@@ -405,9 +405,9 @@ $Options = [pscustomobject]@{
     function Install-SunroomScreen {
         Write-Host "Sunroom installer $KioskVersion"
         if ($Options.Url) {
-            Write-Host "This sets up the kitchen screen on this computer, showing Sunroom from $($Options.Url). It takes a few minutes."
+            Write-Host "This sets up a Sunroom screen on this computer, showing Sunroom from $($Options.Url). It takes a few minutes."
         } else {
-            Write-Host "This sets up the kitchen screen on this computer; it finds Sunroom on your network by itself. It takes a few minutes."
+            Write-Host "This sets up a Sunroom screen on this computer; it finds Sunroom on your network by itself. It takes a few minutes."
         }
 
         Write-Step "Checking this computer"
@@ -423,7 +423,7 @@ $Options = [pscustomobject]@{
             Exit-Install @("-ServerWheel: there's no file at $($Options.ServerWheel).")
         }
 
-        Write-Step "Setting up the kitchen screen"
+        Write-Step "Setting up the screen"
         $uv = Install-Uv
         $wheel = Get-AgentWheel
         Save-ServerWheel
@@ -433,8 +433,9 @@ $Options = [pscustomobject]@{
         Add-StartupShortcut
 
         Write-Step "All done"
-        Write-Host "The kitchen screen is set up. When it starts, it shows a six-character code: on a phone"
-        Write-Host "signed in to Sunroom, open More, then Pair a display, and type that code."
+        Write-Host "The screen is set up. When it starts, it shows a six-character code: on a device"
+        Write-Host "signed in to Sunroom, open Settings, then Devices, then Pair a Display (on a phone,"
+        Write-Host "it's under More), and type that code."
         Open-SunroomScreen
         Write-Host "Remove it later, in PowerShell:  $(Get-InstallerCommand '-Uninstall')"
         Write-Host "This install's log:  $LogFile"
@@ -464,10 +465,10 @@ $Options = [pscustomobject]@{
         }
         if (Test-Path -LiteralPath (Join-Path $DataDir "profile")) {
             Write-Host ""
-            Write-Host "The kitchen screen's browser data holds its pairing with Sunroom."
+            Write-Host "The screen's browser data holds its pairing with Sunroom."
             if (Read-YesNo "Delete it too? The screen would need to be paired again.") {
                 Remove-Item -LiteralPath $DataDir -Recurse -Force
-                Write-Note "Deleted the kitchen screen's browser data and settings."
+                Write-Note "Deleted the screen's browser data and settings."
             } else {
                 Write-Note "Kept the browser data (and the pairing) in $(Join-Path $DataDir 'profile')."
             }

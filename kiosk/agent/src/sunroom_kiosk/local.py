@@ -10,7 +10,7 @@ computer's user, beside Sunroom Screen, when Welcome's On This Computer is chose
   wheel).
 * **Its data** is this user's: ``~/.local/share/sunroom`` on Linux, ``~/Library/Application
   Support/Sunroom`` on a Mac, ``%LOCALAPPDATA%\\Sunroom`` on Windows.
-* **Its address** is port 8080, or the next free one up to 8099. Phones open
+* **Its address** is port 8080, or the next free one up to 8099. Devices open
   ``http://<computer>.local:<port>`` where the computer surely answers to that name (a Mac, Linux
   with avahi), else ``http://<IP>:<port>``.
 * **What keeps it running**: on Linux a systemd user service, ``sunroom.service``, kept running
@@ -482,7 +482,7 @@ class LocalSunroom:
         )
 
     async def advertised(self, port: int) -> str:
-        """The address phones open: a name the computer surely answers to, else its IP."""
+        """The address devices open: a name the computer surely answers to, else its IP."""
         if self.system == "darwin":
             found = await self.run(["scutil", "--get", "LocalHostName"])
             if found.ok and found.first_line():
@@ -712,7 +712,7 @@ class LocalSunroom:
             self._awake = None
             log.info(
                 "This computer may go to sleep while Sunroom runs here: turn off automatic "
-                "suspend in its power settings, so phones can reach Sunroom at night."
+                "suspend in its power settings, so your devices can reach Sunroom at night."
             )
 
     async def announce(self) -> None:

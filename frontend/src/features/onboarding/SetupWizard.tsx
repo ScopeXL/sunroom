@@ -62,14 +62,14 @@ export interface OnScreen {
   leave: () => void;
   /** You're Set's Open Sunroom: the board. */
   open: () => void;
-  /** Where phones open Sunroom (You're Set shows it as a QR code). */
+  /** Where devices open Sunroom (You're Set shows it as a QR code). */
   address: string;
 }
 
 /**
  * First run (UX §6, PLAN §12.1): on whatever device opened Sunroom first, usually a phone. The
  * password and the household are set together in one request that closes setup for good and
- * signs this phone in as a parent; the rest (the city, people, the PIN, calendars) uses the
+ * signs this device in as a parent; the rest (the city, people, the PIN, calendars) uses the
  * normal routes, and each step can be done later from Settings. Pairing a screen isn't a step
  * (ADR 0030): the screen shows its code by itself once setup is done, and it's paired from More
  * → Pair a Display, or with the household password on the screen. The household step also
@@ -470,7 +470,7 @@ function PeopleStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => voi
     mutationFn: async ({ name, role }: { name: string; role: RoleChoice }) => {
       const member = unwrap(await api.POST("/api/members", { body: { name, role } }));
       if (first && !onScreen) {
-        // The first person is whoever is setting up: this phone is theirs (a screen is
+        // The first person is whoever is setting up: this device is theirs (a screen is
         // everyone's).
         const session = unwrap(
           await api.PUT("/api/auth/member", { body: { member_id: member.id } }),

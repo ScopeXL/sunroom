@@ -78,8 +78,8 @@ export function TodayScreen() {
             search={{ from: "more" }}
             aria-label={
               session?.member
-                ? `Using this phone: ${session.member.name}`
-                : "Who's using this phone?"
+                ? `Using this device: ${session.member.name}`
+                : "Who's using this device?"
             }
             className="press flex size-11 shrink-0 items-center justify-center rounded-full"
           >

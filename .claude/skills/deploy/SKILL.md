@@ -105,8 +105,8 @@ Phone check (cellular, Wi-Fi off):
   [ ] Sunroom opens and you're still signed in, with your name in "Who's using this"
   [ ] More → Settings → About shows X.Y.Z (installed app: tap "Refresh" if it offers a new version)
   [ ] <one to three checks specific to this release>
-  [ ] a change on one phone appears on another, and on the kitchen screen, within a few seconds
-Kitchen screen:
+  [ ] a change on one phone appears on another, and on the wall screen, within a few seconds
+Wall screen:
   [ ] it still shows the board (it takes the new version at its overnight restart, about 3 AM;
       Settings → About shows the version)
   [ ] on a screen with Sunroom Screen: Settings → This Screen → Software offers X.Y.Z, or has

@@ -67,7 +67,7 @@ async def family(parent: httpx.AsyncClient, ctx: PluginContext) -> Family:
 
 @pytest.fixture
 async def screen(other: httpx.AsyncClient, family: Family) -> httpx.AsyncClient:
-    """The kitchen screen."""
+    """The wall screen."""
     paired = await other.post(
         "/api/auth/kiosk/pair-with-password", json={"password": PASSWORD}, headers=CSRF
     )

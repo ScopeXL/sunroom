@@ -6,6 +6,12 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- A new screen is called "Wall screen" until it's named, and Sunroom no longer assumes it hangs
+  in a kitchen, nor that everyone else uses a phone: the app, the installers and the docs say
+  "the screen" and "your devices".
+
 ### Removed
 
 - Sunroom OS, the ready-made card image for a Raspberry Pi, is retired: set a Pi up with the

@@ -244,7 +244,7 @@ export function BackupPage() {
       {own ? (
         <Group
           title="Restore from a File"
-          note="Put back a copy you downloaded: a .db, or a zip with photos. Everything on the server is replaced, and every phone and screen signs in again."
+          note="Put back a copy you downloaded: a .db, or a zip with photos. Everything on the server is replaced, every device signs in again, and wall screens show a pair code."
         >
           {restoreState?.last && !restoreState.last.ok ? (
             <div className={block}>

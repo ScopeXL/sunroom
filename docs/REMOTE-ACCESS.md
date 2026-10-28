@@ -1,8 +1,8 @@
 # Remote access and HTTPS
 
-Sunroom works on your home network with nothing to set up: phones open
+Sunroom works on your home network with nothing to set up: your devices open
 `http://sunroom.local:8080` (or the server's numbered address) and everything works. This page
-is for when you want more: Sunroom on your phone away from home, the app installed on Android,
+is for when you want more: Sunroom on your devices away from home, the app installed on Android,
 or Sign in with Google. Those need Sunroom at an `https://` address, and this page shows four ways
 to get one. The commands were checked against each tool's own documentation on 2026-10-08.
 
@@ -11,43 +11,44 @@ to get one. The commands were checked against each tool's own documentation on 2
 | | Plain http, at home | An https address |
 |---|---|---|
 | The calendar, lists, chores, meals, countdowns, photos, weather and live updates | Yes | Yes |
-| Signing in, pairing the kitchen screen, and Add a Device (typing the code, or scanning the QR code with the phone's camera) | Yes | Yes |
+| Signing in, pairing the wall screen, and Add a Device (typing the code, or scanning the QR code with the phone's camera) | Yes | Yes |
 | Adding photos from a phone | Yes | Yes |
 | On an iPhone's or iPad's home screen, opening like an app | Yes, with iOS and iPadOS 26 | Yes |
 | Installed as an app on Android (Chrome's **Install app**) | A home-screen shortcut only | Yes |
 | Opening when the server can't be reached (it says it's offline instead of showing a browser error) | No | Yes |
-| The kitchen screen on a Raspberry Pi | Yes: the installer sets the Pi's browser up for it | Yes |
+| The wall screen on a Raspberry Pi | Yes: the installer sets the Pi's browser up for it | Yes |
 | A tablet on the wall keeping its own screen awake | No: set the tablet never to sleep ([HARDWARE.md](HARDWARE.md)) | Yes |
 | Sign in with Google | No: Google refuses `http://` addresses (its other two ways work, [SYNC.md](SYNC.md)) | Yes |
 | Using Sunroom away from home | No | Yes, with the ways below |
 
-An `http://` address and an `https://` one are separate sign-ins: when a phone moves to the new
-address, sign in there once and add the new address to the home screen (and remove the old one).
+An `http://` address and an `https://` one are separate sign-ins: when a device moves to the new
+address, sign in there once, and on a phone add the new address to the home screen (and remove
+the old one).
 
 ## Which way
 
 | Way | Away from home | What you need | Who can reach the sign-in page | Who else sees the traffic |
 |---|---|---|---|---|
 | [Stay at home](#stay-at-home-the-default) | No | Nothing | Your home network | Nobody |
-| [Tailscale](#tailscale-recommended) (recommended) | Yes, on phones with the Tailscale app | A free Tailscale account | Only your own devices | Nobody: it's encrypted from end to end |
+| [Tailscale](#tailscale-recommended) (recommended) | Yes, on devices with the Tailscale app | A free Tailscale account | Only your own devices | Nobody: it's encrypted from end to end |
 | [Your own HTTPS proxy](#your-own-https-reverse-proxy) | If your proxy is on the internet | A proxy you already run | Depends on your proxy | Usually nobody |
 | [Caddy](#caddy-with-a-lets-encrypt-certificate) | Yes, in any browser | A domain name, two ports opened on your router | Anyone on the internet | Nobody |
 | [Cloudflare Tunnel](#cloudflare-tunnel) | Yes, in any browser | A domain name on Cloudflare | Anyone on the internet | Cloudflare |
 
 ## Stay at home (the default)
 
-- Nothing to set up. Phones on the home Wi-Fi use `http://sunroom.local:8080`, or the server's
+- Nothing to set up. Devices on the home Wi-Fi use `http://sunroom.local:8080`, or the server's
   numbered address (the Pi's installer prints it).
 - **Never forward port 8080 on your router.** That would put Sunroom on the internet over plain
   http, and the household password would cross the internet unencrypted. Use one of the ways
   below instead.
-- If your router has its own VPN and phones use it away from home, they can reach the server's
+- If your router has its own VPN and your devices use it away from home, they can reach the server's
   numbered address through it (`.local` names usually don't work over a VPN).
 
 ## The one setting (optional)
 
 None of the ways below needs a setting for the proxy (ADR 0034). Sunroom believes a proxy's
-forwarded headers ("this came in over https", which phone it came from, the name it was asked
+forwarded headers ("this came in over https", which device it came from, the name it was asked
 for) whenever the connection comes from the home network: loopback, the private ranges, link-local
 addresses and Tailscale's `100.64.0.0/10`. That's where every proxy in this page connects from,
 whether it runs on the same computer outside Docker, in Docker beside Sunroom, or on another
@@ -78,7 +79,7 @@ Where to put it:
 
 ## Tailscale (recommended)
 
-Tailscale joins your phones and the computer that runs Sunroom into a private network of your
+Tailscale joins your devices and the computer that runs Sunroom into a private network of your
 own, called a tailnet. Sunroom gets an https address with a real certificate, it works at home
 and away, nothing changes on your router, and only your own devices can reach it. Tailscale's
 free Personal plan covers a family (up to six people when this was written).
@@ -110,20 +111,20 @@ free Personal plan covers a family (up to six people when this was written).
    again; `sudo tailscale serve reset` turns it off. Tailscale streams live updates by itself.
    Nothing to set in Sunroom: it believes Tailscale's connections, and answers to the `.ts.net`
    name.
-5. **On each phone:** install the Tailscale app (App Store or Google Play), sign in to your
-   tailnet, and leave it connected. Invite the rest of the family from the **Users** page of the
-   admin console. Then open the https address, sign in with the household password, and add it
-   to the home screen.
+5. **On each device:** install the Tailscale app (App Store, Google Play, or tailscale.com for a
+   computer), sign in to your tailnet, and leave it connected. Invite the rest of the family from
+   the **Users** page of the admin console. Then open the https address, sign in with the
+   household password, and on a phone add it to the home screen.
 6. **Check it** (see *Check that it worked*).
 
-The kitchen screen can stay on its home-network address; nothing changes for it.
+The wall screen can stay on its home-network address; nothing changes for it.
 
 **Sign in with Google over Tailscale.** Once step 4 is done, Google's sign-in works at the
 `.ts.net` address. The redirect address to add to your Google app is
 `https://<machine name>.<tailnet name>.ts.net/api/calendar-sync/google/callback`; Sunroom shows
 the exact one in its Sign in with Google steps (Settings → Calendars & accounts → Add an
 account). Google's rules accept it: it's https, with a real domain name. Google never connects to
-it; only your phone's browser comes back to it.
+it; only your device's browser comes back to it.
 
 ## Your own HTTPS reverse proxy
 
@@ -178,7 +179,7 @@ long household password. If Caddy runs in Docker instead, put it on a network wi
 `reverse_proxy sunroom:8080`; nothing else changes.
 
 Caddy can also make an https address for the home network alone, without a domain
-(`tls internal`), but then every phone has to be set up to trust Caddy's own certificate
+(`tls internal`), but then every device has to be set up to trust Caddy's own certificate
 authority. That's for people who already know how; most households are better off with
 Tailscale.
 
@@ -215,7 +216,8 @@ that. A Cache Rule that bypasses the cache for `/api/*` is still a good safety n
 
 ## Check that it worked
 
-On a phone, open the new https address, sign in, and go to **More → Settings → About**. Under
+On any device, open the new https address, sign in, and go to **Settings → About** (under
+**More** on a phone). Under
 **Connection**:
 
 - **Live updates** says "connected".
@@ -241,5 +243,5 @@ On a phone, open the new https address, sign in, and go to **More → Settings �
   The log names it. `APP_ALLOWED_HOSTS` takes names only (no `https://`, no port).
 - **A `TRUSTED_PROXIES` line from an earlier version** is ignored; the log says so. It can stay
   or go.
-- **A phone was signed out after moving to the new address**: each address is its own sign-in.
+- **A device was signed out after moving to the new address**: each address is its own sign-in.
   Sign in once more there.

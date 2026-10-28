@@ -18,12 +18,12 @@ test("first run on a phone, the wall paired, Settings behind the PIN, then sign 
 }, testInfo) => {
   test.skip(testInfo.project.name !== ONLY, WHY);
   test.setTimeout(60_000);
-  // Before setup, the wall offers to set Sunroom up there or on a phone (ADR 0039).
+  // Before setup, the wall offers to set Sunroom up there or on another device (ADR 0039).
   await page.goto("/display");
   await expect(page.getByRole("heading", { name: "Set Up Sunroom", exact: true })).toBeVisible();
-  const onPhone = page.getByRole("region", { name: "On Your Phone" });
-  await expect(onPhone.getByText("http://sunroom.local:4173")).toBeVisible();
-  await expect(onPhone.getByRole("img", { name: /A code that opens/ })).toBeVisible();
+  const elsewhere = page.getByRole("region", { name: "On Another Device" });
+  await expect(elsewhere.getByText("http://sunroom.local:4173")).toBeVisible();
+  await expect(elsewhere.getByRole("img", { name: /A code that opens/ })).toBeVisible();
 
   const { page: phonePage, context } = await phone(browser, watch);
   await phonePage.goto("/");
@@ -78,7 +78,7 @@ test("first run on a phone, the wall paired, Settings behind the PIN, then sign 
   await phonePage.getByRole("button", { name: "Set a PIN" }).click();
 
   // No pairing step (ADR 0030): the wizard goes on to calendars, and its last page says where
-  // the kitchen screen is paired.
+  // the wall screen is paired.
   await expect(phonePage.getByRole("heading", { name: "Bring in your calendars" })).toBeVisible();
   await expect(phonePage.getByText("6 of 6")).toBeVisible();
   await expect(progress).toHaveAttribute("aria-valuenow", "6");
@@ -103,12 +103,18 @@ test("first run on a phone, the wall paired, Settings behind the PIN, then sign 
   await phonePage.getByLabel("The code on the screen").fill(code);
   await phonePage.getByRole("button", { name: "Pair", exact: true }).click();
   await expect(
-    phonePage.locator("[data-toast]").filter({ hasText: "Kitchen screen paired" }),
+    phonePage.locator("[data-toast]").filter({ hasText: "Wall screen paired" }),
   ).toBeVisible();
 
-  // The wall moves on by itself: name it, then the board.
+  // The wall moves on by itself: name it, then the board. No place is chosen for it, so Done
+  // keeps the name it was paired with (ADR 0042).
   await expect(page.getByRole("heading", { name: "Name this screen" })).toBeVisible();
-  await page.getByRole("button", { name: "Kitchen" }).click();
+  for (const place of ["Kitchen", "Hallway", "Living room", "Office", "Other"]) {
+    await expect(page.getByRole("button", { name: place })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  }
   await page.getByRole("button", { name: "Done" }).click();
   const board = page.getByRole("region", { name: "This Week" });
   await expect(board).toBeVisible();
@@ -143,7 +149,7 @@ test("first run on a phone, the wall paired, Settings behind the PIN, then sign 
   await phonePage.getByRole("link", { name: "More", exact: true }).click();
   await phonePage.getByRole("link", { name: "Settings" }).click();
   await phonePage.getByRole("link", { name: "Devices" }).click();
-  await expect(phonePage.getByText("Kitchen screen", { exact: true })).toBeVisible();
+  await expect(phonePage.getByText("Wall screen", { exact: true })).toBeVisible();
   await phonePage.getByRole("button", { name: "Sign Out of This Phone" }).click();
   await expect(phonePage).toHaveURL(/\/sign-in/);
   await context.close();

@@ -77,7 +77,7 @@ const context = await browser.newContext({
 if (!unpaired) {
   const response = await context.request.post("/api/auth/kiosk/pair-with-password", {
     headers: CSRF,
-    data: { password: PASSWORD, label: "Kitchen screen" },
+    data: { password: PASSWORD, label: "Wall screen" },
   });
   if (!response.ok()) throw new Error(`Pairing answered ${String(response.status())}`);
 }

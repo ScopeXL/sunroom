@@ -1,4 +1,4 @@
-# Sunroom Screen (a systemd user unit): the agent that runs the kitchen screen, its browser, its
+# Sunroom Screen (a systemd user unit): the agent that runs the screen, its browser, its
 # sleep and brightness and its own pages (docs/KIOSK.md). kiosk/install.sh copies it to
 # ~/.config/systemd/user/. It is not enabled at boot: the desktop session starts it (the labwc
 # autostart block, or an XDG autostart entry on X11) after importing WAYLAND_DISPLAY or
@@ -6,7 +6,7 @@
 # Its log: journalctl --user -u sunroom-kiosk
 
 [Unit]
-Description=Sunroom Screen (the kitchen screen)
+Description=Sunroom Screen (the wall screen)
 After=graphical-session.target
 # Never stop retrying: a wall screen has nobody to press "try again".
 StartLimitIntervalSec=0

@@ -29,7 +29,7 @@ export default defineConfig({
       manifest: {
         name: "Sunroom",
         short_name: "Sunroom",
-        description: "The family calendar on the kitchen wall, and on everyone's phone.",
+        description: "The family calendar on the wall, and on everyone's devices.",
         start_url: "/",
         scope: "/",
         display: "standalone",

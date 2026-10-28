@@ -51,7 +51,7 @@ async def test_setup_on_the_wall_pairs_that_screen(client: httpx.AsyncClient) ->
     assert response.status_code == 201, response.text
     session = response.json()
     assert session["device_kind"] == "kiosk"
-    assert session["device_label"] == "Kitchen screen"
+    assert session["device_label"] == "Wall screen"
     # With no PIN yet, a paired screen is a parent's: the wizard's next steps need that.
     assert session["is_parent"] is True
     member = await add_member(client, "Ana")

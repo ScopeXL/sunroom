@@ -92,7 +92,7 @@ async def family(parent: httpx.AsyncClient) -> Family:
 
 @pytest.fixture
 async def screen(other: httpx.AsyncClient, family: Family) -> httpx.AsyncClient:
-    """The kitchen screen. Without a parent PIN it counts as a parent (ADR 0006)."""
+    """The wall screen. Without a parent PIN it counts as a parent (ADR 0006)."""
     paired = await other.post(
         "/api/auth/kiosk/pair-with-password", json={"password": PASSWORD}, headers=CSRF
     )

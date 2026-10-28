@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sunroom kitchen screen: labwc settings for the full-screen browser.
+"""Sunroom screen: labwc settings for the full-screen browser.
 
 Edits ~/.config/labwc/rc.xml (first copying /etc/xdg/labwc/rc.xml when the user has no
 file of their own, or starting a minimal one) so that:
@@ -302,9 +302,9 @@ def ensure_rule(doc: Doc, label: str, state: dict, changes: list[str]) -> None:
     rule.text = "\n" + rule_indent + doc.unit
     warp.tail = "\n" + rule_indent + doc.unit
     hide.tail = "\n" + rule_indent
-    append_child(doc, rules, marker(label, "move the pointer to a corner and hide it over the kitchen screen"), root_indent)
+    append_child(doc, rules, marker(label, "move the pointer to a corner and hide it over the screen"), root_indent)
     append_child(doc, rules, rule, root_indent)
-    changes.append("Added a rule that hides the mouse pointer when the kitchen screen opens.")
+    changes.append("Added a rule that hides the mouse pointer when the screen opens.")
 
 
 def add_touch(doc: Doc, attributes: dict[str, str], label: str, what: str) -> None:
@@ -418,7 +418,7 @@ def install(args: argparse.Namespace) -> int:
             doc = parse_root(rc)
         except (ET.ParseError, ValueError, OSError) as exc:
             say(f"Could not read {tidy(rc)} ({exc}), so it was left alone.")
-            say("The kitchen screen still works, but the pointer may show and multi-touch may be off.")
+            say("The screen still works, but the pointer may show and multi-touch may be off.")
             return 2
         with open(rc, encoding="utf-8", errors="replace") as f:
             pristine = MARK not in f.read()
@@ -449,7 +449,7 @@ def install(args: argparse.Namespace) -> int:
         if state:
             state.setdefault("rc", rc)
             save_state(args.state, state)
-        say(f"Nothing to change in {tidy(rc)}; the kitchen screen settings are already there.")
+        say(f"Nothing to change in {tidy(rc)}; the screen's settings are already there.")
         return 0
 
     if state.pop("pending_backup", False):
@@ -547,7 +547,7 @@ def remove(args: argparse.Namespace) -> int:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
-        description="Add (or with --remove, take out) the Sunroom kitchen screen's labwc settings.",
+        description="Add (or with --remove, take out) the Sunroom screen's labwc settings.",
     )
     parser.add_argument("--remove", action="store_true", help="undo what an earlier run added")
     parser.add_argument("--rc", default=os.path.join(HOME, ".config", "labwc", "rc.xml"), help="the user's rc.xml")

@@ -45,7 +45,7 @@ async def test_a_parent_pairs_the_screen_with_its_code(
 
     claimed = await parent.post(
         "/api/auth/kiosk/pair",
-        json={"code": pairing["display"].lower(), "label": "Kitchen screen"},
+        json={"code": pairing["display"].lower(), "label": "Wall screen"},
         headers=CSRF,
     )
     assert claimed.status_code == 201, claimed.text
@@ -53,7 +53,7 @@ async def test_a_parent_pairs_the_screen_with_its_code(
     body = paired.json()
     assert body["status"] == "paired"
     assert body["session"]["device_kind"] == "kiosk"
-    assert body["session"]["device_label"] == "Kitchen screen"
+    assert body["session"]["device_label"] == "Wall screen"
     assert body["session"]["member"] is None  # the screen is everyone's
     assert "sunroom=v1." in paired.headers["set-cookie"]
     assert (await other.get("/api/auth/session")).json()["device_kind"] == "kiosk"

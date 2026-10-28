@@ -68,7 +68,7 @@ async def ctx(plugin: Countdowns, parent: httpx.AsyncClient) -> PluginContext:
 
 @pytest.fixture
 async def screen(other: httpx.AsyncClient, family: Family) -> httpx.AsyncClient:
-    """The kitchen screen."""
+    """The wall screen."""
     paired = await other.post(
         "/api/auth/kiosk/pair-with-password", json={"password": PASSWORD}, headers=CSRF
     )

@@ -56,7 +56,7 @@ const TITLES: Record<Step, string> = {
   pick: "Pick Calendars",
 };
 
-/** The words' sizes: the wall screen's (read from across the kitchen), or a phone's. */
+/** The words' sizes: the wall screen's (read from across the room), or a phone's. */
 function useText(): { body: string; secondary: string } {
   return useShell() === "display"
     ? { body: "text-d-body", secondary: "text-d-secondary" }

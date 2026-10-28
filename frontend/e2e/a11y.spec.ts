@@ -110,7 +110,7 @@ for (const scheme of ["light", "dark"] as const) {
       await signInPhone(page);
       await check(page, "today");
       await page.goto("/who?from=more");
-      await expect(page.getByRole("heading", { name: "Who’s using this phone?" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Who’s using this device?" })).toBeVisible();
       await check(page, "who's using this");
       await page.goto("/");
       await page.getByRole("link", { name: "Calendar" }).click();
@@ -459,7 +459,7 @@ for (const scheme of ["light", "dark"] as const) {
       await seed(request);
       const paired = await page.request.post("/api/auth/kiosk/pair-with-password", {
         headers: CSRF,
-        data: { password: PASSWORD, label: "Kitchen screen" },
+        data: { password: PASSWORD, label: "Wall screen" },
       });
       expect(paired.ok()).toBe(true);
       // No PIN in this household: the wall may change its own settings.
