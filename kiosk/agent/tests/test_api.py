@@ -170,7 +170,8 @@ async def test_a_fresh_pairing_is_written_to_disk_at_once(
 async def test_what_a_screen_cant_do_is_refused_in_words(
     client: httpx.AsyncClient, platform: FakePlatform
 ) -> None:
-    """A Pi has no Quit; a computer can't turn its picture or join Wi-Fi from here."""
+    """A Pi has no Quit; a computer can't turn its picture or join Wi-Fi from here, and no screen
+    opens the computer's network settings (ADR 0042: the Network row shows the connection)."""
     quit_ = await client.post("/api/screen/quit", headers=CHANGE)
     assert quit_.status_code == 409
     assert quit_.json()["error"]["message"] == "Quitting isn't something this screen can do."
@@ -179,11 +180,10 @@ async def test_what_a_screen_cant_do_is_refused_in_words(
         await client.put("/api/screen/display", json={"rotation": 90}, headers=CHANGE)
     ).status_code == 409
     assert (await client.get("/api/screen/wifi")).status_code == 409
-    assert (
-        await client.post("/api/screen/open-network-settings", headers=CHANGE)
-    ).status_code == 202
+    gone = await client.post("/api/screen/open-network-settings", headers=CHANGE)
+    assert gone.status_code in (404, 405)
     await settle()
-    assert platform.calls == ["open_network_settings"]
+    assert platform.calls == []
 
 
 async def test_rotation_turns_the_picture_and_is_kept(
@@ -450,5 +450,5 @@ async def test_the_schema_has_every_route(app: FastAPI) -> None:
     from sunroom_kiosk.app import router
 
     paths = get_openapi(title="t", version="0", routes=router.routes)["paths"]
-    assert len(paths) == 19
+    assert len(paths) == 18  # 0.17.0: no open-network-settings (ADR 0042)
     assert not any("_test" in path for path in paths)

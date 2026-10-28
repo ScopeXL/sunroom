@@ -2,8 +2,7 @@
 
 Three Wi-Fi networks, a power button that only records what it was asked, a screen that turns,
 and no files outside the agent's own folder. ``kind`` is ``pi`` (a Raspberry Pi set up with the
-installer, every capability) or ``desktop`` (a computer: Quit, and the system's own network
-settings).
+installer, every capability) or ``desktop`` (a computer: Quit; it joins Wi-Fi itself).
 Either can run Sunroom here (ADR 0038): the run "starts" the first ``--fake-sunroom`` (the e2e
 server), or holds part way, or stops, as a test asks. Names are synthetic, like every fixture
 (CLAUDE.md, hard rule 1).
@@ -100,7 +99,6 @@ class FakePlatform(Platform):
             "shutdown",
             "update",
             "quit",
-            "open_network_settings",
             "run_sunroom",
             "update_sunroom",
         ]
@@ -110,9 +108,6 @@ class FakePlatform(Platform):
 
     async def shutdown(self) -> None:
         self.calls.append("shutdown")
-
-    async def open_network_settings(self) -> None:
-        self.calls.append("open_network_settings")
 
     async def network(self) -> NetworkStatus:
         if self.wired:

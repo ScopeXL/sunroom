@@ -8,6 +8,9 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- This Screen shows the connection (Wi-Fi and its network, wired, or not connected) and no longer
+  offers to open the computer's network settings. A Mac on Wi-Fi now says so, where it said
+  "Wired".
 - Setup says "You can change all of this later in Settings." instead of promising three minutes,
   and ends on **All Done!** with one line and the Open Sunroom button.
 - A screen that has just chosen its Sunroom, or set one up on this computer, no longer closes its

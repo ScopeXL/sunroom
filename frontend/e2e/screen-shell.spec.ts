@@ -192,9 +192,8 @@ test("Can't Reach waits with every way out, and goes back to Sunroom by itself",
   await expect(page.getByRole("button", { name: "Wi-Fi", exact: true })).toHaveCount(
     desktop ? 0 : 1,
   );
-  await expect(page.getByRole("button", { name: "Open Network Settings" })).toHaveCount(
-    desktop ? 1 : 0,
-  );
+  // The computer joins its network itself: nothing here opens its settings (ADR 0042).
+  await expect(page.getByRole("button", { name: "Open Network Settings" })).toHaveCount(0);
   await check(page, "Can't Reach");
   await page.getByRole("button", { name: "Try Again" }).click();
   await expect(page.getByText("Can't reach that address from here.")).toBeVisible();

@@ -161,7 +161,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
       piState({
         platform: "linux",
         session: "desktop",
-        capabilities: ["restart", "shutdown", "update", "quit", "open_network_settings"],
+        capabilities: ["restart", "shutdown", "update", "quit"],
         network: { kind: "wired", ssid: null, ip: "192.168.1.31", strength: null },
         sunroom: {
           url: "https://calendar.example.com",
@@ -176,7 +176,8 @@ describe("Settings → This Screen (ADR 0035)", () => {
     expect(screen.getByText("https://calendar.example.com · typed")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Change Wi-Fi" })).toBeNull();
     expect(screen.queryByRole("group", { name: "Rotation" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Open Network Settings" })).toBeTruthy();
+    // The connection, and nothing to open (ADR 0042).
+    expect(screen.queryByRole("button", { name: "Open Network Settings" })).toBeNull();
     expect(screen.getByRole("button", { name: "Quit Sunroom Screen" })).toBeTruthy();
   });
 

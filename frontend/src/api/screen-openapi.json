@@ -112,7 +112,6 @@
           "brightness",
           "quit",
           "run_sunroom",
-          "open_network_settings",
           "update_sunroom"
         ],
         "type": "string"
@@ -1027,57 +1026,6 @@
           }
         },
         "summary": "Open Page",
-        "tags": [
-          "screen"
-        ]
-      }
-    },
-    "/api/screen/open-network-settings": {
-      "post": {
-        "operationId": "open_network_settings_api_screen_open_network_settings_post",
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScreenAcceptedOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScreenErrorOut"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScreenErrorOut"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScreenErrorOut"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "summary": "Open Network Settings",
         "tags": [
           "screen"
         ]

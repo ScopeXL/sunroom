@@ -164,14 +164,6 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
       showToast(refusal(error));
     },
   });
-  const networkSettings = useMutation({
-    mutationFn: async () => {
-      answer(await agent().POST("/api/screen/open-network-settings"));
-    },
-    onError: (error) => {
-      showToast(refusal(error));
-    },
-  });
 
   if (!state) return null;
   const can = (capability: ScreenCapability) => state.capabilities.includes(capability);
@@ -192,17 +184,6 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
               }}
             >
               Change Wi-Fi
-            </Button>
-          ) : null}
-          {can("open_network_settings") ? (
-            <Button
-              variant="secondary"
-              pending={networkSettings.isPending}
-              onClick={() => {
-                networkSettings.mutate();
-              }}
-            >
-              Open Network Settings
             </Button>
           ) : null}
         </Row>

@@ -2,9 +2,10 @@
 for that person from the Startup folder, with no administrator rights and no service.
 
 * **Power:** ``shutdown /r /t 5`` and ``shutdown /s /t 5``, which a signed-in user may run.
-* **The network:** Windows joins Wi-Fi itself; ``open_network_settings`` opens its page
-  (``ms-settings:network-wifi``), and the Network row reads ``netsh wlan show interfaces``
-  (English labels: in another language the row says Wired, or Not connected).
+* **The network:** Windows joins Wi-Fi itself, and the Network row reads ``netsh wlan show
+  interfaces`` (English labels: in another language the row says Wired, or Not connected; and
+  since Windows 11 24H2 netsh answers only with Location access on, so without it a Wi-Fi screen
+  says Wired too).
 * **The browser's policy** under ``HKEY_CURRENT_USER\\Software\\Policies\\…`` (policy.py's
   ``windows_values``), which a user may write for themselves and Edge and Chrome both read.
 * **Quit** closes Sunroom Screen until the next sign-in. No rotation (Windows' own display
@@ -33,7 +34,6 @@ from sunroom_kiosk.schemas import ScreenCapability, ScreenPlatform
 
 log = logs.get("platform")
 
-NETWORK_SETTINGS = "ms-settings:network-wifi"
 BIOS_KEY = r"HARDWARE\DESCRIPTION\System\BIOS"
 WINDOWS_11_BUILD = 22000
 # What a computer's maker leaves in its firmware when it names nothing.
@@ -159,7 +159,7 @@ class WindowsPlatform(Platform):
         return "Windows 11" if build >= WINDOWS_11_BUILD else "Windows 10"
 
     def capabilities(self) -> list[ScreenCapability]:
-        return ["restart", "shutdown", "update", "open_network_settings", "quit"]
+        return ["restart", "shutdown", "update", "quit"]
 
     # ------------------------------------------------------------------ the machine
 
@@ -175,12 +175,6 @@ class WindowsPlatform(Platform):
 
     async def shutdown(self) -> None:
         await self._must(["shutdown", "/s", "/t", "5"], "Shutting down")
-
-    async def open_network_settings(self) -> None:
-        # start's first quoted word is a window title, so an empty one goes before the page.
-        await self._must(
-            ["cmd", "/c", "start", "", NETWORK_SETTINGS], "Opening the network settings"
-        )
 
     # ------------------------------------------------------------------ the network
 

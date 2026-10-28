@@ -69,12 +69,6 @@ export function CantReachPage({ state }: { state: ScreenState }) {
       go("/find");
     },
   });
-  const networkSettings = useMutation({
-    mutationFn: async () => {
-      const { error } = await agent().POST("/api/screen/open-network-settings");
-      if (error !== undefined) throw new Error(said(error));
-    },
-  });
   const can = (capability: ScreenState["capabilities"][number]) =>
     state.capabilities.includes(capability);
   return (
@@ -105,16 +99,6 @@ export function CantReachPage({ state }: { state: ScreenState }) {
             }}
           >
             Wi-Fi
-          </Button>
-        ) : null}
-        {can("open_network_settings") ? (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              networkSettings.mutate();
-            }}
-          >
-            Open Network Settings
           </Button>
         ) : null}
         <Button

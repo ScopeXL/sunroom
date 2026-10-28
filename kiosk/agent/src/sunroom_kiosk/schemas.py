@@ -22,7 +22,6 @@ type ScreenCapability = Literal[
     "brightness",
     "quit",
     "run_sunroom",
-    "open_network_settings",
     "update_sunroom",
 ]
 type ScreenFoundHow = Literal["discovered", "typed", "local"]

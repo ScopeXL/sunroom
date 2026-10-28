@@ -167,9 +167,6 @@ class Platform:
     async def shutdown(self) -> None:
         raise UnsupportedError("Shutting down")
 
-    async def open_network_settings(self) -> None:
-        raise UnsupportedError("Opening the network settings")
-
     # ------------------------------------------------------------------ the network
 
     async def network(self) -> NetworkStatus:

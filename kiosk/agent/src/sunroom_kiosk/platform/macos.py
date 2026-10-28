@@ -7,7 +7,12 @@ writes), started again if it fails and not after Quit.
 * **Sleep:** the screen helper keeps the display awake with ``caffeinate`` while the household's
   times say on, and puts it to sleep with ``pmset displaysleepnow`` (screen.py). No brightness:
   the page dims itself (``?dimmer=page``).
-* **The network:** macOS joins Wi-Fi itself; ``open_network_settings`` opens its Wi-Fi page.
+* **The network:** macOS joins Wi-Fi itself. The Network row says how the Mac is connected: the
+  default route's interface, Wi-Fi when that is the Wi-Fi port (``networksetup``), else wired.
+  Its network's name only when macOS gives it: since macOS 14.4 ``networksetup`` and
+  ``ipconfig`` tell it only to a program with Location access, which a screen's agent hasn't
+  (so mostly "Wi-Fi: connected"); no signal strength (``system_profiler`` is too slow for every
+  30 s).
 * **The browser's policy** with ``defaults write`` in the browser's own preferences (policy.py's
   ``mac_commands``), as this user. Chrome reads those as recommended policies; a Mac managed by
   a profile may override them, and then the browser asks once, on the screen.
@@ -24,16 +29,51 @@ from typing import Any
 from sunroom_kiosk import logs, policy
 from sunroom_kiosk.platform.base import (
     CommandResult,
+    NetworkStatus,
     Platform,
     PlatformError,
     Runner,
+    local_ip,
     run_command,
 )
 from sunroom_kiosk.schemas import ScreenCapability, ScreenPlatform
 
 log = logs.get("platform")
 
-WIFI_SETTINGS = "x-apple.systempreferences:com.apple.wifi-settings-extension"
+# networksetup's names for the Wi-Fi port (before macOS 10.7 it was AirPort); not translated.
+WIFI_PORTS = ("Wi-Fi", "AirPort")
+JOINED = "Current Wi-Fi Network:"
+
+
+def interface_of(route: str) -> str | None:
+    """The default route's interface (``en0``) from ``route -n get default``."""
+    for line in route.splitlines():
+        key, _, value = line.strip().partition(":")
+        if key == "interface" and value.strip():
+            return value.strip()
+    return None
+
+
+def wifi_devices(ports: str) -> set[str]:
+    """The Wi-Fi port's devices from ``networksetup -listallhardwareports``."""
+    devices: set[str] = set()
+    port = ""
+    for line in ports.splitlines():
+        key, _, value = line.strip().partition(":")
+        if key == "Hardware Port":
+            port = value.strip()
+        elif key == "Device" and port in WIFI_PORTS:
+            devices.add(value.strip())
+    return devices
+
+
+def network_name(joined: str) -> str | None:
+    """The network's name from ``networksetup -getairportnetwork``, if macOS said it."""
+    for line in joined.splitlines():
+        if line.strip().startswith(JOINED):
+            name = line.strip()[len(JOINED) :].strip()
+            return name or None
+    return None
 
 
 def hardware_model() -> str:
@@ -85,7 +125,7 @@ class MacPlatform(Platform):
         return f"macOS {found}" if found else "macOS"
 
     def capabilities(self) -> list[ScreenCapability]:
-        return ["restart", "shutdown", "update", "open_network_settings", "quit"]
+        return ["restart", "shutdown", "update", "quit"]
 
     # ------------------------------------------------------------------ the machine
 
@@ -106,8 +146,19 @@ class MacPlatform(Platform):
             ["osascript", "-e", 'tell application "System Events" to shut down'], "Shutting down"
         )
 
-    async def open_network_settings(self) -> None:
-        await self._must(["open", WIFI_SETTINGS], "Opening the network settings")
+    # ------------------------------------------------------------------ the network
+
+    async def network(self) -> NetworkStatus:
+        route = await self.run(["route", "-n", "get", "default"])
+        device = interface_of(route.output) if route.ok else None
+        ip = local_ip()
+        if device is None or ip is None:
+            return NetworkStatus(kind="none")
+        ports = await self.run(["networksetup", "-listallhardwareports"])
+        if device not in wifi_devices(ports.output):
+            return NetworkStatus(kind="wired", ip=ip)
+        joined = await self.run(["networksetup", "-getairportnetwork", device])
+        return NetworkStatus(kind="wifi", ssid=network_name(joined.output), ip=ip)
 
     # ------------------------------------------------------------------ the browser's policy
 

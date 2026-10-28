@@ -93,23 +93,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/screen/open-network-settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Open Network Settings */
-        post: operations["open_network_settings_api_screen_open_network_settings_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/screen/quit": {
         parameters: {
             query?: never;
@@ -386,7 +369,7 @@ export interface components {
         /** @enum {string} */
         ScreenBrightness: "ddc" | "sysfs" | "none";
         /** @enum {string} */
-        ScreenCapability: "restart" | "shutdown" | "update" | "wifi" | "rotate" | "brightness" | "quit" | "run_sunroom" | "open_network_settings" | "update_sunroom";
+        ScreenCapability: "restart" | "shutdown" | "update" | "wifi" | "rotate" | "brightness" | "quit" | "run_sunroom" | "update_sunroom";
         /** ScreenCheckIn */
         ScreenCheckIn: {
             /** Url */
@@ -795,53 +778,6 @@ export interface operations {
                 "application/json": components["schemas"]["ScreenOpenIn"];
             };
         };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScreenAcceptedOut"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScreenErrorOut"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScreenErrorOut"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScreenErrorOut"];
-                };
-            };
-        };
-    };
-    open_network_settings_api_screen_open_network_settings_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             202: {

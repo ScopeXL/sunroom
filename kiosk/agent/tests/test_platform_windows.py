@@ -21,7 +21,6 @@ from sunroom_kiosk.platform.base import (
 )
 from sunroom_kiosk.platform.windows import (
     BIOS_KEY,
-    NETWORK_SETTINGS,
     RegistryKind,
     WindowsPlatform,
     wifi_from_netsh,
@@ -84,28 +83,17 @@ def windows(
 def test_a_windows_computer_restarts_shuts_down_and_quits_but_has_no_wifi_or_rotation() -> None:
     platform = windows(Shell())
     assert platform.name == "windows"
-    assert platform.capabilities() == [
-        "restart",
-        "shutdown",
-        "update",
-        "open_network_settings",
-        "quit",
-    ]
+    assert platform.capabilities() == ["restart", "shutdown", "update", "quit"]
     assert platform.system == "Windows 11"
     assert windows(Shell(), build=19045).system == "Windows 10"
 
 
-async def test_power_and_the_network_page_are_windows_own_commands() -> None:
+async def test_power_is_windows_own_commands() -> None:
     shell = Shell()
     platform = windows(shell)
     await platform.restart()
     await platform.shutdown()
-    await platform.open_network_settings()
-    assert shell.lines() == [
-        "shutdown /r /t 5",
-        "shutdown /s /t 5",
-        f"cmd /c start  {NETWORK_SETTINGS}",
-    ]
+    assert shell.lines() == ["shutdown /r /t 5", "shutdown /s /t 5"]
     refused = Shell(answers={"shutdown": CommandResult(1, "Access is denied.")})
     with pytest.raises(PlatformError, match=r"^Restarting didn't work\. Try again in a moment\.$"):
         await windows(refused).restart()

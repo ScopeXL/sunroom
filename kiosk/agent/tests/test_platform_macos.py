@@ -8,9 +8,10 @@ from __future__ import annotations
 import pytest
 
 from sunroom_kiosk import policy
+from sunroom_kiosk.platform import macos
 from sunroom_kiosk.platform.base import CommandResult, PlatformError
-from sunroom_kiosk.platform.macos import WIFI_SETTINGS, MacPlatform
-from tests.support import Shell
+from sunroom_kiosk.platform.macos import MacPlatform, interface_of, network_name, wifi_devices
+from tests.support import Shell, ok
 
 
 def mac(shell: Shell, model: str = "Mac14,2", release: str = "15.1") -> MacPlatform:
@@ -20,27 +21,19 @@ def mac(shell: Shell, model: str = "Mac14,2", release: str = "15.1") -> MacPlatf
 def test_a_mac_restarts_shuts_down_and_quits_but_has_no_wifi_or_rotation() -> None:
     platform = mac(Shell())
     assert platform.name == "macos"
-    assert platform.capabilities() == [
-        "restart",
-        "shutdown",
-        "update",
-        "open_network_settings",
-        "quit",
-    ]
+    assert platform.capabilities() == ["restart", "shutdown", "update", "quit"]
     assert (platform.model, platform.system) == ("Mac (Mac14,2)", "macOS 15.1")
     assert (mac(Shell(), "", "").model, mac(Shell(), "", "").system) == ("Mac", "macOS")
 
 
-async def test_power_and_the_wifi_page_are_the_macs_own_commands() -> None:
+async def test_power_is_the_macs_own_commands() -> None:
     shell = Shell()
     platform = mac(shell)
     await platform.restart()
     await platform.shutdown()
-    await platform.open_network_settings()
     assert [argv for argv, _ in shell.calls] == [
         ["osascript", "-e", 'tell application "System Events" to restart'],
         ["osascript", "-e", 'tell application "System Events" to shut down'],
-        ["open", WIFI_SETTINGS],
     ]
     refused = Shell(answers={"osascript": CommandResult(1, "Not authorized to send events.")})
     with pytest.raises(PlatformError, match=r"^Shutting down didn't work\. Try again"):
@@ -81,3 +74,66 @@ async def test_edge_gets_its_own_quiet_keys_too() -> None:
     shell.calls.clear()
     assert await platform.remove_policy("edge")
     assert f"defaults delete {domain} PromotionalTabsEnabled" in shell.lines()
+
+
+ROUTE = """\
+   route to: default
+destination: default
+       mask: default
+    gateway: 192.168.1.1
+  interface: en0
+      flags: <UP,GATEWAY,DONE,STATIC,PRCLONING,GLOBAL>
+"""
+
+PORTS = """\
+Hardware Port: Ethernet Adapter (en3)
+Device: en3
+Ethernet Address: 0e:00:00:00:00:01
+
+Hardware Port: Wi-Fi
+Device: en0
+Ethernet Address: 0e:00:00:00:00:02
+
+Hardware Port: Thunderbolt Bridge
+Device: bridge0
+Ethernet Address: 0e:00:00:00:00:03
+"""
+
+
+def test_the_macs_network_answers_read_right() -> None:
+    assert interface_of(ROUTE) == "en0"
+    assert interface_of("route: writing to routing socket: not in table") is None
+    assert wifi_devices(PORTS) == {"en0"}
+    assert network_name("Current Wi-Fi Network: HomeNet\n") == "HomeNet"
+    # Since macOS 14.4 the name is told only to a program with Location access.
+    assert network_name("You are not associated with an AirPort network.\n") is None
+
+
+async def test_a_mac_says_how_it_is_connected(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(macos, "local_ip", lambda: "192.168.1.31")
+    on_wifi = Shell(answers={"route -n get default": ok(ROUTE), "networksetup -list": ok(PORTS)})
+    joined = await mac(on_wifi).network()
+    assert (joined.kind, joined.ssid, joined.ip, joined.strength) == (
+        "wifi",
+        None,
+        "192.168.1.31",
+        None,
+    )
+    assert on_wifi.lines()[-1] == "networksetup -getairportnetwork en0"
+    named = Shell(
+        answers={
+            "route -n get default": ok(ROUTE),
+            "networksetup -list": ok(PORTS),
+            "networksetup -getairportnetwork": ok("Current Wi-Fi Network: HomeNet"),
+        }
+    )
+    assert (await mac(named).network()).ssid == "HomeNet"
+    cable = Shell(
+        answers={
+            "route -n get default": ok(ROUTE.replace("en0", "en3")),
+            "networksetup -list": ok(PORTS),
+        }
+    )
+    assert (await mac(cable).network()).kind == "wired"
+    nowhere = Shell(answers={"route -n get default": CommandResult(1, "not in table")})
+    assert (await mac(nowhere).network()).kind == "none"

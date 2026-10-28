@@ -357,13 +357,6 @@ async def open_page(body: ScreenOpenIn, agent: AgentDep) -> ScreenAcceptedOut:
     return ScreenAcceptedOut()
 
 
-@router.post("/open-network-settings", status_code=202)
-async def open_network_settings(agent: AgentDep) -> ScreenAcceptedOut:
-    need(agent, "open_network_settings", "Opening the network settings")
-    await attempt(agent.platform.open_network_settings())
-    return ScreenAcceptedOut()
-
-
 @router.get("/about")
 async def about(agent: AgentDep) -> ScreenAboutOut:
     return agent.about()

@@ -191,9 +191,11 @@ InPrivate session, which used to forget the pairing at every restart (ADR 0040).
 take it out of full screen; it goes back by itself within half a minute.
 
 Its settings, browser profile (the pairing) and log are in `%LOCALAPPDATA%\sunroom-kiosk`. Windows
-joins Wi-Fi, turns the picture and sets the brightness itself, so This Screen has **Open Network
-Settings** instead of Wi-Fi, no Rotation, and the page dims itself in the evening. **Quit Sunroom
-Screen** closes it until the next sign-in. Updates work as on a Pi.
+joins Wi-Fi and sets the brightness itself, so This Screen's Network row says how it's connected
+(Wi-Fi and its network, or Wired) with no Change Wi-Fi, and the page dims itself in the evening.
+Since Windows 11 24H2, Windows tells programs about Wi-Fi only with Location access on (Settings →
+Privacy & security → Location); without it the row says Wired. **Quit Sunroom Screen** closes it
+until the next sign-in. Updates work as on a Pi.
 
 With options (`-Url https://calendar.example.com`, `-DryRun`, `-AgentWheel FILE`, `-Uninstall`),
 run the same download as a script block, in the PowerShell window too:
@@ -222,9 +224,10 @@ a LaunchAgent, `~/Library/LaunchAgents/app.sunroom.kiosk.plist`, which starts it
 again if it fails, and starts it now when the Mac is signed in (before the screen is paired,
 `launchctl bootout gui/$(id -u)/app.sunroom.kiosk` in Terminal closes it until the next
 sign-in). Sunroom Screen sets the browser's policy in its own preferences (`defaults`, this user
-only), keeps the display awake
-while the household's times say on (`caffeinate`) and lets it sleep at night (`pmset
-displaysleepnow`); the page dims itself in the evening. The first Restart or Shut Down asks once
+only), keeps the display awake while the household's times say on (`caffeinate`) and lets it sleep
+at night (`pmset displaysleepnow`); the page dims itself in the evening. This Screen's Network row
+says Wi-Fi or Wired (macOS keeps the Wi-Fi network's name from programs without Location access,
+so it says "Wi-Fi: connected"). The first Restart or Shut Down asks once
 whether Sunroom Screen may control System Events. **Quit Sunroom Screen** in This Screen closes
 it until the next sign-in. Its log: `~/Library/Logs/sunroom-kiosk.log`. `--url`, `--dry-run` and
 `--agent-wheel` work as on Linux; `bash ~/.local/share/sunroom-kiosk/uninstall.sh` takes it off
