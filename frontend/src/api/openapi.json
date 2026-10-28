@@ -2135,6 +2135,10 @@
           "client": {
             "$ref": "#/components/schemas/ClientInfo"
           },
+          "feedback": {
+            "title": "Feedback",
+            "type": "boolean"
+          },
           "install_kind": {
             "title": "Install Kind",
             "type": "string"
@@ -2188,6 +2192,7 @@
           "revision",
           "schema_revision",
           "install_kind",
+          "feedback",
           "timezone",
           "live_updates",
           "client",
@@ -3451,6 +3456,42 @@
           }
         },
         "title": "FakeScript",
+        "type": "object"
+      },
+      "FeedbackIn": {
+        "properties": {
+          "body": {
+            "default": "",
+            "maxLength": 1500,
+            "title": "Body",
+            "type": "string"
+          },
+          "contact": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Contact",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "problem",
+              "idea"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "title"
+        ],
+        "title": "FeedbackIn",
         "type": "object"
       },
       "FieldOut": {
@@ -14757,6 +14798,41 @@
           }
         },
         "summary": "Export",
+        "tags": [
+          "meta"
+        ]
+      }
+    },
+    "/api/feedback": {
+      "post": {
+        "description": "Any signed-in device or paired screen, at most five times an hour for the whole server.\nThe test server keeps what it would have sent (``GET /api/_test/feedback``) and posts\nnothing, as it makes up the update check's answer.",
+        "operationId": "send_feedback_api_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send Feedback",
         "tags": [
           "meta"
         ]

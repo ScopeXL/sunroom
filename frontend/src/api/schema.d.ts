@@ -1679,6 +1679,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Feedback
+         * @description Any signed-in device or paired screen, at most five times an hour for the whole server.
+         *     The test server keeps what it would have sent (``GET /api/_test/feedback``) and posts
+         *     nothing, as it makes up the update check's answer.
+         */
+        post: operations["send_feedback_api_feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -3425,6 +3447,8 @@ export interface components {
         DiagnosticsOut: {
             backups: components["schemas"]["BackupStatusOut"];
             client: components["schemas"]["ClientInfo"];
+            /** Feedback */
+            feedback: boolean;
             /** Install Kind */
             install_kind: string;
             live_updates: components["schemas"]["LiveUpdatesInfo"];
@@ -3799,6 +3823,26 @@ export interface components {
                 string,
                 string
             ][];
+        };
+        /** FeedbackIn */
+        FeedbackIn: {
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /**
+             * Contact
+             * @default
+             */
+            contact: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "problem" | "idea";
+            /** Title */
+            title: string;
         };
         /** FieldOut */
         FieldOut: {
@@ -9209,6 +9253,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    send_feedback_api_feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

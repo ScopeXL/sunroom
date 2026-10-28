@@ -71,9 +71,10 @@ def test_no_code_lets_itself_reach_a_private_address() -> None:
     assert literal == []
 
 
-def test_the_core_reaches_out_only_for_plugins_and_the_update_check() -> None:
+def test_the_core_reaches_out_only_for_plugins_the_update_check_and_feedback() -> None:
     """Outside plugins (which use ``ctx.http``), the shared client is used by the plugin
-    context's factory and the opt-in update check only."""
+    context's factory, the opt-in update check, and Send Feedback when someone sends it (ADR
+    0042)."""
     users = sorted(
         {
             name
@@ -85,4 +86,4 @@ def test_the_core_reaches_out_only_for_plugins_and_the_update_check() -> None:
             and not name.startswith("plugins/")
         }
     )
-    assert users == ["meta/updates.py"]
+    assert users == ["meta/feedback.py", "meta/updates.py"]

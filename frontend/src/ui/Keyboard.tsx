@@ -9,6 +9,7 @@ import {
   lowerKeyboard,
   typeInto,
   wantsCapital,
+  type KeyboardField,
   type KeyboardLayout,
 } from "../lib/keyboard";
 import { useStore } from "../lib/store";
@@ -188,7 +189,7 @@ export function KeyboardHost({ rail }: { rail: "left" | "right" | null }) {
   return dialog?.open && dialog.isConnected ? createPortal(keys, dialog) : keys;
 }
 
-function Keys({ target, layout }: { target: HTMLInputElement; layout: KeyboardLayout }) {
+function Keys({ target, layout }: { target: KeyboardField; layout: KeyboardLayout }) {
   const [page, setPage] = useState<"letters" | "symbols">("letters");
   const [shift, setShift] = useState<"auto" | "on" | "off">("auto");
   const [accents, setAccents] = useState<string | null>(null);
@@ -230,6 +231,9 @@ function Keys({ target, layout }: { target: HTMLInputElement; layout: KeyboardLa
         wide={1.5}
         onPress={() => {
           enter(target);
+          // In a box of words that was a new line, whose first letter may want a capital.
+          if (shift === "off") setShift("auto");
+          redraw((n) => n + 1);
         }}
       >
         <CornerDownLeft aria-hidden="true" className="size-8" />

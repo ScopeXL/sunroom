@@ -23,6 +23,7 @@ from sunroom.db import full_backup, migrate
 from sunroom.db.backup import BackupBusyError, BackupError, NoRoomError
 from sunroom.db.export import export_data
 from sunroom.meta.erase import erase_everything
+from sunroom.meta.feedback import address as feedback_address
 from sunroom.state import AppState, StateDep
 from sunroom.web.hosts import host_name, is_ip_literal
 
@@ -106,6 +107,7 @@ class DiagnosticsOut(BaseModel):
     revision: str
     schema_revision: str | None
     install_kind: str
+    feedback: bool  # Send Feedback posts here (ADR 0042); off, it opens GitHub's new issue
     timezone: str
     live_updates: LiveUpdatesInfo
     client: ClientInfo
@@ -145,6 +147,7 @@ async def diagnostics(request: Request, state: StateDep, actor: ParentDep) -> Di
         revision=info.revision,
         schema_revision=migrate.current_revision(state.settings.db_path),
         install_kind=state.settings.sunroom_install_kind.value,
+        feedback=feedback_address(state.settings) is not None,
         timezone=state.zone().key,
         live_updates=LiveUpdatesInfo(connections=state.hub.connection_count, epoch=state.hub.epoch),
         client=ClientInfo(scheme=request.url.scheme, host=headers.get("host", "")),

@@ -210,6 +210,7 @@ for (const scheme of ["light", "dark"] as const) {
           await sheet(page, "Add a Library", "add a photo library");
           await sheet(page, "Edit Immich", "a photo library");
         }
+        if (title === "Support Sunroom") await sheet(page, "Send Feedback", "send feedback");
       }
       await page.goto("/install?from=more");
       await expect(
@@ -442,9 +443,11 @@ for (const scheme of ["light", "dark"] as const) {
           await sheet(page, "Add a Library", "display: add a photo library");
           await sheet(page, "Edit Immich", "display: a photo library");
         }
-        // The header's Sunroom Discord: a code to scan, with a name (ADR 0042).
+        // The header's Sunroom Discord: a code to scan, with a name; Send Feedback with its
+        // words on the wall's keyboard (ADR 0042).
         if (title === "Support Sunroom") {
           await sheet(page, "Sunroom's Discord", "display: the Sunroom Discord");
+          await sheet(page, "Send Feedback", "display: send feedback");
         }
       }
     });

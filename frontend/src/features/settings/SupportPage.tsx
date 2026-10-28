@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
 
-import { api, unwrap } from "../../api/client";
+import { ApiError, api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { copyText } from "../../lib/copy";
 import { asParent } from "../../lib/parent";
@@ -44,6 +44,12 @@ export function SupportPage() {
   const { data: session } = useQuery({ queryKey: qk.session(), queryFn: fetchSession });
   const kiosk = session?.device_kind === "kiosk";
   const [feedback, setFeedback] = useState(false);
+  const { data: diagnostics } = useQuery({
+    queryKey: qk.diagnostics(),
+    queryFn: () => asParent(async () => unwrap(await api.GET("/api/admin/diagnostics"))),
+  });
+  // This Sunroom sends feedback itself, unless the server has that off (ADR 0042).
+  const direct = diagnostics?.feedback ?? true;
   const rows = [
     kiosk ? (
       <Row key="discord" label="Discord" hint={DISCORD_NOTE}>
@@ -139,7 +145,11 @@ export function SupportPage() {
       </Group>
       <Group
         title="Feedback"
-        note="Found a problem, or have an idea? Feedback goes to Sunroom's page on GitHub, where everyone can see it. It needs a GitHub account; nothing from your calendar is sent."
+        note={
+          direct
+            ? "Found a problem, or have an idea? It goes straight to the people who make Sunroom. No account needed, and nothing from your calendar is sent."
+            : "Found a problem, or have an idea? Feedback goes to Sunroom's page on GitHub, where everyone can see it. It needs a GitHub account; nothing from your calendar is sent."
+        }
       >
         <div className={display ? "py-5" : "py-4"}>
           <Button
@@ -155,6 +165,9 @@ export function SupportPage() {
       <FeedbackSheet
         open={feedback}
         kiosk={kiosk}
+        direct={direct}
+        version={diagnostics?.version ?? __APP_VERSION__}
+        install={installWords(diagnostics?.install_kind)}
         onClose={() => {
           setFeedback(false);
         }}
@@ -164,19 +177,27 @@ export function SupportPage() {
 }
 
 /**
- * Send Feedback (ADR 0034): the kind, a title and the words, sent as GitHub's new-issue page
- * with Sunroom's version and install filled in, where the person signs in and taps Submit. The
- * page can't post to GitHub itself (its CSP talks to Sunroom only, and the image holds no
- * token). On a paired screen, a QR code of the link instead, with the title only, so the code
- * stays readable; the rest is typed on the phone.
+ * Send Feedback (ADR 0034, 0042): the kind, a title, the words and how to reach you, which this
+ * Sunroom posts to the people who make it, with its version and install and nothing else: no
+ * account, from any device and from the screen itself (the words on its keyboard). A server with
+ * feedback off opens GitHub's new-issue page instead, filled in, where the person signs in and
+ * taps Submit (the page can't post to GitHub itself: its CSP talks to Sunroom only, and the image
+ * holds no token); on a paired screen as a QR code of the link with the title only, so the code
+ * stays readable.
  */
 function FeedbackSheet({
   open,
   kiosk,
+  direct,
+  version,
+  install,
   onClose,
 }: {
   open: boolean;
   kiosk: boolean;
+  direct: boolean;
+  version: string;
+  install: string | null;
   onClose: () => void;
 }) {
   const display = useShell() === "display";
@@ -185,51 +206,109 @@ function FeedbackSheet({
   const [kind, setKind] = useState<FeedbackKind>("problem");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const { data: diagnostics } = useQuery({
-    queryKey: qk.diagnostics(),
-    queryFn: () => asParent(async () => unwrap(await api.GET("/api/admin/diagnostics"))),
-    enabled: open,
-  });
-  const version = diagnostics?.version ?? __APP_VERSION__;
-  const install = installWords(diagnostics?.install_kind);
-  const url = feedbackUrl({ kind, title, body: kiosk ? "" : body, version, install });
-  const ready = title.trim().length > 0;
-  const close = () => {
-    onClose();
+  const [contact, setContact] = useState("");
+  // The server said it has feedback off after all: GitHub's way for this sheet.
+  const [off, setOff] = useState(false);
+  const github = !direct || off;
+  const clear = () => {
     setTitle("");
     setBody("");
+    setContact("");
   };
+  const send = useMutation({
+    mutationFn: async () => {
+      unwrap(await api.POST("/api/feedback", { body: { kind, title, body, contact } }));
+    },
+    onSuccess: () => {
+      showToast("Feedback sent. Thank you!");
+      onClose();
+      clear();
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.code === "feedback_off") setOff(true);
+    },
+  });
+  const close = () => {
+    onClose();
+    clear();
+    send.reset();
+  };
+  const url = feedbackUrl({ kind, title, body: kiosk ? "" : body, version, install });
+  const ready = title.trim().length > 0;
+  const soft = display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft";
+  const words = (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={wordsId} className={labelClass}>
+        What happened, or what would help
+      </label>
+      <textarea
+        id={wordsId}
+        value={body}
+        maxLength={1500}
+        rows={5}
+        {...(display ? { inputMode: "none" as const, "data-osk": "text" } : {})}
+        onChange={(event) => {
+          setBody(event.target.value);
+        }}
+        className={`min-w-0 resize-y rounded-button border-2 border-line bg-surface text-ink ${
+          display ? "min-h-40 px-5 py-4 text-d-body" : "min-h-32 px-4 py-3 text-body"
+        }`}
+      />
+    </div>
+  );
+  let footer;
+  if (!github) {
+    footer = (
+      <div className="flex flex-col gap-3">
+        <Button
+          block
+          pending={send.isPending}
+          disabled={!ready}
+          onClick={() => {
+            send.mutate();
+          }}
+        >
+          Send Feedback
+        </Button>
+        {send.isError ? (
+          <p role="alert" className={`${soft} font-semibold text-alert`}>
+            {errorMessage(send.error)}
+          </p>
+        ) : null}
+        <Button block variant="secondary" onClick={close}>
+          Cancel
+        </Button>
+      </div>
+    );
+  } else if (kiosk) {
+    footer = (
+      <Button block variant="secondary" onClick={close}>
+        Done
+      </Button>
+    );
+  } else {
+    footer = (
+      <div className="flex flex-col gap-3">
+        <ButtonLink
+          block
+          href={url}
+          target="_blank"
+          rel="noreferrer noopener"
+          disabled={!ready}
+          onClick={() => {
+            if (ready) close();
+          }}
+        >
+          Open GitHub
+        </ButtonLink>
+        <Button block variant="secondary" onClick={close}>
+          Cancel
+        </Button>
+      </div>
+    );
+  }
   return (
-    <Sheet
-      open={open}
-      title="Send Feedback"
-      onClose={close}
-      footer={
-        kiosk ? (
-          <Button block variant="secondary" onClick={close}>
-            Done
-          </Button>
-        ) : (
-          <div className="flex flex-col gap-3">
-            <ButtonLink
-              block
-              href={url}
-              target="_blank"
-              rel="noreferrer noopener"
-              disabled={!ready}
-              onClick={() => {
-                if (ready) close();
-              }}
-            >
-              Open GitHub
-            </ButtonLink>
-            <Button block variant="secondary" onClick={close}>
-              Cancel
-            </Button>
-          </div>
-        )
-      }
-    >
+    <Sheet open={open} title="Send Feedback" onClose={close} footer={footer}>
       <div className="flex flex-col gap-5">
         <Segmented
           label="What is it?"
@@ -249,29 +328,23 @@ function FeedbackSheet({
             setTitle(event.target.value);
           }}
         />
-        {kiosk ? null : (
-          <div className="flex flex-col gap-2">
-            <label htmlFor={wordsId} className={labelClass}>
-              What happened, or what would help
-            </label>
-            <textarea
-              id={wordsId}
-              value={body}
-              maxLength={1500}
-              rows={5}
-              onChange={(event) => {
-                setBody(event.target.value);
-              }}
-              className={`min-w-0 resize-y rounded-button border-2 border-line bg-surface text-ink ${
-                display ? "min-h-40 px-5 py-4 text-d-body" : "min-h-32 px-4 py-3 text-body"
-              }`}
-            />
-          </div>
+        {github && kiosk ? null : words}
+        {github ? null : (
+          <TextField
+            label="How to reach you (optional)"
+            hint="An email or a Discord name, if you'd like an answer."
+            value={contact}
+            maxLength={120}
+            autoComplete="off"
+            onChange={(event) => {
+              setContact(event.target.value);
+            }}
+          />
         )}
-        <p className={display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft"}>
+        <p className={soft}>
           {`Sunroom ${version}${install ? ` on ${install}` : ""} is added for you. Nothing else is.`}
         </p>
-        {kiosk && ready ? (
+        {github && kiosk && ready ? (
           <div className="flex flex-col items-center gap-4 text-center">
             <QrCode value={url} label="A code that opens GitHub's new issue" className="size-72" />
             <p className={display ? "text-d-body" : "text-body"}>

@@ -1,10 +1,10 @@
 # Privacy
 
-**Status:** current as of version 0.6.0. Each release that changes what Sunroom stores or sends
+**Status:** current as of version 0.17.0. Each release that changes what Sunroom stores or sends
 updates this page.
 
 Each Sunroom installation is run by the household that deploys it. The authors of this project
-receive no data from any installation.
+receive no data from any installation, except feedback someone there chooses to send (below).
 
 ## What Sunroom stores
 
@@ -51,6 +51,7 @@ Settings → Features stops it.
 | **Calendars you connect** | iCloud, Google, or the calendar server or address you add | Every 5 minutes or so (a calendar address as often as you chose) | Those calendars' events, both ways for iCloud, Google and other calendar servers; the sign-in you gave for them |
 | **Photo libraries you connect** | The Immich server you add | Every 30 minutes, and when you check | Your API key for it, to that server only; copies of the photos it picks are kept on this server, resized, as uploaded photos are |
 | **Check for updates daily** (off unless you turn it on) | GitHub (`api.github.com`) | Once a day | The server's internet address and Sunroom's version |
+| **Send Feedback** (Settings → Support Sunroom) | The people who make Sunroom: the project's relay on Cloudflare, which posts it in the project's Discord channel, where Discord keeps it | Only when someone taps Send Feedback, at most five times an hour | What they wrote (a problem or an idea, its title and words, and how to reach them if they gave it), Sunroom's version and how it's installed; the relay also sees the server's internet address, kept for an hour only as a scrambled count. Nothing from the calendar, the household or its people |
 
 Holidays calendars are made on the server from a built-in list; nothing is sent for them.
 
@@ -94,6 +95,8 @@ when someone signs in. Tailscale doesn't: it's encrypted from end to end
 ## Contact
 
 Report security issues privately through the repository's GitHub security advisories (private
-vulnerability reporting). Other questions can go in a GitHub issue. Settings → Support Sunroom
-→ Send Feedback opens GitHub's new-issue page in your browser with what you typed and Sunroom's
-version filled in; you send it from GitHub, signed in there, and Sunroom's server sends nothing.
+vulnerability reporting). Other questions can go in a GitHub issue, or in the Sunroom Discord. Settings → Support Sunroom
+→ Send Feedback sends what you typed as the table above says. Where the server has it off
+(`SUNROOM_FEEDBACK_URL` set empty), it opens GitHub's new-issue page in your browser instead,
+with what you typed and Sunroom's version filled in; you send it from GitHub, signed in there,
+and Sunroom's server sends nothing.

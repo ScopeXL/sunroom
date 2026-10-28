@@ -36,6 +36,9 @@ export SUNROOM_TEST_MODE=1
 # What a phone should open, as kiosk/install.sh sets it on a Pi (the wall itself is on loopback).
 export SUNROOM_ADVERTISED_URL="http://sunroom.local:4173"
 export SUNROOM_STATIC_DIR="$ROOT/frontend/dist"
+# Send Feedback is on (ADR 0042): in test mode the server keeps what it would post
+# (GET /api/_test/feedback) and posts nothing, so this address is never reached.
+export SUNROOM_FEEDBACK_URL="https://feedback.invalid/"
 export LOG_LEVEL=WARNING
 cd "$ROOT/backend"
 uv run sunroom serve --host 127.0.0.1 &

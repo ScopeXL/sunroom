@@ -1260,6 +1260,32 @@ test.describe("a laptop", () => {
     const discord = page.getByRole("banner").getByRole("link", { name: "Sunroom's Discord" });
     await expect(discord).toHaveAttribute("href", "https://discord.gg/y6AeQRpsPQ");
     await expect(discord).toHaveAttribute("target", "_blank");
+    // Send Feedback goes through this Sunroom, no account needed (ADR 0042); the test server
+    // keeps what it would have posted.
+    await page
+      .getByRole("navigation", { name: "Settings" })
+      .getByRole("link", { name: "Support Sunroom", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Send Feedback" }).click();
+    const feedback = page.getByRole("dialog", { name: "Send Feedback" });
+    await feedback.getByRole("button", { name: "An idea" }).click();
+    await feedback.getByLabel("In a few words").fill("A chore wheel");
+    await feedback.getByLabel("What happened, or what would help").fill("Spin it on Sundays.");
+    await feedback.getByLabel("How to reach you (optional)").fill("Ana");
+    await feedback.getByRole("button", { name: "Send Feedback" }).click();
+    await expect(
+      page.locator("[data-toast]").filter({ hasText: "Feedback sent. Thank you!" }),
+    ).toBeVisible();
+    await expect(feedback).toBeHidden();
+    const kept = (await (await request.get("/api/_test/feedback")).json()) as {
+      embeds: { title: string; description: string }[];
+    }[];
+    expect(kept.map((sent) => sent.embeds[0]?.title)).toEqual(["Idea: A chore wheel"]);
+    expect(JSON.stringify(kept)).not.toContain("Sample Family");
+    await page
+      .getByRole("navigation", { name: "Settings" })
+      .getByRole("link", { name: "Family", exact: true })
+      .click();
     const field = page.getByLabel("Add a person");
     await field.click();
     await page.keyboard.type("Zoe");

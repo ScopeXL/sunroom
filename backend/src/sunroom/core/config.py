@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     sunroom_update_check: bool | None = None
     sunroom_allow_private_urls: bool = False
     sunroom_test_mode: bool = False
+    # Optional (ADR 0042): where Send Feedback posts; unset, the project's relay
+    # (meta/feedback.py); empty, feedback is off. A secret: it may hold a Discord webhook's token.
+    sunroom_feedback_url: SecretStr | None = None
     sunroom_container: bool = False
     sunroom_static_dir: Path | None = None
 
@@ -143,6 +146,16 @@ class Settings(BaseSettings):
             raise ValueError("must be an address only, with no path, query or fragment")
         return f"{parts.scheme}://{parts.netloc}"
 
+    @field_validator("sunroom_feedback_url")
+    @classmethod
+    def _check_feedback_url(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is None or not value.get_secret_value().strip():
+            return value
+        parts = urlsplit(value.get_secret_value().strip())
+        if parts.scheme not in {"http", "https"} or not parts.hostname:
+            raise ValueError("must be an address like https://feedback.example.com, or empty")
+        return value
+
     @field_validator("sunroom_update_check", mode="before")
     @classmethod
     def _empty_update_check(cls, value: Any) -> Any:
@@ -197,7 +210,7 @@ class Settings(BaseSettings):
         """Exact secret values from the environment, so log redaction can scrub them anywhere."""
         values = [
             secret.get_secret_value()
-            for secret in (self.app_secret_key, self.app_password)
+            for secret in (self.app_secret_key, self.app_password, self.sunroom_feedback_url)
             if secret is not None
         ]
         return [v for v in values if v]

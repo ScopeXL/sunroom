@@ -144,6 +144,53 @@ describe("the on-screen keyboard (UX §1)", () => {
     expect((input as HTMLInputElement).value).toBe("S");
   });
 
+  it("types into a box of words too, where Enter starts a new line (ADR 0042)", () => {
+    const submitted = vi.fn();
+    function Words() {
+      const [value, setValue] = useState("");
+      return (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitted();
+          }}
+        >
+          <label>
+            What happened
+            <textarea
+              data-osk="text"
+              inputMode="none"
+              value={value}
+              onChange={(event) => {
+                setValue(event.target.value);
+              }}
+            />
+          </label>
+        </form>
+      );
+    }
+    render(
+      <>
+        <Words />
+        <KeyboardHost rail="left" />
+      </>,
+    );
+    const box = screen.getByLabelText<HTMLTextAreaElement>("What happened");
+    act(() => {
+      box.focus();
+    });
+    expect(screen.getByRole("group", { name: "On-screen keyboard" })).toBeTruthy();
+    press("H");
+    press("i");
+    press("Enter");
+    press("Y");
+    expect(box.value).toBe("Hi\nY");
+    expect(submitted).not.toHaveBeenCalled();
+    press("Delete");
+    press("Delete");
+    expect(box.value).toBe("Hi");
+  });
+
   it("stays down while a physical keyboard is in use", () => {
     render(
       <>

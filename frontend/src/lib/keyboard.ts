@@ -1,7 +1,8 @@
 /**
  * The display's on-screen keyboard state (UX §1 "The on-screen keyboard"; ui/Keyboard).
  *
- * Fields on the wall screen carry data-osk (ui/TextField). Focusing one opens the keyboard with
+ * Fields on the wall screen carry data-osk (ui/TextField, and a box of words such as Send
+ * Feedback's, ADR 0042, where ↵ starts a new line). Focusing one opens the keyboard with
  * that field's layout; focus moving to another field retargets it; focus leaving every field
  * lowers it, keeping what was typed. A physical key press in the last 5 seconds (a laptop, or a
  * keyboard left on the Pi) keeps it closed. The keyboard's own keys never take focus, so the
@@ -11,8 +12,11 @@ import { createStore } from "./store";
 
 export type KeyboardLayout = "text" | "password" | "numeric";
 
+/** A one-line field, or a box of words. */
+export type KeyboardField = HTMLInputElement | HTMLTextAreaElement;
+
 export interface KeyboardState {
-  target: HTMLInputElement | null;
+  target: KeyboardField | null;
   layout: KeyboardLayout;
   open: boolean;
 }
@@ -22,11 +26,14 @@ export const keyboard = createStore<KeyboardState>({ target: null, layout: "text
 const PHYSICAL_GRACE_MS = 5000;
 let physicalAt = 0;
 
-function fieldOf(node: EventTarget | null): HTMLInputElement | null {
-  return node instanceof HTMLInputElement && node.dataset.osk !== undefined ? node : null;
+function fieldOf(node: EventTarget | null): KeyboardField | null {
+  return (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) &&
+    node.dataset.osk !== undefined
+    ? node
+    : null;
 }
 
-function layoutOf(field: HTMLInputElement): KeyboardLayout {
+function layoutOf(field: KeyboardField): KeyboardLayout {
   const layout = field.dataset.osk;
   return layout === "password" || layout === "numeric" ? layout : "text";
 }
@@ -69,8 +76,9 @@ export function watchKeyboardFields(): () => void {
 
 /** Put text into a field the way typing would, so React's onChange sees it: the native value
  * setter (React watches it), then an input event. */
-export function setFieldValue(field: HTMLInputElement, value: string, caret: number): void {
-  Reflect.set(HTMLInputElement.prototype, "value", value, field);
+export function setFieldValue(field: KeyboardField, value: string, caret: number): void {
+  const kind = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement;
+  Reflect.set(kind.prototype, "value", value, field);
   field.dispatchEvent(new Event("input", { bubbles: true }));
   try {
     field.setSelectionRange(caret, caret);
@@ -79,7 +87,7 @@ export function setFieldValue(field: HTMLInputElement, value: string, caret: num
   }
 }
 
-export function typeInto(field: HTMLInputElement, text: string): void {
+export function typeInto(field: KeyboardField, text: string): void {
   const start = field.selectionStart ?? field.value.length;
   const end = field.selectionEnd ?? field.value.length;
   const max = field.maxLength > 0 ? field.maxLength : Infinity;
@@ -88,7 +96,7 @@ export function typeInto(field: HTMLInputElement, text: string): void {
   setFieldValue(field, next, start + text.length);
 }
 
-export function backspace(field: HTMLInputElement): void {
+export function backspace(field: KeyboardField): void {
   const start = field.selectionStart ?? field.value.length;
   const end = field.selectionEnd ?? field.value.length;
   if (start !== end) {
@@ -105,15 +113,17 @@ export function lowerKeyboard(): void {
   target?.blur();
 }
 
-/** ↵: submit the field's form if it has one (quick add saves), else it's Done. */
-export function enter(field: HTMLInputElement): void {
-  if (field.form) field.form.requestSubmit();
+/** ↵: a new line in a box of words; else submit the field's form if it has one (quick add
+ * saves), else it's Done. */
+export function enter(field: KeyboardField): void {
+  if (field instanceof HTMLTextAreaElement) typeInto(field, "\n");
+  else if (field.form) field.form.requestSubmit();
   else lowerKeyboard();
 }
 
-/** Shift is automatic for a field's first letter, and after a sentence ends. */
-export function wantsCapital(field: HTMLInputElement): boolean {
+/** Shift is automatic for a field's first letter, after a sentence ends, and on a new line. */
+export function wantsCapital(field: KeyboardField): boolean {
   if (field.dataset.osk === "password" || field.autocapitalize === "none") return false;
   const before = field.value.slice(0, field.selectionStart ?? field.value.length);
-  return before.trim() === "" || /[.!?]\s+$/.test(before);
+  return before.trim() === "" || /([.!?]\s+|\n\s*)$/.test(before);
 }

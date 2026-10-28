@@ -18,6 +18,9 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- Send Feedback no longer needs a GitHub account: what you write goes to the people who make
+  Sunroom, from any device and from the screen itself, with Sunroom's version and nothing from
+  your calendar. Self-hosters can turn it off with `SUNROOM_FEEDBACK_URL=`.
 - The Calendar's views are one button in the header, **View**, which opens a menu with a small
   drawing and a line for each: Week, Rolling Week, Day, Month, People and Today. Rolling Week is
   a view of its own now, in that menu and as a Home view in Settings → Display, instead of a

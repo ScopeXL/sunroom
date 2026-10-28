@@ -60,6 +60,7 @@ async def reset(state: StateDep) -> None:
     await asyncio.to_thread(_remove_copies, state)
     state.backups.last_success_at = state.backups.last_error = None
     state.hello_version.stand_in = None
+    state.feedback.clear()
     erase.forget(state, epoch)
 
 
@@ -67,6 +68,12 @@ def _remove_copies(state: AppState) -> None:
     shutil.rmtree(state.backups.backup_dir, ignore_errors=True)
     for aside in state.settings.data_dir.glob("sunroom.pre-restore.*"):
         aside.unlink(missing_ok=True)
+
+
+@router.get("/feedback")
+async def kept_feedback(state: StateDep) -> list[dict[str, object]]:
+    """What Send Feedback would have posted, oldest first (meta/feedback.py keeps it here)."""
+    return list(state.feedback.kept)
 
 
 @router.post("/drop-streams", status_code=204)

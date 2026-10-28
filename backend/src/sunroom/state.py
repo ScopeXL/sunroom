@@ -20,6 +20,7 @@ from sunroom.auth.sessions import AuthState, GrantCodec, SessionCodec
 from sunroom.calendar.occurrences import CalendarRuntime
 from sunroom.core.clock import Clock
 from sunroom.core.config import Settings
+from sunroom.core.feedback import Outbox
 from sunroom.core.http import GuardedHttp
 from sunroom.core.jobs import Jobs
 from sunroom.core.logging import get_logger
@@ -99,6 +100,8 @@ class AppState:
     screen: ScreenWatch = field(default_factory=ScreenWatch)
     # The newest release GitHub named, when the household opted in (core/updates.py).
     updates: UpdateCheck = field(default_factory=UpdateCheck)
+    # Send Feedback's sends this hour, and on the test server what it kept (core/feedback.py).
+    feedback: Outbox = field(default_factory=Outbox)
     # What the stream's hello says this server is (every screen reloads on a new one).
     hello_version: HelloVersion = field(default_factory=HelloVersion)
     # How this process runs itself again after a restore (boot.reexec; under `--reload`, the dev
