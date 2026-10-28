@@ -202,9 +202,11 @@ describe("Settings → This Screen (ADR 0035)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Shut Down" }));
     const sheet = screen.getByRole("dialog", { name: "Shut Down This Screen?" });
     expect(
-      within(sheet).getByText("It stays off until it’s unplugged and plugged back in."),
+      within(sheet).getByText(
+        "This turns off the computer this screen runs on. It stays off until someone turns it on again.",
+      ),
     ).toBeTruthy();
-    fireEvent.click(within(sheet).getByRole("button", { name: "Keep It On" }));
+    fireEvent.click(within(sheet).getByRole("button", { name: "Cancel" }));
     expect(calls).toEqual([]);
     fireEvent.click(screen.getByRole("button", { name: "Shut Down" }));
     fireEvent.click(

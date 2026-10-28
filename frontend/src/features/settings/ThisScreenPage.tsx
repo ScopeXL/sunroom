@@ -321,9 +321,9 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
         }}
       >
         <Confirm
-          text="It stays off until it’s unplugged and plugged back in."
+          text="This turns off the computer this screen runs on. It stays off until someone turns it on again."
           act="Shut Down"
-          keep="Keep It On"
+          keep="Cancel"
           pending={act.isPending}
           onAct={() => {
             act.mutate("shutdown");

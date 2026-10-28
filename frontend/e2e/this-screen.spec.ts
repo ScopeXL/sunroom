@@ -183,11 +183,12 @@ test("This Screen restarts, shuts down, joins Wi-Fi, turns and updates the scree
   await expect(toast(page, "Restarting…")).toBeVisible();
   expect(agent.calls).toContain("POST /api/screen/restart");
 
-  // Shut Down asks first; Keep It On asks nothing of the screen.
+  // Shut Down asks first, saying what it turns off; Cancel asks nothing of the screen.
   await page.getByRole("button", { name: "Shut Down" }).click();
   const shutDown = page.getByRole("dialog", { name: "Shut Down This Screen?" });
   await expect(shutDown).toBeVisible();
-  await shutDown.getByRole("button", { name: "Keep It On" }).click();
+  await expect(shutDown).toContainText("This turns off the computer this screen runs on.");
+  await shutDown.getByRole("button", { name: "Cancel" }).click();
   await expect(shutDown).toBeHidden();
   expect(agent.calls).not.toContain("POST /api/screen/shutdown");
   await page.getByRole("button", { name: "Shut Down" }).click();
