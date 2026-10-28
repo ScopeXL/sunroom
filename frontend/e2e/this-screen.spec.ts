@@ -174,7 +174,7 @@ test("This Screen restarts, shuts down, joins Wi-Fi, turns and updates the scree
   await openThisScreen(page);
 
   await expect(page.getByText("Wi-Fi: HomeNet, strong")).toBeVisible();
-  await expect(page.getByText("http://192.168.1.20:8080 · found on your network")).toBeVisible();
+  await expect(page.getByText("http://192.168.1.20:8080 · on another computer")).toBeVisible();
   await expect(page.getByText("0.14.0 is ready")).toBeVisible();
   await check(page, "This Screen");
 

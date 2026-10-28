@@ -36,10 +36,11 @@ const UPDATES = [
   { value: "off", label: "Off" },
 ] as const;
 
+/** Where the Sunroom runs, not how it was found (ADR 0042). */
 const FOUND_WORDS = {
-  discovered: "found on your network",
-  typed: "typed",
-  local: "on this screen",
+  discovered: "on another computer",
+  typed: "on another computer",
+  local: "on this computer",
 } as const;
 
 const NO_ANSWER = "This screen didn’t answer. Try again in a moment.";
@@ -187,7 +188,15 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
             </Button>
           ) : null}
         </Row>
-        <Row label="Address">
+        <Row
+          label="Address"
+          hint={
+            // The one way a found Sunroom still differs: the screen follows it when it moves.
+            state.sunroom?.found === "discovered"
+              ? "Found on your network: this screen follows it if its address changes."
+              : undefined
+          }
+        >
           <Text>
             {state.sunroom
               ? `${state.sunroom.url} · ${FOUND_WORDS[state.sunroom.found]}`
@@ -334,7 +343,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
         <Confirm
           text={`This screen leaves ${name} and looks for another. Its pairing is kept.`}
           act="Change Address"
-          keep="Keep This One"
+          keep="Cancel"
           pending={forget.isPending}
           onAct={() => {
             forget.mutate();

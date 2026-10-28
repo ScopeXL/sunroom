@@ -144,7 +144,11 @@ describe("Settings → This Screen (ADR 0035)", () => {
   it("says what this screen is on, shows, runs and can do", () => {
     draw();
     expect(screen.getByText("Wi-Fi: HomeNet, strong")).toBeTruthy();
-    expect(screen.getByText("http://192.168.1.20:8080 · found on your network")).toBeTruthy();
+    expect(screen.getByText("http://192.168.1.20:8080 · on another computer")).toBeTruthy();
+    // Found on the network: the one way it still differs from a typed one (ADR 0042).
+    expect(
+      screen.getByText("Found on your network: this screen follows it if its address changes."),
+    ).toBeTruthy();
     expect(screen.getByText("Sunroom Screen 0.13.0 · up to date")).toBeTruthy();
     for (const name of ["Change Wi-Fi", "Change Address", "Restart", "Shut Down", "Help"]) {
       expect(screen.getByRole("button", { name })).toBeTruthy();
@@ -173,7 +177,8 @@ describe("Settings → This Screen (ADR 0035)", () => {
       }),
     );
     expect(screen.getByText("Wired")).toBeTruthy();
-    expect(screen.getByText("https://calendar.example.com · typed")).toBeTruthy();
+    expect(screen.getByText("https://calendar.example.com · on another computer")).toBeTruthy();
+    expect(screen.queryByText(/^Found on your network/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Change Wi-Fi" })).toBeNull();
     expect(screen.queryByRole("group", { name: "Rotation" })).toBeNull();
     // The connection, and nothing to open (ADR 0042).
@@ -264,6 +269,13 @@ describe("Settings → This Screen (ADR 0035)", () => {
     draw(
       piState({
         capabilities: ["restart", "shutdown", "update", "update_sunroom"],
+        sunroom: {
+          url: "http://localhost:8080",
+          id: "00000000-0000-7000-8000-0000000000e1",
+          name: "The Sample Family",
+          found: "local",
+          reachable: true,
+        },
         update: {
           check: "nightly",
           state: "up_to_date",
@@ -275,6 +287,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
         },
       }),
     );
+    expect(screen.getByText("http://localhost:8080 · on this computer")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Update Sunroom Too" }));
     await waitFor(() => {
       expect(said()).toEqual(["Updating Sunroom… this takes a few minutes"]);

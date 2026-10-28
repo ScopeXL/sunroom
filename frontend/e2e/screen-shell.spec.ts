@@ -209,7 +209,7 @@ test("This Screen's twin works when Sunroom can't load, and Quit shows on a comp
   await fake(request, { sunroom: "http://127.0.0.1:9" });
   await page.goto(`${AGENT}/settings`);
   await expect(page.getByRole("heading", { name: "This Screen", level: 1 })).toBeVisible();
-  await expect(page.getByText("http://127.0.0.1:9 · typed")).toBeVisible();
+  await expect(page.getByText("http://127.0.0.1:9 · on another computer")).toBeVisible();
   const desktop = test.info().project.name === "desktop";
   await expect(page.getByRole("button", { name: "Quit Sunroom Screen" })).toHaveCount(
     desktop ? 1 : 0,

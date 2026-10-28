@@ -8,6 +8,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- The Address row says whether Sunroom runs on this computer or on another, and Change Address's
+  question has a Cancel button.
 - This Screen shows the connection (Wi-Fi and its network, wired, or not connected) and no longer
   offers to open the computer's network settings. A Mac on Wi-Fi now says so, where it said
   "Wired".

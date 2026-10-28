@@ -148,7 +148,7 @@ export function CantReachPage({ state }: { state: ScreenState }) {
                 setAsking(false);
               }}
             >
-              Keep This One
+              Cancel
             </Button>
           </div>
         </div>
