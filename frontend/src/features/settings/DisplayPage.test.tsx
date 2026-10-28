@@ -49,12 +49,13 @@ describe("Settings → Display (UX §4)", () => {
     expect(screen.queryByText(/7 PM/)).toBeNull();
   });
 
-  it("has Rolling week after Week layout, as the household has it (ADR 0033)", () => {
-    draw({ display_week_layout: "agenda", display_rolling_week: true });
-    const rolling = screen.getByRole<HTMLInputElement>("switch", { name: /^Rolling week/ });
-    expect(rolling.checked).toBe(true);
-    const layout = screen.getByRole("group", { name: "Week layout" });
-    expect(layout.compareDocumentPosition(rolling) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  it("offers Rolling Week as a home view, and no Rolling week switch (ADR 0042)", () => {
+    draw({ display_home_view: "rolling" });
+    expect(choices("Home view")).toEqual(["Week", "Rolling Week", "Today", "People"]);
+    expect(screen.getByRole("button", { name: "Rolling Week" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(screen.queryByRole("switch", { name: /^Rolling week/ })).toBeNull();
   });
 
   it("offers Never first, and brightness as numbers", () => {

@@ -5363,7 +5363,7 @@ export interface components {
              * Display Home View
              * @enum {string}
              */
-            display_home_view: "week" | "today" | "people";
+            display_home_view: "week" | "rolling" | "today" | "people";
             /**
              * Display Orientation
              * @enum {string}
@@ -5380,8 +5380,6 @@ export interface components {
             display_reduce_motion: boolean;
             /** Display Return Minutes */
             display_return_minutes: number;
-            /** Display Rolling Week */
-            display_rolling_week: boolean;
             /** Display Show Today Panel */
             display_show_today_panel: boolean;
             /** Display Sounds */
@@ -5470,7 +5468,7 @@ export interface components {
             /** Display Dim Past */
             display_dim_past?: boolean | null;
             /** Display Home View */
-            display_home_view?: ("week" | "today" | "people") | null;
+            display_home_view?: ("week" | "rolling" | "today" | "people") | null;
             /** Display Orientation */
             display_orientation?: ("auto" | "landscape" | "portrait") | null;
             /** Display Rail Compact */
@@ -5481,8 +5479,6 @@ export interface components {
             display_reduce_motion?: boolean | null;
             /** Display Return Minutes */
             display_return_minutes?: (0 | 2 | 5 | 10) | null;
-            /** Display Rolling Week */
-            display_rolling_week?: boolean | null;
             /** Display Show Today Panel */
             display_show_today_panel?: boolean | null;
             /** Display Sounds */

@@ -65,6 +65,9 @@ class TextSize(StrEnum):
 
 class HomeView(StrEnum):
     WEEK = "week"
+    # Yesterday, today and the five days after: a view of its own since ADR 0042 (it was the
+    # Week view's Rolling week switch, ADR 0033).
+    ROLLING = "rolling"
     TODAY = "today"
     PEOPLE = "people"
 
@@ -116,11 +119,9 @@ class Household(Base):
     display_sounds: Mapped[bool] = mapped_column(Boolean, default=False)
     display_dim_past: Mapped[bool] = mapped_column(Boolean, default=True)
     display_reduce_motion: Mapped[bool] = mapped_column(Boolean, default=False)
-    # Settings → Display → Week layout: Agenda (stacked chips) or Hours (the grid), ADR 0028.
-    display_week_layout: Mapped[str] = mapped_column(String(8), default=WeekLayout.AGENDA)
-    # Settings → Display → Rolling week: the Week view shows yesterday, today and the five days
-    # after instead of the calendar week (ADR 0033).
-    display_rolling_week: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Settings → Display → Week layout: Agenda (stacked chips) or Hours (the grid), ADR 0028;
+    # Hours for a new household since ADR 0042.
+    display_week_layout: Mapped[str] = mapped_column(String(8), default=WeekLayout.HOURS)
     # Settings → Display → Show tips: a strip under the board on the wall and laptops; on by
     # default since ADR 0034 (it was off).
     show_tips: Mapped[bool] = mapped_column(Boolean, default=True)

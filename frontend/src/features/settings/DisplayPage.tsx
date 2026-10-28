@@ -107,6 +107,7 @@ export function DisplayPage() {
             }}
             options={[
               { value: "week", label: "Week" },
+              { value: "rolling", label: "Rolling Week" },
               { value: "today", label: "Today" },
               { value: "people", label: "People" },
             ]}
@@ -144,14 +145,6 @@ export function DisplayPage() {
             ]}
           />
         </Row>
-        <Switch
-          label="Rolling week"
-          hint="The Week view keeps today in the same column: yesterday, today and the five days after. Off, it shows the calendar week. Each screen can switch it for itself from the Week view's header; changing it here puts every screen on this choice."
-          checked={settings.display_rolling_week}
-          onChange={(display_rolling_week) => {
-            update.mutate({ display_rolling_week });
-          }}
-        />
         <Switch
           label="Show tips"
           hint="A line under the board with one thing Sunroom can do, changing every half hour. Not on phones."

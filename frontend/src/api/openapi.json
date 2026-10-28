@@ -8428,6 +8428,7 @@
           "display_home_view": {
             "enum": [
               "week",
+              "rolling",
               "today",
               "people"
             ],
@@ -8462,10 +8463,6 @@
           "display_return_minutes": {
             "title": "Display Return Minutes",
             "type": "integer"
-          },
-          "display_rolling_week": {
-            "title": "Display Rolling Week",
-            "type": "boolean"
           },
           "display_show_today_panel": {
             "title": "Display Show Today Panel",
@@ -8654,7 +8651,6 @@
           "display_dim_past",
           "display_reduce_motion",
           "display_week_layout",
-          "display_rolling_week",
           "show_tips",
           "default_reminder_minutes",
           "backups_enabled",
@@ -8803,6 +8799,7 @@
               {
                 "enum": [
                   "week",
+                  "rolling",
                   "today",
                   "people"
                 ],
@@ -8883,17 +8880,6 @@
               }
             ],
             "title": "Display Return Minutes"
-          },
-          "display_rolling_week": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Rolling Week"
           },
           "display_show_today_panel": {
             "anyOf": [

@@ -27,7 +27,7 @@ PersonColor = Literal[
 RoleName = Literal["parent", "kid"]
 ThemeName = Literal["auto", "light", "dark"]
 TextSizeName = Literal["small", "standard", "large", "xl"]
-HomeViewName = Literal["week", "today", "people"]
+HomeViewName = Literal["week", "rolling", "today", "people"]
 DisplayStartName = Literal["last", "home"]
 WeekLayoutName = Literal["agenda", "hours"]
 TimeFormat = Literal["12h", "24h"]
@@ -83,7 +83,6 @@ class SettingsOut(BaseModel):
     display_dim_past: bool
     display_reduce_motion: bool
     display_week_layout: WeekLayoutName  # how the Week board draws a day (ADR 0028)
-    display_rolling_week: bool  # the Week view: a window around today, not the week (ADR 0033)
     show_tips: bool  # a tip under the board on the wall and laptops
     default_reminder_minutes: int | None  # events with no reminder of their own (ADR 0034)
     backups_enabled: bool  # a checked copy every night (ADR 0034)
@@ -125,7 +124,6 @@ class SettingsUpdate(BaseModel):
     display_dim_past: bool | None = None
     display_reduce_motion: bool | None = None
     display_week_layout: WeekLayoutName | None = None
-    display_rolling_week: bool | None = None
     show_tips: bool | None = None
     # Minutes before, for events with no reminder of their own; send null for none.
     default_reminder_minutes: Literal[5, 10, 15, 30, 60, 120, 1440] | None = None

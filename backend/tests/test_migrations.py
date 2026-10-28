@@ -209,7 +209,8 @@ def test_a_household_from_0_10_0_keeps_the_calendar_week(tmp_path: Path) -> None
     assert migrate.upgrade(db) == migrate.head_revision()
     conn = sqlite3.connect(db)
     try:
-        assert conn.execute("SELECT display_rolling_week FROM household").fetchall() == [(0,)]
+        # Rolling week is a home view since 0.17.0 (ADR 0042): still the calendar week here.
+        assert conn.execute("SELECT display_home_view FROM household").fetchall() == [("week",)]
     finally:
         conn.close()
 
@@ -389,3 +390,55 @@ def test_accounts_named_icloud_become_apple(tmp_path: Path) -> None:
         ("caldav", "Our iCloud"),
         ("ics", "iCloud · a public calendar"),
     ]
+
+
+@pytest.mark.parametrize(
+    ("rolling", "home", "wakes_on"),
+    [(1, "week", "rolling"), (0, "week", "week"), (1, "people", "people")],
+)
+def test_a_household_from_0_16_1_on_rolling_week_wakes_on_rolling_week(
+    tmp_path: Path, rolling: int, home: str, wakes_on: str
+) -> None:
+    """0.17.0 (ADR 0042): Rolling week is a view of its own, not a switch on Week. A household
+    that had it on, starting on Week, starts on Rolling Week; any other keeps its home view, and
+    a household that's set up keeps its layout (Hours is a new household's start)."""
+    db = tmp_path / "sunroom.db"
+    conn = sqlite3.connect(db)
+    conn.executescript((FIXTURE_DBS / "202610211809.sql").read_text())
+    conn.execute(
+        "UPDATE household SET display_rolling_week = ?, display_home_view = ?,"
+        " display_week_layout = 'agenda'",
+        (rolling, home),
+    )
+    conn.commit()
+    conn.close()
+    assert migrate.upgrade(db) == migrate.head_revision()
+    conn = sqlite3.connect(db)
+    try:
+        assert conn.execute(
+            "SELECT display_home_view, display_week_layout, onboarded_at IS NOT NULL FROM household"
+        ).fetchall() == [(wakes_on, "agenda", 1)]
+        columns = [row[1] for row in conn.execute("PRAGMA table_info(household)")]
+        assert "display_rolling_week" not in columns
+    finally:
+        conn.close()
+
+
+def test_a_new_household_starts_on_week_with_hours(tmp_path: Path) -> None:
+    """0.17.0 (ADR 0042): the household's row exists from the first migration on, before setup;
+    a household not set up yet starts on Week with the Hours layout."""
+    db = tmp_path / "sunroom.db"
+    assert migrate.upgrade(db) == migrate.head_revision()
+    conn = sqlite3.connect(db)
+    try:
+        assert conn.execute(
+            "SELECT display_home_view, display_week_layout, onboarded_at FROM household"
+        ).fetchall() == [("week", "hours", None)]
+        default = next(
+            row[4]
+            for row in conn.execute("PRAGMA table_info(household)")
+            if row[1] == "display_week_layout"
+        )
+        assert default == "'hours'"
+    finally:
+        conn.close()

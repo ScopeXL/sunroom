@@ -98,7 +98,6 @@ def settings_out(home: Household, settings: Settings) -> SettingsOut:
             "display_dim_past": home.display_dim_past,
             "display_reduce_motion": home.display_reduce_motion,
             "display_week_layout": home.display_week_layout,
-            "display_rolling_week": home.display_rolling_week,
             "show_tips": home.show_tips,
             "default_reminder_minutes": home.default_reminder_minutes,
             "backups_enabled": home.backups_enabled,

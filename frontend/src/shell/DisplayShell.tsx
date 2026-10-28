@@ -240,7 +240,7 @@ export function DisplayShell({ home, children }: { home: "/display" | "/"; child
     householdChose({
       homeView: settings.display_home_view,
       weekLayout: settings.display_week_layout,
-      rollingWeek: settings.display_rolling_week,
+      rollingWeek: settings.display_home_view === "rolling",
       todayPanel: settings.display_show_today_panel,
       compactRail: settings.display_rail_compact,
     });

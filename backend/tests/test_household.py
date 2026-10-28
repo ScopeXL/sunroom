@@ -18,8 +18,8 @@ async def test_settings_start_with_the_household_defaults(parent: httpx.AsyncCli
     assert settings["week_starts_on"] == 6  # Sunday
     assert settings["theme"] == "auto"
     assert settings["display_home_view"] == "week"
-    assert settings["display_week_layout"] == "agenda"  # stacked chips until a parent picks Hours
-    assert settings["display_rolling_week"] is False  # the calendar week until a parent rolls it
+    assert settings["display_week_layout"] == "hours"  # a new household's start (ADR 0042)
+    assert "display_rolling_week" not in settings  # a home view of its own since ADR 0042
     assert settings["show_tips"] is True  # on by default since 0.12.0 (ADR 0034)
     assert settings["text_size"] == "standard"
     assert settings["display_rail_compact"] is False  # the full rail until a parent folds it
@@ -58,25 +58,32 @@ async def test_a_parent_changes_settings_and_everyone_hears(
 async def test_the_week_layout_and_tips_are_a_parents_to_change(
     parent: httpx.AsyncClient,
 ) -> None:
-    hours = await parent.patch("/api/settings", json={"display_week_layout": "hours"}, headers=CSRF)
-    assert hours.status_code == 200, hours.text
-    assert (hours.json()["display_week_layout"], hours.json()["show_tips"]) == ("hours", True)
+    agenda = await parent.patch(
+        "/api/settings", json={"display_week_layout": "agenda"}, headers=CSRF
+    )
+    assert agenda.status_code == 200, agenda.text
+    assert (agenda.json()["display_week_layout"], agenda.json()["show_tips"]) == ("agenda", True)
     tips = await parent.patch("/api/settings", json={"show_tips": False}, headers=CSRF)
-    assert (tips.json()["display_week_layout"], tips.json()["show_tips"]) == ("hours", False)
+    assert (tips.json()["display_week_layout"], tips.json()["show_tips"]) == ("agenda", False)
     again = (await parent.get("/api/settings")).json()
-    assert (again["display_week_layout"], again["show_tips"]) == ("hours", False)
+    assert (again["display_week_layout"], again["show_tips"]) == ("agenda", False)
 
 
-async def test_a_parent_turns_on_the_rolling_week(parent: httpx.AsyncClient) -> None:
-    rolling = await parent.patch("/api/settings", json={"display_rolling_week": True}, headers=CSRF)
+async def test_a_parent_picks_the_rolling_week_home_view(parent: httpx.AsyncClient) -> None:
+    """Rolling Week is a view of its own since ADR 0042, and a home view like any other."""
+    rolling = await parent.patch(
+        "/api/settings", json={"display_home_view": "rolling"}, headers=CSRF
+    )
     assert rolling.status_code == 200, rolling.text
-    assert rolling.json()["display_rolling_week"] is True
+    assert rolling.json()["display_home_view"] == "rolling"
     # Another setting leaves it as it is.
     hours = await parent.patch("/api/settings", json={"display_week_layout": "hours"}, headers=CSRF)
-    assert hours.json()["display_rolling_week"] is True
-    assert (await parent.get("/api/settings")).json()["display_rolling_week"] is True
-    off = await parent.patch("/api/settings", json={"display_rolling_week": False}, headers=CSRF)
-    assert off.json()["display_rolling_week"] is False
+    assert hours.json()["display_home_view"] == "rolling"
+    assert (await parent.get("/api/settings")).json()["display_home_view"] == "rolling"
+    week = await parent.patch("/api/settings", json={"display_home_view": "week"}, headers=CSRF)
+    assert week.json()["display_home_view"] == "week"
+    wrong = await parent.patch("/api/settings", json={"display_home_view": "month"}, headers=CSRF)
+    assert wrong.status_code == 422
 
 
 async def test_a_parent_folds_the_rail_and_picks_small_text(parent: httpx.AsyncClient) -> None:
