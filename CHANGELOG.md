@@ -8,6 +8,7 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Added
 
+- Settings → Devices renames a paired screen: tap its row.
 - This Screen can uninstall Sunroom Screen from the computer it runs on: it asks first, unpairs
   the screen, and, when Sunroom itself runs there, removes it and the family's data too once the
   household password is typed.

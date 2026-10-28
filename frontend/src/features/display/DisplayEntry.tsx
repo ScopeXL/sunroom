@@ -21,7 +21,6 @@ import {
 import { useMinute } from "../../lib/time";
 import { DisplayShell } from "../../shell/DisplayShell";
 import { Button } from "../../ui/Button";
-import { Chip, ChipRow } from "../../ui/Chip";
 import { Choice } from "../../ui/Choice";
 import { KeyboardHost } from "../../ui/Keyboard";
 import { QrCode } from "../../ui/QrCode";
@@ -31,8 +30,8 @@ import { ToastRegion } from "../../ui/ToastRegion";
 import { TextField } from "../../ui/TextField";
 import { CalendarRoom } from "../calendar/CalendarRoom";
 import { SetupWizard, type SetupStep } from "../onboarding/SetupWizard";
+import { ScreenNameFields } from "./ScreenName";
 
-const NAMES = ["Kitchen", "Hallway", "Living room", "Office"] as const;
 const PASSWORD_IDLE_MS = 60_000;
 /** Ten minutes untouched leave the wall's own setup: to Set Up Sunroom while nothing is saved,
  * to the board once the household is, whatever is left being in Settings (ADR 0039). */
@@ -465,54 +464,29 @@ function NameThisScreen({
   action?: "Done" | "Next";
 }) {
   const queryClient = useQueryClient();
-  const [name, setName] = useState<string | null>(null);
-  const [other, setOther] = useState("");
+  const [label, setLabel] = useState<string | null>(null);
   const rename = useMutation({
-    mutationFn: async (label: string) =>
-      unwrap(await api.PUT("/api/auth/device/label", { body: { label } })),
+    mutationFn: async (name: string) =>
+      unwrap(await api.PUT("/api/auth/device/label", { body: { label: name } })),
     onSuccess: (session) => {
       queryClient.setQueryData<Session>(qk.session(), session);
       onDone();
     },
   });
-  const label = name === null ? null : name === "Other" ? other.trim() : `${name} screen`;
+  const name = label === null ? null : label.trim();
   return (
     <form
       className="flex w-full max-w-3xl flex-col items-center gap-8"
       onSubmit={(event) => {
         event.preventDefault();
-        if (label === null) onDone();
-        else if (label) rename.mutate(label);
+        if (name === null) onDone();
+        else if (name) rename.mutate(name);
       }}
     >
       <Brand size="entry" />
       <h1 className="text-d-glance font-bold">Name This Screen</h1>
-      <ChipRow label="Where is this screen?" center>
-        {[...NAMES, "Other"].map((option) => (
-          <Chip
-            key={option}
-            on={name === option}
-            onClick={() => {
-              setName(option);
-            }}
-          >
-            {option}
-          </Chip>
-        ))}
-      </ChipRow>
-      {name === "Other" ? (
-        <div className="w-full max-w-xl text-left">
-          <TextField
-            label="What should it be called?"
-            value={other}
-            maxLength={80}
-            onChange={(event) => {
-              setOther(event.target.value);
-            }}
-          />
-        </div>
-      ) : null}
-      <Button type="submit" pending={rename.isPending} disabled={label === ""} className="min-w-64">
+      <ScreenNameFields label={label} onChange={setLabel} field="other" />
+      <Button type="submit" pending={rename.isPending} disabled={name === ""} className="min-w-64">
         {action}
       </Button>
       {rename.isError ? (

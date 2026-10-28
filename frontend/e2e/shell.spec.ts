@@ -1207,6 +1207,17 @@ test.describe("a laptop", () => {
     );
     await expect(adding.getByText(/\/join#/)).toBeVisible();
     await adding.getByRole("button", { name: "Done" }).click();
+    // A paired screen's row opens Rename Screen (ADR 0042): the same places, and its name.
+    await page.getByRole("button", { name: "Rename Hallway screen" }).click();
+    const renaming = page.getByRole("dialog", { name: "Rename Screen" });
+    await expect(renaming.getByLabel("What should it be called?")).toHaveValue("Hallway screen");
+    await renaming.getByRole("button", { name: "Office" }).click();
+    await renaming.getByRole("button", { name: "Save Changes" }).click();
+    await expect(
+      page.locator("[data-toast]").filter({ hasText: "Renamed to Office screen" }),
+    ).toBeVisible();
+    await expect(renaming).toBeHidden();
+    await expect(page.getByRole("button", { name: "Rename Office screen" })).toBeVisible();
     await context.close();
   });
 

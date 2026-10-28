@@ -10,9 +10,11 @@ import { asParent } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
 import { showToast } from "../../lib/toast";
 import { Button } from "../../ui/Button";
+import { ListRow } from "../../ui/ListRow";
 import { useShell } from "../../ui/shell";
 import { AddDeviceSheet } from "./AddDeviceSheet";
 import { PairDisplaySheet } from "./PairDisplaySheet";
+import { RenameScreenSheet } from "./RenameScreenSheet";
 import { Group, Text } from "./parts";
 
 type Device = components["schemas"]["DeviceOut"];
@@ -57,6 +59,7 @@ export function DevicesPage() {
   });
   const [adding, setAdding] = useState(false);
   const [pairing, setPairing] = useState(false);
+  const [renaming, setRenaming] = useState<Device | null>(null);
   const onTheScreen = session?.device_kind === "kiosk";
   const refresh = () => queryClient.invalidateQueries({ queryKey: qk.devices() });
 
@@ -100,33 +103,57 @@ export function DevicesPage() {
 
   const row = (device: Device) => {
     const Icon = ICONS[device.form];
+    const icon = (
+      <Icon
+        aria-hidden="true"
+        data-form={device.form}
+        className={`shrink-0 ${display ? "size-9" : "size-6"}`}
+      />
+    );
+    const title = `${device.label}${device.is_current ? " (this one)" : ""}`;
+    const about = [
+      device.member_name ? `Used by ${device.member_name}` : null,
+      device.is_kid_device ? "a child’s device" : null,
+      lastUsed(device),
+    ]
+      .filter(Boolean)
+      .join(", ");
     return (
       <div
         key={device.id}
         className={`flex flex-wrap items-center gap-4 ${display ? "min-h-20 py-3" : "min-h-16 py-2"}`}
       >
-        <Icon
-          aria-hidden="true"
-          data-form={device.form}
-          className={display ? "size-9" : "size-6"}
-        />
-        <div className="flex min-w-0 flex-1 basis-56 flex-col">
-          <span className={display ? "text-d-body font-semibold" : "text-body font-semibold"}>
-            {device.label}
-            {device.is_current ? " (this one)" : ""}
-          </span>
-          <span
-            className={display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft"}
-          >
-            {[
-              device.member_name ? `Used by ${device.member_name}` : null,
-              device.is_kid_device ? "a child’s device" : null,
-              lastUsed(device),
-            ]
-              .filter(Boolean)
-              .join(", ")}
-          </span>
-        </div>
+        {device.kind === "kiosk" ? (
+          // A paired screen's name opens Rename Screen (ADR 0042), a row with its chevron; its
+          // Unpair stays beside it.
+          <div className="min-w-0 flex-1 basis-56">
+            <ListRow
+              label={`Rename ${device.label}`}
+              leading={icon}
+              title={title}
+              subtitle={about}
+              onClick={() => {
+                setRenaming(device);
+              }}
+            />
+          </div>
+        ) : (
+          <>
+            {icon}
+            <div className="flex min-w-0 flex-1 basis-56 flex-col">
+              <span className={display ? "text-d-body font-semibold" : "text-body font-semibold"}>
+                {title}
+              </span>
+              <span
+                className={
+                  display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft"
+                }
+              >
+                {about}
+              </span>
+            </div>
+          </>
+        )}
         {device.kind === "phone" && session?.has_pin ? (
           <Button
             variant="secondary"
@@ -197,6 +224,12 @@ export function DevicesPage() {
           {errorMessage(problem)}
         </p>
       ) : null}
+      <RenameScreenSheet
+        device={renaming}
+        onClose={() => {
+          setRenaming(null);
+        }}
+      />
       <AddDeviceSheet
         open={adding}
         onClose={() => {

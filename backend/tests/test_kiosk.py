@@ -155,3 +155,35 @@ async def test_a_claimed_code_survives_until_the_screen_collects_it(
         await join.prune(tx.session, clock.now())
     async with state.db.read() as db:
         assert list(await db.scalars(select(JoinCode))) == []
+
+
+async def test_a_parent_renames_a_paired_screen_and_a_childs_phone_cant(
+    app: FastAPI, parent: httpx.AsyncClient, other: httpx.AsyncClient
+) -> None:
+    """Settings → Devices' Rename Screen (ADR 0042): the PATCH a parent's device sends."""
+    screen = (
+        await other.post(
+            "/api/auth/kiosk/pair-with-password", json={"password": PASSWORD}, headers=CSRF
+        )
+    ).json()
+    assert screen["device_label"] == "Wall screen"  # until it's named
+    renamed = await parent.patch(
+        f"/api/auth/devices/{screen['device_id']}", json={"label": "Hallway screen"}, headers=CSRF
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["label"] == "Hallway screen"
+    assert renamed.json()["form"] == "screen"
+    # A child's phone sees Devices but can't rename what's on it.
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as kid:
+        signed_in = await kid.post("/api/auth/login", json={"password": PASSWORD}, headers=CSRF)
+        kid_phone = signed_in.json()["device_id"]
+        await set_pin(parent)
+        await parent.patch(
+            f"/api/auth/devices/{kid_phone}", json={"is_kid_device": True}, headers=CSRF
+        )
+        refused = await kid.patch(
+            f"/api/auth/devices/{screen['device_id']}", json={"label": "Mine"}, headers=CSRF
+        )
+        assert refused.status_code == 403
+        assert refused.json()["error"]["code"] == "parent_required"
