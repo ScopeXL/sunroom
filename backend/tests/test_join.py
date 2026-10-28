@@ -78,7 +78,7 @@ async def test_a_code_works_once(
     assert again.json()["error"] == {
         "code": "join_code_invalid",
         "message": "That code didn't work. A code works once, for 10 minutes. Make a new one "
-        "on the phone.",
+        "on a signed-in device.",
     }
 
 
