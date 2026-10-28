@@ -95,7 +95,8 @@ test("quick add on the wall, seen on a phone, changed and undone, dragged and pu
     name: "Dentist, 2:30 to 3:30 PM, Mia, Thursday October 8",
   });
   await expect(dentist).toBeVisible();
-  await expect(dentist).toHaveAttribute("data-person", "rose");
+  // On the Hours grid (a new household's layout, ADR 0042) the block inside wears the color.
+  await expect(dentist.locator("[data-person]")).toHaveAttribute("data-person", "rose");
   await expect(board.locator('[data-day="2026-10-08"]')).toContainText("Dentist");
   await expect(toast(page, "Added Dentist")).toBeVisible();
 
@@ -356,10 +357,13 @@ test("times follow the household's zone and its 12- or 24-hour clock", async ({
   await change({ timezone: "Pacific/Honolulu" });
   await expect(nowLabel).toHaveText("now 4:00", { timeout: 3_000 });
 
-  // Back home, on the 24-hour clock: Thursday's soccer practice starts at 16:00.
+  // Back home, on the 24-hour clock: Thursday's soccer practice starts at 16:00. (On the Hours
+  // grid, a new household's layout, an hour's block says its time only in its name.)
   await change({ timezone: "America/New_York", time_format: "24h" });
   const soccer = board.getByRole("button", { name: /^Soccer practice, .*Thursday October 8/ });
-  await expect(soccer).toContainText("16:00", { timeout: 3_000 });
+  await expect(soccer).toHaveAccessibleName(/^Soccer practice, 16:00 to 17:00, /, {
+    timeout: 3_000,
+  });
   await expect(nowLabel).toHaveText("now 10:00");
   await context.close();
 });

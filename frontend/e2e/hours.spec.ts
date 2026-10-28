@@ -55,10 +55,19 @@ test("the Hours layout fits the day, zooms, keeps the time on a drop and adds at
   await page.goto("/display");
   const board = page.getByRole("region", { name: "This Week" });
   await expect(board).toBeVisible();
-  // The layout is two icons in the header, beside the arrows; there is no bar over the days.
-  await expect(board.getByRole("group", { name: "Zoom" })).toHaveCount(0);
-  await page.getByRole("banner").getByRole("button", { name: "Hours", exact: true }).click();
+  // A new household starts on Hours (ADR 0042). The layout is two icons in the header, beside
+  // the arrows; there is no bar over the days, and Agenda has no zoom.
   const grid = board.locator("[data-hours]");
+  await expect(grid).toBeVisible();
+  const layout = page.getByRole("banner").getByRole("group", { name: "Week layout" });
+  await expect(layout.getByRole("button", { name: "Hours", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await layout.getByRole("button", { name: "Agenda", exact: true }).click();
+  await expect(grid).toHaveCount(0);
+  await expect(board.getByRole("group", { name: "Zoom" })).toHaveCount(0);
+  await layout.getByRole("button", { name: "Hours", exact: true }).click();
   await expect(grid).toBeVisible();
   // No zoom is the default: the whole day, with nothing to zoom out of. The zoom sits on the
   // grid's own corner (ADR 0030), not in the header.
@@ -210,7 +219,7 @@ test("the now line stays under the day heads while the hours scroll under them",
   await page.goto("/display");
   const board = page.getByRole("region", { name: "This Week" });
   await expect(board).toBeVisible();
-  await page.getByRole("banner").getByRole("button", { name: "Hours", exact: true }).click();
+  // Hours, a new household's layout (ADR 0042).
   const grid = board.locator("[data-hours]");
   await expect(grid).toBeVisible();
   const zoomIn = board
@@ -277,6 +286,7 @@ test("the layout and the zoom stay through two idle minutes, with now back in vi
   const grid = board.locator("[data-hours]");
   const hoursButton = page.getByRole("button", { name: "Hours", exact: true });
   const fitDay = page.getByRole("button", { name: "Fit the day" });
+  // Hours is the household's already (ADR 0042); a tap makes it this screen's own choice too.
   await hoursButton.click();
   await page.getByRole("button", { name: "Zoom in" }).click();
   await page.getByRole("button", { name: "Zoom in" }).click();
@@ -293,13 +303,14 @@ test("the layout and the zoom stay through two idle minutes, with now back in vi
   await expect(fitDay).toBeEnabled();
 
   // The household's next choice of layout wins over this screen's own.
-  await page.getByRole("button", { name: "Agenda", exact: true }).click();
-  await expect(grid).toHaveCount(0);
-  const hours = await page.request.patch("/api/settings", {
+  const agenda = await page.request.patch("/api/settings", {
     headers: CSRF,
-    data: { display_week_layout: "hours" },
+    data: { display_week_layout: "agenda" },
   });
-  expect(hours.ok()).toBe(true);
-  await expect(grid).toBeVisible();
-  await expect(hoursButton).toHaveAttribute("aria-pressed", "true");
+  expect(agenda.ok()).toBe(true);
+  await expect(grid).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Agenda", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });

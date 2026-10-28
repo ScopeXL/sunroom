@@ -903,7 +903,7 @@ Sheets and panels do not use `overlay` or `allow-discrete` for their exit (Safar
 | Refinement | Reason |
 |---|---|
 | The Today panel's **Up Next** is the biggest text on the board; the header's clock is 40 px and the 200 px clock lives on the screensaver and Night | A glance from the sink wants "what's next" more than the time |
-| **Stacked chips, no hour grid, on the week board** (still the default, Agenda; Hours is the household's opt-in grid since M6, with a zoom for when a slot is too small); the now line is a divider that drops as events end; the Day view is the only timeline, with collapsed free time | At 1080p a 30-minute slot is about 30 px: too small for a 56 px target or 24 px text. Stacked chips are what a paper calendar does |
+| **Stacked chips, no hour grid, on the week board** (Agenda; Hours, the hour grid since M6 with a zoom for when a slot is too small, is a new household's layout since ADR 0042, the owner's choice, and Agenda is a tap away); the now line is a divider that drops as events end; the Day view is the only timeline, with collapsed free time | At 1080p a 30-minute slot is about 30 px: too small for a 56 px target or 24 px text. Stacked chips are what a paper calendar does |
 | **Portrait shows days as rows**, four two-line chips per line | Seven 150 px columns truncate every title |
 | **Tapping empty space on a day adds an event on that day**; the editor is a side panel so the board stays visible | "Events are hard to add on-screen" is a top complaint; the common case is two taps and one line of typing |
 | **Person filters clear after 2 minutes idle; rooms return to the calendar after 5** | A shared wall must look the same to the next person who glances |

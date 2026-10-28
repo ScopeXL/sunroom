@@ -123,7 +123,8 @@ test("the wall screen", async ({ page }) => {
         // Small text: one look in each theme is enough (the tints are the same).
         if (size === "small" && stop !== STOPS[1]) continue;
         await moveClock(page, stop.at);
-        await change(page, { theme, text_size: size });
+        // Agenda, as before: a new household starts on Hours (ADR 0042), shot on its own below.
+        await change(page, { theme, text_size: size, display_week_layout: "agenda" });
         await page.reload();
         await expect(board).toBeVisible();
         // The Today panel's plugin blocks arrive a moment after the board.

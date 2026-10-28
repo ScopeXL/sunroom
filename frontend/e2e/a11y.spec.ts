@@ -254,6 +254,8 @@ for (const scheme of ["light", "dark"] as const) {
       await page.getByRole("button", { name: "Done" }).click();
       const board = page.getByRole("region", { name: "This Week" });
       await expect(board).toBeVisible();
+      // A new household's board: the Week with Hours, the whole day (ADR 0042).
+      await expect(page.locator("[data-hours] [data-now-line]")).toBeVisible();
       await check(page, "display: board");
       // Filter: its menu under the button. Checked with nobody chosen: a filter fades the
       // other people's chips on purpose (UX §10), which no contrast rule would pass.
@@ -335,17 +337,16 @@ for (const scheme of ["light", "dark"] as const) {
       await page.getByRole("menuitemradio", { name: "Week", exact: true }).click();
       await expect(page.getByRole("menu", { name: "View" })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "View: Week" })).toBeFocused();
-      // The Hours layout, the whole day and zoomed in all the way.
-      await page.getByRole("button", { name: "Hours", exact: true }).click();
-      await expect(page.locator("[data-hours] [data-now-line]")).toBeVisible();
-      await check(page, "display: hours, the whole day");
-      // Zoomed in all the way: Zoom in stops when a 15-minute event would fill a chip.
+      // Hours zoomed in all the way: Zoom in stops when a 15-minute event would fill a chip.
       const zoomIn = page.getByRole("button", { name: "Zoom in" });
       for (let tap = 0; tap < 12 && (await zoomIn.isEnabled()); tap++) await zoomIn.click();
       await expect(zoomIn).toBeDisabled();
       await check(page, "display: hours zoomed in");
       await page.getByRole("button", { name: "Fit the day" }).click();
+      // The other layout, Agenda.
       await page.getByRole("button", { name: "Agenda", exact: true }).click();
+      await expect(page.locator("[data-hours]")).toHaveCount(0);
+      await check(page, "display: agenda");
       await page.getByRole("link", { name: "Lists" }).click();
       await expect(page.getByRole("heading", { name: "Lists", level: 1 })).toBeVisible();
       await check(page, "display: lists");
@@ -463,11 +464,12 @@ for (const scheme of ["light", "dark"] as const) {
       const board = page.getByRole("region", { name: "This Week" });
       await expect(board).toBeVisible();
       await expect(page.locator("html")).toHaveAttribute("data-text-size", "small");
-      await check(page, "display at Small: board");
-      await page.getByRole("button", { name: "Hours", exact: true }).click();
+      // Hours, a new household's layout (ADR 0042), then Agenda.
       await expect(page.locator("[data-hours] [data-now-line]")).toBeVisible();
       await check(page, "display at Small: hours");
       await page.getByRole("button", { name: "Agenda", exact: true }).click();
+      await expect(page.locator("[data-hours]")).toHaveCount(0);
+      await check(page, "display at Small: agenda");
       await page.getByRole("button", { name: "Add", exact: true }).click();
       const add = page.getByRole("dialog", { name: "Add" });
       await add.getByLabel("What, when, who").fill("Dentist every Thu 2:30pm Mia");

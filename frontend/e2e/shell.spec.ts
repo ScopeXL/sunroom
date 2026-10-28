@@ -688,9 +688,10 @@ test.describe("the wall screen", () => {
     const pressed = (name: string) =>
       page.getByRole("button", { name, exact: true, pressed: true });
     await expect(page.getByRole("region", { name: "This Week" })).toBeVisible();
-    // Hours on the Week, zoomed in; then next month, two people, the rail folded, no Today panel.
-    await page.getByRole("button", { name: "Hours", exact: true }).click();
+    // The Hours grid zoomed in, then Agenda on the Week (a new household's is Hours, ADR 0042);
+    // then next month, two people, the rail folded, no Today panel.
     await page.getByRole("button", { name: "Zoom in" }).click();
+    await page.getByRole("button", { name: "Agenda", exact: true }).click();
     await header.getByRole("button", { name: "Filter", exact: true }).click();
     await page.getByRole("menuitemcheckbox", { name: "Mia" }).click();
     await page.getByRole("menuitemcheckbox", { name: "Leo" }).click();
@@ -707,10 +708,12 @@ test.describe("the wall screen", () => {
     await expect(shell).toHaveAttribute("data-rail", "compact");
     await expect(today).toBeHidden();
     await expect(header.getByRole("button", { name: "Filter: Mia, Leo" })).toBeVisible();
-    // The Week's layout and its zoom came back with it.
+    // The Week's layout and the Hours grid's zoom came back with it.
     await pickView(page, "Week");
-    await expect(pressed("Hours")).toBeVisible();
+    await expect(pressed("Agenda")).toBeVisible();
+    await page.getByRole("button", { name: "Hours", exact: true }).click();
     await expect(page.getByRole("button", { name: "Zoom out" })).toBeEnabled();
+    await page.getByRole("button", { name: "Agenda", exact: true }).click();
 
     // A restart: the Pi's launcher always opens /display, and the screen goes back to its room.
     await rail.getByRole("link", { name: "Lists", exact: true }).click();
@@ -742,7 +745,7 @@ test.describe("the wall screen", () => {
       await expect(header.getByRole("button", { name: "This week" })).toBeDisabled();
       await expect(shell).toHaveAttribute("data-rail", "full");
       await expect(today).toBeVisible();
-      await expect(pressed("Agenda")).toBeVisible();
+      await expect(pressed("Hours")).toBeVisible();
       await expect(header.getByRole("button", { name: "Filter", exact: true })).toBeVisible();
     } finally {
       await request.patch("/api/settings", { headers: CSRF, data: { display_start: "last" } });
