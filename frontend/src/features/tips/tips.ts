@@ -31,7 +31,7 @@ export const TIPS: readonly Tip[] = [
   { id: "hours", text: "Hours draws each day from midnight to midnight. Zoom in when it's busy." },
   {
     id: "rolling",
-    text: "Rolling week keeps today in the same column. Switch it from the Week view's header.",
+    text: "Rolling Week keeps today in the same column. Pick it from the View menu.",
   },
   { id: "undo", text: "Removed something by mistake? Tap Undo on the message before it goes." },
   {

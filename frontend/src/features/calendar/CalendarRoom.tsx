@@ -33,6 +33,7 @@ import type { Occurrence, Scope } from "./types";
 import { WeekView } from "./WeekView";
 
 function homeView(setting: string | undefined): BoardView {
+  if (setting === "rolling") return "rolling";
   if (setting === "today") return "today";
   if (setting === "people") return "people";
   return "week";
@@ -63,10 +64,10 @@ export function CalendarRoom() {
     null,
   );
 
-  // The calendar week, or with Rolling week on a window that keeps today in one column (ADR
-  // 0033): this screen's own choice from the header, else the household's (ADR 0036). One array
-  // per week, not per render: the Hours grid follows now while `days` holds still.
-  const rolling = state.rollingWeek ?? settings?.display_home_view === "rolling";
+  // The calendar week, or on Rolling Week a window that keeps today in one column (ADR 0033, a
+  // view of its own since ADR 0042). One array per week, not per render: the Hours grid follows
+  // now while `days` holds still.
+  const rolling = view === "rolling";
   const week = useMemo(() => {
     const anchor = addDays(today, state.weekOffset * 7);
     return rolling ? rollingWeek(anchor) : weekOf(anchor, weekStartsOn);
@@ -144,16 +145,19 @@ export function CalendarRoom() {
   };
   // The room's name, for a screen reader (the header draws none: the day heads carry the dates,
   // and the Month and Day views say theirs), and what the middle button goes back to.
-  const header = {
-    week: {
-      title: state.weekOffset === 0 ? "This Week" : weekSpan(week),
-      homeLabel: "This Week",
-      atHome: state.weekOffset === 0,
-      home: () => {
-        pages.turn(-state.weekOffset);
-        updateDisplay({ weekOffset: 0 });
-      },
+  const weekHeader = {
+    title: state.weekOffset === 0 ? "This Week" : weekSpan(week),
+    homeLabel: "This Week",
+    atHome: state.weekOffset === 0,
+    home: () => {
+      pages.turn(-state.weekOffset);
+      updateDisplay({ weekOffset: 0 });
     },
+  };
+  const header = {
+    week: weekHeader,
+    // The window around today pages a week at a time too, back to "This Week".
+    rolling: weekHeader,
     day: {
       title: shortDate(focusDay),
       homeLabel: "Today",
@@ -206,10 +210,6 @@ export function CalendarRoom() {
         onLayout={(weekLayout) => {
           updateDisplay({ weekLayout });
         }}
-        rolling={rolling}
-        onRolling={(rollingWeek) => {
-          updateDisplay({ rollingWeek });
-        }}
         members={members}
         people={people}
         onPeople={(chosen) => {
@@ -221,12 +221,12 @@ export function CalendarRoom() {
 
   return (
     <section
-      aria-label={view === "week" ? "This Week" : header.title}
+      aria-label={view === "week" || view === "rolling" ? "This Week" : header.title}
       className="@container flex min-h-0 flex-1 flex-col"
     >
       <Arrivals value={arrived}>
         <div {...pages.attrs} className="flex min-h-0 flex-1 flex-col">
-          {view === "week" ? (
+          {view === "week" || view === "rolling" ? (
             <WeekView
               days={week}
               today={today}

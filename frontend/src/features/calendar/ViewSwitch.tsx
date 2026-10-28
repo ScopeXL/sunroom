@@ -1,77 +1,106 @@
-import { Calendar1, CalendarDays, CalendarRange, ChevronDown, Users } from "lucide-react";
+import {
+  Calendar1,
+  CalendarDays,
+  CalendarRange,
+  ChevronDown,
+  CalendarSync,
+  Sun,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 import type { BoardView } from "../../lib/displayState";
-import { Button } from "../../ui/Button";
 import { Menu, MenuRadio } from "../../ui/Menu";
-import { IconSegmented, type IconSegmentOption } from "../../ui/Segmented";
+import { VIEW_ART } from "./viewArt";
 
-export type SwitchableView = Exclude<BoardView, "today">;
+interface ViewChoice {
+  value: BoardView;
+  label: string;
+  /** One line on what it shows, under its name in the menu. */
+  line: string;
+  icon: LucideIcon;
+}
 
-export const VIEWS: readonly IconSegmentOption<SwitchableView>[] = [
-  { value: "week", label: "Week", icon: CalendarRange },
-  { value: "day", label: "Day", icon: Calendar1 },
-  { value: "month", label: "Month", icon: CalendarDays },
-  { value: "people", label: "People", icon: Users },
+/** The board's views, in the menu's order (ADR 0042). */
+export const VIEWS: readonly ViewChoice[] = [
+  {
+    value: "week",
+    label: "Week",
+    line: "The calendar week, a column for each day.",
+    icon: CalendarRange,
+  },
+  {
+    value: "rolling",
+    label: "Rolling Week",
+    line: "Yesterday, today and the five days after.",
+    icon: CalendarSync,
+  },
+  { value: "day", label: "Day", line: "One day, hour by hour.", icon: Calendar1 },
+  {
+    value: "month",
+    label: "Month",
+    line: "The whole month. Tap a day to open it.",
+    icon: CalendarDays,
+  },
+  {
+    value: "people",
+    label: "People",
+    line: "A column for each person, one day at a time.",
+    icon: Users,
+  },
+  { value: "today", label: "Today", line: "Today at a glance, then the days ahead.", icon: Sun },
 ];
 
 /**
- * The board's views in the wall's header (UX §3, ADR 0029): four icons with the chosen one's
- * word beside it while the header has room (64rem of its own width), a **View** button with a
- * menu when it doesn't. Either way the current view is written out. Only one form is drawn at a
- * time (the header's container decides), so a button named "Day" is never there twice.
+ * The board's views in the wall's header (UX §3, ADR 0042): one **View** button in every width,
+ * the Filter button's shape, with the view's icon, its word and a chevron, named "View: Week".
+ * It opens a menu of the six views, each with a small drawing of the board, its name and one
+ * line; the chosen one is filled with ink. Today is among them, so a screen on Today can leave it
+ * from the header.
  */
 export function ViewSwitch({
   view,
   onView,
 }: {
-  view: SwitchableView;
-  onView: (view: SwitchableView) => void;
-}) {
-  return (
-    <>
-      <div className="hidden @min-[64rem]/header:block">
-        <IconSegmented label="View" options={VIEWS} value={view} onChange={onView} showChosen />
-      </div>
-      <div className="@min-[64rem]/header:hidden">
-        <ViewMenu view={view} onView={onView} />
-      </div>
-    </>
-  );
-}
-
-/** The narrow form: "View: Week" opens the four views as a menu of radio items (ui/Menu). */
-function ViewMenu({
-  view,
-  onView,
-}: {
-  view: SwitchableView;
-  onView: (view: SwitchableView) => void;
+  view: BoardView;
+  onView: (view: BoardView) => void;
 }) {
   const current = VIEWS.find((option) => option.value === view) ?? VIEWS[0];
   const CurrentIcon = current?.icon ?? CalendarRange;
   return (
     <Menu
       label="View"
+      className="min-w-[30rem]"
       trigger={(props) => (
-        <Button {...props} variant="secondary" aria-label={`View: ${current?.label ?? ""}`}>
-          <CurrentIcon aria-hidden="true" className="size-8" />
+        // Not ui/Button: its padding is fixed, and this matches Filter's shape beside it.
+        <button
+          type="button"
+          {...props}
+          aria-label={`View: ${current?.label ?? ""}`}
+          className="press inline-flex h-tap shrink-0 items-center gap-2 rounded-button-d border-2 border-line bg-surface px-5 text-d-body font-semibold active:bg-wall"
+        >
+          <CurrentIcon aria-hidden="true" className="size-8 shrink-0" />
           {current?.label}
-          <ChevronDown aria-hidden="true" className="size-7 text-ink-soft" />
-        </Button>
+          <ChevronDown aria-hidden="true" className="size-7 shrink-0 text-ink-soft" />
+        </button>
       )}
     >
-      {VIEWS.map(({ value, label, icon }) => (
-        <MenuRadio
-          key={value}
-          icon={icon}
-          checked={value === view}
-          onChoose={() => {
-            onView(value);
-          }}
-        >
-          {label}
-        </MenuRadio>
-      ))}
+      {VIEWS.map(({ value, label, line }) => {
+        const Art = VIEW_ART[value];
+        return (
+          <MenuRadio
+            key={value}
+            checked={value === view}
+            drawing={<Art />}
+            detail={line}
+            onChoose={() => {
+              onView(value);
+            }}
+          >
+            {label}
+          </MenuRadio>
+        );
+      })}
     </Menu>
   );
 }

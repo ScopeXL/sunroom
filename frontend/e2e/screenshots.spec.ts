@@ -9,6 +9,7 @@ import type { Page } from "@playwright/test";
 import {
   expect,
   PASSWORD,
+  pickView,
   PIN,
   resetServer,
   scriptedAccount,
@@ -142,11 +143,15 @@ test("the wall screen", async ({ page }) => {
   await moveClock(page, STOPS[1]?.at ?? "");
   await page.reload();
   await expect(board).toBeVisible();
-  for (const view of ["Day", "Month", "People"]) {
-    await page.getByRole("button", { name: view, exact: true }).click();
+  for (const view of ["Rolling Week", "Day", "Month", "People"]) {
+    await pickView(page, view);
     await shot(page, `view-${view.split(" ")[0]?.toLowerCase() ?? view}`);
   }
-  await page.getByRole("button", { name: "Week", exact: true }).click();
+  // The View menu: a drawing, a name and a line for each view (ADR 0042).
+  await page.getByRole("button", { name: "View: People" }).click();
+  await expect(page.getByRole("menu", { name: "View" })).toBeVisible();
+  await shot(page, "view-menu");
+  await page.getByRole("menuitemradio", { name: "Week", exact: true }).click();
   // Filter: its menu under the button with two people chosen, then the board they leave.
   await page.getByRole("button", { name: "Filter", exact: true }).click();
   await page.getByRole("menuitemcheckbox", { name: "Mia" }).click();
@@ -187,13 +192,11 @@ test("the wall screen", async ({ page }) => {
     await page.reload();
     await expect(root).toHaveAttribute("data-text-size", "xl");
   }
-  if (test.info().project.name === "display-portrait") {
-    // Portrait at Extra large: the header's views fold into the View menu.
-    await page.getByRole("button", { name: "View: Week" }).click();
-    await expect(page.getByRole("menu", { name: "View" })).toBeVisible();
-    await shot(page, "view-menu");
-    await page.keyboard.press("Escape");
-  }
+  // The View menu at Extra large, in both orientations.
+  await page.getByRole("button", { name: "View: Week" }).click();
+  await expect(page.getByRole("menu", { name: "View" })).toBeVisible();
+  await shot(page, "view-menu-xl");
+  await page.keyboard.press("Escape");
   // At Small the whole day still fits, and every chip stays a 56 px target.
   await change(page, { text_size: "small" });
   await page.reload();
@@ -855,7 +858,7 @@ test("the wall's lists and chores", async ({ page }, testInfo) => {
     await expect(page.getByRole("heading", { name: "Stars & Rewards", level: 1 })).toBeVisible();
     await shot(page, `chores-rewards-${theme}`);
     await page.goto("/display");
-    await page.getByRole("button", { name: "People", exact: true }).click();
+    await pickView(page, "People");
     await shot(page, `chores-people-${theme}`);
     await page.getByRole("button", { name: "Add", exact: true }).click();
     const add = page.getByRole("dialog", { name: "Add" });

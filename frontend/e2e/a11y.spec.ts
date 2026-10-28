@@ -8,7 +8,16 @@
 import type { Page } from "@playwright/test";
 
 import { check } from "./checks";
-import { expect, PASSWORD, PIN, scriptedAccount, seed, signInPhone, test } from "./fixtures";
+import {
+  expect,
+  PASSWORD,
+  pickView,
+  PIN,
+  scriptedAccount,
+  seed,
+  signInPhone,
+  test,
+} from "./fixtures";
 
 const SETTINGS = [
   "Family",
@@ -314,36 +323,18 @@ for (const scheme of ["light", "dark"] as const) {
       await add.getByRole("button", { name: "Close" }).click();
       // Gone before the views below: Custom's "Day" and "Month" would answer to their names.
       await expect(add).toBeHidden();
-      for (const view of ["Day", "Month", "People"]) {
-        await page.getByRole("button", { name: view, exact: true }).click();
+      for (const view of ["Day", "Month", "People", "Today"]) {
+        await pickView(page, view);
         await check(page, `display: ${view}`);
       }
-      await page.getByRole("button", { name: "Week", exact: true }).click();
-      if (testInfo.project.name === "display-portrait") {
-        // At Extra large the header has no room for four icons: the views fold into a menu.
-        const xl = await request.patch("/api/settings", {
-          headers: CSRF,
-          data: { text_size: "xl" },
-        });
-        expect(xl.ok()).toBe(true);
-        await expect(page.locator("html")).toHaveAttribute("data-text-size", "xl");
-        await page.getByRole("button", { name: "View: Week" }).click();
-        await expect(page.getByRole("menu", { name: "View" })).toBeVisible();
-        await expect(page.getByRole("menuitemradio", { name: "Week" })).toBeFocused();
-        await check(page, "display: the View menu");
-        await page.getByRole("menuitemradio", { name: "Day" }).click();
-        await expect(page.getByRole("menu", { name: "View" })).toHaveCount(0);
-        await page.getByRole("button", { name: "View: Day" }).click();
-        await page.getByRole("menuitemradio", { name: "Week" }).click();
-        await expect(page.getByRole("button", { name: "View: Week" })).toBeFocused();
-        const standard = await request.patch("/api/settings", {
-          headers: CSRF,
-          data: { text_size: "standard" },
-        });
-        expect(standard.ok()).toBe(true);
-        await expect(page.getByRole("button", { name: "Hours", exact: true })).toBeVisible();
-        await expect(page.locator("html")).not.toHaveAttribute("data-text-size", "xl");
-      }
+      // The View menu, open, at every width (ADR 0042): six rows, each one target.
+      await page.getByRole("button", { name: "View: Today" }).click();
+      await expect(page.getByRole("menu", { name: "View" })).toBeVisible();
+      await expect(page.getByRole("menuitemradio", { name: "Today" })).toBeFocused();
+      await check(page, "display: the View menu");
+      await page.getByRole("menuitemradio", { name: "Week", exact: true }).click();
+      await expect(page.getByRole("menu", { name: "View" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "View: Week" })).toBeFocused();
       // The Hours layout, the whole day and zoomed in all the way.
       await page.getByRole("button", { name: "Hours", exact: true }).click();
       await expect(page.locator("[data-hours] [data-now-line]")).toBeVisible();

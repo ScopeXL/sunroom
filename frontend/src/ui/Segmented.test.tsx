@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { CalendarRange, Clock3, List } from "lucide-react";
+import { Clock3, List } from "lucide-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { IconSegmented, IconToggle, Segmented } from "./Segmented";
+import { IconSegmented, Segmented } from "./Segmented";
 import { ShellContext } from "./shell";
 
 afterEach(cleanup);
@@ -122,32 +122,5 @@ describe("an icon group", () => {
     );
     expect(screen.getByRole("button", { name: "Hours" }).textContent).toBe("Hours");
     expect(screen.getByRole("button", { name: "Agenda" }).textContent).toBe("");
-  });
-});
-
-describe("one icon cell that's on or off (ADR 0036)", () => {
-  it("is a round, tap-sized cell, pressed while on, that says the other state", () => {
-    const onToggle = vi.fn();
-    render(
-      <ShellContext.Provider value="display">
-        <IconToggle label="Rolling week" icon={CalendarRange} pressed={false} onToggle={onToggle} />
-      </ShellContext.Provider>,
-    );
-    const cell = screen.getByRole("button", { name: "Rolling week" });
-    expect(cell.getAttribute("aria-pressed")).toBe("false");
-    expect(cell.className).toContain("h-tap");
-    expect(cell.className).toContain("min-w-tap");
-    expect(cell.className).toContain("rounded-full");
-    expect(cell.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
-    fireEvent.click(cell);
-    expect(onToggle).toHaveBeenCalledWith(true);
-    cleanup();
-    render(<IconToggle label="Rolling week" icon={CalendarRange} pressed onToggle={onToggle} />);
-    const on = screen.getByRole("button", { name: "Rolling week" });
-    expect(on.getAttribute("aria-pressed")).toBe("true");
-    // A phone's size.
-    expect(on.className).toContain("h-11");
-    fireEvent.click(on);
-    expect(onToggle).toHaveBeenLastCalledWith(false);
   });
 });

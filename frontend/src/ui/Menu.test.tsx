@@ -143,6 +143,29 @@ describe("a menu under its button (ADR 0030)", () => {
     expect(onPick).toHaveBeenCalledWith("outside");
   });
 
+  it("names a row with a line by its name alone, and reads the line after it (ADR 0042)", () => {
+    render(
+      <Menu
+        label="View"
+        trigger={(props) => (
+          <button type="button" {...props}>
+            View
+          </button>
+        )}
+      >
+        <MenuRadio checked drawing={<svg />} detail="One day, hour by hour." onChoose={vi.fn()}>
+          Day
+        </MenuRadio>
+      </Menu>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    const row = screen.getByRole("menuitemradio", { name: "Day" });
+    const line = document.getElementById(row.getAttribute("aria-describedby") ?? "");
+    expect(line?.textContent).toBe("One day, hour by hour.");
+    // The drawing is the row's picture only: a screen reader passes it by.
+    expect(row.querySelector("[aria-hidden=true] svg")).not.toBeNull();
+  });
+
   it("its own button closes it without swallowing anything", () => {
     const onPick = vi.fn();
     render(<Fruit onPick={onPick} />);

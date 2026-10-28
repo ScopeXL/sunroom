@@ -16,6 +16,7 @@ import {
   expect,
   pairWall,
   PASSWORD,
+  pickView,
   scriptedAccount,
   seed,
   signInPhone,
@@ -187,7 +188,7 @@ test("a title names its people, on top of the calendar's person, in all their co
   await expect(swim).toBeVisible({ timeout: 15_000 });
   // A neutral tint, and the bar in the three people's colors.
   await expect(swim.locator(".edge-3")).toHaveCount(1);
-  await page.getByRole("button", { name: "People", exact: true }).click();
+  await pickView(page, "People");
   const people = page.getByRole("region", { name: "People" });
   for (const name of ["Ana", "Mia", "Leo"]) {
     await expect(people.getByRole("region", { name })).toContainText("Mia & Leo's swim");

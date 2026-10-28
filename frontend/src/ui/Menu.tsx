@@ -44,11 +44,14 @@ const ROW =
 export function Menu({
   label,
   trigger,
+  className = "min-w-72",
   children,
 }: {
   /** The menu's own name: "View", "Filter". */
   label: string;
   trigger: (props: MenuTrigger, open: boolean) => ReactNode;
+  /** The box's width, when its rows want more than a word's (the View menu's drawings). */
+  className?: string;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -124,7 +127,7 @@ export function Menu({
           role="menu"
           aria-label={label}
           data-segmented=""
-          className="rise-in absolute top-full right-0 z-50 mt-2 flex max-h-[70dvh] min-w-72 flex-col gap-1 overflow-y-auto rounded-panel border-2 border-line bg-surface p-2 shadow-[0_8px_32px_rgb(0_0_0/0.18)]"
+          className={`rise-in absolute top-full right-0 z-50 mt-2 flex max-h-[70dvh] flex-col gap-1 overflow-y-auto rounded-panel border-2 border-line bg-surface p-2 shadow-[0_8px_32px_rgb(0_0_0/0.18)] ${className}`}
         >
           <MenuClose.Provider
             value={() => {
@@ -155,35 +158,61 @@ export function MenuGroup({ label, children }: { label: string; children: ReactN
 
 /**
  * One of several, only one chosen. The chosen row fills with ink (the views); with `check` it
- * shows a check at its end instead, to sit among checkbox rows (Filter's Everyone).
+ * shows a check at its end instead, to sit among checkbox rows (Filter's Everyone). A row can
+ * show a `drawing` in place of its icon and a `detail` line under its name (the View menu, ADR
+ * 0042): it is 88 px tall then, named by its name alone, the line read after it. A drawing draws
+ * in the row's own color, so it reads on a chosen row's ink too.
  */
 export function MenuRadio({
   checked,
   onChoose,
   icon: Icon,
   check = false,
+  drawing,
+  detail,
   children,
 }: {
   checked: boolean;
   onChoose: () => void;
   icon?: LucideIcon;
   check?: boolean;
+  drawing?: ReactNode;
+  detail?: string;
   children: ReactNode;
 }) {
   const close = useContext(MenuClose);
+  const nameId = useId();
+  const detailId = useId();
   return (
     <button
       type="button"
       role="menuitemradio"
       aria-checked={checked}
+      aria-labelledby={detail ? nameId : undefined}
+      aria-describedby={detail ? detailId : undefined}
       onClick={() => {
         onChoose();
         close();
       }}
-      className={`${ROW} ${check ? "aria-checked:bg-wall" : "aria-checked:bg-ink aria-checked:text-on-ink"}`}
+      className={`${ROW} ${detail ? "min-h-22 gap-4 py-2" : ""} ${check ? "aria-checked:bg-wall" : "aria-checked:bg-ink aria-checked:text-on-ink"}`}
     >
-      {Icon ? <Icon aria-hidden="true" className="size-8 shrink-0" /> : null}
-      {children}
+      {drawing ? (
+        <span aria-hidden="true" className="shrink-0">
+          {drawing}
+        </span>
+      ) : Icon ? (
+        <Icon aria-hidden="true" className="size-8 shrink-0" />
+      ) : null}
+      {detail ? (
+        <span className="flex min-w-0 flex-col">
+          <span id={nameId}>{children}</span>
+          <span id={detailId} className="text-d-secondary font-normal">
+            {detail}
+          </span>
+        </span>
+      ) : (
+        children
+      )}
       {check ? <Mark shown={checked} /> : null}
     </button>
   );

@@ -6,7 +6,7 @@
  */
 import type { Locator, Page } from "@playwright/test";
 
-import { expect, pairWall, PASSWORD, phone, seed, signInPhone, test } from "./fixtures";
+import { expect, pairWall, PASSWORD, phone, pickView, seed, signInPhone, test } from "./fixtures";
 
 const CSRF = { "X-Sunroom": "1" };
 const WEDNESDAY_10AM = "2026-10-07T14:00:00Z";
@@ -158,7 +158,7 @@ test("the views, the event sheet and Recently Removed", async ({ page }) => {
 
   // Day: the vet is over, free time folds into one line. The view names its own day: the
   // header doesn't (ADR 0030).
-  await page.getByRole("button", { name: "Day", exact: true }).click();
+  await pickView(page, "Day");
   const day = page.getByRole("region", { name: "Wed, Oct 7" });
   await expect(day).toContainText("Wednesday, October 7");
   await expect(page.getByRole("banner")).not.toContainText("October");
@@ -166,7 +166,7 @@ test("the views, the event sheet and Recently Removed", async ({ page }) => {
   await expect(day.getByRole("button", { name: /^free until 3:30 PM/ })).toBeVisible();
 
   // Month: a cell opens its day.
-  await page.getByRole("button", { name: "Month", exact: true }).click();
+  await pickView(page, "Month");
   const month = page.getByRole("region", { name: "October 2026" });
   await expect(month.getByText("October 2026", { exact: true })).toBeVisible();
   await month.getByRole("button", { name: /^Fri 9: .*Pajama day/ }).click();
@@ -174,7 +174,7 @@ test("the views, the event sheet and Recently Removed", async ({ page }) => {
 
   // People: a column per person, Everyone first, on the day the Day view was showing (the two
   // share it, ADR 0036); Today comes back to Wednesday. Nothing to filter there.
-  await page.getByRole("button", { name: "People", exact: true }).click();
+  await pickView(page, "People");
   const people = page.getByRole("region", { name: "People" });
   await expect(people.getByText("Friday, October 9", { exact: true })).toBeVisible();
   await page.getByRole("banner").getByRole("button", { name: "Today", exact: true }).click();
@@ -187,7 +187,7 @@ test("the views, the event sheet and Recently Removed", async ({ page }) => {
   await expect(people.getByRole("region", { name: "Ana" })).not.toContainText("Free day");
 
   // Back to the week; remove the vet, then put it back from Settings.
-  await page.getByRole("button", { name: "Week", exact: true }).click();
+  await pickView(page, "Week");
   await board.getByRole("button", { name: /^Vet, / }).click();
   const sheet = page.getByRole("dialog", { name: "Vet" });
   await sheet.getByRole("button", { name: "Remove" }).click();
@@ -210,7 +210,7 @@ test("People pages a day at a time and says which day (ADR 0036)", async ({ page
   await pairWall(page);
   await page.goto("/display");
   const header = page.getByRole("banner");
-  await header.getByRole("button", { name: "People", exact: true }).click();
+  await pickView(page, "People");
   const people = page.getByRole("region", { name: "People" });
   const mia = people.getByRole("region", { name: "Mia" });
   // The day over the columns, as the Day view writes its own, and "today" beside it.
@@ -236,7 +236,7 @@ test("People pages a day at a time and says which day (ADR 0036)", async ({ page
   // People's arrows page its day, never the Week view's week behind its back.
   await header.getByRole("button", { name: "Next day" }).click();
   await expect(people.getByText("Thursday, October 8", { exact: true })).toBeVisible();
-  await header.getByRole("button", { name: "Week", exact: true }).click();
+  await pickView(page, "Week");
   await expect(header.getByRole("button", { name: "This Week" })).toBeDisabled();
 });
 
@@ -256,10 +256,19 @@ test("the Today view has no arrows and no quick jump: nothing to page (ADR 0036)
   expect(home.ok()).toBe(true);
   await pairWall(page);
   await page.goto("/display");
-  await expect(page.getByRole("region", { name: "Today", exact: true })).toContainText("Vet");
+  const todayView = page.getByRole("region", { name: "Today", exact: true });
+  await expect(todayView).toContainText("Vet");
   const header = page.getByRole("banner");
   await expect(header.getByRole("button", { name: /^(Previous|Next) / })).toHaveCount(0);
   await expect(header.getByRole("button", { name: /^(Today|This Week)$/ })).toHaveCount(0);
+  // The View menu is there too, so the screen can leave Today from the header, and come back
+  // (ADR 0042).
+  await pickView(page, "Week");
+  await expect(page.getByRole("region", { name: "This Week" })).toBeVisible();
+  await expect(header.getByRole("button", { name: "This Week" })).toBeDisabled();
+  await pickView(page, "Today");
+  await expect(todayView).toContainText("Vet");
+  await expect(header.getByRole("button", { name: "View: Today" })).toBeVisible();
 });
 
 test("Filter is one button in the header: several people, a tap elsewhere, Everyone", async ({
@@ -311,9 +320,9 @@ test("Filter is one button in the header: several people, a tap elsewhere, Every
   await page.keyboard.press("Escape");
   await expect(menu).toBeHidden();
   await expect(chosen).toBeFocused();
-  await header.getByRole("button", { name: "Month", exact: true }).click();
+  await pickView(page, "Month");
   await expect(chosen).toBeVisible();
-  await header.getByRole("button", { name: "Week", exact: true }).click();
+  await pickView(page, "Week");
   // Everyone clears the filter and closes the menu.
   await chosen.click();
   await everyone.click();
@@ -472,7 +481,7 @@ test("an event added from a phone eases onto the wall, and one removed fades awa
   await context.close();
 });
 
-test("a rolling week keeps today in the same column, and still pages by seven days", async ({
+test("Rolling Week keeps today in the same column, and still pages by seven days", async ({
   page,
   request,
 }) => {
@@ -490,7 +499,7 @@ test("a rolling week keeps today in the same column, and still pages by seven da
   await expect(days.first()).toHaveAttribute("data-day", "2026-10-04");
   await expect(days.nth(5)).toHaveAttribute("aria-current", "date");
 
-  // A parent turns it on (Settings → Display → Rolling week); the wall follows at once.
+  // A parent makes it the Home view (Settings → Display, ADR 0042); the wall follows at once.
   const parent = await request.post("/api/auth/login", {
     headers: CSRF,
     data: { password: PASSWORD },
@@ -498,7 +507,7 @@ test("a rolling week keeps today in the same column, and still pages by seven da
   expect(parent.ok()).toBe(true);
   const rolling = await request.patch("/api/settings", {
     headers: CSRF,
-    data: { display_rolling_week: true },
+    data: { display_home_view: "rolling" },
   });
   expect(rolling.ok()).toBe(true);
   // Yesterday, today in the second column, and the five days after (ADR 0033).
@@ -506,9 +515,12 @@ test("a rolling week keeps today in the same column, and still pages by seven da
   await expect(days.nth(1)).toHaveAttribute("aria-current", "date");
   await expect(today).toContainText("Fri");
   await expect(days.last()).toHaveAttribute("data-day", "2026-10-14");
+  // The button says so, and the week's two layouts are there as on Week.
+  const banner = page.getByRole("banner");
+  await expect(banner.getByRole("button", { name: "View: Rolling Week" })).toBeVisible();
+  await expect(banner.getByRole("group", { name: "Week layout" })).toBeVisible();
 
   // The arrows page seven days; This Week comes back to the window around today.
-  const banner = page.getByRole("banner");
   await banner.getByRole("button", { name: "Next week" }).click();
   await expect(days.first()).toHaveAttribute("data-day", "2026-10-15");
   await expect(today).toHaveCount(0);
@@ -520,7 +532,7 @@ test("a rolling week keeps today in the same column, and still pages by seven da
   await expect(days.nth(1)).toHaveAttribute("aria-current", "date");
 });
 
-test("a screen switches Rolling week for itself, and Settings → Display wins (ADR 0036)", async ({
+test("a screen picks Rolling Week for itself, and Settings → Display wins (ADR 0042)", async ({
   page,
   request,
 }) => {
@@ -534,31 +546,26 @@ test("a screen switches Rolling week for itself, and Settings → Display wins (
   await page.goto("/display");
   const board = page.getByRole("region", { name: "This Week" });
   const days = board.locator("[data-day]");
-  const toggle = page.getByRole("banner").getByRole("button", { name: "Rolling week" });
+  const banner = page.getByRole("banner");
   await expect(days.first()).toHaveAttribute("data-day", "2026-10-04");
-  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(banner.getByRole("button", { name: "View: Week" })).toBeVisible();
 
-  // A tap rolls this screen's week at once; the household's setting stays as it was.
-  await toggle.click();
+  // From the View menu: this screen's week rolls at once; the household's Home view stays.
+  await pickView(page, "Rolling Week");
   await expect(days.first()).toHaveAttribute("data-day", "2026-10-08");
   await expect(days.nth(1)).toHaveAttribute("aria-current", "date");
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(banner.getByRole("button", { name: "View: Rolling Week" })).toBeVisible();
   const parent = await request.post("/api/auth/login", {
     headers: CSRF,
     data: { password: PASSWORD },
   });
   expect(parent.ok()).toBe(true);
   const settings = (await (await request.get("/api/settings")).json()) as {
-    display_rolling_week: boolean;
+    display_home_view: string;
   };
-  expect(settings.display_rolling_week).toBe(false);
+  expect(settings.display_home_view).toBe("week");
 
   // Remembered across a reload, like the layout (ADR 0030).
-  await page.reload();
-  await expect(days.first()).toHaveAttribute("data-day", "2026-10-08");
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
-
-  // A change in Settings → Display wins (ADR 0031): on, then off, and the board follows both.
   const kept = () =>
     page.evaluate(
       () =>
@@ -567,25 +574,31 @@ test("a screen switches Rolling week for itself, and Settings → Display wins (
             string,
             unknown
           >
-        ).rollingWeek,
+        ).view,
     );
+  expect(await kept()).toBe("rolling");
+  await page.reload();
+  await expect(days.first()).toHaveAttribute("data-day", "2026-10-08");
+  await expect(banner.getByRole("button", { name: "View: Rolling Week" })).toBeVisible();
+
+  // A new Home view in Settings → Display wins (ADR 0031): Rolling Week, then Week, and the
+  // board follows both.
   const on = await request.patch("/api/settings", {
     headers: CSRF,
-    data: { display_rolling_week: true },
+    data: { display_home_view: "rolling" },
   });
   expect(on.ok()).toBe(true);
   // The screen's own choice gave way to the household's, which also rolls.
   await expect.poll(kept).toBeNull();
   await expect(days.first()).toHaveAttribute("data-day", "2026-10-08");
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
   const off = await request.patch("/api/settings", {
     headers: CSRF,
-    data: { display_rolling_week: false },
+    data: { display_home_view: "week" },
   });
   expect(off.ok()).toBe(true);
   await expect(days.first()).toHaveAttribute("data-day", "2026-10-04", { timeout: 5_000 });
   await expect(days.nth(5)).toHaveAttribute("aria-current", "date");
-  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(banner.getByRole("button", { name: "View: Week" })).toBeVisible();
 });
 
 test("remind: the household's Default reminder brings the Vet up 10 minutes before (ADR 0034)", async ({

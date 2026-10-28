@@ -135,36 +135,3 @@ export function IconSegmented<T extends string>({
     </div>
   );
 }
-
-/**
- * One round icon cell that's on or off, `IconSegmented`'s cell on its own (the Week view's
- * Rolling week, ADR 0036): named by its label, pressed and filled with ink while on.
- */
-export function IconToggle({
-  label,
-  icon: Icon,
-  pressed,
-  onToggle,
-}: {
-  label: string;
-  icon: LucideIcon;
-  pressed: boolean;
-  onToggle: (pressed: boolean) => void;
-}) {
-  const display = useShell() === "display";
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={pressed}
-      onClick={() => {
-        onToggle(!pressed);
-      }}
-      className={`press select-fill flex shrink-0 items-center justify-center rounded-full aria-pressed:bg-ink aria-pressed:text-on-ink ${
-        display ? "h-tap min-w-tap" : "h-11 min-w-11"
-      }`}
-    >
-      <Icon aria-hidden="true" className={display ? "size-8" : "size-6"} />
-    </button>
-  );
-}

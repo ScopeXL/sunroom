@@ -11,6 +11,7 @@ import {
   expect,
   pairWall,
   PASSWORD,
+  pickView,
   PIN,
   seed,
   settled,
@@ -270,8 +271,20 @@ test.describe("the wall screen", () => {
       expect(header?.width).toBeCloseTo(size.width - 192, 0);
       expect((panel?.x ?? 0) + (panel?.width ?? 0)).toBeCloseTo(size.width, 0);
       expect(panel?.y ?? 0).toBeGreaterThanOrEqual((header?.y ?? 0) + (header?.height ?? 0));
-      // At Standard on 1920 px it's one row: today, the room's title and controls, the corner.
-      if (size.width >= 1920) expect(header?.height ?? 0).toBeLessThanOrEqual(84);
+      // At Standard on 1920 px it's one row: today, the room's title and controls, the corner;
+      // on every view, with both panels open, now that the views are one button (ADR 0042).
+      if (size.width >= 1920) {
+        expect(header?.height ?? 0).toBeLessThanOrEqual(84);
+        for (const view of ["Rolling Week", "Day", "Month", "People", "Today", "Week"]) {
+          await pickView(page, view);
+          await expect(
+            page.getByRole("banner").getByRole("button", { name: `View: ${view}` }),
+          ).toBeVisible();
+          expect((await page.getByRole("banner").boundingBox())?.height ?? 0).toBeLessThanOrEqual(
+            84,
+          );
+        }
+      }
       // The rail starts with the Sunroom mark alone, in a block as tall as the header, so the
       // rule under it meets the header's (ADR 0030). No word beside it.
       const rail = page.getByRole("navigation", { name: "Rooms" });
@@ -606,15 +619,13 @@ test.describe("the wall screen", () => {
     await header.getByRole("button", { name: "Hide the Today panel" }).click();
     const today = page.getByRole("complementary", { name: "Today" });
     await expect(today).toBeHidden();
-    await header.getByRole("button", { name: "Month", exact: true }).click();
+    await pickView(page, "Month");
     await header.getByRole("button", { name: "Next month" }).click();
     const thisMonth = header.getByRole("button", { name: "This month" });
     await expect(thisMonth).toBeEnabled();
     await page.clock.fastForward(121_000);
     await expect(thisMonth).toBeDisabled();
-    await expect(
-      header.getByRole("button", { name: "Month", exact: true, pressed: true }),
-    ).toBeVisible();
+    await expect(header.getByRole("button", { name: "View: Month" })).toBeVisible();
     expect(await width()).toBe(72);
     await expect(today).toBeHidden();
   });
@@ -684,20 +695,20 @@ test.describe("the wall screen", () => {
     await page.getByRole("menuitemcheckbox", { name: "Mia" }).click();
     await page.getByRole("menuitemcheckbox", { name: "Leo" }).click();
     await page.keyboard.press("Escape");
-    await header.getByRole("button", { name: "Month", exact: true }).click();
+    await pickView(page, "Month");
     await header.getByRole("button", { name: "Next month" }).click();
     await header.getByRole("button", { name: "Hide the rail" }).click();
     await header.getByRole("button", { name: "Hide the Today panel" }).click();
     await expect(today).toBeHidden();
 
     await page.reload();
-    await expect(pressed("Month")).toBeVisible();
+    await expect(header.getByRole("button", { name: "View: Month" })).toBeVisible();
     await expect(header.getByRole("button", { name: "This month" })).toBeEnabled();
     await expect(shell).toHaveAttribute("data-rail", "compact");
     await expect(today).toBeHidden();
     await expect(header.getByRole("button", { name: "Filter: Mia, Leo" })).toBeVisible();
     // The Week's layout and its zoom came back with it.
-    await header.getByRole("button", { name: "Week", exact: true }).click();
+    await pickView(page, "Week");
     await expect(pressed("Hours")).toBeVisible();
     await expect(page.getByRole("button", { name: "Zoom out" })).toBeEnabled();
 

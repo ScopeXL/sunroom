@@ -23,7 +23,6 @@ const KEPT = {
   panelShown: false,
   railCollapsed: true,
   weekLayout: "hours",
-  rollingWeek: true,
   hoursZoom: 2.25,
   people: ["mia", "leo"],
 };
@@ -47,7 +46,6 @@ describe('what the wall is showing (UX §1 "Idle, wake and reset")', () => {
     expect(state.panelShown).toBeNull();
     expect(state.railCollapsed).toBeNull();
     expect(state.weekLayout).toBeNull();
-    expect(state.rollingWeek).toBeNull();
     expect(state.people).toEqual([]);
   });
 
@@ -60,7 +58,6 @@ describe('what the wall is showing (UX §1 "Idle, wake and reset")', () => {
       railCollapsed: true,
       panelShown: false,
       weekLayout: "hours",
-      rollingWeek: true,
       hoursZoom: 2.25,
       people: ["mia"],
       panel: { kind: "event", eventId: "e", recurrenceId: null, key: "k" },
@@ -73,11 +70,9 @@ describe('what the wall is showing (UX §1 "Idle, wake and reset")', () => {
     expect(state.day).toBeNull();
     expect(state.people).toEqual([]);
     expect(state.panel).toBeNull();
-    // The view, the layout, Rolling week and zoom, the panel and the rail stay as the screen
-    // had them.
+    // The view, the layout and zoom, the panel and the rail stay as the screen had them.
     expect(state.view).toBe("month");
     expect(state.weekLayout).toBe("hours");
-    expect(state.rollingWeek).toBe(true);
     expect(state.hoursZoom).toBe(2.25);
     expect(state.panelShown).toBe(false);
     expect(state.railCollapsed).toBe(true);
@@ -109,24 +104,16 @@ describe('what the wall is showing (UX §1 "Idle, wake and reset")', () => {
     const household = {
       homeView: "week",
       weekLayout: "agenda",
-      rollingWeek: false,
       todayPanel: true,
       compactRail: false,
     } as const;
     const chosen = {
-      view: "month",
+      view: "rolling",
       weekLayout: "hours",
-      rollingWeek: true,
       panelShown: false,
       railCollapsed: true,
-    };
-    page.updateDisplay({
-      view: "month",
-      weekLayout: "hours",
-      rollingWeek: true,
-      panelShown: false,
-      railCollapsed: true,
-    });
+    } as const;
+    page.updateDisplay(chosen);
     // The first settings a page reads change nothing: what the screen kept stands.
     page.householdChose(household);
     expect(page.displayState.get()).toMatchObject(chosen);
@@ -136,24 +123,20 @@ describe('what the wall is showing (UX §1 "Idle, wake and reset")', () => {
     // Compact rail changed: only the rail's own choice gives way.
     page.householdChose({ ...household, compactRail: true });
     expect(page.displayState.get()).toMatchObject({ ...chosen, railCollapsed: null });
-    // Rolling week in Settings → Display: every screen goes to the household's (ADR 0036).
-    page.householdChose({ ...household, compactRail: true, rollingWeek: true });
-    expect(page.displayState.get()).toMatchObject({
-      ...chosen,
-      railCollapsed: null,
-      rollingWeek: null,
-    });
+    // Rolling Week as the household's home view (ADR 0042): every screen goes to the
+    // household's, as for any home view.
+    page.householdChose({ ...household, homeView: "rolling", compactRail: true });
+    expect(page.displayState.get()).toMatchObject({ ...chosen, view: null, railCollapsed: null });
+    page.updateDisplay({ view: "month" });
     page.householdChose({
       homeView: "today",
       weekLayout: "hours",
-      rollingWeek: true,
       todayPanel: false,
       compactRail: true,
     });
     expect(page.displayState.get()).toMatchObject({
       view: null,
       weekLayout: null,
-      rollingWeek: null,
       panelShown: null,
       railCollapsed: null,
     });
@@ -183,21 +166,30 @@ describe("what a screen remembers for its next start (ADR 0030)", () => {
     expect(state.panelShown).toBe(false);
     expect(state.railCollapsed).toBe(true);
     expect(state.weekLayout).toBe("hours");
-    expect(state.rollingWeek).toBe(true);
     expect(state.hoursZoom).toBe(2.25);
     expect(state.people).toEqual(["mia", "leo"]);
     // Never an open sheet or a draft in Add.
     expect(state.panel).toBeNull();
   });
 
-  it("comes back to a view kept by 0.13.0, which had no Rolling week (ADR 0036)", async () => {
-    const older: Record<string, unknown> = { ...KEPT };
-    delete older.rollingWeek;
-    localStorage.setItem(MEMORY_KEY, JSON.stringify(older));
+  it("comes back on Rolling Week where 0.14.0 to 0.16.1 kept it on the Week view (ADR 0042)", async () => {
+    // Those kept Rolling week beside the view, a switch; it is a view of its own now.
+    localStorage.setItem(MEMORY_KEY, JSON.stringify({ ...KEPT, view: "week", rollingWeek: true }));
     const page = await freshPage();
-    expect(page.remembered()).toMatchObject({ view: "month", rollingWeek: null });
-    expect(page.displayState.get().view).toBe("month");
-    expect(page.displayState.get().rollingWeek).toBeNull();
+    expect(page.remembered()).toMatchObject({ view: "rolling" });
+    expect(page.displayState.get().view).toBe("rolling");
+    // Off, or kept on another view, the view comes back as it was.
+    for (const [view, rollingWeek] of [
+      ["week", false],
+      ["month", true],
+      [null, true],
+    ] as const) {
+      localStorage.setItem(MEMORY_KEY, JSON.stringify({ ...KEPT, view, rollingWeek }));
+      expect((await freshPage()).remembered()?.view).toBe(view);
+    }
+    // And a view from 0.13.0, before Rolling week, as one from 0.17.0.
+    localStorage.setItem(MEMORY_KEY, JSON.stringify({ ...KEPT, view: "rolling" }));
+    expect((await freshPage()).remembered()?.view).toBe("rolling");
   });
 
   it("ignores what it can't read, field by field", async () => {
@@ -210,7 +202,6 @@ describe("what a screen remembers for its next start (ADR 0030)", () => {
       JSON.stringify({ ...KEPT, day: "tomorrow" }),
       JSON.stringify({ ...KEPT, panelShown: "no" }),
       JSON.stringify({ ...KEPT, weekLayout: "grid" }),
-      JSON.stringify({ ...KEPT, rollingWeek: "yes" }),
       JSON.stringify({ ...KEPT, hoursZoom: 0 }),
       JSON.stringify({ ...KEPT, people: [1, 2] }),
       JSON.stringify({ v: 1, view: "month" }),

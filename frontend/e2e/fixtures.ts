@@ -137,6 +137,18 @@ export async function pairWall(page: Page): Promise<void> {
   expect(response.status()).toBe(200);
 }
 
+/** Pick one of the board's views from the wall header's View menu (ADR 0042). */
+export async function pickView(page: Page, view: string): Promise<void> {
+  await page
+    .getByRole("banner")
+    .getByRole("button", { name: /^View: / })
+    .click();
+  await page
+    .getByRole("menu", { name: "View" })
+    .getByRole("menuitemradio", { name: view, exact: true })
+    .click();
+}
+
 /**
  * Wait until every finite animation has ended, so a check sees the final look. Headless Chromium
  * draws no frame until something asks for one, and a transition (even Reduce Motion's 0.01 ms)

@@ -16,6 +16,10 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- The Calendar's views are one button in the header, **View**, which opens a menu with a small
+  drawing and a line for each: Week, Rolling Week, Day, Month, People and Today. Rolling Week is
+  a view of its own now, in that menu and as a Home view in Settings → Display, instead of a
+  switch beside Agenda · Hours.
 - This Screen's Rotation turns the picture on Windows and Linux computers too, for a display
   mounted on its side that the computer doesn't know about.
 - Shut Down's question says it turns off the computer this screen runs on, and its other button

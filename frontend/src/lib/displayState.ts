@@ -1,8 +1,7 @@
 /**
  * What the wall screen is showing right now, beyond the URL: the board's view, which week, day
  * or month, the person filter, whether the Today panel is hidden and the rail folded on this
- * screen, the Week layout, Rolling week and zoom chosen on it, and the event sheet or Add panel
- * that's open.
+ * screen, the Week layout and zoom chosen on it, and the event sheet or Add panel that's open.
  * After 2 minutes idle the board goes back to now, so the next person who glances sees this
  * week, and what the screen chose for itself stays (UX §1 "Idle, wake and reset", ADR 0031).
  *
@@ -14,7 +13,9 @@
 import { lastActivity } from "./idle";
 import { createStore } from "./store";
 
-export type BoardView = "week" | "day" | "month" | "people" | "today";
+/** The board's views: Rolling Week (yesterday, today and the five days after) is one of its
+ * own since ADR 0042; it was a switch on the Week view (ADR 0033, 0036). */
+export type BoardView = "week" | "rolling" | "day" | "month" | "people" | "today";
 /** How the Week board draws a day (ADR 0028): stacked chips, or the hours from midnight. */
 export type WeekLayout = "agenda" | "hours";
 
@@ -47,9 +48,6 @@ export interface DisplayState {
   railCollapsed: boolean | null;
   /** null: the household's Week layout (Settings → Display). */
   weekLayout: WeekLayout | null;
-  /** The Week view's window around today on this screen (ADR 0036); null: the household's
-   * Rolling week (Settings → Display). */
-  rollingWeek: boolean | null;
   /** How far the Hours grid is zoomed in: 1 fits the whole day, each Zoom in is half again. */
   hoursZoom: number;
   /** Show these people's events (and Everyone's); empty shows all. */
@@ -65,7 +63,6 @@ const INITIAL: DisplayState = {
   panelShown: null,
   railCollapsed: null,
   weekLayout: null,
-  rollingWeek: null,
   hoursZoom: 1,
   people: [],
   panel: null,
@@ -79,6 +76,7 @@ type View = Omit<DisplayState, "panel">;
 const isView = (value: unknown): value is BoardView | null =>
   value === null ||
   value === "week" ||
+  value === "rolling" ||
   value === "day" ||
   value === "month" ||
   value === "people" ||
@@ -118,8 +116,9 @@ export function remembered(): View | null {
       hoursZoom,
       people,
     } = kept;
-    // Added in 0.14.0: a view kept by an older build has no such key, and still comes back.
-    const rollingWeek = kept.rollingWeek ?? null;
+    // 0.14.0 to 0.16.1 kept Rolling week beside the view, a switch on Week; since 0.17.0 it is
+    // a view of its own (ADR 0042), so a screen that had it on comes back on it.
+    const rolling = kept.rollingWeek === true && view === "week";
     if (
       !isView(view) ||
       !isOffset(weekOffset) ||
@@ -128,21 +127,19 @@ export function remembered(): View | null {
       !isChoice(panelShown) ||
       !isChoice(railCollapsed) ||
       !isLayout(weekLayout) ||
-      !isChoice(rollingWeek) ||
       !isZoom(hoursZoom) ||
       !isIds(people)
     ) {
       return null;
     }
     return {
-      view,
+      view: rolling ? "rolling" : view,
       weekOffset,
       day,
       monthOffset,
       panelShown,
       railCollapsed,
       weekLayout,
-      rollingWeek,
       hoursZoom,
       people,
     };
@@ -166,7 +163,6 @@ function remember(state: DisplayState): void {
     panelShown: state.panelShown,
     railCollapsed: state.railCollapsed,
     weekLayout: state.weekLayout,
-    rollingWeek: state.rollingWeek,
     hoursZoom: state.hoursZoom,
     people: state.people,
   };
@@ -297,8 +293,8 @@ lastActivity.subscribe(() => {
 /**
  * Back to now, after 2 minutes idle (UX §1 "Idle, wake and reset", ADR 0031): this week, today
  * and this month, everyone's events, and nothing open. What the screen chose for itself stays:
- * its view, the Week layout, Rolling week and zoom, the Today panel and the rail. A board
- * already there is left alone, so nothing redraws, and the screen rests either way.
+ * its view, the Week layout and zoom, the Today panel and the rail. A board already there is left
+ * alone, so nothing redraws, and the screen rests either way.
  */
 export function backToNow(): void {
   displayState.set((state) =>
@@ -317,7 +313,6 @@ export function backToNow(): void {
 export interface HouseholdChoices {
   homeView: string;
   weekLayout: WeekLayout;
-  rollingWeek: boolean;
   todayPanel: boolean;
   compactRail: boolean;
 }
@@ -338,7 +333,6 @@ export function householdChose(next: HouseholdChoices): void {
   const change: Partial<DisplayState> = {};
   if (next.homeView !== before.homeView) change.view = null;
   if (next.weekLayout !== before.weekLayout) change.weekLayout = null;
-  if (next.rollingWeek !== before.rollingWeek) change.rollingWeek = null;
   if (next.todayPanel !== before.todayPanel) change.panelShown = null;
   if (next.compactRail !== before.compactRail) change.railCollapsed = null;
   if (Object.keys(change).length) updateDisplay(change);
