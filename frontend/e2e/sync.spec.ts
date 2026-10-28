@@ -127,7 +127,8 @@ test("an account's calendar shows on the wall in its person's color, and changes
   const week = await board(page);
   const trip = week.getByRole("button", { name: /^Field trip, 9:00 AM to 1:00 PM, Mia, Thursday/ });
   await expect(trip).toBeVisible({ timeout: 15_000 });
-  await expect(trip).toHaveAttribute("data-person", "rose");
+  // On the Hours grid (a new household's layout, ADR 0042) the block inside wears the color.
+  await expect(trip.locator("[data-person]").first()).toHaveAttribute("data-person", "rose");
 
   // Its sheet says where it comes from.
   await trip.click();

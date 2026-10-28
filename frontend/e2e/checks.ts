@@ -34,8 +34,10 @@ async function typingFieldsAtLeast16px(page: Page, where: string): Promise<void>
  * single control with large cells. A control covered where it would be tapped (a chip under the
  * open side panel, a row scrolled under the tab bar) still has to be big enough, but it isn't
  * anyone's neighbour until it's uncovered; nor is the board across the side panel's edge, whose
- * 24 px padding keeps its own controls clear of the board. While a menu is open only the menu
- * and its button count: the rest of the page takes no taps until it closes.
+ * 24 px padding keeps its own controls clear of the board. A control whose end facing another is
+ * under something else (a chip's end under the Hours zoom's panel) is measured from what covers
+ * it: that end takes no tap. While a menu is open only the menu and its button count: the rest
+ * of the page takes no taps until it closes.
  */
 export async function tapTargets(page: Page, where: string): Promise<void> {
   const problems = await page.evaluate(() => {
@@ -72,6 +74,14 @@ export async function tapTargets(page: Page, where: string): Promise<void> {
         return hit !== null && !control.contains(hit) && !hit.contains(control);
       });
     };
+    // The end of `control` that faces `other`, a few pixels in, is under something that is
+    // neither of them: a third thing covers it (the other one overlapping still counts).
+    const endCovered = (control: Element, other: Element, near: DOMRect, far: DOMRect) => {
+      const x = near.left < far.left ? near.right - 3 : near.left + 3;
+      const y = (Math.max(near.top, far.top) + Math.min(near.bottom, far.bottom)) / 2;
+      const hit = document.elementFromPoint(x, y);
+      return hit !== null && !control.contains(hit) && !other.contains(hit);
+    };
     const found: string[] = [];
     for (const control of controls) {
       const box = control.getBoundingClientRect();
@@ -95,6 +105,7 @@ export async function tapTargets(page: Page, where: string): Promise<void> {
         // way a Month cell holds its day; the zoom is what makes a short one bigger (UX §1).
         const dense = a.closest("[data-dense]");
         if (gap < 0 && dense && dense === b.closest("[data-dense]")) continue;
+        if (gap < 7.5 && (endCovered(a, b, one, two) || endCovered(b, a, two, one))) continue;
         if (gap < 7.5) found.push(`${String(Math.round(gap))} px apart: ${name(a)} and ${name(b)}`);
       }
     }

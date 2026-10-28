@@ -96,7 +96,7 @@ test("quick add on the wall, seen on a phone, changed and undone, dragged and pu
   });
   await expect(dentist).toBeVisible();
   // On the Hours grid (a new household's layout, ADR 0042) the block inside wears the color.
-  await expect(dentist.locator("[data-person]")).toHaveAttribute("data-person", "rose");
+  await expect(dentist.locator("[data-person]").first()).toHaveAttribute("data-person", "rose");
   await expect(board.locator('[data-day="2026-10-08"]')).toContainText("Dentist");
   await expect(toast(page, "Added Dentist")).toBeVisible();
 
