@@ -1513,7 +1513,7 @@ write_kiosk_config() {
 		printf 'SUNROOM_DDC_BUS=%q\n' "$DDC_BUS"
 		printf 'SUNROOM_BACKLIGHT=%q\n' "$BACKLIGHT"
 		printf 'SUNROOM_MODE=%q\n' "$MODE"
-		printf '# nightly (installed overnight) or off; empty is the default for this install (off).\n'
+		printf '# nightly (installed overnight) or off; empty is the default, installed overnight.\n'
 		printf 'SUNROOM_UPDATE_CHECK=%q\n' "$check"
 	} >"$tmp"
 	mkdir -p "$CONFIG_DIR"

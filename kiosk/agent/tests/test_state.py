@@ -243,3 +243,18 @@ async def test_a_second_tap_joins_the_run_already_going(
     assert len(started) == 1 and agent.running_sunroom
     for work in started:  # never awaited here; close it so Python doesn't warn
         work.close()  # type: ignore[attr-defined]
+
+
+def test_every_screen_installs_updates_overnight_unless_turned_off(
+    make_agent: Callable[..., Agent], config_path: Path
+) -> None:
+    """Install overnight is every screen's default (ADR 0042; it was Sunroom OS's alone); a
+    screen whose Updates was set to Off keeps Off."""
+    from sunroom_kiosk.platform.fake import FakePlatform
+
+    for kind in ("pi", "desktop"):
+        assert make_agent(platform=FakePlatform(kind)).update_check() == "nightly"
+    agent = make_agent()
+    agent.set_update_check("off")
+    assert settings_file.load(config_path).update_check == "off"
+    assert make_agent().update_check() == "off"

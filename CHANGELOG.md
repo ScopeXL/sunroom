@@ -8,6 +8,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- Every screen installs Sunroom Screen's updates overnight by itself unless Updates is turned off
+  in This Screen.
 - The Address row says whether Sunroom runs on this computer or on another, and Change Address's
   question has a Cancel button.
 - This Screen shows the connection (Wi-Fi and its network, wired, or not connected) and no longer
