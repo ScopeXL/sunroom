@@ -38,9 +38,11 @@ root; it asks for `sudo` itself.
 The installer finishes by saying what's next (with Sunroom on the Pi, the address your devices
 open and a QR code), then offers to restart.
 
-The screen looks for Sunroom on your network after the restart and lists what it finds: tap
-**Use This Sunroom**, or type the address you open on your other devices and tap **Check
-Address**. `--url https://calendar.example.com` (or `http://192.168.1.20:8080`) gives it the
+On the screen's first page, tap **Connect to a Sunroom**, then **Continue** (ADR 0042). The
+screen looks for Sunroom on your network and lists what it finds: tap **Use This Sunroom**, or
+type the address you open on your other devices under **Sunroom address**; it's checked as soon as
+you leave the field (**Check Address** tries again), and **Use This Sunroom** shows beside it once
+it's found. `--url https://calendar.example.com` (or `http://192.168.1.20:8080`) gives it the
 address and skips the search. Then the screen shows a six-character code: on a device signed in to
 Sunroom, open **Settings → Devices → Pair a Display** (under **More** on a phone) and type it. A
 Sunroom that isn't set up yet shows **Set Up Sunroom** instead: **Set Up Here** sets the household
@@ -291,21 +293,22 @@ Screen on: tapped awake for 2 minutes.
 ## Sunroom on this computer
 
 The screen's first page asks **Where will your family's Sunroom run?** (ADR 0038). **On This
-Computer** → **Run Sunroom Here** sets Sunroom up on the computer the screen runs on, so it is the
-family's Sunroom as well as its wall screen. **Setting Up Sunroom** shows how far it is
-("Downloading Sunroom… 40%", "Installing Sunroom…", "Starting Sunroom…"; the first time takes a
-few minutes), then the screen opens Sunroom's own **Set Up Sunroom**: **Set Up Here** sets the
-household up right there, on the screen's keyboard, and the screen pairs itself; its last page
+Computer** (chosen from the start; **Continue**) sets Sunroom up on the computer the screen runs
+on, so it is the family's Sunroom as well as its wall screen. **Setting Up Sunroom** shows how far
+it is ("Downloading Sunroom… 40%", "Installing Sunroom…", "Starting Sunroom…"; the first time
+takes a few minutes), then the screen opens Sunroom's own **Set Up Sunroom**: **Set Up Here** sets
+the household up right there, on the screen's keyboard, and the screen pairs itself; its last page
 has the QR code that phones scan to join, and the address for any device (ADR 0039). Or scan the
-QR code beside it and set up on another device. If Setting Up Sunroom stops, the page says why, with **Try Again**.
+QR code beside it and set up on another device. If Setting Up Sunroom stops, the page says why,
+with **Try Again**.
 
 - **What it is:** Sunroom as a program for the screen's user, not Docker: Sunroom Screen installs
   this release's `sunroom` wheel with uv, as it installs itself, held to the release's versions
-  of everything Sunroom uses (its constraints file), checked against `SHA256SUMS`. A Pi on Sunroom
-  OS is the exception: there it starts the Docker setup the card carries, as before.
+  of everything Sunroom uses (its constraints file), checked against `SHA256SUMS`, on a Pi as on
+  any other computer.
 - **Which computers:** a Raspberry Pi with 64-bit Raspberry Pi OS, other 64-bit Linux computers,
   Macs with Apple silicon, and Windows (on ARM, through an x64 Python). An Intel Mac shows only
-  **On Another Computer**: a library Sunroom needs no longer ships for it.
+  **Connect to a Sunroom**: a library Sunroom needs no longer ships for it.
 - **Where the family's data is:** `~/.local/share/sunroom` on Linux, `~/Library/Application
   Support/Sunroom` on a Mac, `%LOCALAPPDATA%\Sunroom` on Windows; for that user only. Backups go
   into its `backups` folder every night, as on any Sunroom; Settings → Backup downloads a copy.

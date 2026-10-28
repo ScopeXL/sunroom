@@ -994,7 +994,8 @@ test("the screen's own pages (Sunroom Screen, ADR 0035)", async ({ page }, testI
     const reset = await page.request.post(`${agent}/api/screen/_test/reset`, { headers: change });
     expect(reset.status()).toBe(204);
     await page.goto(`${agent}/`);
-    await expect(page.getByRole("button", { name: "Run Sunroom Here" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "On This Computer" })).toBeChecked();
+    await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
     await shot(page, `screen-welcome-${theme}`);
     await fake({ run: "hold" });
     await page.goto(`${agent}/here`);
@@ -1004,6 +1005,11 @@ test("the screen's own pages (Sunroom Screen, ADR 0035)", async ({ page }, testI
     await expect(page.getByText("A Sunroom", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Look Again" })).toBeVisible();
     await shot(page, `screen-find-${theme}`);
+    // An address typed and checked: Found, and Use This Sunroom beside it (ADR 0042).
+    await page.getByLabel(/^Sunroom address/).fill("http://127.0.0.1:4173");
+    await page.getByLabel(/^Sunroom address/).press("Enter");
+    await expect(page.getByRole("button", { name: "Use This Sunroom" }).last()).toBeVisible();
+    await shot(page, `screen-find-found-${theme}`);
     await fake({ offline: true });
     await page.goto(`${agent}/wifi`);
     await expect(page.getByRole("button", { name: /^SampleStreet-5G/ })).toBeVisible();

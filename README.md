@@ -45,9 +45,9 @@ choose), or a Linux computer, a Mac with Apple silicon or a Windows computer.
    On Windows, open PowerShell (Start, then type PowerShell) and run this in its window:
    `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex`.
    It installs what the screen needs and starts it (a Pi restarts first).
-3. **The screen asks where your family's Sunroom will run:** choose **On This Computer**.
-   Setting Up Sunroom takes a few minutes. (On a Mac or Windows, if the computer asks whether
-   Sunroom may accept connections, choose Allow.)
+3. **The screen asks where your family's Sunroom will run:** **On This Computer** is chosen; tap
+   **Continue**. Setting Up Sunroom takes a few minutes. (On a Mac or Windows, if the computer asks
+   whether Sunroom may accept connections, choose Allow.)
 4. **Set up the household right on the screen:** choose **Set Up Here** and type on the keyboard
    that opens. Choose a household password, add the people who live here, and set a parent PIN.
    The screen becomes your family's shared screen by itself.
@@ -91,8 +91,9 @@ curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.
 ```
 
 It installs what the screen needs, a browser too, and starts it (a Pi restarts first). On the
-screen, choose **On Another Computer**: it looks for Sunroom on your network, so tap **Use This
-Sunroom**, or type the address you open on your other devices (an `https://` name works too).
+screen, choose **Connect to a Sunroom** and **Continue**: it looks for Sunroom on your network, so
+tap **Use This Sunroom**, or type the address you open on your other devices (an `https://` name
+works too).
 Then pair the screen: it shows a six-character code; on a signed-in device, open **Settings →
 Devices → Pair a Display** (under **More** on a phone) and type it.
 (Haven't set up the household yet? The screen can: choose **Set Up Here**, as in path a.)
@@ -118,8 +119,8 @@ Access; see [docs/HARDWARE.md](docs/HARDWARE.md#an-old-tablet-instead)).
 
 Each installs what the screen needs (a browser too, when there's none) and starts it. The screen
 then asks where your family's Sunroom will run: **On This Computer** sets it up right there, and
-**On Another Computer** finds the one you have on your network by itself. `--url <address>` skips the search, and
-`--dry-run` (`-DryRun` on Windows) says what it would do first.
+**Connect to a Sunroom** finds the one you have on your network by itself. `--url <address>` skips
+the search, and `--dry-run` (`-DryRun` on Windows) says what it would do first.
 [docs/KIOSK.md](docs/KIOSK.md) has every option.
 
 ## Lost the household password?

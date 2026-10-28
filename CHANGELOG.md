@@ -8,6 +8,9 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- The screen's first page is one choice: tap **On This Computer** or **Connect to a Sunroom**,
+  then Continue. Where Is Your Sunroom? checks an address as soon as you leave the field, says
+  Found or Not Found on the button, and offers Use This Sunroom right beside it.
 - A new screen is called "Wall screen" until it's named, and Sunroom no longer assumes it hangs
   in a kitchen, nor that everyone else uses a phone: the app, the installers and the docs say
   "the screen" and "your devices".

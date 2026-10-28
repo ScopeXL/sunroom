@@ -43,12 +43,14 @@ test("a fresh screen finds the Sunroom on its network and opens it", async ({ pa
   await seed(request);
   await page.goto(`${AGENT}/`);
   await expect(page.getByRole("heading", { name: "Sunroom", level: 1 })).toBeVisible();
-  await expect(page.getByText("Where will your family’s Sunroom run?")).toBeVisible();
-  await expect(page.getByRole("region", { name: "On This Computer" })).toBeVisible();
-  const elsewhere = page.getByRole("region", { name: "On Another Computer" });
-  await expect(elsewhere.getByText("Your family already has a Sunroom.")).toBeVisible();
+  const ways = page.getByRole("radiogroup", { name: "Where will your family’s Sunroom run?" });
+  await expect(ways.getByRole("radio", { name: "On This Computer" })).toBeChecked();
+  const elsewhere = ways.getByRole("radio", { name: "Connect to a Sunroom" });
+  await expect(elsewhere).toContainText("Your family already runs Sunroom somewhere else.");
+  await elsewhere.click();
+  await expect(elsewhere).toBeChecked();
   await check(page, "Welcome");
-  await elsewhere.getByRole("button", { name: "Find Your Sunroom" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
 
   await expect(page.getByRole("heading", { name: "Where Is Your Sunroom?" })).toBeVisible();
   const network = page.getByRole("region", { name: "On Your Network" });
@@ -80,10 +82,9 @@ test("a fresh screen runs Sunroom on this computer and opens it", async ({ page,
   await seed(request);
   await fake(request, { run: "hold" });
   await page.goto(`${AGENT}/`);
-  await page
-    .getByRole("region", { name: "On This Computer" })
-    .getByRole("button", { name: "Run Sunroom Here" })
-    .click();
+  // Where Sunroom can run here, this computer is chosen from the start: Continue sets it up.
+  await expect(page.getByRole("radio", { name: "On This Computer" })).toBeChecked();
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Setting Up Sunroom" })).toBeVisible();
   await expect(page.getByRole("main").getByRole("status")).toContainText("Downloading Sunroom…");
   await check(page, "Setting Up Sunroom");
@@ -111,28 +112,37 @@ test("a fresh screen runs Sunroom on this computer and opens it", async ({ page,
   expect(saved.sunroom).toMatchObject({ url: SUNROOM, found: "local" });
 });
 
-test("a typed address is checked, and said plainly when it isn't a Sunroom", async ({
+test("a typed address is checked as the field is left, and said plainly when it isn't a Sunroom", async ({
   page,
   request,
 }) => {
   await seed(request);
   await page.goto(`${AGENT}/find`);
   const elsewhere = page.getByRole("region", { name: "Somewhere Else" });
-  const field = elsewhere.getByLabel("Type the address you were given.");
-  await expect(field).toHaveValue("https://");
-  const checkAddress = async (address: string) => {
+  const field = elsewhere.getByLabel(/^Sunroom address/);
+  await expect(field).toHaveValue("");
+  const checkButton = elsewhere.locator("form button[type=submit]");
+  await expect(checkButton).toHaveText("Check Address");
+  // Typed, then the field is left (a tap anywhere else): the check runs by itself.
+  const leaveWith = async (address: string) => {
     await field.fill(address);
-    await elsewhere.getByRole("button", { name: "Check Address" }).click();
+    await page.getByRole("heading", { name: "Where Is Your Sunroom?" }).click();
   };
-  await checkAddress("http://127.0.0.1:9");
-  await expect(elsewhere.getByText("Can't reach that address from here.")).toBeVisible();
-  // The agent itself answers, and isn't a Sunroom.
-  await checkAddress(AGENT);
-  await expect(
-    elsewhere.getByText("That address isn't a Sunroom. Check it and try again."),
-  ).toBeVisible();
-  await checkAddress(SUNROOM);
-  await expect(elsewhere.getByText("That’s Sample Family’s Sunroom.")).toBeVisible();
+  await leaveWith("http://127.0.0.1:9");
+  await expect(elsewhere.getByRole("status")).toHaveText("Can't reach that address from here.");
+  await expect(checkButton).toHaveText("Not Found");
+  // The agent itself answers, and isn't a Sunroom; ↵ checks too.
+  await field.fill(AGENT);
+  await expect(checkButton).toHaveText("Check Address");
+  await field.press("Enter");
+  await expect(elsewhere.getByRole("status")).toHaveText(
+    "That address isn't a Sunroom. Check it and try again.",
+  );
+  await expect(elsewhere.getByRole("button", { name: "Use This Sunroom" })).toHaveCount(0);
+  await leaveWith(SUNROOM);
+  await expect(elsewhere.getByRole("status")).toHaveText("That’s Sample Family’s Sunroom.");
+  await expect(checkButton).toHaveText("Found");
+  await check(page, "Where Is Your Sunroom? (found)");
   await elsewhere.getByRole("button", { name: "Use This Sunroom" }).click();
   await page.waitForURL((url) => url.origin === SUNROOM && url.pathname === "/display");
   const saved = (await (await request.get(`${AGENT}/api/screen`)).json()) as {
@@ -148,7 +158,8 @@ test("a screen with no network starts by joining Wi-Fi on the wall's keyboard", 
   test.skip(test.info().project.name === "desktop", "a computer joins Wi-Fi itself");
   await fake(request, { offline: true });
   await page.goto(`${AGENT}/`);
-  await page.getByRole("button", { name: "Find Your Sunroom" }).click();
+  await page.getByRole("radio", { name: "Connect to a Sunroom" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Connect to Wi-Fi" })).toBeVisible();
   await check(page, "Connect to Wi-Fi");
   await page.getByRole("button", { name: /^SampleStreet-5G, fair signal/ }).click();

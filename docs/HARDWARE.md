@@ -193,7 +193,7 @@ alone is the default everywhere, and Sunroom on a Pi takes `--with-sunroom`.
 | 37 | A fresh Pi, `--with-sunroom` | The address and QR code as before; after the restart, the screen shows its pair code | Not tested yet |
 
 On This Computer, Sunroom run as a program by Sunroom Screen ([ADR 0038](adr/0038-sunroom-on-this-computer.md)).
-Each from a fresh install with no option, then **On This Computer** → **Run Sunroom Here**.
+Each from a fresh install with no option, then **On This Computer** → **Continue**.
 
 | # | Setup or test | It passes when | Result |
 |---|---|---|---|

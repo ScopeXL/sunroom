@@ -127,33 +127,61 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
     ).toBe(false);
   });
 
-  it("welcomes a fresh screen with two ways on, each saying what it is (ADR 0038)", () => {
+  it("welcomes a fresh screen with its two ways on as one choice, then Continue (ADR 0042)", () => {
     draw(<WelcomePage state={state()} />);
     expect(screen.getByRole("heading", { name: "Sunroom", level: 1 })).toBeTruthy();
-    expect(screen.getByText("Where will your family’s Sunroom run?")).toBeTruthy();
-    const here = screen.getByRole("region", { name: "On This Computer" });
-    expect(within(here).getByText("Sunroom runs right here.")).toBeTruthy();
+    const ways = screen.getByRole("radiogroup", { name: "Where will your family’s Sunroom run?" });
+    const here = within(ways).getByRole("radio", { name: "On This Computer" });
+    const elsewhere = within(ways).getByRole("radio", { name: "Connect to a Sunroom" });
+    // Each card says what it is and when to choose it; this computer is chosen from the start.
+    expect(here.getAttribute("aria-checked")).toBe("true");
+    expect(elsewhere.getAttribute("aria-checked")).toBe("false");
+    expect(within(here).getByText("Run Sunroom right here.")).toBeTruthy();
     expect(within(here).getByText(/Choose this if your family is new to Sunroom/)).toBeTruthy();
-    const elsewhere = screen.getByRole("region", { name: "On Another Computer" });
-    expect(within(elsewhere).getByText("Your family already has a Sunroom.")).toBeTruthy();
-    fireEvent.click(within(elsewhere).getByRole("button", { name: "Find Your Sunroom" }));
+    expect(
+      within(elsewhere).getByText("Your family already runs Sunroom somewhere else."),
+    ).toBeTruthy();
+    // Only the chosen card is in the tab order, as in any radio group.
+    expect([here.tabIndex, elsewhere.tabIndex]).toEqual([0, -1]);
+    fireEvent.click(elsewhere);
+    expect(elsewhere.getAttribute("aria-checked")).toBe("true");
+    expect(here.getAttribute("aria-checked")).toBe("false");
+    expect(route.get()).toBe("/"); // a tap chooses; Continue goes
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(route.get()).toBe("/find");
     expect(window.location.pathname).toBe("/find");
-    fireEvent.click(within(here).getByRole("button", { name: "Run Sunroom Here" }));
+  });
+
+  it("moves the choice with the arrow keys, and Continue goes the chosen way", () => {
+    draw(<WelcomePage state={state()} />);
+    const here = screen.getByRole("radio", { name: "On This Computer" });
+    fireEvent.keyDown(here, { key: "ArrowRight" });
+    const elsewhere = screen.getByRole("radio", { name: "Connect to a Sunroom" });
+    expect(elsewhere.getAttribute("aria-checked")).toBe("true");
+    expect(document.activeElement).toBe(elsewhere);
+    fireEvent.keyDown(elsewhere, { key: "ArrowRight" }); // round to the first
+    expect(here.getAttribute("aria-checked")).toBe("true");
+    fireEvent.keyDown(here, { key: "End" });
+    fireEvent.keyDown(elsewhere, { key: "Home" });
+    expect(here.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(route.get()).toBe("/here");
   });
 
-  it("offers only another computer where Sunroom can't run on this one", () => {
+  it("offers only Connect to a Sunroom, chosen, where Sunroom can't run on this computer", () => {
     draw(<WelcomePage state={state({ capabilities: ["restart", "shutdown", "update"] })} />);
-    expect(screen.queryByRole("region", { name: "On This Computer" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Find Your Sunroom" })).toBeTruthy();
+    expect(screen.queryByRole("radio", { name: "On This Computer" })).toBeNull();
+    const elsewhere = screen.getByRole("radio", { name: "Connect to a Sunroom" });
+    expect(elsewhere.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(route.get()).toBe("/find");
   });
 
   it("joins Wi-Fi first when offline, then goes on the way chosen", () => {
     afterWifi.set("/find");
     const offline = state({ network: { kind: "none", ssid: null, ip: null, strength: null } });
     draw(<WelcomePage state={offline} />);
-    fireEvent.click(screen.getByRole("button", { name: "Run Sunroom Here" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(route.get()).toBe("/wifi");
     expect(afterWifi.get()).toBe("/here");
   });
@@ -243,7 +271,7 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
     });
   });
 
-  it("checks a typed address and says plainly what it found", async () => {
+  it("checks a typed address when the field is left, and says plainly what it found", async () => {
     answers["GET /api/screen/sunrooms"] = { scanning: false, found: [] };
     answers["POST /api/screen/sunroom/check"] = {
       ok: false,
@@ -252,15 +280,65 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
     };
     draw(<FindPage state={state({ capabilities: ["restart"] })} />);
     const elsewhere = screen.getByRole("region", { name: "Somewhere Else" });
-    const field = within(elsewhere).getByLabelText("Type the address you were given.");
-    expect((field as HTMLInputElement).value).toBe("https://");
+    const field = within(elsewhere).getByLabelText(/^Sunroom address/);
+    expect((field as HTMLInputElement).value).toBe("");
+    const checks = () => calls.filter((call) => call.path === "/api/screen/sunroom/check");
+    // Nothing worth asking about: an empty field, or only a scheme.
+    fireEvent.blur(field);
+    fireEvent.change(field, { target: { value: "https://" } });
+    fireEvent.blur(field);
+    expect(checks()).toHaveLength(0);
     fireEvent.change(field, { target: { value: "https://calendar.example.com" } });
-    fireEvent.click(within(elsewhere).getByRole("button", { name: "Check Address" }));
+    fireEvent.blur(field);
     expect(
       await within(elsewhere).findByText("That address isn't a Sunroom. Check it and try again."),
     ).toBeTruthy();
-    expect(calls.find((call) => call.path === "/api/screen/sunroom/check")?.body).toEqual({
-      url: "https://calendar.example.com",
+    expect(checks().map((call) => call.body)).toEqual([{ url: "https://calendar.example.com" }]);
+    expect(within(elsewhere).getByRole("button", { name: "Not Found" })).toBeTruthy();
+    expect(within(elsewhere).queryByRole("button", { name: "Use This Sunroom" })).toBeNull();
+    // Leaving it again unchanged asks nothing more; the button tries again.
+    fireEvent.blur(field);
+    expect(checks()).toHaveLength(1);
+    fireEvent.click(within(elsewhere).getByRole("button", { name: "Not Found" }));
+    await waitFor(() => {
+      expect(checks()).toHaveLength(2);
+    });
+    // Typing again puts the button back to rest.
+    fireEvent.change(field, { target: { value: "192.168.1.20:8080" } });
+    expect(within(elsewhere).getByRole("button", { name: "Check Address" })).toBeTruthy();
+  });
+
+  it("says Found on the button and offers Use This Sunroom in the same row", async () => {
+    answers["GET /api/screen/sunrooms"] = { scanning: false, found: [] };
+    answers["POST /api/screen/sunroom/check"] = {
+      ok: true,
+      sunroom: {
+        url: SUNROOM,
+        id: "00000000-0000-7000-8000-0000000000e1",
+        name: "The Sample Family",
+        version: "0.17.0",
+        older: false,
+      },
+      message: null,
+    };
+    draw(<FindPage state={state({ capabilities: ["restart"] })} />);
+    const elsewhere = screen.getByRole("region", { name: "Somewhere Else" });
+    const field = within(elsewhere).getByLabelText(/^Sunroom address/);
+    fireEvent.change(field, { target: { value: "192.168.1.20:8080" } });
+    fireEvent.submit(field); // ↵, or the wall keyboard's enter key
+    const found = await within(elsewhere).findByRole("button", { name: "Found" });
+    expect(within(elsewhere).getByRole("status").textContent).toBe(
+      "That’s The Sample Family’s Sunroom.",
+    );
+    const use = within(elsewhere).getByRole("button", { name: "Use This Sunroom" });
+    expect(use.parentElement).toBe(found.parentElement);
+    fireEvent.click(use);
+    await waitFor(() => {
+      expect(route.get()).toBe("/opening");
+    });
+    expect(calls.find((call) => call.method === "PUT")?.body).toEqual({
+      url: SUNROOM,
+      found: "typed",
     });
   });
 

@@ -23,8 +23,8 @@ function said(error: unknown): string {
 
 /**
  * Setting Up Sunroom: Sunroom on this computer (ADR 0038), from the tap on Welcome until it
- * opens. The run starts as the page opens (the tap was Run Sunroom Here); a run already going is
- * joined, and one that stopped says why, with Try Again.
+ * opens. The run starts as the page opens (the tap was Continue, On This Computer chosen); a run
+ * already going is joined, and one that stopped says why, with Try Again.
  */
 export function HerePage({ state }: { state: ScreenState }) {
   const progress = useStore(runProgress);

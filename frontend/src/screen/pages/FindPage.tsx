@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { qk } from "../../api/keys";
@@ -122,8 +123,9 @@ function OnYourNetwork() {
             </li>
           ))}
           {scanning ? (
-            <li className="text-d-secondary text-ink-soft" role="status">
-              Still looking…
+            <li className="text-d-secondary text-ink-soft">
+              {/* The status inside the item: a list holds list items only (axe). */}
+              <span role="status">Still looking…</span>
             </li>
           ) : null}
         </ul>
@@ -149,8 +151,44 @@ function OnYourNetwork() {
   );
 }
 
+/** Nothing worth asking about: an empty field, or only a scheme ("https://"). */
+function unfinished(address: string): boolean {
+  return address === "" || /^https?:?\/{0,2}$/i.test(address);
+}
+
+/** Check Address's face: at rest, while the agent looks, and what it found (ADR 0042). */
+function CheckFace({ state }: { state: "rest" | "checking" | "found" | "not-found" }) {
+  switch (state) {
+    case "rest":
+      return "Check Address";
+    case "checking":
+      return "Checking…";
+    case "found":
+      return (
+        <>
+          <Check aria-hidden="true" className="size-7" strokeWidth={3} />
+          Found
+        </>
+      );
+    case "not-found":
+      return (
+        <>
+          <X aria-hidden="true" className="size-7" strokeWidth={3} />
+          Not Found
+        </>
+      );
+  }
+}
+
+/**
+ * An address typed on the wall's keyboard (ADR 0042): it's checked as soon as the field is left
+ * (or ↵, which submits) with something new in it; Check Address tries again and shows how the
+ * check went, and Use This Sunroom rises into the same row once a Sunroom answered.
+ */
 function SomewhereElse() {
-  const [typed, setTyped] = useState("https://");
+  const [typed, setTyped] = useState("");
+  // The last address asked about, so leaving the field again with it unchanged asks nothing.
+  const [asked, setAsked] = useState<string | null>(null);
   const choose = useChoose();
   const check = useMutation({
     mutationFn: async (url: string) => {
@@ -159,19 +197,36 @@ function SomewhereElse() {
       return data;
     },
   });
+  const address = typed.trim();
+  const ask = (again: boolean) => {
+    if (unfinished(address)) return;
+    if (!again && address === asked) return;
+    // A tap on Check Address leaves the field first: that check is already on its way.
+    if (check.isPending && check.variables === address) return;
+    setAsked(address);
+    check.mutate(address);
+  };
   const result = check.data;
   const found = result?.ok ? result.sunroom : null;
+  const face = check.isPending
+    ? "checking"
+    : found
+      ? "found"
+      : result || check.isError
+        ? "not-found"
+        : "rest";
   return (
     <Card heading="Somewhere Else">
       <form
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
-          check.mutate(typed);
+          ask(true);
         }}
       >
         <TextField
-          label="Type the address you were given."
+          label="Sunroom address"
+          hint="The one you open on your other devices, like http://192.168.1.20:8080 or https://calendar.example.com"
           autoCapitalize="none"
           autoComplete="off"
           value={typed}
@@ -179,11 +234,31 @@ function SomewhereElse() {
             setTyped(event.target.value);
             check.reset();
           }}
+          onBlur={() => {
+            ask(false);
+          }}
         />
-        <div>
-          <Button type="submit" variant="secondary" pending={check.isPending}>
-            Check Address
+        <div className="flex flex-wrap items-center gap-4">
+          <Button
+            type="submit"
+            variant="secondary"
+            aria-busy={face === "checking" || undefined}
+            disabled={face === "checking"}
+            className={face === "found" ? "border-ink" : undefined}
+          >
+            <CheckFace state={face} />
           </Button>
+          {found ? (
+            <Button
+              className="rise-in ml-auto"
+              pending={choose.isPending}
+              onClick={() => {
+                choose.mutate({ url: found.url, found: "typed" });
+              }}
+            >
+              Use This Sunroom
+            </Button>
+          ) : null}
         </div>
       </form>
       {result ? (
@@ -200,18 +275,6 @@ function SomewhereElse() {
           {check.error.message}
         </p>
       ) : null}
-      {found ? (
-        <div>
-          <Button
-            pending={choose.isPending}
-            onClick={() => {
-              choose.mutate({ url: found.url, found: "typed" });
-            }}
-          >
-            Use This Sunroom
-          </Button>
-        </div>
-      ) : null}
       {choose.isError ? (
         <p role="alert" className="text-d-body font-semibold text-alert">
           {choose.error.message}
@@ -221,8 +284,8 @@ function SomewhereElse() {
   );
 }
 
-/** Where Is Your Sunroom? On the network, or at an address someone was given (On Another
- * Computer, on Welcome; running it here is Welcome's other way, ADR 0038). */
+/** Where Is Your Sunroom? On the network, or at an address someone was given (Connect to a
+ * Sunroom, on Welcome; running it here is Welcome's other way, ADR 0038). */
 export function FindPage({ state }: { state: ScreenState }) {
   const chosen = state.sunroom !== null;
   useEffect(() => {
