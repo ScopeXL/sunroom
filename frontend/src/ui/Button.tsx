@@ -55,19 +55,26 @@ function buttonClasses(
 }
 
 /**
- * A link that looks like a button, for a page on another website (Support Sunroom's Open GitHub):
- * an `<a>`, so the browser opens it itself. A link can't be disabled, so `disabled` takes its
- * address away and dims it, and says so to a screen reader.
+ * A link that looks like a button, for a page on another website (Support Sunroom's Open GitHub,
+ * Settings' Discord): an `<a>`, so the browser opens it itself. A link can't be disabled, so
+ * `disabled` takes its address away and dims it, and says so to a screen reader.
  */
 export function ButtonLink({
   variant = "primary",
   block = false,
+  icon = false,
   disabled = false,
   className,
   href,
   children,
   ...props
-}: ComponentPropsWithRef<"a"> & { variant?: Variant; block?: boolean; disabled?: boolean }) {
+}: ComponentPropsWithRef<"a"> & {
+  variant?: Variant;
+  block?: boolean;
+  /** Only an icon (name it with aria-label), as a Button's. */
+  icon?: boolean;
+  disabled?: boolean;
+}) {
   const display = useShell() === "display";
   return (
     <a
@@ -75,7 +82,7 @@ export function ButtonLink({
       href={disabled ? undefined : href}
       role={disabled ? "link" : undefined}
       aria-disabled={disabled || undefined}
-      className={`${buttonClasses(display, variant, block, false, className)} ${
+      className={`${buttonClasses(display, variant, block, icon, className)} ${
         disabled ? "cursor-not-allowed opacity-60" : ""
       }`}
     >

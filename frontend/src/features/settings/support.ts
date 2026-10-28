@@ -8,6 +8,10 @@
 /** The project's page on GitHub, where Send Feedback opens a new issue. */
 export const REPO_URL = "https://github.com/ScopeXL/sunroom";
 
+/** The Sunroom Discord: help, ideas and what's new. An invite that never expires, public by
+ * design (ADR 0042). */
+export const DISCORD_URL = "https://discord.gg/y6AeQRpsPQ";
+
 /** The Patreon page; empty hides the row. (`as string`: it's the owner's to fill in.) */
 export const PATREON_URL = "" as string;
 

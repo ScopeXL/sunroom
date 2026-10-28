@@ -8,6 +8,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Added
 
+- Sunroom has a Discord. Its link is in Settings → Support Sunroom and in the Settings header
+  (a paired screen shows a code to scan).
 - A new household starts on the Week view with the Hours layout.
 - Settings → Devices renames a paired screen: tap its row.
 - This Screen can uninstall Sunroom Screen from the computer it runs on: it asks first, unpairs

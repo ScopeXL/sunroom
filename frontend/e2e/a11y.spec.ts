@@ -41,7 +41,7 @@ const WEDNESDAY_10AM = "2026-10-07T14:00:00Z";
 // axe would read as low contrast.
 test.use({ reducedMotion: "reduce" });
 
-/** iPhones zoom into any typing field under 16 px: none may be smallerhe test server's (10 AM:
+/** An unpaired wall starts from the browser's own clock and moves to the test server's (10 AM:
  * light, midday) when its first answer comes back. Check once it has, or axe can catch the theme
  * half switched in the evening. */
 async function onServerTime(page: Page): Promise<void> {
@@ -441,6 +441,10 @@ for (const scheme of ["light", "dark"] as const) {
         if (title === "Photos & Screensaver") {
           await sheet(page, "Add a Library", "display: add a photo library");
           await sheet(page, "Edit Immich", "display: a photo library");
+        }
+        // The header's Sunroom Discord: a code to scan, with a name (ADR 0042).
+        if (title === "Support Sunroom") {
+          await sheet(page, "Sunroom's Discord", "display: the Sunroom Discord");
         }
       }
     });

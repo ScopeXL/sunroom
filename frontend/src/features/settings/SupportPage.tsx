@@ -8,6 +8,7 @@ import { asParent } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
 import { showToast } from "../../lib/toast";
 import { Button, ButtonLink } from "../../ui/Button";
+import { DiscordMark } from "../../ui/DiscordMark";
 import { useFieldLabel } from "../../ui/Field";
 import { ListRowAnchor } from "../../ui/ListRow";
 import { QrCode } from "../../ui/QrCode";
@@ -16,7 +17,16 @@ import { Sheet } from "../../ui/Sheet";
 import { useShell } from "../../ui/shell";
 import { TextField } from "../../ui/TextField";
 import { Group, Row, Text } from "./parts";
-import { ADDRESSES, PATREON_URL, feedbackUrl, installWords, type FeedbackKind } from "./support";
+import {
+  ADDRESSES,
+  DISCORD_URL,
+  PATREON_URL,
+  feedbackUrl,
+  installWords,
+  type FeedbackKind,
+} from "./support";
+
+const DISCORD_NOTE = "Join the Sunroom Discord for help, ideas and what's new.";
 
 /** "patreon.com/sunroom" for "https://www.patreon.com/sunroom": what a row shows of a link. */
 function shortLink(url: string): string {
@@ -25,8 +35,8 @@ function shortLink(url: string): string {
 
 /**
  * Settings → Support Sunroom (UX §4, ADR 0034): what Sunroom is (free, open source, not for
- * profit) and how to support it, from the owner's links and addresses in `support.ts` (an empty
- * one isn't drawn), then Send Feedback. A paired screen opens no other website, so it shows a
+ * profit) and how to support it: the Sunroom Discord first (ADR 0042), then the owner's links
+ * and addresses in `support.ts` (an empty one isn't drawn), then Send Feedback. A paired screen opens no other website, so it shows a
  * QR code where a device has a link, and no Copy (there is nowhere to paste on a screen).
  */
 export function SupportPage() {
@@ -35,6 +45,28 @@ export function SupportPage() {
   const kiosk = session?.device_kind === "kiosk";
   const [feedback, setFeedback] = useState(false);
   const rows = [
+    kiosk ? (
+      <Row key="discord" label="Discord" hint={DISCORD_NOTE}>
+        <DiscordMark className="size-8 shrink-0 text-ink-soft" />
+        <Text soft>{shortLink(DISCORD_URL)}</Text>
+        <QrCode
+          value={DISCORD_URL}
+          label="A code that opens the Sunroom Discord"
+          className="size-40"
+        />
+      </Row>
+    ) : (
+      <ListRowAnchor
+        key="discord"
+        label="Open Discord"
+        leading={<DiscordMark className={`shrink-0 ${display ? "size-8" : "size-6"}`} />}
+        title="Discord"
+        subtitle={DISCORD_NOTE}
+        href={DISCORD_URL}
+        target="_blank"
+        rel="noreferrer noopener"
+      />
+    ),
     PATREON_URL ? (
       kiosk ? (
         <Row key="patreon" label="Patreon">

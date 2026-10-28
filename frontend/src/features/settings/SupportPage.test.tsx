@@ -65,6 +65,25 @@ describe("Settings → Support Sunroom (ADR 0034)", () => {
     expect(screen.queryByRole("button", { name: "Copy" })).toBeNull();
   });
 
+  it("opens the Sunroom Discord first, in a new tab, or as a code on a screen (ADR 0042)", () => {
+    draw("phone");
+    const discord = screen.getByRole("link", { name: "Open Discord" });
+    expect(discord.getAttribute("href")).toBe("https://discord.gg/y6AeQRpsPQ");
+    expect(discord.getAttribute("target")).toBe("_blank");
+    expect(discord.getAttribute("rel")).toBe("noreferrer noopener");
+    expect(discord.textContent).toContain(
+      "Join the Sunroom Discord for help, ideas and what's new.",
+    );
+    // The first of the group's rows, before Patreon.
+    const links = screen.getAllByRole("link").map((link) => link.getAttribute("aria-label"));
+    expect(links.slice(0, 2)).toEqual(["Open Discord", "Open Patreon"]);
+    cleanup();
+    draw("kiosk", "display");
+    expect(screen.queryByRole("link", { name: "Open Discord" })).toBeNull();
+    expect(screen.getByText("discord.gg/y6AeQRpsPQ")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "A code that opens the Sunroom Discord" })).toBeTruthy();
+  });
+
   it("sends feedback to GitHub's new issue, once it has a title", () => {
     draw("phone");
     fireEvent.click(screen.getByRole("button", { name: "Send Feedback" }));

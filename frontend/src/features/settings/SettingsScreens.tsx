@@ -15,6 +15,7 @@ import { AboutPage } from "./AboutPage";
 import { BackupPage } from "./BackupPage";
 import { CalendarsPage } from "./CalendarsPage";
 import { DevicesPage } from "./DevicesPage";
+import { DiscordButton } from "./DiscordButton";
 import { DisplayPage } from "./DisplayPage";
 import { FamilyPage } from "./FamilyPage";
 import { FeaturesPage } from "./FeaturesPage";
@@ -89,12 +90,12 @@ function Flag({ on }: { on: boolean }) {
 const flagName = (title: string, on: boolean) =>
   on ? { "aria-label": `${title}, needs attention` } : {};
 
-/** Settings on a phone: the list of pages (UX §5). */
+/** Settings on a phone: the list of pages (UX §5), with the Sunroom Discord at the title's end. */
 export function SettingsIndex() {
   const { pages } = usePages();
   const flagged = useFlagged();
   return (
-    <Screen title="Settings" back="/more">
+    <Screen title="Settings" back="/more" corner={<DiscordButton kiosk={false} />}>
       <ul className="divide-y divide-line rounded-chip border border-line bg-surface">
         {pages.map((page) => (
           <li key={page.key}>
@@ -157,21 +158,24 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
   });
   return (
     <div className="flex min-h-0 flex-1">
+      {/* At the right: the Sunroom Discord, then Lock while a parent's grant lasts (ADR 0042). */}
       <RoomHeader
         title="Settings"
         controls={
-          session?.grant_expires_at ? (
-            <Button
-              variant="secondary"
-              className="ml-auto"
-              onClick={() => {
-                lock.mutate();
-              }}
-            >
-              <Lock aria-hidden="true" className="size-7" />
-              Lock
-            </Button>
-          ) : null
+          <div className="ml-auto flex items-center gap-3">
+            <DiscordButton kiosk={session?.device_kind === "kiosk"} />
+            {session?.grant_expires_at ? (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  lock.mutate();
+                }}
+              >
+                <Lock aria-hidden="true" className="size-7" />
+                Lock
+              </Button>
+            ) : null}
+          </div>
         }
       />
       <nav

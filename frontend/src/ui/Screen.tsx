@@ -6,17 +6,20 @@ import { ActionBar } from "./ActionBar";
 
 /**
  * A phone screen (UX §5): the title, an optional Back, content on the wall color, and actions in
- * the bottom bar above the tabs, in the thumb zone.
+ * the bottom bar above the tabs, in the thumb zone. A `corner` control sits at the title's end
+ * (Settings' Discord, ADR 0042).
  */
 export function Screen({
   title,
   back,
+  corner,
   children,
   actions,
 }: {
   title: string;
   /** Where Back goes when there's no history to return to. */
   back?: string;
+  corner?: ReactNode;
   children: ReactNode;
   actions?: ReactNode;
 }) {
@@ -27,7 +30,14 @@ export function Screen({
       }`}
     >
       {back ? <BackButton to={back} /> : null}
-      <h1 className="mt-2 mb-5 text-title font-bold">{title}</h1>
+      {corner ? (
+        <div className="mt-2 mb-5 flex items-center justify-between gap-4">
+          <h1 className="min-w-0 text-title font-bold">{title}</h1>
+          {corner}
+        </div>
+      ) : (
+        <h1 className="mt-2 mb-5 text-title font-bold">{title}</h1>
+      )}
       {children}
       {actions ? <ActionBar>{actions}</ActionBar> : null}
     </main>

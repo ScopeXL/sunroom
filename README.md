@@ -141,6 +141,9 @@ the wall screen shows a new code to pair.
   [Releasing](docs/RELEASING.md).
 - [CLAUDE.md](CLAUDE.md): working rules for the AI sessions that build and maintain Sunroom.
 
+**Community.** Questions, ideas and what's new: the Sunroom Discord,
+<https://discord.gg/y6AeQRpsPQ>.
+
 ## Developing
 
 `just setup` once (it needs `uv`, `pnpm`, `gitleaks` and `jq`), then `just dev` for the app at

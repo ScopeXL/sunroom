@@ -822,8 +822,16 @@ test.describe("the wall screen", () => {
     const pin = page.getByRole("dialog", { name: "Parent PIN" });
     for (const digit of PIN) await pin.getByRole("button", { name: digit, exact: true }).click();
     await expect(pin).toBeHidden();
-    // Open for now: a gear, and the header's own Lock button ends it.
+    // Open for now: a gear, and the header's own Lock button ends it. Before it, the Sunroom
+    // Discord, as a code to scan: a paired screen opens no other website (ADR 0042).
     await expect(settings).toHaveAttribute("data-icon", "gear");
+    await page.getByRole("banner").getByRole("button", { name: "Sunroom's Discord" }).click();
+    const discord = page.getByRole("dialog", { name: "Join the Sunroom Discord" });
+    await expect(
+      discord.getByRole("img", { name: "A code that opens the Sunroom Discord" }),
+    ).toBeVisible();
+    await discord.getByRole("button", { name: "Done" }).click();
+    await expect(discord).toBeHidden();
     await page.getByRole("banner").getByRole("button", { name: "Lock" }).click();
     await expect(page.getByRole("region", { name: "This Week" })).toBeVisible();
     await expect(settings).toHaveAttribute("data-icon", "lock");
@@ -1248,6 +1256,10 @@ test.describe("a laptop", () => {
     );
     await page.getByRole("button", { name: "Settings" }).click();
     await expect(page.getByRole("heading", { name: "Family", level: 2 })).toBeVisible();
+    // The header's Sunroom Discord is a link here, to a new tab (ADR 0042).
+    const discord = page.getByRole("banner").getByRole("link", { name: "Sunroom's Discord" });
+    await expect(discord).toHaveAttribute("href", "https://discord.gg/y6AeQRpsPQ");
+    await expect(discord).toHaveAttribute("target", "_blank");
     const field = page.getByLabel("Add a person");
     await field.click();
     await page.keyboard.type("Zoe");
