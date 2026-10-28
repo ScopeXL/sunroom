@@ -6,6 +6,12 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- This Screen can uninstall Sunroom Screen from the computer it runs on: it asks first, unpairs
+  the screen, and, when Sunroom itself runs there, removes it and the family's data too once the
+  household password is typed.
+
 ### Changed
 
 - This Screen's Rotation turns the picture on Windows and Linux computers too, for a display

@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pytest
 
@@ -84,7 +85,14 @@ def windows(
 def test_a_windows_computer_restarts_shuts_down_turns_and_quits_but_has_no_wifi() -> None:
     platform = windows(Shell())
     assert platform.name == "windows"
-    assert platform.capabilities() == ["restart", "shutdown", "update", "rotate", "quit"]
+    assert platform.capabilities() == [
+        "restart",
+        "shutdown",
+        "update",
+        "rotate",
+        "quit",
+        "uninstall",
+    ]
     assert platform.system == "Windows 11"
     assert windows(Shell(), build=19045).system == "Windows 10"
 
@@ -228,3 +236,27 @@ async def test_a_turn_windows_refuses_says_so() -> None:
 
     with pytest.raises(PlatformError, match=r"^The picture didn't turn"):
         await WindowsPlatform(Shell(), display=away).rotate(90, "")
+
+
+async def test_windows_uninstalls_with_a_copy_of_its_script(tmp_path: Path) -> None:
+    """uninstall.py copied out (it removes the agent's own environment) and run with uv's Python,
+    as apply.py is (ADR 0042)."""
+    started: list[list[str]] = []
+
+    async def spawn(argv: list[str], *, unit: str) -> bool:
+        started.append(argv)
+        return True
+
+    platform = WindowsPlatform(Shell(), spawn=spawn, temp=tmp_path)
+    await platform.uninstall(sunroom=True, port=7800)
+    (argv,) = started
+    script = tmp_path / "sunroom-kiosk-uninstall.py"
+    assert script.is_file()
+    assert argv[1:] == [
+        str(script),
+        "--agent",
+        str(Path.home() / ".local" / "bin" / "sunroom-kiosk.exe"),
+        "--port",
+        "7800",
+        "--sunroom",
+    ]

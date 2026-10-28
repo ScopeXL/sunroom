@@ -368,3 +368,40 @@ async def test_the_policy_and_updates_go_through_the_root_helper(tmp_path: Path)
     bare = Shell()
     assert not await pi(bare, pi_root(tmp_path / "old", helper=False)).write_policy("chromium", {})
     assert bare.calls == []
+
+
+# ---------------------------------------------------------------------------- uninstall
+
+
+async def test_a_linux_screen_uninstalls_through_the_installers_uninstaller(
+    tmp_path: Path,
+) -> None:
+    """uninstall.sh in a unit of its own, asking nothing (ADR 0042); a computer whose installer
+    left none can't uninstall from the screen."""
+    started: list[tuple[list[str], str]] = []
+
+    async def spawn(argv: list[str], *, unit: str) -> bool:
+        started.append((argv, unit))
+        return True
+
+    script = tmp_path / "uninstall.sh"
+    platform = LinuxPlatform(Shell(), which=tools(), uninstaller=script, spawn=spawn)
+    assert "uninstall" not in platform.capabilities()
+    script.write_text("#!/usr/bin/env bash\n")
+    assert platform.capabilities()[-1] == "uninstall"
+    await platform.uninstall(sunroom=False, port=7800)
+    await platform.uninstall(sunroom=True, port=7800)
+    assert started == [
+        (["bash", str(script), "--yes", "--from-screen"], "sunroom-kiosk-uninstall"),
+        (
+            ["bash", str(script), "--yes", "--from-screen", "--purge-local"],
+            "sunroom-kiosk-uninstall",
+        ),
+    ]
+
+    async def refuses(argv: list[str], *, unit: str) -> bool:
+        return False
+
+    platform.spawn = refuses
+    with pytest.raises(PlatformError, match="couldn't start its uninstaller"):
+        await platform.uninstall(sunroom=False, port=7800)

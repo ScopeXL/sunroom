@@ -147,3 +147,77 @@ def test_the_policy_command_prints_one_policy_for_every_address(
     # An older installer's line names the address; it's taken, and changes nothing (ADR 0042).
     assert cli.main(["policy", "--url", f"{URL}/display"]) == 0
     assert json.loads(capsys.readouterr().out) == printed
+
+
+# ---------------------------------------------------------------------------- uninstalling
+
+
+def test_the_root_helper_takes_its_files_off_then_itself(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """This Screen's Uninstall (ADR 0042): fixed paths only, its own rule and itself last."""
+    files = {name: tmp_path / name for name in ("policy.json", "wifi.conf", "rule", "sudoers")}
+    me = tmp_path / "sunroom-kiosk-root"
+    for path in [*files.values(), me]:
+        path.write_text("")
+    monkeypatch.setattr(root_helper, "POLICY_FILES", {str(files["policy.json"])})
+    monkeypatch.setattr(root_helper, "SCREEN_FILES", [str(files["wifi.conf"]), str(files["rule"])])
+    monkeypatch.setattr(root_helper, "SUDOERS_FILE", str(files["sudoers"]))
+    monkeypatch.setattr(root_helper, "SELF", str(me))
+    removed: list[str] = []
+    real_remove = root_helper.os.remove
+
+    def remove(path: str) -> None:
+        removed.append(Path(path).name)
+        real_remove(path)
+
+    monkeypatch.setattr(root_helper.os, "remove", remove)
+
+    def no_tool(name: str) -> None:  # no udevadm here (this patches shutil for the test)
+        return None
+
+    monkeypatch.setattr(root_helper.shutil, "which", no_tool)
+    monkeypatch.setattr(root_helper.os, "geteuid", lambda: 0, raising=False)
+    assert root_helper.main(["remove-root-files"]) == 0
+    assert removed[-2:] == ["sudoers", "sunroom-kiosk-root"]
+    assert not any(path.exists() for path in [*files.values(), me])
+    assert root_helper.main(["remove-root-files"]) == 0  # again: nothing left, nothing wrong
+    assert root_helper.main(["remove-root-files", "/etc/passwd"]) == 2  # takes no paths
+
+
+def test_the_root_helper_and_the_uninstaller_name_the_same_files() -> None:
+    script = (FILES.parent / "uninstall.sh").read_text(encoding="utf-8")
+    for path in [*root_helper.SCREEN_FILES, root_helper.SUDOERS_FILE, root_helper.SELF]:
+        assert f'"{path}"' in script, path
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the uninstaller is Linux's and macOS's")
+def test_the_uninstallers_dry_run_from_the_screen_changes_nothing(tmp_path: Path) -> None:
+    """What This Screen's Uninstall would take off, said and left in place."""
+    import subprocess
+
+    home = tmp_path / "home"
+    profile = home / ".config" / "sunroom-kiosk" / "profile"
+    profile.mkdir(parents=True)
+    (home / ".local" / "bin").mkdir(parents=True)
+    (home / ".local" / "bin" / "sunroom-kiosk").write_text("")
+    unit = home / ".config" / "systemd" / "user" / "sunroom.service"
+    unit.parent.mkdir(parents=True)
+    unit.write_text("")  # Sunroom run on this computer
+    script = str(FILES.parent / "uninstall.sh")
+    # /bin/bash: a Mac's own 3.2 here, which the uninstaller must run under (GOTCHAS).
+    done = subprocess.run(  # noqa: S603 - our own script, on a pretend home
+        ["/bin/bash", script, "--dry-run", "--from-screen", "--purge-local"],
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr
+    said = done.stdout
+    assert "Nothing on this computer changes." in said
+    assert "stop Sunroom Screen and uninstall it" in said
+    assert "delete the screen's browser data (its pairing)" in said  # no question from a screen
+    assert "delete it and ALL its data" in said
+    assert profile.is_dir() and unit.is_file()
+    assert not (home / ".local" / "state").exists()  # not even a log

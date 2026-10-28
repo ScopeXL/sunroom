@@ -224,6 +224,10 @@ class Agent:
                 have.append("run_sunroom")
             if self.local.installed() and "update_sunroom" not in have:
                 have.append("update_sunroom")
+            # Sunroom run here as a program: Uninstall can take it too (ADR 0042). An all-in-one
+            # Pi's Docker Sunroom never goes from the screen: it's the family's server.
+            if self.local.installed() and "uninstall" in have:
+                have.append("remove_sunroom")
         if "update_sunroom" in have and not self.sunroom_here():
             have.remove("update_sunroom")
         if "brightness" in have and self._method() == "none" and not self.fake:
@@ -598,6 +602,17 @@ class Agent:
         await self.platform.rotate(rotation, self.config.output)
         self.save(replace(self.config, rotate=rotation))
         self.publish_state()
+
+    async def uninstall(self, *, sunroom: bool) -> None:
+        """This Screen's Uninstall (ADR 0042), once the page has unpaired the screen: the
+        platform starts its uninstaller as a process of its own, and this agent quits, which
+        closes the browser; the uninstaller takes the rest off. ``sunroom`` takes Sunroom run
+        here and the family's data too, only where it runs here as a program."""
+        sunroom = sunroom and "remove_sunroom" in self.capabilities()
+        log.info("Uninstalling Sunroom Screen%s, as This Screen asked.", " and Sunroom" * sunroom)
+        await self.platform.uninstall(sunroom=sunroom, port=self.port)
+        if not self.fake:  # the pretend screen stays up for the next test
+            await self.quit()
 
     def set_update_check(self, check_policy: str) -> None:
         self.save(

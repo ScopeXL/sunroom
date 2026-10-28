@@ -9,12 +9,15 @@ else; it checks everything it's given (docs/KIOSK.md, docs/M7.md T7):
                       sunroom-kiosk.json in one browser's policy folder, and the keys only
                       Sunroom Screen's own (kiosk/agent policy.py lists the same)
   update-sunroom      /opt/sunroom/update.sh, the all-in-one Pi's own Sunroom
+  remove-root-files   This Screen's Uninstall (ADR 0042, run by uninstall.sh --from-screen):
+                      the files above that root owns, then the sudoers rule and this helper
 
 The system's Python, standard library only; root-owned in /usr/local/sbin.
 """
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -37,6 +40,15 @@ ALLOWED_KEYS = {
     "LocalNetworkAccessRestrictionsEnabled",
 }
 UPDATE_SH = "/opt/sunroom/update.sh"
+# What the installer put in for the screen, root's (kiosk/uninstall.sh names the same); fixed
+# paths only, nothing taken from the caller.
+SCREEN_FILES = [
+    "/etc/NetworkManager/conf.d/zz-sunroom-kiosk-wifi.conf",
+    "/etc/udev/rules.d/90-sunroom-kiosk-backlight.rules",
+    "/etc/modules-load.d/sunroom-kiosk-i2c.conf",
+]
+SUDOERS_FILE = "/etc/sudoers.d/sunroom-kiosk"
+SELF = "/usr/local/sbin/sunroom-kiosk-root"
 MOST_BYTES = 64 * 1024
 
 
@@ -82,6 +94,19 @@ def update_sunroom():
     return subprocess.call([UPDATE_SH])
 
 
+def remove_root_files():
+    """The browser's policy and the screen's system files, then this helper's sudoers rule and
+    the helper itself, last: nothing is left that this user may run as root."""
+    for path in sorted(POLICY_FILES) + SCREEN_FILES + [SUDOERS_FILE, SELF]:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+    if shutil.which("udevadm"):
+        subprocess.call(["udevadm", "control", "--reload"])
+    return 0
+
+
 def main(argv):
     if os.geteuid() != 0:
         return refuse("Run me with sudo.")
@@ -89,7 +114,9 @@ def main(argv):
         return write_policy(argv[1])
     if argv == ["update-sunroom"]:
         return update_sunroom()
-    return refuse("Usage: sunroom-kiosk-root write-policy PATH | update-sunroom")
+    if argv == ["remove-root-files"]:
+        return remove_root_files()
+    return refuse("Usage: sunroom-kiosk-root write-policy PATH | update-sunroom | remove-root-files")
 
 
 if __name__ == "__main__":

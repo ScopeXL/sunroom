@@ -112,7 +112,9 @@
           "brightness",
           "quit",
           "run_sunroom",
-          "update_sunroom"
+          "update_sunroom",
+          "uninstall",
+          "remove_sunroom"
         ],
         "type": "string"
       },
@@ -571,6 +573,17 @@
           "reachable"
         ],
         "title": "ScreenSunroomOut",
+        "type": "object"
+      },
+      "ScreenUninstallIn": {
+        "properties": {
+          "sunroom": {
+            "default": false,
+            "title": "Sunroom",
+            "type": "boolean"
+          }
+        },
+        "title": "ScreenUninstallIn",
         "type": "object"
       },
       "ScreenUpdateCheck": {
@@ -1504,6 +1517,68 @@
           }
         },
         "summary": "Scan",
+        "tags": [
+          "screen"
+        ]
+      }
+    },
+    "/api/screen/uninstall": {
+      "post": {
+        "description": "This Screen's Uninstall (ADR 0042), after the page unpaired the screen: a moment later\nthe uninstaller starts as a process of its own and Sunroom Screen quits.",
+        "operationId": "uninstall_api_screen_uninstall_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenUninstallIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenAcceptedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Uninstall",
         "tags": [
           "screen"
         ]

@@ -233,6 +233,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/screen/uninstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Uninstall
+         * @description This Screen's Uninstall (ADR 0042), after the page unpaired the screen: a moment later
+         *     the uninstaller starts as a process of its own and Sunroom Screen quits.
+         */
+        post: operations["uninstall_api_screen_uninstall_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/screen/update": {
         parameters: {
             query?: never;
@@ -369,7 +390,7 @@ export interface components {
         /** @enum {string} */
         ScreenBrightness: "ddc" | "sysfs" | "none";
         /** @enum {string} */
-        ScreenCapability: "restart" | "shutdown" | "update" | "wifi" | "rotate" | "brightness" | "quit" | "run_sunroom" | "update_sunroom";
+        ScreenCapability: "restart" | "shutdown" | "update" | "wifi" | "rotate" | "brightness" | "quit" | "run_sunroom" | "update_sunroom" | "uninstall" | "remove_sunroom";
         /** ScreenCheckIn */
         ScreenCheckIn: {
             /** Url */
@@ -505,6 +526,14 @@ export interface components {
             url: string;
             /** Version */
             version?: string | null;
+        };
+        /** ScreenUninstallIn */
+        ScreenUninstallIn: {
+            /**
+             * Sunroom
+             * @default false
+             */
+            sunroom: boolean;
         };
         /** @enum {string} */
         ScreenUpdateCheck: "nightly" | "off";
@@ -1217,6 +1246,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenScanOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+        };
+    };
+    uninstall_api_screen_uninstall_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScreenUninstallIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenAcceptedOut"];
                 };
             };
             /** @description Forbidden */

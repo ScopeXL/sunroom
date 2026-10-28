@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import asyncio
 import os
+import shutil
 import socket
 import subprocess
 import sys
+import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -75,6 +77,54 @@ async def run_command(
         part.decode(errors="replace").strip() for part in (err, out) if part and part.strip()
     ]
     return CommandResult(process.returncode or 0, "\n".join(printed))
+
+
+async def spawn_detached(argv: list[str], *, unit: str) -> bool:
+    """Start ``argv`` so it outlives this process: in a systemd unit of its own where there is
+    one (stopping or restarting the agent's unit would take a child down with it), else in a
+    session of its own (a process group of its own on Windows), detached."""
+    if sys.platform.startswith("linux") and shutil.which("systemd-run"):
+        process = await asyncio.create_subprocess_exec(
+            "systemd-run",
+            "--user",
+            "--collect",
+            f"--unit={unit}-{int(time.time())}",
+            "--",
+            *argv,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        return await process.wait() == 0
+    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(
+        subprocess, "CREATE_NEW_PROCESS_GROUP", 0
+    )
+    try:
+        subprocess.Popen(  # noqa: S603, ASYNC220 - our own command, fire and forget
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=sys.platform != "win32",
+            creationflags=flags | NO_WINDOW,
+        )
+    except OSError:
+        return False
+    return True
+
+
+type Spawn = Callable[..., Awaitable[bool]]
+
+# Where install.sh leaves its uninstaller (Linux and macOS), which This Screen's Uninstall runs.
+UNINSTALLER = Path.home() / ".local" / "share" / "sunroom-kiosk" / "uninstall.sh"
+UNINSTALL_UNIT = "sunroom-kiosk-uninstall"
+
+
+def uninstaller_command(script: Path, *, sunroom: bool) -> list[str]:
+    """uninstall.sh as the screen runs it (ADR 0042): no questions, the root steps through the
+    root helper, and Sunroom run here with the family's data when asked (never an all-in-one
+    Pi's Docker Sunroom, the family's server)."""
+    argv = ["bash", str(script), "--yes", "--from-screen"]
+    return [*argv, "--purge-local"] if sunroom else argv
 
 
 class PlatformError(Exception):
@@ -215,6 +265,12 @@ class Platform:
     async def update_sunroom(self) -> bool:
         """Update the Sunroom that runs on this machine (an all-in-one Pi)."""
         return False
+
+    async def uninstall(self, *, sunroom: bool, port: int) -> None:
+        """Start Sunroom Screen's uninstaller as a process of its own, which outlives the agent
+        (This Screen's Uninstall, ADR 0042); ``sunroom`` takes Sunroom run here and the family's
+        data with it. The agent quits right after."""
+        raise UnsupportedError("Uninstalling Sunroom Screen")
 
     async def run_sunroom(self, progress: Progress) -> str:
         """Start Sunroom on this machine; returns its address. Only the pretend machine does it

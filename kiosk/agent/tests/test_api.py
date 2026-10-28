@@ -48,6 +48,7 @@ async def test_the_state_says_what_this_screen_is_and_can_do(client: httpx.Async
         "rotate",
         "brightness",
         "run_sunroom",
+        "uninstall",
     ]
     assert body["sunroom"] is None and body["open_url"] is None
     assert body["update"]["check"] == "nightly"  # every screen installs overnight by default
@@ -181,6 +182,29 @@ async def test_what_a_screen_cant_do_is_refused_in_words(
     assert gone.status_code in (404, 405)
     await settle()
     assert platform.calls == []
+
+
+async def test_uninstall_answers_first_then_starts_the_uninstaller(
+    client: httpx.AsyncClient, platform: FakePlatform
+) -> None:
+    """After the page unpaired the screen (ADR 0042); it needs the header, as any change."""
+    assert (await client.post("/api/screen/uninstall", json={})).status_code == 403
+    answer = await client.post("/api/screen/uninstall", json={"sunroom": True}, headers=CHANGE)
+    assert answer.status_code == 202
+    await settle()
+    assert platform.calls == ["uninstall"]  # nothing runs Sunroom here: Sunroom Screen alone
+
+
+async def test_a_screen_that_cant_uninstall_says_so(
+    client: httpx.AsyncClient, platform: FakePlatform, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    kept = platform.capabilities()
+    monkeypatch.setattr(platform, "capabilities", lambda: [c for c in kept if c != "uninstall"])
+    refused = await client.post("/api/screen/uninstall", json={}, headers=CHANGE)
+    assert refused.status_code == 409
+    assert refused.json()["error"]["message"] == (
+        "Uninstalling Sunroom Screen isn't something this screen can do."
+    )
 
 
 async def test_rotation_turns_the_picture_and_is_kept(
@@ -448,5 +472,5 @@ async def test_the_schema_has_every_route(app: FastAPI) -> None:
     from sunroom_kiosk.app import router
 
     paths = get_openapi(title="t", version="0", routes=router.routes)["paths"]
-    assert len(paths) == 18  # 0.17.0: no open-network-settings (ADR 0042)
+    assert len(paths) == 19  # 0.17.0: no open-network-settings, and uninstall (ADR 0042)
     assert not any("_test" in path for path in paths)

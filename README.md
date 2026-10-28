@@ -63,7 +63,8 @@ Keep that computer on and connected: your devices open Sunroom from it. On a Pi,
 `… | bash -s -- --with-sunroom` instead runs Sunroom in Docker, set up by the installer, which
 prints the address and QR code at the end. If a `.local` address doesn't open, use the numbered
 one: a device on a VPN, or a phone on mobile data, can't see `.local` names.
-[docs/KIOSK.md](docs/KIOSK.md) covers rotation, screens that stay blank, updates and removal.
+[docs/KIOSK.md](docs/KIOSK.md) covers rotation, screens that stay blank, updates and removal (on the
+screen itself: Settings → This Screen → Uninstall Sunroom Screen…).
 
 ### b. Sunroom on your server, the Pi is the screen
 

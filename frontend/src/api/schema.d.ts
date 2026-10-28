@@ -144,6 +144,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/password/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Password
+         * @description The household password, asked before something that can't be undone happens off this
+         *     server: a wall screen uninstalling Sunroom and the family's data from the computer it runs on
+         *     (This Screen's Uninstall, ADR 0042). A parent's (on a wall, behind the PIN), checked as at
+         *     sign-in, wrong tries counting against the same limiter.
+         */
+        post: operations["check_password_api_admin_password_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/restore": {
         parameters: {
             query?: never;
@@ -4609,6 +4632,11 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** PasswordCheckIn */
+        PasswordCheckIn: {
+            /** Password */
+            password: string;
+        };
         /** PhotoOut */
         PhotoOut: {
             /**
@@ -6055,6 +6083,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EraseOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_password_api_admin_password_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordCheckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -5,7 +5,6 @@ import { useState } from "react";
 import { qk } from "../../api/keys";
 import {
   openScreenPage,
-  screenClient,
   screenProgress,
   sunroomName,
   useScreenAgent,
@@ -20,7 +19,9 @@ import { Digits } from "../../ui/Digits";
 import { Segmented } from "../../ui/Segmented";
 import { Sheet } from "../../ui/Sheet";
 import { TextField } from "../../ui/TextField";
+import { agent, answer, refusal } from "./agentCalls";
 import { Group, Row, Text } from "./parts";
+import { UninstallSheet } from "./UninstallSheet";
 
 type Rotation = 0 | 90 | 180 | 270;
 
@@ -43,32 +44,8 @@ const FOUND_WORDS = {
   local: "on this computer",
 } as const;
 
-const NO_ANSWER = "This screen didn’t answer. Try again in a moment.";
-
 /** Change Address leaves for Where Is Your Sunroom? once its toast has shown. */
 const LEAVE_AFTER_MS = 1500;
-
-/** A refusal from the agent: its message is the agent's own plain sentence. */
-class Refusal extends Error {}
-
-function refusal(error: unknown): string {
-  return error instanceof Refusal ? error.message : NO_ANSWER;
-}
-
-/** The agent's answer, or a Refusal with what it said (its error envelope). */
-function answer<T>(result: { data?: T; error?: unknown }): T {
-  if (result.error !== undefined) {
-    const said = (result.error as { error?: { message?: string } }).error?.message;
-    throw new Refusal(said ?? NO_ANSWER);
-  }
-  return result.data as T;
-}
-
-function agent() {
-  const client = screenClient();
-  if (!client) throw new Refusal(NO_ANSWER);
-  return client;
-}
 
 function strength(percent: number | null | undefined): string {
   if (percent == null) return "";
@@ -98,7 +75,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
   const progress = useStore(screenProgress);
   const [wifiOpen, setWifiOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [asking, setAsking] = useState<"shutdown" | "address" | null>(null);
+  const [asking, setAsking] = useState<"shutdown" | "address" | "uninstall" | null>(null);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: qk.screen.state() });
@@ -312,6 +289,34 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
           Help
         </Button>
       </div>
+      {/* The wall's alone (ADR 0042): the screen's own pages (`onForgot`) have no Sunroom to
+          unpair it with. */}
+      {can("uninstall") && !onForgot ? (
+        <div className="mt-10">
+          <Group title="Remove" note="Take Sunroom Screen off this computer.">
+            <div className="py-5">
+              <Button
+                variant="quiet-danger"
+                onClick={() => {
+                  setAsking("uninstall");
+                }}
+              >
+                Uninstall Sunroom Screen…
+              </Button>
+            </div>
+          </Group>
+        </div>
+      ) : null}
+      <UninstallSheet
+        open={asking === "uninstall"}
+        sunroomHere={can("remove_sunroom")}
+        onClose={() => {
+          setAsking(null);
+        }}
+        onStarted={() => {
+          setAsking(null);
+        }}
+      />
 
       <Sheet
         open={asking === "shutdown"}

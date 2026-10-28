@@ -1,18 +1,21 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { api } from "../../api/client";
 import { qk } from "../../api/keys";
 import {
   forgetScreenAgent,
   noteScreenAgent,
   openScreenPage,
   sunroomName,
+  uninstalling,
   type ScreenState,
 } from "../../lib/screenAgent";
 import { toasts } from "../../lib/toast";
 import { ShellContext } from "../../ui/shell";
 import { ThisScreenPage } from "./ThisScreenPage";
+import { Uninstalling } from "./UninstallSheet";
 
 vi.mock("../../lib/screenAgent", async (original) => ({
   ...(await original<typeof import("../../lib/screenAgent")>()),
@@ -20,6 +23,7 @@ vi.mock("../../lib/screenAgent", async (original) => ({
 }));
 
 const AGENT = "http://127.0.0.1:7800";
+const SCREEN_DEVICE = "00000000-0000-7000-8000-0000000000d2";
 
 function piState(overrides: Partial<ScreenState> = {}): ScreenState {
   return {
@@ -118,6 +122,8 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
+  uninstalling.set(false);
   vi.mocked(openScreenPage).mockClear();
   forgetScreenAgent();
   vi.unstubAllGlobals();
@@ -129,6 +135,7 @@ function draw(state: ScreenState = piState()) {
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   });
   client.setQueryData(qk.screen.state(), state);
+  client.setQueryData(qk.session(), { device_id: SCREEN_DEVICE, device_kind: "kiosk" });
   render(
     <QueryClientProvider client={client}>
       <ShellContext.Provider value="display">
@@ -386,5 +393,103 @@ describe("Settings → This Screen (ADR 0035)", () => {
     expect(sunroomName("The Joneses")).toBe("The Joneses’ Sunroom");
     expect(sunroomName("Home")).toBe("Sunroom");
     expect(sunroomName(null)).toBe("Sunroom");
+  });
+
+  it("uninstalls itself: what goes, then the agent, then the unpairing (ADR 0042)", async () => {
+    const sunroom: string[] = [];
+    vi.spyOn(api, "DELETE").mockImplementation(((path: string) => {
+      sunroom.push(`DELETE ${path}`);
+      return Promise.resolve({ response: new Response(null, { status: 204 }) });
+    }) as never);
+    draw(piState({ capabilities: ["restart", "shutdown", "update", "uninstall"] }));
+    fireEvent.click(screen.getByRole("button", { name: "Uninstall Sunroom Screen…" }));
+    const sheet = screen.getByRole("dialog", { name: "Uninstall Sunroom Screen?" });
+    expect(
+      within(sheet).getByText("This screen is unpaired and stops showing Sunroom."),
+    ).toBeTruthy();
+    // Sunroom doesn't run here: nothing more to ask.
+    expect(within(sheet).queryByRole("switch")).toBeNull();
+    expect(within(sheet).queryByLabelText("Household password")).toBeNull();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Cancel" }));
+    expect(calls).toEqual([]);
+    fireEvent.click(screen.getByRole("button", { name: "Uninstall Sunroom Screen…" }));
+    fireEvent.click(within(sheet).getByRole("button", { name: "Uninstall" }));
+    await waitFor(() => {
+      expect(said()).toEqual(["Uninstalling…"]);
+    });
+    expect(calls).toEqual([
+      { method: "POST", path: "/api/screen/uninstall", body: { sunroom: false }, header: "1" },
+    ]);
+    expect(sunroom).toEqual(["DELETE /api/auth/devices/{device_id}"]);
+    expect(uninstalling.get()).toBe(true); // the app shows only the cover from now on
+  });
+
+  it("covers the wall while it goes, and never leaves it stuck there", () => {
+    vi.useFakeTimers();
+    try {
+      render(<Uninstalling />);
+      expect(screen.getByRole("status").textContent).toBe(
+        "Sunroom Screen is being removed. This screen closes in a moment.",
+      );
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(screen.getByRole("button", { name: "Start Over" })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("takes Sunroom and the family's data too only with the household password", async () => {
+    const asked: string[] = [];
+    vi.spyOn(api, "POST").mockImplementation(((
+      _path: string,
+      init: { body: { password: string } },
+    ) => {
+      asked.push(init.body.password);
+      return Promise.resolve(
+        init.body.password === "sample-family-passphrase"
+          ? { response: new Response(null, { status: 204 }) }
+          : {
+              error: {
+                error: {
+                  code: "wrong_password",
+                  message: "That password didn't match. Try again.",
+                },
+              },
+              response: new Response(null, { status: 403 }),
+            },
+      );
+    }) as never);
+    vi.spyOn(api, "DELETE").mockImplementation((() =>
+      Promise.resolve({ response: new Response(null, { status: 204 }) })) as never);
+    draw(
+      piState({ capabilities: ["restart", "shutdown", "update", "uninstall", "remove_sunroom"] }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Uninstall Sunroom Screen…" }));
+    const sheet = screen.getByRole("dialog", { name: "Uninstall Sunroom Screen?" });
+    const alsoSunroom = within(sheet).getByRole<HTMLInputElement>("switch", {
+      name: /^Also remove Sunroom/,
+    });
+    expect(alsoSunroom.checked).toBe(true); // on at first
+    const uninstall = within(sheet).getByRole<HTMLButtonElement>("button", { name: "Uninstall" });
+    expect(uninstall.disabled).toBe(true); // the password first
+    fireEvent.change(within(sheet).getByLabelText("Household password"), {
+      target: { value: "not-the-password" },
+    });
+    fireEvent.click(uninstall);
+    expect(await within(sheet).findByRole("alert")).toHaveProperty(
+      "textContent",
+      "That password didn't match. Try again.",
+    );
+    expect(calls).toEqual([]); // the agent wasn't asked
+    fireEvent.change(within(sheet).getByLabelText("Household password"), {
+      target: { value: "sample-family-passphrase" },
+    });
+    fireEvent.click(uninstall);
+    await waitFor(() => {
+      expect(calls.map((call) => call.body)).toEqual([{ sunroom: true }]);
+    });
+    expect(asked).toEqual(["not-the-password", "sample-family-passphrase"]);
   });
 });

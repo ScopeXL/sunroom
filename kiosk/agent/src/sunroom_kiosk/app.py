@@ -46,6 +46,7 @@ from sunroom_kiosk.schemas import (
     ScreenSaveIn,
     ScreenScanOut,
     ScreenStateOut,
+    ScreenUninstallIn,
     ScreenUpdateOut,
     ScreenUpdatePolicyIn,
     ScreenWifiJoinIn,
@@ -214,6 +215,15 @@ async def shutdown(agent: AgentDep) -> ScreenAcceptedOut:
 async def quit_screen(agent: AgentDep) -> ScreenAcceptedOut:
     need(agent, "quit", "Quitting")
     await agent.later(agent.quit)
+    return ScreenAcceptedOut()
+
+
+@router.post("/uninstall", status_code=202)
+async def uninstall(body: ScreenUninstallIn, agent: AgentDep) -> ScreenAcceptedOut:
+    """This Screen's Uninstall (ADR 0042), after the page unpaired the screen: a moment later
+    the uninstaller starts as a process of its own and Sunroom Screen quits."""
+    need(agent, "uninstall", "Uninstalling Sunroom Screen")
+    await agent.later(lambda: agent.uninstall(sunroom=body.sunroom))
     return ScreenAcceptedOut()
 
 

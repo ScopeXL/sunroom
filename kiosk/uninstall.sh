@@ -2,9 +2,15 @@
 # Sunroom uninstaller: takes off this Pi (or another Linux computer, or a Mac) what
 # kiosk/install.sh set up for the screen.
 #
-#   bash uninstall.sh [--purge] [--yes]
+#   bash uninstall.sh [--purge | --purge-local] [--yes] [--from-screen] [--dry-run]
 #   (the same as: bash install.sh --uninstall [--purge] [--yes]; the installer keeps a copy
 #    of this script at ~/.local/share/sunroom-kiosk/uninstall.sh)
+#
+# This Screen's Uninstall (ADR 0042) runs that copy as "--yes --from-screen [--purge-local]", in
+# a process of its own once Sunroom Screen has quit: nobody is at a keyboard, so it asks nothing,
+# and the files root owns go through Sunroom Screen's root helper ("remove-root-files", which
+# sudoers allows without a password) or stay where there's no helper; the Pi's start-up settings
+# (the kernel command line, systemd-time-wait-sync) need a terminal.
 #
 # Removes Sunroom Screen (it switches the screen back on as it stops; then uv uninstalls it,
 # and its kept wheels go), its systemd user unit and the units of the screen helper and nightly
@@ -64,6 +70,9 @@ BLOCK_END="# <<< sunroom-kiosk <<<"
 UNITS=(sunroom-kiosk.service sunroom-screen.service sunroom-kiosk-restart.service sunroom-kiosk-restart.timer)
 
 PURGE=0
+PURGE_LOCAL=0
+FROM_SCREEN=0
+DRY_RUN=0
 YES=0
 HAVE_TTY=0
 TMP_DIR=""
@@ -100,13 +109,17 @@ usage() {
 	cat <<'EOF'
 Remove the Sunroom screen setup from this computer.
 
-Usage: bash uninstall.sh [--purge] [--yes]
+Usage: bash uninstall.sh [--purge | --purge-local] [--yes] [--from-screen] [--dry-run]
 
-  --purge   Also stop Sunroom and delete it and ALL its data (calendars, lists, photos)
-            from this computer: docker compose down -v in /opt/sunroom, then that folder,
-            and Sunroom run here as a program, with its data folder.
-  --yes     Answer yes to every question, including deleting the screen's pairing.
-  --help    Show this help
+  --purge        Also stop Sunroom and delete it and ALL its data (calendars, lists, photos)
+                 from this computer: docker compose down -v in /opt/sunroom, then that folder,
+                 and Sunroom run here as a program, with its data folder.
+  --purge-local  Only Sunroom run here as a program, with its data (never /opt/sunroom).
+  --yes          Answer yes to every question, including deleting the screen's pairing.
+  --from-screen  What This Screen's Uninstall runs: no questions (as --yes), and the files
+                 root owns through Sunroom Screen's root helper, without sudo's password.
+  --dry-run      Say what would be removed, and change nothing.
+  --help         Show this help
 
 Docker itself, uv, desktop autologin and "no screen blanking" are left as they are.
 EOF
@@ -145,7 +158,13 @@ parse_args() {
 	while (($#)); do
 		case $1 in
 		--purge) PURGE=1 ;;
+		--purge-local) PURGE_LOCAL=1 ;;
 		--yes | -y) YES=1 ;;
+		--from-screen)
+			FROM_SCREEN=1
+			YES=1
+			;;
+		--dry-run) DRY_RUN=1 ;;
 		-h | --help)
 			usage
 			exit 0
@@ -164,11 +183,12 @@ setup() {
 		die "Please run this as your normal user, without sudo; it asks for sudo by itself when it needs to." \
 			"For example:  bash ~/.local/share/sunroom-kiosk/uninstall.sh"
 	fi
-	if { : </dev/tty; } 2>/dev/null; then
+	if ((!FROM_SCREEN)) && { : </dev/tty; } 2>/dev/null; then
 		HAVE_TTY=1
 	fi
 	mkdir -p "$STATE_DIR"
-	printf '\n----- %s  uninstall.sh  purge=%s yes=%s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$PURGE" "$YES" >>"$LOG_FILE"
+	printf '\n----- %s  uninstall.sh  purge=%s purge-local=%s yes=%s from-screen=%s\n' \
+		"$(date '+%Y-%m-%d %H:%M:%S')" "$PURGE" "$PURGE_LOCAL" "$YES" "$FROM_SCREEN" >>"$LOG_FILE"
 	exec > >(tee -a "$LOG_FILE") 2>&1
 	TMP_DIR=$(mktemp -d)
 	trap 'rm -rf "$TMP_DIR"' EXIT
@@ -279,6 +299,30 @@ remove_root_files() {
 			note "Removed $file."
 		fi
 	done
+}
+
+# From the screen there's nobody to type sudo's password: the root helper, which sudoers allows
+# without one, takes off the files root owns (the browser's policy, the Wi-Fi drop-in, the
+# backlight rule, the i2c-dev file), then its sudoers rule and itself. A helper from before 0.17.0
+# has no such command: it empties the browser's policy instead, and the rest stays. A computer
+# that had no sudo at install has no root files.
+remove_root_files_from_screen() {
+	local file
+	if [[ ! -e $ROOT_HELPER ]]; then
+		note "No root helper here, so there are no system files to take off."
+		return 0
+	fi
+	if sudo -n "$ROOT_HELPER" remove-root-files; then
+		note "Removed Sunroom Screen's system files and its root helper."
+		return 0
+	fi
+	for file in "${POLICY_FILES[@]}"; do
+		if [[ -e $file ]]; then
+			printf '{}\n' | sudo -n "$ROOT_HELPER" write-policy "$file" >/dev/null 2>&1 || true
+		fi
+	done
+	warn "the root helper couldn't take its files off, so it emptied the browser's policy." \
+		"The rest goes with:  curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash -s -- --uninstall"
 }
 
 # The screen helper's system files: the udev rule that lets the video group switch the
@@ -543,23 +587,78 @@ finish() {
 	say "Log: $(tidy "$LOG_FILE")"
 }
 
+# --dry-run: what a real run would take off here, from what's here; nothing changes.
+plan() {
+	local file root_files=0
+	say "Sunroom uninstaller: a dry run. Nothing on this computer changes."
+	say ""
+	say "A real run would:"
+	if [[ -e $BIN_DIR/sunroom-kiosk || -e $LAUNCH_AGENT || -e $UNIT_DIR/sunroom-kiosk.service ]]; then
+		say "  - stop Sunroom Screen and uninstall it, with its service and start-up entries"
+	fi
+	for file in "$SUDOERS_FILE" "$ROOT_HELPER" "${POLICY_FILES[@]}" "$NM_DROPIN" "$BACKLIGHT_RULE" "$I2C_MODULES_FILE"; do
+		[[ -e $file ]] && root_files=1
+	done
+	if ((FROM_SCREEN)) && [[ -e $ROOT_HELPER ]]; then
+		say "  - take the system files off through Sunroom Screen's root helper, without a password"
+	elif ((FROM_SCREEN)); then
+		say "  - find no root helper, so no system files to take off"
+	elif ((root_files)); then
+		say "  - remove the system files it put in, with sudo (the browser's policy, the root helper)"
+	fi
+	if [[ -d $CONFIG_DIR/profile ]] && ((YES)); then
+		say "  - delete the screen's browser data (its pairing) and settings"
+	elif [[ -d $CONFIG_DIR/profile ]]; then
+		say "  - ask before deleting the screen's browser data, which holds its pairing"
+	elif [[ -e $CONFIG_DIR/config ]]; then
+		say "  - remove the screen's settings"
+	fi
+	if ((PURGE || PURGE_LOCAL)) && local_sunroom_here; then
+		say "  - stop Sunroom, which runs on this computer, and delete it and ALL its data ($(tidy "$LOCAL_DATA"))"
+	elif local_sunroom_here; then
+		say "  - leave Sunroom, which runs on this computer, and its data as they are"
+	fi
+	if ((PURGE)) && [[ -d $SERVER_DIR ]]; then
+		say "  - delete Sunroom's Docker setup in $SERVER_DIR and ALL its data"
+	elif [[ -d $SERVER_DIR ]]; then
+		say "  - leave Sunroom's Docker setup in $SERVER_DIR and its data as they are"
+	fi
+	say "uv, Docker and the computer's own settings stay as they are."
+}
+
 main() {
 	parse_args "$@"
+	if ((DRY_RUN)); then
+		plan
+		return 0
+	fi
 	setup
 	load_state
 	say "Removing the Sunroom screen setup..."
 	remove_launch_agent
 	remove_units
-	remove_root_files
+	if ((FROM_SCREEN)); then
+		remove_root_files_from_screen
+	else
+		remove_root_files
+	fi
 	remove_autostart
 	remove_labwc_settings
-	remove_wifi_dropin
-	remove_screen_files
-	undo_time_wait_sync
-	restore_cmdline
+	if ((FROM_SCREEN)); then
+		if [[ -n $STATE_CMDLINE_KEYS || $STATE_TIME_WAIT_SYNC_BY_US == 1 ]]; then
+			note "The Pi's start-up settings stay; the installer's --uninstall in a terminal takes them out."
+		fi
+	else
+		remove_wifi_dropin
+		remove_screen_files
+		undo_time_wait_sync
+		restore_cmdline
+	fi
 	remove_config
 	if ((PURGE)); then
 		purge_server
+		purge_local_sunroom
+	elif ((PURGE_LOCAL)); then
 		purge_local_sunroom
 	fi
 	finish

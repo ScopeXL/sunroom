@@ -36,14 +36,19 @@ from typing import Any, Literal, cast
 
 from sunroom_kiosk import logs, policy
 from sunroom_kiosk.platform.base import (
+    UNINSTALL_UNIT,
+    UNINSTALLER,
     CommandResult,
     NetworkStatus,
     Platform,
     PlatformError,
     Runner,
+    Spawn,
     WifiNetwork,
     local_ip,
     run_command,
+    spawn_detached,
+    uninstaller_command,
     user_id,
 )
 from sunroom_kiosk.schemas import ScreenCapability, ScreenSession
@@ -200,10 +205,14 @@ class LinuxPlatform(Platform):
         *,
         environ: Mapping[str, str] | None = None,
         which: Callable[[str], str | None] = shutil.which,
+        uninstaller: Path = UNINSTALLER,
+        spawn: Spawn = spawn_detached,
     ) -> None:
         super().__init__(runner, root)
         self.environ: Mapping[str, str] = os.environ if environ is None else environ
         self.which = which
+        self.uninstaller = uninstaller
+        self.spawn = spawn
 
     # ------------------------------------------------------------------ what it is
 
@@ -256,6 +265,10 @@ class LinuxPlatform(Platform):
     def can_rotate(self) -> bool:
         return self.rotation_tool() is not None
 
+    def can_uninstall(self) -> bool:
+        """The installer leaves its uninstaller beside Sunroom Screen's files."""
+        return self.uninstaller.is_file()
+
     def _root_helper(self) -> bool:
         return (self.root / ROOT_HELPER.lstrip("/")).exists()
 
@@ -266,7 +279,17 @@ class LinuxPlatform(Platform):
         if self.can_rotate():
             have.append("rotate")
         have.append("quit")
+        if self.can_uninstall():
+            have.append("uninstall")
         return have
+
+    async def uninstall(self, *, sunroom: bool, port: int) -> None:
+        """uninstall.sh in a unit of its own (stopping the agent's unit mustn't stop it)."""
+        if not self.can_uninstall():
+            raise PlatformError("Uninstalling Sunroom Screen isn't something this screen can do.")
+        argv = uninstaller_command(self.uninstaller, sunroom=sunroom)
+        if not await self.spawn(argv, unit=UNINSTALL_UNIT):
+            raise PlatformError("Sunroom Screen couldn't start its uninstaller. Try again.")
 
     # ------------------------------------------------------------------ root's part
 

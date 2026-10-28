@@ -64,6 +64,7 @@ jobs:
           if [ "$RUNNER_OS" = macOS ]; then shell=/bin/bash; fi
           "$shell" kiosk/install.sh --dry-run
           "$shell" kiosk/install.sh --dry-run --display-only --url https://calendar.example.com
+          "$shell" kiosk/uninstall.sh --dry-run --from-screen --purge-local
       # The Windows installer (docs/M7.md T14): PSScriptAnalyzer, then its plan under Windows
       # PowerShell 5.1, which is what `irm … | iex` runs: from a file, then as people run it, in the
       # window itself under Windows' default policy, Restricted (ADR 0041). There it shows an error

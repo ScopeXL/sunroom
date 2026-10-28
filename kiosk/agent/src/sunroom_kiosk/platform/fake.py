@@ -93,6 +93,7 @@ class FakePlatform(Platform):
                 "brightness",
                 "run_sunroom",
                 "update_sunroom",
+                "uninstall",
             ]
         return [
             "restart",
@@ -102,6 +103,7 @@ class FakePlatform(Platform):
             "quit",
             "run_sunroom",
             "update_sunroom",
+            "uninstall",
         ]
 
     async def restart(self) -> None:
@@ -159,6 +161,9 @@ class FakePlatform(Platform):
     async def update_sunroom(self) -> bool:
         self.calls.append("update_sunroom")
         return True
+
+    async def uninstall(self, *, sunroom: bool, port: int) -> None:
+        self.calls.append("uninstall and sunroom" if sunroom else "uninstall")
 
     async def run_sunroom(self, progress: Progress) -> str:
         self.calls.append("run_sunroom")

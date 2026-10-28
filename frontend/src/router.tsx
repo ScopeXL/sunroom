@@ -22,9 +22,12 @@ import { PairDisplayScreen } from "./features/phone/PairDisplayScreen";
 import { PluginRoomScreen, splitPath } from "./features/PluginRoomScreen";
 import { TodayScreen } from "./features/phone/TodayScreen";
 import { SettingsIndex, SettingsPageScreen } from "./features/settings/SettingsScreens";
+import { Uninstalling } from "./features/settings/UninstallSheet";
 import { setSignedOutHandler } from "./lib/live";
 import { shouldShowInstallFirst } from "./lib/platform";
+import { uninstalling } from "./lib/screenAgent";
 import { fetchSession, rememberSignedIn, signedInBefore, type Session } from "./lib/session";
+import { useStore } from "./lib/store";
 import { PhoneShell } from "./shell/PhoneShell";
 import { ShellLayout } from "./shell/ShellLayout";
 import { useShell } from "./ui/shell";
@@ -81,8 +84,14 @@ async function setupComplete(client: QueryClient): Promise<boolean | "offline"> 
   }
 }
 
+/** Every page; while Sunroom Screen removes itself (This Screen's Uninstall, ADR 0042) only its
+ * cover, whatever the route does underneath as the screen is unpaired. */
+function Root() {
+  return useStore(uninstalling) ? <Uninstalling /> : <Outlet />;
+}
+
 const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  component: Outlet,
+  component: Root,
 });
 
 /** Screens before signing in use the phone's look (they're opened on phones and laptops). */

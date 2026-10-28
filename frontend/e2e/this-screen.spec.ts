@@ -252,6 +252,41 @@ test("This Screen restarts, shuts down, joins Wi-Fi, turns and updates the scree
   await page.waitForURL(`${AGENT}/find`);
 });
 
+test("This Screen uninstalls Sunroom Screen: it asks, then the agent and the unpairing (ADR 0042)", async ({
+  page,
+  request,
+}) => {
+  await seed(request, { pin: PIN });
+  await pairWall(page);
+  const agent = new FakeAgent();
+  const kept = agent.current.capabilities as string[];
+  agent.current = { ...agent.current, capabilities: [...kept, "uninstall"] };
+  await agent.install(page);
+  await page.goto("/display?dimmer=screen&screen=7800");
+  await expect(page.getByRole("region", { name: "This Week" })).toBeVisible();
+  await openThisScreen(page);
+
+  await page.getByRole("button", { name: "Uninstall Sunroom Screen…" }).click();
+  const sheet = page.getByRole("dialog", { name: "Uninstall Sunroom Screen?" });
+  await expect(sheet.getByText("This screen is unpaired and stops showing Sunroom.")).toBeVisible();
+  await check(page, "This Screen's Uninstall sheet");
+  await sheet.getByRole("button", { name: "Cancel" }).click();
+  await expect(sheet).toBeHidden();
+  expect(agent.calls).not.toContain("POST /api/screen/uninstall");
+
+  await page.getByRole("button", { name: "Uninstall Sunroom Screen…" }).click();
+  await sheet.getByRole("button", { name: "Uninstall", exact: true }).click();
+  // The cover from now on, nothing else to tap, as the screen is unpaired under it.
+  await expect(
+    page.getByText("Sunroom Screen is being removed. This screen closes in a moment."),
+  ).toBeVisible();
+  await expect(page.getByRole("button")).toHaveCount(0);
+  expect(agent.calls).toContain("POST /api/screen/uninstall");
+  expect(agent.bodies["POST /api/screen/uninstall"]).toEqual({ sunroom: false });
+  // Its device went with it: Sunroom no longer knows this screen.
+  await expect.poll(async () => (await page.request.get("/api/auth/session")).status()).toBe(401);
+});
+
 test("a wall paired on the screen has Sunroom Screen keep the pairing at once (ADR 0040)", async ({
   page,
   request,

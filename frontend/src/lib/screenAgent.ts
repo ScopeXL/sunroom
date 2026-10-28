@@ -130,6 +130,13 @@ export function screenReloadUrl(dimmer: string): string | null {
   return port === null ? null : `/display?dimmer=${dimmer}&screen=${String(port)}`;
 }
 
+/**
+ * Sunroom Screen is removing itself (This Screen's Uninstall, ADR 0042): the app shows only its
+ * cover from then on, whatever the route does as the screen is unpaired under it, until the
+ * browser closes.
+ */
+export const uninstalling = createStore(false);
+
 /** An update's progress, from the agent's event stream (`update.progress`). */
 export const screenProgress = createStore<{ percent: number; step: string } | null>(null);
 

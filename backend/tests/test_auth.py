@@ -374,3 +374,29 @@ async def test_a_screen_has_no_member_but_says_who_tapped(
     assert (await actor_for(other, mia["id"])).member_id == mia["id"]
     assert (await actor_for(other, "someone-else")).member_id is None
     assert (await actor_for(parent, mia["id"])).member_id is None  # a phone ignores it
+
+
+# ---- the household password, checked for This Screen's Uninstall (ADR 0042) ----------------
+
+
+async def test_a_parent_checks_the_household_password(
+    app: FastAPI, parent: httpx.AsyncClient, other: httpx.AsyncClient
+) -> None:
+    check = "/api/admin/password/check"
+    assert (await parent.post(check, json={"password": PASSWORD}, headers=CSRF)).status_code == 204
+    wrong = await parent.post(check, json={"password": "not-the-password"}, headers=CSRF)
+    assert wrong.status_code == 403
+    assert wrong.json()["error"] == {
+        "code": "wrong_password",
+        "message": "That password didn't match. Try again.",
+    }
+    limiter = state_of(app).login_limiter
+    assert sum(limiter.recent_failures(key) for key in ("127.0.0.1", "unknown")) == 1
+    # Nobody signed in may ask; a kid's phone is refused as for any parent's action.
+    assert (await other.post(check, json={"password": PASSWORD}, headers=CSRF)).status_code == 401
+    kid_phone = (await login(other)).json()["device_id"]
+    await set_pin(parent)
+    await parent.patch(f"/api/auth/devices/{kid_phone}", json={"is_kid_device": True}, headers=CSRF)
+    refused = await other.post(check, json={"password": PASSWORD}, headers=CSRF)
+    assert refused.status_code == 403
+    assert refused.json()["error"]["code"] == "parent_required"

@@ -21,7 +21,14 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from sunroom_kiosk import logs
-from sunroom_kiosk.platform.base import Runner, run_command, user_id
+from sunroom_kiosk.platform.base import (
+    UNINSTALLER,
+    Runner,
+    Spawn,
+    run_command,
+    spawn_detached,
+    user_id,
+)
 from sunroom_kiosk.platform.linux import LinuxPlatform
 from sunroom_kiosk.schemas import ScreenCapability, ScreenPlatform
 
@@ -48,8 +55,12 @@ class PiPlatform(LinuxPlatform):
         which: Callable[[str], str | None] = shutil.which,
         labwc_rule: Path = LABWC_RULE,
         version: str = "dev",
+        uninstaller: Path = UNINSTALLER,
+        spawn: Spawn = spawn_detached,
     ) -> None:
-        super().__init__(runner, root, environ=environ, which=which)
+        super().__init__(
+            runner, root, environ=environ, which=which, uninstaller=uninstaller, spawn=spawn
+        )
         self.labwc_rule = labwc_rule
         self.version = version
 
@@ -72,6 +83,8 @@ class PiPlatform(LinuxPlatform):
         have.append("brightness")  # the agent drops it when the helper found no way to dim
         if self._root_helper() and (self.root / "opt/sunroom/update.sh").exists():
             have.append("update_sunroom")  # the agent keeps it only while it shows that Sunroom
+        if self.can_uninstall():
+            have.append("uninstall")
         return have
 
     # ------------------------------------------------------------------ the screen

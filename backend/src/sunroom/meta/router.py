@@ -342,6 +342,29 @@ async def erase(body: EraseIn, request: Request, state: StateDep, actor: ParentD
     return EraseOut()
 
 
+class PasswordCheckIn(BaseModel):
+    password: Annotated[str, Field(min_length=1, max_length=200)]
+
+
+@router.post("/admin/password/check", status_code=204)
+async def check_password(
+    body: PasswordCheckIn, request: Request, state: StateDep, actor: ParentDep
+) -> None:
+    """The household password, asked before something that can't be undone happens off this
+    server: a wall screen uninstalling Sunroom and the family's data from the computer it runs on
+    (This Screen's Uninstall, ADR 0042). A parent's (on a wall, behind the PIN), checked as at
+    sign-in, wrong tries counting against the same limiter."""
+    ip = client_ip(request)
+    check_rate(state.login_limiter, ip)
+    async with state.db.read() as db:
+        matched = await password_ok(state, db, body.password)
+    if not matched:
+        state.login_limiter.record_failure(ip)
+        log.info("password_check.wrong_password")
+        raise AppError(403, "wrong_password", "That password didn't match. Try again.")
+    state.login_limiter.record_success(ip)
+
+
 @router.get("/export")
 async def export(state: StateDep, actor: ParentDep) -> dict[str, Any]:
     async with state.db.read() as db:

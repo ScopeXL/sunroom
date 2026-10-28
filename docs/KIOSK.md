@@ -212,7 +212,8 @@ run the same download as a script block, in the PowerShell window too:
 
 or save the file and run `powershell -ExecutionPolicy Bypass -File install.ps1 -Url …`.
 `-Uninstall` takes it off again, asking before it deletes the pairing; uv stays. The installer
-ends by printing the exact command that removes it.
+ends by printing the exact command that removes it. On the screen, **Settings → This Screen →
+Uninstall Sunroom Screen…** does the same without a terminal (ADR 0042).
 
 ## A Mac
 
@@ -345,9 +346,10 @@ with **Try Again**.
   answer within five minutes is put back.
 - **The household password, lost:** `DATA_DIR=~/.local/share/sunroom ~/.local/bin/sunroom
   reset-password` (the data folder above for a Mac or Windows).
-- **Removing it:** the screen's uninstaller leaves Sunroom running, with the family's data, unless
-  you add `--purge` (it asks first); on Windows `-Uninstall` stops and removes it, and keeps its
-  data folder.
+- **Removing it:** This Screen's **Uninstall Sunroom Screen…** takes Sunroom and its data too
+  when its switch is left on, after the household password (ADR 0042). In a terminal, the screen's
+  uninstaller leaves Sunroom running, with the family's data, unless you add `--purge` (it asks
+  first); on Windows `-Uninstall` stops and removes it, and keeps its data folder.
 
 ## Letting screens find a Sunroom on a NAS or server
 
@@ -385,9 +387,16 @@ screen instead.
   `sunroom-kiosk status`.
 - **Restart it:** `systemctl --user restart sunroom-kiosk` (the screen comes on while it
   restarts), or **Restart** in This Screen, which restarts the whole Pi.
-- **Remove the screen setup:** `bash ~/.local/share/sunroom-kiosk/uninstall.sh`. It asks before
-  deleting the browser profile (and with it the pairing). `--purge` also deletes Sunroom and all
-  its data from the Pi. The packages the installer added, the browser among them, stay.
+- **Remove the screen:** on the screen itself, **Settings → This Screen → Uninstall Sunroom
+  Screen…** (ADR 0042). It says what goes and asks first; where Sunroom runs on that computer as
+  a program, a switch (on at first) takes Sunroom and the family's data too, after the household
+  password. The screen is unpaired, Sunroom Screen closes, and its uninstaller takes the rest off
+  by itself, through the root helper for the system files (a Pi's start-up settings, the kernel
+  command line and systemd-time-wait-sync, need the terminal); an all-in-one Pi's Docker Sunroom
+  stays. In a terminal: `bash ~/.local/share/sunroom-kiosk/uninstall.sh` asks before deleting the
+  browser profile (and with it the pairing); `--purge` also deletes Sunroom and all its data,
+  `--purge-local` only Sunroom run here as a program; `--dry-run` says what it would take off.
+  The packages the installer added, the browser among them, stay.
 
 ## Trying a change before a release
 

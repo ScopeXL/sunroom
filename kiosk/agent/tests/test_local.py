@@ -533,3 +533,29 @@ async def test_the_agent_runs_sunroom_here_through_it_on_a_computer(
     # Shown now: no running it again, and Update Sunroom Too while it's this screen's own.
     assert "run_sunroom" not in agent.capabilities()
     assert "update_sunroom" in agent.capabilities()
+
+
+async def test_uninstall_takes_sunroom_only_where_it_runs_here_then_quits(
+    make_agent: Callable[..., Agent], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """This Screen's Uninstall (ADR 0042): the platform's uninstaller, with Sunroom only where
+    it runs here as a program; then the agent quits (not the pretend one, in tests and e2e)."""
+    platform = FakePlatform("desktop")
+    local = FakeLocal("http://localhost:8080")
+    agent = make_agent(platform=platform, local=local)
+    assert "remove_sunroom" not in agent.capabilities()
+    await agent.uninstall(sunroom=True)  # asked, but nothing runs here: Sunroom Screen alone
+    assert platform.calls == ["uninstall"]
+    local.installed_now = True
+    assert "remove_sunroom" in agent.capabilities()
+    await agent.uninstall(sunroom=True)
+    assert platform.calls[-1] == "uninstall and sunroom"
+    quits: list[str] = []
+
+    async def quit_() -> None:
+        quits.append("quit")
+
+    real = make_agent(platform=platform, local=local, fake=False)
+    monkeypatch.setattr(real, "quit", quit_)
+    await real.uninstall(sunroom=False)
+    assert (platform.calls[-1], quits) == ("uninstall", ["quit"])

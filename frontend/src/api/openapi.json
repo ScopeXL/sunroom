@@ -6150,6 +6150,21 @@
         "title": "PanelOut",
         "type": "object"
       },
+      "PasswordCheckIn": {
+        "properties": {
+          "password": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "PasswordCheckIn",
+        "type": "object"
+      },
       "PhotoOut": {
         "properties": {
           "created_at": {
@@ -10399,6 +10414,41 @@
           }
         },
         "summary": "Erase",
+        "tags": [
+          "meta"
+        ]
+      }
+    },
+    "/api/admin/password/check": {
+      "post": {
+        "description": "The household password, asked before something that can't be undone happens off this\nserver: a wall screen uninstalling Sunroom and the family's data from the computer it runs on\n(This Screen's Uninstall, ADR 0042). A parent's (on a wall, behind the PIN), checked as at\nsign-in, wrong tries counting against the same limiter.",
+        "operationId": "check_password_api_admin_password_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordCheckIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Password",
         "tags": [
           "meta"
         ]

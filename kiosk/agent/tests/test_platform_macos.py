@@ -5,6 +5,8 @@ only."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from sunroom_kiosk import policy
@@ -137,3 +139,20 @@ async def test_a_mac_says_how_it_is_connected(monkeypatch: pytest.MonkeyPatch) -
     assert (await mac(cable).network()).kind == "wired"
     nowhere = Shell(answers={"route -n get default": CommandResult(1, "not in table")})
     assert (await mac(nowhere).network()).kind == "none"
+
+
+async def test_a_mac_uninstalls_through_the_installers_uninstaller(tmp_path: Path) -> None:
+    started: list[list[str]] = []
+
+    async def spawn(argv: list[str], *, unit: str) -> bool:
+        started.append(argv)
+        return True
+
+    script = tmp_path / "uninstall.sh"
+    script.write_text("#!/usr/bin/env bash\n")
+    platform = MacPlatform(
+        Shell(), identifier=lambda: "", release=lambda: "", uninstaller=script, spawn=spawn
+    )
+    assert platform.capabilities()[-1] == "uninstall"
+    await platform.uninstall(sunroom=True, port=7800)
+    assert started == [["bash", str(script), "--yes", "--from-screen", "--purge-local"]]

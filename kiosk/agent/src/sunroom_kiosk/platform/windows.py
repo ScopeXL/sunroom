@@ -15,6 +15,8 @@ for that person from the Startup folder, with no administrator rights and no ser
   needed. Touch follows the display on Windows.
 * **Quit** closes Sunroom Screen until the next sign-in. No brightness: the page dims itself
   (``?dimmer=page``).
+* **Uninstall** (ADR 0042): uninstall.py, copied out to the temp folder (it removes the agent's
+  own environment) and run with the Python that environment was made from, as apply.py is.
 """
 
 from __future__ import annotations
@@ -22,23 +24,30 @@ from __future__ import annotations
 import asyncio
 import ctypes
 import re
+import shutil
 import sys
+import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
 from sunroom_kiosk import logs, policy
+from sunroom_kiosk import uninstall as uninstall_step
 from sunroom_kiosk.platform.base import (
+    UNINSTALL_UNIT,
     CommandResult,
     NetworkStatus,
     Platform,
     PlatformError,
     Runner,
+    Spawn,
     local_ip,
     run_command,
+    spawn_detached,
 )
 from sunroom_kiosk.schemas import ScreenCapability, ScreenPlatform
+from sunroom_kiosk.updater import base_python
 
 log = logs.get("platform")
 
@@ -253,12 +262,16 @@ class WindowsPlatform(Platform):
         build: Callable[[], int] = windows_build,
         address: Callable[[], str | None] = local_ip,
         display: Callable[[], Display] = system_display,
+        spawn: Spawn = spawn_detached,
+        temp: Path | None = None,
     ) -> None:
         super().__init__(runner, root)
         self.registry = registry
         self.build = build
         self.address = address
         self.display = display
+        self.spawn = spawn
+        self.temp = temp or Path(tempfile.gettempdir())
 
     # ------------------------------------------------------------------ what it is
 
@@ -287,7 +300,7 @@ class WindowsPlatform(Platform):
         return "Windows 11" if build >= WINDOWS_11_BUILD else "Windows 10"
 
     def capabilities(self) -> list[ScreenCapability]:
-        return ["restart", "shutdown", "update", "rotate", "quit"]
+        return ["restart", "shutdown", "update", "rotate", "quit", "uninstall"]
 
     # ------------------------------------------------------------------ the machine
 
@@ -318,6 +331,22 @@ class WindowsPlatform(Platform):
         if answer != DISP_CHANGE_SUCCESSFUL:
             log.info("ChangeDisplaySettingsExW answered %d.", answer)
             raise PlatformError("The picture didn't turn. Try again in a moment.")
+
+    async def uninstall(self, *, sunroom: bool, port: int) -> None:
+        script = self.temp / "sunroom-kiosk-uninstall.py"
+        try:
+            await asyncio.to_thread(shutil.copyfile, uninstall_step.__file__, script)
+        except OSError as error:
+            log.info("The uninstaller couldn't be copied out: %s", error)
+            raise PlatformError(
+                "Sunroom Screen couldn't start its uninstaller. Try again."
+            ) from error
+        agent = Path.home() / ".local" / "bin" / "sunroom-kiosk.exe"
+        argv = [base_python(), str(script), "--agent", str(agent), "--port", str(port)]
+        if sunroom:
+            argv.append("--sunroom")
+        if not await self.spawn(argv, unit=UNINSTALL_UNIT):
+            raise PlatformError("Sunroom Screen couldn't start its uninstaller. Try again.")
 
     # ------------------------------------------------------------------ the network
 

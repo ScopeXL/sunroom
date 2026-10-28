@@ -23,6 +23,8 @@ type ScreenCapability = Literal[
     "quit",
     "run_sunroom",
     "update_sunroom",
+    "uninstall",
+    "remove_sunroom",
 ]
 type ScreenFoundHow = Literal["discovered", "typed", "local"]
 type ScreenUpdateCheck = Literal["nightly", "off"]
@@ -156,6 +158,11 @@ class ScreenRotationIn(BaseModel):
 
 class ScreenOpenIn(BaseModel):
     page: Literal["sunroom", "settings"]
+
+
+class ScreenUninstallIn(BaseModel):
+    # Sunroom run on this computer, and the family's data, too (only where it runs here).
+    sunroom: bool = False
 
 
 class ScreenAcceptedOut(BaseModel):

@@ -28,9 +28,7 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
-import time
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime, timedelta
@@ -42,6 +40,7 @@ import httpx
 from sunroom_kiosk import apply as apply_step
 from sunroom_kiosk import logs
 from sunroom_kiosk.apply import Paths
+from sunroom_kiosk.platform.base import spawn_detached
 from sunroom_kiosk.version import version
 
 if TYPE_CHECKING:
@@ -157,35 +156,8 @@ def base_python() -> str:
 
 
 async def spawn_apply(argv: list[str]) -> bool:
-    """Start the apply step so it outlives this process: in its own systemd unit where there is
-    one (the agent's own unit's restart would take a child down with it), else detached."""
-    if sys.platform.startswith("linux") and shutil.which("systemd-run"):
-        unit = [
-            "systemd-run",
-            "--user",
-            "--collect",
-            f"--unit={APPLY_UNIT}-{int(time.time())}",
-            "--",
-        ]
-        process = await asyncio.create_subprocess_exec(
-            *unit,
-            *argv,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
-        return await process.wait() == 0
-    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(
-        subprocess, "CREATE_NEW_PROCESS_GROUP", 0
-    )
-    subprocess.Popen(  # noqa: S603, ASYNC220 - our own command, fire and forget
-        argv,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=sys.platform != "win32",
-        creationflags=flags,
-    )
-    return True
+    """Start the apply step so it outlives this process (platform/base.py's spawn_detached)."""
+    return await spawn_detached(argv, unit=APPLY_UNIT)
 
 
 class Updater:
