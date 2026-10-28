@@ -819,6 +819,12 @@ The owner's asks of 2026-10-22 (`docs/M8.md`, ADR 0038), after the one-command i
 
 *Verify:* the quick gate per task and the full gate at the end (§14.7); a Linux machine end to end, the program on a Mac, and the owner's virtual machines through `just kiosk-serve`; HARDWARE.md rows 36 to 41.
 
+### M9 The owner's notes of 2026-10-28 → 0.17.0
+
+Planned in `docs/M9.md` (ADR 0042 when built): the Calendar's views in one View menu with a drawing and a line each, Rolling Week as a view of its own, Week with Hours by default; the screen's first page as one choice with Continue, an address that checks itself, and no browser restart when a Sunroom is chosen; setup's words and All Done!; This Screen's connection row, the address as local or remote, updates overnight by default, Shut Down's words and Cancel, rotation on Windows and Linux computers, and Uninstall from the screen; renaming paired screens; Sunroom OS retired; "the screen" and "your devices" instead of the kitchen and phones, with "Wall screen" as a new screen's name; the Sunroom Discord in Settings, and Send Feedback through Sunroom's own server to the project, no account needed.
+
+*Verify:* the quick gate per task and the full gate at the end (§14.7); the owner's virtual machines through `just kiosk-serve` for the first page, rotation and Uninstall on each system.
+
 ## 16. UX
 
 Moved to [`docs/UX.md`](UX.md) on 2026-10-07 (M0), keeping its numbering: PLAN §16.n is UX §n (rules for every screen, words, navigation and layout, display screens, phone screens, flows, visual direction, empty and quiet states, motion spec, accessibility and the screenshot checklist, refinements).
