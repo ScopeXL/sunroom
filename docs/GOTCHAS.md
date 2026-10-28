@@ -180,6 +180,10 @@ size limit.
   when asked to stop.
 - Chromium's headless profile on a Mac asks the login keychain for its cookie key: a test that
   starts real Chrome passes `--use-mock-keychain`, or a keychain prompt shows on the desktop.
+- A screen showed its pairing code twice right after a Sunroom was chosen (code A, then B): the
+  page opened Sunroom as soon as it heard the new state, and the agent then restarted the browser
+  on it too. The page moves itself; the agent only navigates (DevTools) where no page chose, and
+  its policy no longer names the Sunroom, so nothing needs a restart (ADR 0042).
 
 ## The board
 

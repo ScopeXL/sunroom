@@ -51,7 +51,11 @@ def test_the_start_page_follows_the_address_and_whether_it_answers(agent: Agent)
 
 
 async def test_a_found_sunroom_that_moved_is_followed(
-    make_agent: Callable[..., Agent], sunrooms: FakeSunrooms, clock: Clock, config_path: Path
+    make_agent: Callable[..., Agent],
+    sunrooms: FakeSunrooms,
+    clock: Clock,
+    config_path: Path,
+    browser: NoBrowser,
 ) -> None:
     agent = make_agent()
     agent.save(Config(url=SUNROOM, sunroom_id=SUNROOM_ID, found="discovered"))
@@ -68,6 +72,8 @@ async def test_a_found_sunroom_that_moved_is_followed(
     await agent.health_tick()
     assert settings_file.load(config_path).url == moved
     assert {"message": "Found Sunroom at its new address."} in toasts
+    # No page chose it, so the open one is sent there; the browser isn't restarted (ADR 0042).
+    assert browser.calls == [f"navigate {moved}/display?dimmer=page&screen={PORT}"]
 
 
 async def test_a_typed_address_is_never_changed_by_itself(

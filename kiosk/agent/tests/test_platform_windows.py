@@ -29,6 +29,8 @@ from sunroom_kiosk.platform.windows import (
 from tests.support import Shell, ok
 
 ORIGIN = "https://calendar.example.com"
+# The allowance as 0.16.1 wrote it: the one Sunroom a screen showed.
+ONE_SUNROOM = {"LocalNetworkAccessAllowedForUrls": [ORIGIN]}
 NETSH = """
 There is 1 interface on the system:
 
@@ -147,12 +149,15 @@ async def test_the_policy_is_this_users_and_leaves_other_keys_alone() -> None:
     edge = policy.WINDOWS_KEYS["edge"]
     registry.set_value(edge, "HomepageLocation", "REG_SZ", "https://example.com")  # someone else's
     platform = windows(Shell(), registry)
-    assert await platform.write_policy("edge", policy.document(ORIGIN))
+    # As 0.16.1 wrote it, naming the Sunroom; since 0.17.0 every site (ADR 0042).
+    assert await platform.write_policy("edge", {**policy.document(), **ONE_SUNROOM})
+    assert registry.keys[rf"{edge}\LocalNetworkAccessAllowedForUrls"] == {"1": ("REG_SZ", ORIGIN)}
+    assert await platform.write_policy("edge", policy.document())
     assert registry.keys[edge]["BrowserSignin"] == ("REG_DWORD", 0)
     assert registry.keys[edge]["LocalNetworkAccessRestrictionsEnabled"] == ("REG_DWORD", 1)
-    assert registry.keys[rf"{edge}\LocalNetworkAccessAllowedForUrls"] == {"1": ("REG_SZ", ORIGIN)}
-    # No address any more: the allowance goes, the quiet keys stay.
-    assert await platform.write_policy("edge", policy.document(None))
+    assert registry.keys[rf"{edge}\LocalNetworkAccessAllowedForUrls"] == {"1": ("REG_SZ", "*")}
+    # Fewer keys: the ones left out go, the quiet keys stay.
+    assert await platform.write_policy("edge", dict(policy.QUIET))
     assert rf"{edge}\LocalNetworkAccessAllowedForUrls" not in registry.keys
     assert "LocalNetworkAccessRestrictionsEnabled" not in registry.keys[edge]
     assert registry.keys[edge]["TranslateEnabled"] == ("REG_DWORD", 0)
@@ -166,10 +171,10 @@ async def test_edge_gets_its_own_quiet_keys_and_chrome_doesnt() -> None:
     registry = FakeRegistry()
     platform = windows(Shell(), registry)
     edge, chrome = policy.WINDOWS_KEYS["edge"], policy.WINDOWS_KEYS["chrome"]
-    assert await platform.write_policy("edge", policy.document(ORIGIN))
+    assert await platform.write_policy("edge", policy.document())
     assert registry.keys[edge]["HideFirstRunExperience"] == ("REG_DWORD", 1)
     assert registry.keys[edge]["PromotionalTabsEnabled"] == ("REG_DWORD", 0)
-    assert await platform.write_policy("chrome", policy.document(ORIGIN))
+    assert await platform.write_policy("chrome", policy.document())
     assert "PromotionalTabsEnabled" not in registry.keys[chrome]
     assert await platform.remove_policy("edge")
     assert registry.keys[edge] == {}

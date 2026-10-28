@@ -236,6 +236,19 @@ test("This Screen restarts, shuts down, joins Wi-Fi, turns and updates the scree
   const help = page.getByRole("dialog", { name: "About This Screen" });
   await expect(help.getByText("Raspberry Pi 5 Model B")).toBeVisible();
   await expect(help.getByText("Having trouble? Settings → Support Sunroom.")).toBeVisible();
+  await help.getByRole("button", { name: "Close" }).last().click();
+
+  // Change Address: the agent forgets it and restarts nothing (ADR 0042), so the wall goes to
+  // the agent's own Where Is Your Sunroom? by itself.
+  await page.route(`${AGENT}/find`, (route) =>
+    route.fulfill({ contentType: "text/html", body: "<title>Where Is Your Sunroom?</title>" }),
+  );
+  await page.getByRole("button", { name: "Change Address" }).click();
+  const different = page.getByRole("dialog", { name: "Use a Different Sunroom?" });
+  await different.getByRole("button", { name: "Change Address" }).click();
+  await expect(toast(page, "Address changed. Looking for another Sunroom…")).toBeVisible();
+  expect(agent.calls).toContain("DELETE /api/screen/sunroom");
+  await page.waitForURL(`${AGENT}/find`);
 });
 
 test("a wall paired on the screen has Sunroom Screen keep the pairing at once (ADR 0040)", async ({

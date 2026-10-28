@@ -12,8 +12,6 @@ from sunroom_kiosk.platform.base import CommandResult, PlatformError
 from sunroom_kiosk.platform.macos import WIFI_SETTINGS, MacPlatform
 from tests.support import Shell
 
-ORIGIN = "https://calendar.example.com"
-
 
 def mac(shell: Shell, model: str = "Mac14,2", release: str = "15.1") -> MacPlatform:
     return MacPlatform(shell, identifier=lambda: model, release=lambda: release)
@@ -53,14 +51,14 @@ async def test_the_policy_goes_in_the_browsers_preferences() -> None:
     shell = Shell()
     platform = mac(shell)
     domain = policy.MAC_DOMAINS["chrome"]
-    assert await platform.write_policy("chrome", policy.document(ORIGIN))
+    assert await platform.write_policy("chrome", policy.document())
     lines = shell.lines()
     assert not any(line.startswith("defaults delete") for line in lines)
-    assert f"defaults write {domain} LocalNetworkAccessAllowedForUrls -array {ORIGIN}" in lines
+    assert f"defaults write {domain} LocalNetworkAccessAllowedForUrls -array *" in lines
     assert f"defaults write {domain} BrowserSignin -integer 0" in lines
-    # No address any more: its keys are taken out, the quiet ones written again.
+    # Fewer keys: the ones left out are taken out, the quiet ones written again.
     shell.calls.clear()
-    assert await platform.write_policy("chrome", policy.document(None))
+    assert await platform.write_policy("chrome", dict(policy.QUIET))
     assert shell.lines()[:2] == [
         f"defaults delete {domain} LocalNetworkAccessAllowedForUrls",
         f"defaults delete {domain} LocalNetworkAccessRestrictionsEnabled",
@@ -76,7 +74,7 @@ async def test_edge_gets_its_own_quiet_keys_too() -> None:
     shell = Shell()
     platform = mac(shell)
     domain = policy.MAC_DOMAINS["edge"]
-    assert await platform.write_policy("edge", policy.document(ORIGIN))
+    assert await platform.write_policy("edge", policy.document())
     lines = shell.lines()
     assert f"defaults write {domain} HideFirstRunExperience -bool true" in lines
     assert f"defaults write {domain} PromotionalTabsEnabled -bool false" in lines

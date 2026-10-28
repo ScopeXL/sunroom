@@ -7,18 +7,17 @@ from pathlib import Path
 
 from sunroom_kiosk import policy
 
-ORIGIN = "https://calendar.example.com"
 
-
-def test_the_policy_quiets_the_browser_and_names_the_sunroom() -> None:
-    document = policy.document(ORIGIN)
-    assert document["LocalNetworkAccessAllowedForUrls"] == [ORIGIN]
+def test_the_policy_quiets_the_browser_and_lets_every_page_reach_the_agent() -> None:
+    """The same for every address (ADR 0042): choosing a Sunroom needs no new policy, so the
+    browser is never restarted for one."""
+    document = policy.document()
+    assert document["LocalNetworkAccessAllowedForUrls"] == ["*"]
     assert document["LocalNetworkAccessRestrictionsEnabled"] is True
     for key in ("MetricsReportingEnabled", "PasswordManagerEnabled", "TranslateEnabled"):
         assert document[key] is False
     assert document["BrowserSignin"] == 0
-    assert "LocalNetworkAccessAllowedForUrls" not in policy.document(None)
-    assert policy.valid(document)
+    assert policy.valid(document)  # what a Linux screen's installed root helper accepts
 
 
 def test_linux_paths_per_browser() -> None:
@@ -29,7 +28,7 @@ def test_linux_paths_per_browser() -> None:
         "/etc/opt/chrome/policies/managed/sunroom-kiosk.json"
     )
     assert policy.linux_path("edge") == Path("/etc/opt/edge/policies/managed/sunroom-kiosk.json")
-    assert policy.linux_json(policy.document(ORIGIN)).endswith("}\n")
+    assert policy.linux_json(policy.document()).endswith("}\n")
 
 
 def test_the_root_helper_accepts_only_known_keys_and_plain_values() -> None:
@@ -40,7 +39,7 @@ def test_the_root_helper_accepts_only_known_keys_and_plain_values() -> None:
 
 
 def test_macos_writes_each_setting_with_defaults() -> None:
-    commands = policy.mac_commands("chrome", policy.document(ORIGIN))
+    commands = policy.mac_commands("chrome", policy.document())
     assert ["defaults", "write", "com.google.Chrome", "BrowserSignin", "-integer", "0"] in commands
     assert [
         "defaults",
@@ -48,7 +47,7 @@ def test_macos_writes_each_setting_with_defaults() -> None:
         "com.google.Chrome",
         "LocalNetworkAccessAllowedForUrls",
         "-array",
-        ORIGIN,
+        "*",
     ] in commands
     assert [
         "defaults",
@@ -62,12 +61,12 @@ def test_macos_writes_each_setting_with_defaults() -> None:
 
 
 def test_windows_writes_a_list_as_numbered_values() -> None:
-    values = policy.windows_values("edge", policy.document(ORIGIN))
+    values = policy.windows_values("edge", policy.document())
     assert (
         r"Software\Policies\Microsoft\Edge\LocalNetworkAccessAllowedForUrls",
         "1",
         "REG_SZ",
-        ORIGIN,
+        "*",
     ) in values
     assert (r"Software\Policies\Microsoft\Edge", "BrowserSignin", "REG_DWORD", 0) in values
     assert (r"Software\Policies\Microsoft\Edge", "TranslateEnabled", "REG_DWORD", 0) in values

@@ -96,6 +96,16 @@ function agentBase(): string | null {
   return port === null ? null : `http://127.0.0.1:${String(port)}`;
 }
 
+/**
+ * Leave Sunroom for one of Sunroom Screen's own pages (the wall's Change Address goes to Where Is
+ * Your Sunroom?): the agent no longer restarts the browser for an address, so the page that asked
+ * moves itself (ADR 0042). Nothing happens without an agent.
+ */
+export function openScreenPage(path: "/find"): void {
+  const base = agentBase();
+  if (base !== null) window.location.assign(`${base}${path}`);
+}
+
 /** This page's agent: the wall's, when the launcher named one, or the pages' own. */
 export function screenClient(): ScreenClient | null {
   const base = agentBase();

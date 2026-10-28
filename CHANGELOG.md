@@ -8,6 +8,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- A screen that has just chosen its Sunroom, or set one up on this computer, no longer closes its
+  browser and opens it again: it simply shows Sunroom, once, with one pairing code.
 - The screen's first page is one choice: tap **On This Computer** or **Connect to a Sunroom**,
   then Continue. Where Is Your Sunroom? checks an address as soon as you leave the field, says
   Found or Not Found on the button, and offers Use This Sunroom right beside it.

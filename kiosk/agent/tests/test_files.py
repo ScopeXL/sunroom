@@ -53,7 +53,7 @@ def test_the_root_helper_writes_only_what_the_agent_writes() -> None:
 def test_the_root_helper_writes_a_policy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     target = tmp_path / "managed" / "sunroom-kiosk.json"
     monkeypatch.setattr(root_helper, "POLICY_FILES", {str(target)})
-    document = policy.document(URL)
+    document = policy.document()
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(document)))
     assert root_helper.write_policy(str(target)) == 0
     assert json.loads(target.read_text(encoding="utf-8")) == document
@@ -87,7 +87,7 @@ def test_the_root_helper_refuses_any_other_policy(
 def test_the_root_helper_refuses_another_path_and_other_commands(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(policy.document(URL))))
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(policy.document())))
     assert root_helper.write_policy(str(tmp_path / "elsewhere.json")) == 2
     assert not (tmp_path / "elsewhere.json").exists()
     monkeypatch.setattr(root_helper.os, "geteuid", lambda: 1000, raising=False)
@@ -138,10 +138,12 @@ def test_the_desktop_starts_the_agent_through_its_unit() -> None:
     assert "restart sunroom-kiosk.service" in exec_line
 
 
-def test_the_policy_command_prints_the_policy_for_an_address(
+def test_the_policy_command_prints_one_policy_for_every_address(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    assert cli.main(["policy", "--url", f"{URL}/display"]) == 0
-    assert json.loads(capsys.readouterr().out)["LocalNetworkAccessAllowedForUrls"] == [URL]
     assert cli.main(["policy"]) == 0
-    assert "LocalNetworkAccessAllowedForUrls" not in json.loads(capsys.readouterr().out)
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["LocalNetworkAccessAllowedForUrls"] == ["*"]
+    # An older installer's line names the address; it's taken, and changes nothing (ADR 0042).
+    assert cli.main(["policy", "--url", f"{URL}/display"]) == 0
+    assert json.loads(capsys.readouterr().out) == printed

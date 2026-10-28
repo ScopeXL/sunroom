@@ -6,12 +6,18 @@ import { qk } from "../../api/keys";
 import {
   forgetScreenAgent,
   noteScreenAgent,
+  openScreenPage,
   sunroomName,
   type ScreenState,
 } from "../../lib/screenAgent";
 import { toasts } from "../../lib/toast";
 import { ShellContext } from "../../ui/shell";
 import { ThisScreenPage } from "./ThisScreenPage";
+
+vi.mock("../../lib/screenAgent", async (original) => ({
+  ...(await original<typeof import("../../lib/screenAgent")>()),
+  openScreenPage: vi.fn(),
+}));
 
 const AGENT = "http://127.0.0.1:7800";
 
@@ -112,6 +118,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.mocked(openScreenPage).mockClear();
   forgetScreenAgent();
   vi.unstubAllGlobals();
   toasts.set([]);
@@ -216,11 +223,18 @@ describe("Settings → This Screen (ADR 0035)", () => {
     ).toBeTruthy();
     fireEvent.click(within(sheet).getByRole("button", { name: "Change Address" }));
     await waitFor(() => {
-      expect(said()).toEqual(["Address changed. This screen is reloading."]);
+      expect(said()).toEqual(["Address changed. Looking for another Sunroom…"]);
     });
     expect(calls).toEqual([
       { method: "DELETE", path: "/api/screen/sunroom", body: null, header: "1" },
     ]);
+    // Nothing restarts the browser any more (ADR 0042): the wall goes to the agent's Find page.
+    await waitFor(
+      () => {
+        expect(openScreenPage).toHaveBeenCalledWith("/find");
+      },
+      { timeout: 3000 }, // a moment after the toast
+    );
   });
 
   it("offers an update that's ready, and says it's under way", async () => {

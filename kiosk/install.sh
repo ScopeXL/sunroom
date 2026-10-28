@@ -2195,14 +2195,15 @@ check_linux() {
 }
 
 # The browser's policy (policy.py): quiet, and the Sunroom page may reach Sunroom Screen here
-# without asking (Chrome's Local Network Access). It's root's to write, so sudo is asked for it and
-# for the root helper that lets Sunroom Screen rewrite it whenever the screen's address changes,
-# one it finds itself too (ADR 0038). Without sudo the browser asks once, on the screen.
+# without asking (Chrome's Local Network Access), whichever Sunroom the screen shows, so it is
+# right from the browser's first start (ADR 0042). It's root's to write, so sudo is asked for it
+# and for the root helper that lets Sunroom Screen write it again as it starts (ADR 0038).
+# Without sudo the browser asks once, on the screen.
 write_linux_policy() {
-	local tmp="$TMP_DIR/policy.json" dir dirs wrote=0 helper=0
+	local tmp="$TMP_DIR/policy.json" dir dirs wrote=0
 	dirs=$(linux_policy_dirs)
 	[[ -n $dirs ]] || return 0
-	if ! "$BIN_DIR/sunroom-kiosk" policy ${URL:+--url "$URL"} >"$tmp" 2>>"$LOG_FILE"; then
+	if ! "$BIN_DIR/sunroom-kiosk" policy >"$tmp" 2>>"$LOG_FILE"; then
 		warn "couldn't make the browser's settings; the browser asks once, on the screen, instead."
 		return 0
 	fi
@@ -2213,7 +2214,6 @@ write_linux_policy() {
 	fi
 	if [[ -x /usr/bin/python3 ]]; then
 		install_root_helper
-		helper=1
 	else
 		warn "there's no /usr/bin/python3 for Sunroom Screen's root helper, so the browser may ask once, on the screen."
 	fi
@@ -2224,10 +2224,8 @@ write_linux_policy() {
 			warn "couldn't write $dir/sunroom-kiosk.json; the browser may ask once, on the screen."
 		fi
 	done
-	if ((wrote)) && { ((helper)) || [[ -n $URL ]]; }; then
+	if ((wrote)); then
 		note "The browser won't ask for sign-in, passwords or translations, and Sunroom may reach Sunroom Screen."
-	elif ((wrote)); then
-		note "The browser won't ask for sign-in, passwords or translations."
 	fi
 }
 

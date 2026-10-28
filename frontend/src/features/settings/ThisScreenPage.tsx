@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { qk } from "../../api/keys";
 import {
+  openScreenPage,
   screenClient,
   screenProgress,
   sunroomName,
@@ -42,6 +43,9 @@ const FOUND_WORDS = {
 } as const;
 
 const NO_ANSWER = "This screen didn’t answer. Try again in a moment.";
+
+/** Change Address leaves for Where Is Your Sunroom? once its toast has shown. */
+const LEAVE_AFTER_MS = 1500;
 
 /** A refusal from the agent: its message is the agent's own plain sentence. */
 class Refusal extends Error {}
@@ -144,8 +148,17 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
     },
     onSuccess: () => {
       setAsking(null);
-      showToast("Address changed. This screen is reloading.");
-      onForgot?.();
+      showToast("Address changed. Looking for another Sunroom…");
+      // The agent's own twin of this page goes to its Find page itself.
+      if (onForgot) {
+        onForgot();
+        return;
+      }
+      // The wall leaves for the agent's Find page a moment after the toast, as the agent's own
+      // restart waits for its toast.
+      window.setTimeout(() => {
+        openScreenPage("/find");
+      }, LEAVE_AFTER_MS);
     },
     onError: (error) => {
       showToast(refusal(error));

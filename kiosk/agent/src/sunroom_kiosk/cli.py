@@ -98,9 +98,10 @@ def _parser() -> argparse.ArgumentParser:
     status = commands.add_parser("status", help="what the running agent says about this screen")
     status.add_argument("--port", type=int, default=DEFAULT_PORT)
 
-    policy = commands.add_parser("policy", help="the browser's policy for a Sunroom, as JSON")
+    policy = commands.add_parser("policy", help="the browser's policy, as JSON")
     which = policy.add_mutually_exclusive_group()
-    which.add_argument("--url", default=None)
+    # The same policy for every address since ADR 0042; an older installer's --url still works.
+    which.add_argument("--url", default=None, help=argparse.SUPPRESS)
     which.add_argument("--remove", action="store_true", help="take Sunroom Screen's policy out")
 
     settings = commands.add_parser("config", help="the screen's settings, or its Sunroom's address")
@@ -293,7 +294,6 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def cmd_policy(args: argparse.Namespace) -> int:
     from sunroom_kiosk import policy
-    from sunroom_kiosk.discovery import origin_of
 
     if cast(bool, args.remove):
         from sunroom_kiosk.platform import detect
@@ -305,8 +305,7 @@ def cmd_policy(args: argparse.Namespace) -> int:
                 "The browser's policy here is the uninstaller's to take out (kiosk/uninstall.sh)."
             )
         return 0
-    url = cast(str | None, args.url)
-    sys.stdout.write(policy.linux_json(policy.document(origin_of(url) if url else None)))
+    sys.stdout.write(policy.linux_json(policy.document()))
     return 0
 
 

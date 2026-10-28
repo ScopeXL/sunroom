@@ -131,6 +131,19 @@ async def test_a_new_address_moves_the_allowed_origin(
     )
 
 
+async def test_the_policy_is_the_same_for_every_address(
+    agent: Agent, platform: FakePlatform
+) -> None:
+    """Every page may reach the agent (ADR 0042): only the Sunroom it shows gets an answer (CORS,
+    above), so the policy needn't follow the address, and choosing one restarts nothing."""
+    await agent.apply_policy()
+    first = dict(platform.policies)
+    agent.save(Config(url=SUNROOM, found="typed"))
+    await agent.apply_policy()
+    assert platform.policies == first
+    assert next(iter(first.values()))["LocalNetworkAccessAllowedForUrls"] == ["*"]
+
+
 # ---------------------------------------------------------------------------- the machine
 
 
@@ -270,13 +283,23 @@ async def test_an_address_is_checked_in_plain_words(
     assert nowhere["message"] == "Can't reach that address from here."
 
 
-async def test_saving_a_sunroom_writes_the_policy_and_opens_it(
+async def test_saving_a_sunroom_restarts_nothing_and_says_so_at_once(
     client: httpx.AsyncClient,
     agent: Agent,
     platform: FakePlatform,
     browser: NoBrowser,
     config_path: Path,
 ) -> None:
+    """The page that chose it opens it when it hears the new state (ADR 0042): the browser is
+    neither restarted nor sent anywhere, so the wall shows Sunroom once, with one pair code."""
+    published: list[str] = []
+    publish = agent.hub.publish
+
+    def note(kind: str, data: object) -> None:
+        published.append(kind)
+        publish(kind, data)
+
+    agent.hub.publish = note  # type: ignore[method-assign]
     saved = await client.put(
         "/api/screen/sunroom", json={"url": SUNROOM, "found": "discovered"}, headers=CHANGE
     )
@@ -293,9 +316,11 @@ async def test_saving_a_sunroom_writes_the_policy_and_opens_it(
     kept = settings_file.load(config_path)
     assert (kept.url, kept.sunroom_id, kept.found) == (SUNROOM, SUNROOM_ID, "discovered")
     policy = next(iter(platform.policies.values()))
-    assert policy["LocalNetworkAccessAllowedForUrls"] == [SUNROOM]
+    assert policy["LocalNetworkAccessAllowedForUrls"] == ["*"]
     assert policy["LocalNetworkAccessRestrictionsEnabled"] is True
-    assert browser.calls[-1] == f"restart {SUNROOM}/display?dimmer=page&screen={PORT}"
+    assert "state" in published
+    await settle()
+    assert browser.calls == []
 
 
 async def test_only_a_sunroom_is_ever_saved(client: httpx.AsyncClient, config_path: Path) -> None:
@@ -317,7 +342,8 @@ async def test_forgetting_the_address_keeps_the_rest(
     assert body["sunroom"] is None
     kept = settings_file.load(config_path)
     assert (kept.url, kept.sunroom_id, kept.found, kept.rotate) == (None, None, None, 90)
-    assert browser.calls[-1] == f"restart {AGENT}/find"
+    await settle()
+    assert browser.calls == []  # the page that asked goes to Where Is Your Sunroom? itself
 
 
 async def test_a_scan_streams_what_it_finds(

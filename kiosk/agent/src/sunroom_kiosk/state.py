@@ -52,7 +52,7 @@ DOWN_BEFORE_REFIND_S = 120.0
 WATCH_EVERY_S = 30.0
 NO_SUNROOM_FOR_S = 120.0
 ABOUT_EVERY_S = 600.0
-ACTION_DELAY_S = 1.5  # a restart waits this long, so its toast shows first
+ACTION_DELAY_S = 1.5  # a restart or shut down waits this long, so its toast shows first
 RUN_SUNROOM_TRIES = 150  # a new Sunroom answering, 2 s apart: five minutes
 RUN_SUNROOM_PAUSE_S = 2.0
 LOCAL_DOWN_BEFORE_START_S = 20.0  # Windows: Sunroom run here, started again
@@ -390,6 +390,8 @@ class Agent:
             return
         log.info("Found this screen's Sunroom at %s.", found.url)
         await self.use(found, "discovered", moved=True)
+        # Nobody chose it on a page, so no page moves itself: the open one goes there.
+        await self.browser.navigate(self.start_page())
 
     async def _watch_loop(self) -> None:
         while True:
@@ -499,9 +501,11 @@ class Agent:
             self.running_sunroom = False
 
     async def use(self, found: Found, how: str, *, moved: bool = False) -> None:
-        """Show ``found`` on this screen from now on: save it, rewrite the browser's policy,
-        follow it with the screen's sleep, and open it (restarting the browser, which reads a
-        new address's flags only when it starts)."""
+        """Show ``found`` on this screen from now on: save it, write the browser's policy and
+        follow it with the screen's sleep. The browser isn't restarted (ADR 0042): the page that
+        chose it opens it itself when it hears the new state, so the wall shows Sunroom once,
+        with one pairing code; a plain-http Sunroom on another machine gets its secure-context
+        flag at the browser's next start (the nightly one, or This Screen's Restart)."""
         how_found: ScreenFoundHow = (
             "discovered" if how == "discovered" else "local" if how == "local" else "typed"
         )
@@ -517,24 +521,22 @@ class Agent:
         if moved:
             self.toast("Found Sunroom at its new address.")
         log.info("This screen shows the Sunroom at %s now.", found.url)
-        await asyncio.sleep(ACTION_DELAY_S if not self.fake else 0)
-        self.browser.restart(self.start_page())
 
     async def forget(self) -> None:
-        """Forget the address (never the browser's profile, which keeps the pairing)."""
+        """Forget the address (never the browser's profile, which keeps the pairing). The page
+        that asked goes to Where Is Your Sunroom? itself; the browser isn't restarted."""
         self.save(self.config.with_sunroom(None, None, None))
         self.known = Known()
         self.reachable = False
         await self.apply_policy()
         self.publish_state()
         log.info("This screen forgot its Sunroom's address.")
-        self.browser.restart(self.agent_url("/find"))
 
     async def apply_policy(self) -> None:
         if self.browser_info is None and not self.fake:
             return
         kind = self.browser_info.kind if self.browser_info is not None else "chromium"
-        document = policy.document(origin_of(self.config.url) if self.config.url else None)
+        document = policy.document()
         try:
             written = await self.platform.write_policy(kind, document)
         except PlatformError as error:

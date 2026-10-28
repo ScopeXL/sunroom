@@ -49,6 +49,11 @@ Sunroom that isn't set up yet shows **Set Up Sunroom** instead: **Set Up Here** 
 up on the screen itself, on its keyboard, and the screen pairs itself (ADR 0039); or scan its QR
 code and set it up on another device.
 
+Choosing a Sunroom doesn't close the browser: the screen simply opens it, once, with one pairing
+code (ADR 0042). A Sunroom at a plain `http://` address on another computer gets its secure
+context (which its offline copy and keeping the screen awake use) from the browser's next start,
+the nightly one or This Screen's **Restart**; nothing on the wall waits for it.
+
 Earlier installers put Sunroom and the screen on a Pi when run with no option (ADR 0037 changed
 that). A Pi set up that way, or with `--server-only`, keeps Sunroom when the installer runs again
 with no option (it says so); `--display-only` makes it the screen alone.
@@ -406,9 +411,9 @@ Nothing was installed, and the alert can be dismissed. Open PowerShell and type 
 window instead (see Windows, above).
 
 **The screen shows a code again.** Its sign-in was ended: a new household password, a new secret
-key, a restore, or **Unpair** in Settings → Devices. Pair it again from a signed-in device. A restart, an
-update or Quit keeps the pairing, straight after pairing too: the browser saves it the moment the
-screen is paired (ADR 0040). A Linux screen set up before this saves it within half a minute
+key, a restore, or **Unpair** in Settings → Devices. Pair it again from a signed-in device. A
+restart, an update or Quit keeps the pairing, straight after pairing too: the browser saves it the
+moment the screen is paired (ADR 0040). A Linux screen set up before this saves it within half a minute
 until the install command is run again.
 
 **The screen doesn't go dark at night.** Check the times and **While asleep** in Settings →

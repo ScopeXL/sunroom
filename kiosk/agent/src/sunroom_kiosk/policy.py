@@ -4,8 +4,12 @@ Two jobs. It quiets the browser (no sign-in, no password, translate or default-b
 no metrics, no promotions, no updates of its parts behind our back), and it lets the wall page
 reach this agent on ``http://127.0.0.1``: Chrome 142's Local Network Access asks a page's
 permission before it calls a local address, and a wall has nobody to say yes. The allowlist
-names the *requesting* site, the Sunroom this screen shows, so the agent rewrites the policy
-whenever the address changes.
+names the *requesting* sites, and since ADR 0042 it is every site (``*``, a pattern the policy's
+own documentation lists): this browser only ever shows the Sunroom this screen chose, the agent's
+CORS admits no other origin, and the wall's CSP opens nothing else. So the policy is the same
+for every address, right from the browser's first start, and choosing a Sunroom restarts
+nothing. (Chrome 146's ``LoopbackNetworkAllowedForUrls`` would say the same more narrowly; a
+Linux screen's installed root helper refuses keys it doesn't know, so the older key stays.)
 
 Where each browser reads it:
 
@@ -73,13 +77,17 @@ WINDOWS_KEYS: dict[BrowserKind, str] = {
 }
 
 
-def document(origin: str | None) -> dict[str, Any]:
-    """The policy for a screen showing the Sunroom at ``origin`` (``scheme://host[:port]``)."""
-    policy = dict(QUIET)
-    if origin:
-        policy["LocalNetworkAccessAllowedForUrls"] = [origin]
-        policy["LocalNetworkAccessRestrictionsEnabled"] = True
-    return policy
+# Every page in this browser may call the agent on 127.0.0.1 without a prompt.
+EVERY_SITE = "*"
+
+
+def document() -> dict[str, Any]:
+    """The policy for a screen, whichever Sunroom it shows (or none yet)."""
+    return {
+        **QUIET,
+        "LocalNetworkAccessAllowedForUrls": [EVERY_SITE],
+        "LocalNetworkAccessRestrictionsEnabled": True,
+    }
 
 
 def for_browser(kind: BrowserKind, policy: dict[str, Any]) -> dict[str, Any]:

@@ -391,3 +391,31 @@ async def test_only_edge_is_kept_full_screen_by_the_watchdog(tmp_path: Path) -> 
         supervisor.process = object()  # type: ignore[assignment]  # as if it were running
         await supervisor.keep_full_screen()
     assert asked == ["full screen"]  # Edge's; Chromium's kiosk window can't leave it
+
+
+async def test_navigating_goes_through_devtools_and_restarts_only_when_that_fails(
+    tmp_path: Path,
+) -> None:
+    """A found Sunroom that moved is opened in the page already there (ADR 0042); a browser that
+    doesn't answer DevTools is started again on the new address instead."""
+    asked: list[str] = []
+
+    class Answering(DevTools):
+        def __init__(self, answers: bool) -> None:
+            super().__init__(tmp_path)
+            self.answers = answers
+
+        async def navigate(self, url: str) -> bool:
+            asked.append(url)
+            return self.answers
+
+    supervisor = Supervisor(CHROMIUM, profile=tmp_path, argv=list, page=lambda: "x")
+    supervisor.devtools = Answering(answers=True)
+    await supervisor.navigate("http://192.168.1.44:8080/display")
+    assert asked == ["http://192.168.1.44:8080/display"]
+    assert supervisor.next_page is None
+    assert not supervisor._restart.is_set()  # pyright: ignore[reportPrivateUsage]
+    supervisor.devtools = Answering(answers=False)
+    await supervisor.navigate("http://192.168.1.45:8080/display")
+    assert supervisor.next_page == "http://192.168.1.45:8080/display"
+    assert supervisor._restart.is_set()  # pyright: ignore[reportPrivateUsage]
