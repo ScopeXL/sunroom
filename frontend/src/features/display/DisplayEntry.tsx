@@ -39,7 +39,7 @@ const PASSWORD_IDLE_MS = 60_000;
 const SETUP_IDLE_MS = 10 * 60_000;
 
 /** The wall's own setup (ADR 0039): the wizard's steps from the password on, and Name This
- * Screen before You're Set. */
+ * Screen before All Done! */
 type WallStep = Exclude<SetupStep, "welcome"> | "name";
 
 /**
@@ -205,8 +205,8 @@ function Welcome({ address, onSetUpHere }: { address: string; onSetUpHere: () =>
           action={<Button onClick={onSetUpHere}>Set Up Here</Button>}
         >
           <p className="text-d-body">
-            Type on the keyboard that opens on this screen. It takes about three minutes, and
-            everything can be changed later.
+            Type on the keyboard that opens on this screen. You can change all of it later in
+            Settings.
           </p>
           <p className="text-d-body text-ink-soft">
             This screen becomes your family’s shared screen, and other devices join afterwards.
@@ -237,7 +237,7 @@ function Welcome({ address, onSetUpHere }: { address: string; onSetUpHere: () =>
 /**
  * Setting Sunroom up on the wall itself (ADR 0039): the wizard's steps in the wall's frame, its
  * keyboard under the fields. The household step makes this screen a paired one; after the
- * calendars it names itself, then You're Set opens the board.
+ * calendars it names itself, then All Done! opens the board.
  */
 function WallSetup({
   step,
@@ -267,7 +267,7 @@ function WallSetup({
     <SetupWizard
       step={step}
       onScreen={{
-        // The wizard ends at You're Set; on the wall, Name This Screen comes first.
+        // The wizard ends at All Done!; on the wall, Name This Screen comes first.
         go: (next) => {
           onStep(next === "done" ? "name" : next === "welcome" ? "password" : next);
         },
@@ -461,7 +461,7 @@ function NameThisScreen({
   action = "Done",
 }: {
   onDone: () => void;
-  /** Next while the wall sets Sunroom up, before You're Set. */
+  /** Next while the wall sets Sunroom up, before All Done! */
   action?: "Done" | "Next";
 }) {
   const queryClient = useQueryClient();

@@ -77,14 +77,16 @@ test("first run on a phone, the wall paired, Settings behind the PIN, then sign 
   await phonePage.getByLabel("PIN (4 to 6 digits)").fill(PIN);
   await phonePage.getByRole("button", { name: "Set a PIN" }).click();
 
-  // No pairing step (ADR 0030): the wizard goes on to calendars, and its last page says where
-  // the wall screen is paired.
+  // No pairing step (ADR 0030): the wizard goes on to calendars, then All Done! (ADR 0042).
   await expect(phonePage.getByRole("heading", { name: "Bring in your calendars" })).toBeVisible();
   await expect(phonePage.getByText("6 of 6")).toBeVisible();
   await expect(progress).toHaveAttribute("aria-valuenow", "6");
   await phonePage.getByRole("button", { name: "Skip for Now" }).click();
-  await expect(phonePage.getByRole("heading", { name: "You’re set" })).toBeVisible();
-  await expect(phonePage.getByText(/under More, then Pair a Display/)).toBeVisible();
+  await expect(phonePage.getByRole("heading", { name: "All done!" })).toBeVisible();
+  await expect(phonePage.getByText("Sunroom is ready for your family.")).toBeVisible();
+  await expect(
+    phonePage.getByText("Everyone at home signs in with the household password."),
+  ).toBeVisible();
   const settings = (await (await phonePage.request.get("/api/settings")).json()) as {
     theme: string;
   };
@@ -196,11 +198,11 @@ test("first run on the wall itself: its own keyboard, a paired screen, and a pho
   expect(unlocked.is_parent).toBe(true);
   expect(unlocked.grant_expires_at).not.toBeNull();
   await page.getByRole("button", { name: "Skip for Now" }).click();
-  // It names itself, then You're Set says how phones join.
+  // It names itself, then All Done! says how other devices join.
   await expect(page.getByRole("heading", { name: "Name this screen" })).toBeVisible();
   await page.getByRole("button", { name: "Hallway" }).click();
   await page.getByRole("button", { name: "Next" }).click();
-  await expect(page.getByRole("heading", { name: "You’re set" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "All done!" })).toBeVisible();
   await expect(page.getByRole("img", { name: /A code that opens/ })).toBeVisible();
   await page.getByRole("button", { name: "Open Sunroom" }).click();
   await expect(page.getByRole("region", { name: "This Week" })).toBeVisible();

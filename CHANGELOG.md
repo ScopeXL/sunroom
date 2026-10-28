@@ -8,6 +8,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- Setup says "You can change all of this later in Settings." instead of promising three minutes,
+  and ends on **All Done!** with one line and the Open Sunroom button.
 - A screen that has just chosen its Sunroom, or set one up on this computer, no longer closes its
   browser and opens it again: it simply shows Sunroom, once, with one pairing code.
 - The screen's first page is one choice: tap **On This Computer** or **Connect to a Sunroom**,

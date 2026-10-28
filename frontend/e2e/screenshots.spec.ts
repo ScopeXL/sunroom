@@ -487,7 +487,7 @@ test("setup on the wall itself (ADR 0039)", async ({ page }, testInfo) => {
     await expect(page.getByRole("heading", { name: "Name this screen" })).toBeVisible();
     await shot(page, `wall-setup-name-${scheme}`);
     await page.getByRole("button", { name: "Next" }).click();
-    await expect(page.getByRole("heading", { name: "You’re set" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "All done!" })).toBeVisible();
     await shot(page, `wall-setup-done-${scheme}`);
   }
 });
@@ -521,7 +521,7 @@ test("setup on a laptop: the steps beside the form", async ({ page }, testInfo) 
     await page.getByRole("button", { name: "Next", exact: true }).click();
     await page.getByRole("button", { name: "Later" }).click();
     await page.getByRole("button", { name: "Skip for Now" }).click();
-    await expect(page.getByRole("heading", { name: "You’re set" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "All done!" })).toBeVisible();
     await shot(page, `setup-done-${scheme}`);
   }
 });

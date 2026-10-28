@@ -210,7 +210,7 @@ describe("design rules", () => {
       "Google: The Secret Address",
       "Calendars & Accounts",
       "Tasks · This Week",
-      "You’re Set",
+      "All Done!",
       "Set a Parent PIN?",
       "Connect iCloud",
       "In This Version",

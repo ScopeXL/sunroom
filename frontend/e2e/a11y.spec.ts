@@ -92,7 +92,7 @@ for (const scheme of ["light", "dark"] as const) {
       await check(page, "setup: add an account");
       await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
       await page.getByRole("button", { name: "Skip for Now" }).click();
-      await expect(page.getByRole("heading", { name: "You’re set" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "All done!" })).toBeVisible();
       await check(page, "setup: done");
     });
 

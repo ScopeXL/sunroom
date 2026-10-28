@@ -59,8 +59,7 @@ export function Choice({
         {chosen ? (
           <CircleCheck
             aria-hidden="true"
-            className="absolute top-5 right-5 size-10 text-sun-ink"
-            strokeWidth={2.5}
+            className="absolute top-5 right-5 size-10 fill-sun text-on-sun"
           />
         ) : null}
         <span id={`${id}-name`} className="pr-14 text-d-title font-bold">

@@ -60,9 +60,9 @@ export interface OnScreen {
   go: (next: SetupStep) => void;
   /** Back from the first step, to the page before setup. */
   leave: () => void;
-  /** You're Set's Open Sunroom: the board. */
+  /** All Done!'s Open Sunroom: the board. */
   open: () => void;
-  /** Where devices open Sunroom (You're Set shows it as a QR code). */
+  /** Where devices open Sunroom (All Done! shows it as a QR code). */
   address: string;
 }
 
@@ -90,7 +90,9 @@ export function SetupWizard({ step, onScreen }: { step: SetupStep; onScreen?: On
     case "welcome":
       return (
         <SetupEnd title="Welcome to Sunroom">
-          <p>Let’s set it up. It takes about three minutes, and everything can be changed later.</p>
+          <p>
+            Let’s set it up. It takes a few minutes, and you can change all of it later in Settings.
+          </p>
           <Button
             block
             className="lg:min-h-16 lg:w-auto lg:min-w-72 lg:text-d-body"
@@ -163,15 +165,8 @@ export function SetupWizard({ step, onScreen }: { step: SetupStep; onScreen?: On
     case "done":
       if (onScreen) return <ScreenDone address={onScreen.address} onOpen={onScreen.open} />;
       return (
-        <SetupEnd title="You’re Set" done>
-          <p>
-            Everyone at home can sign in with the household password, or with a code from Settings,
-            then Devices.
-          </p>
-          <p>
-            To put Sunroom on a screen on the wall, open it there: it shows a code. Type that code
-            under More, then Pair a Display, or type the household password on the screen itself.
-          </p>
+        <SetupEnd title="All Done!" done>
+          <p>Sunroom is ready for your family.</p>
           <Button
             block
             className="lg:min-h-16 lg:w-auto lg:min-w-72 lg:text-d-body"
@@ -181,26 +176,27 @@ export function SetupWizard({ step, onScreen }: { step: SetupStep; onScreen?: On
           >
             Open Sunroom
           </Button>
+          <p className="text-ink-soft">Everyone at home signs in with the household password.</p>
         </SetupEnd>
       );
   }
 }
 
-/** You're Set on the wall screen (ADR 0039): how phones join, then the board. */
+/** All Done! on the wall screen (ADR 0039, ADR 0042): how other devices join, then the board. */
 function ScreenDone({ address, onOpen }: { address: string; onOpen: () => void }) {
   return (
-    <SetupEnd title="You’re Set" done>
+    <SetupEnd title="All Done!" done>
       {isLoopbackAddress(address) ? (
         <p>
-          To add a phone, open Sunroom on it with this computer’s name or network address, then sign
+          Open Sunroom on your other devices with this computer’s name or network address, then sign
           in with the household password.
         </p>
       ) : (
         <>
           <QrCode value={address} label={`A code that opens ${address}`} className="size-56" />
           <p>
-            To add a phone, scan this code with it, or open{" "}
-            <span className="font-bold">{address}</span>, then sign in with the household password.
+            Scan this with a phone to add it, or open <span className="font-bold">{address}</span>{" "}
+            on any device, then sign in with the household password.
           </p>
         </>
       )}

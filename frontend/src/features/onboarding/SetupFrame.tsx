@@ -67,7 +67,7 @@ export function SetupFrame({
         >
           <Brand size="entry" />
           <p className={`${type.secondary} text-ink-soft`}>
-            About three minutes. Everything can be changed later in Settings.
+            You can change all of this later in Settings.
           </p>
           <ol aria-label="Setup steps" className="flex flex-col">
             {SETUP_STEPS.map((one, index) => {
@@ -159,14 +159,14 @@ export function StepActions({ back, children }: { back?: ReactNode; children: Re
   );
 }
 
-/** Welcome and You're Set: one centred column with the brand, like Pair This Screen. */
+/** Welcome and All Done!: one centred column with the brand, like Pair This Screen. */
 export function SetupEnd({
   title,
   done = false,
   children,
 }: {
   title: string;
-  /** You're Set: a check in the sun's color over the title. */
+  /** All Done!: a check in the sun's color over the title. */
   done?: boolean;
   children: ReactNode;
 }) {
