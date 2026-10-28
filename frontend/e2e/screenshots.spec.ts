@@ -336,6 +336,32 @@ test("the wall screen", async ({ page }) => {
     await expect(page.getByRole("heading", { name: title, level: 2, exact: true })).toBeVisible();
     await shot(page, `settings-${key}`);
   }
+  // The header's Sunroom Discord as a code to scan, Send Feedback with its words on the wall's
+  // keyboard, and Rename Screen from Devices (ADR 0042).
+  const settingsNav = page.getByRole("navigation", { name: "Settings" });
+  await settingsNav.getByRole("link", { name: "Support Sunroom", exact: true }).click();
+  await page.getByRole("banner").getByRole("button", { name: "Sunroom's Discord" }).click();
+  const discord = page.getByRole("dialog", { name: "Join the Sunroom Discord" });
+  await expect(discord.getByRole("img")).toBeVisible();
+  await shot(page, "settings-discord");
+  await discord.getByRole("button", { name: "Done" }).click();
+  await expect(discord).toBeHidden();
+  await page.getByRole("button", { name: "Send Feedback" }).click();
+  const feedback = page.getByRole("dialog", { name: "Send Feedback" });
+  await feedback.getByLabel("What happened, or what would help").click();
+  const keyboard = page.getByRole("group", { name: "On-screen keyboard" });
+  await expect(keyboard).toBeVisible();
+  await shot(page, "settings-send-feedback");
+  await keyboard.getByRole("button", { name: "Done" }).click();
+  await feedback.getByRole("button", { name: "Close" }).click();
+  await expect(feedback).toBeHidden();
+  await settingsNav.getByRole("link", { name: "Devices", exact: true }).click();
+  await page.getByRole("button", { name: "Rename Wall screen" }).click();
+  const rename = page.getByRole("dialog", { name: "Rename Screen" });
+  await expect(rename).toBeVisible();
+  await shot(page, "settings-rename-screen");
+  await rename.getByRole("button", { name: "Close" }).click();
+  await expect(rename).toBeHidden();
   // Below the fold: Features → Countdowns' Birthdays in Coming Up, and About's Updates.
   await page
     .getByRole("navigation", { name: "Settings" })
@@ -583,6 +609,14 @@ test("a phone", async ({ page, isMobile }) => {
       await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
       await shot(page, `settings-${key}-${scheme}`);
     }
+    // The list of pages with the Sunroom Discord at its title's end, and Send Feedback (ADR 0042).
+    await page.goto("/settings");
+    await expect(page.getByRole("link", { name: "Sunroom's Discord" })).toBeVisible();
+    await shot(page, `settings-list-${scheme}`);
+    await page.goto("/settings/support");
+    await page.getByRole("button", { name: "Send Feedback" }).click();
+    await expect(page.getByRole("dialog", { name: "Send Feedback" })).toBeVisible();
+    await shot(page, `settings-send-feedback-${scheme}`);
     await page.goto("/settings/features");
     await page.getByRole("group", { name: "Birthdays in Coming Up" }).scrollIntoViewIfNeeded();
     await shot(page, `settings-features-countdowns-${scheme}`);
@@ -1068,6 +1102,19 @@ test("Settings → This Screen on a wall run by Sunroom Screen (ADR 0035)", asyn
     await expect(page.getByRole("heading", { name: "This Screen", level: 2 })).toBeVisible();
     await expect(page.getByRole("button", { name: "Restart" })).toBeVisible();
     await shot(page, `settings-this-screen-${theme}`);
+    // Shut Down's question and Uninstall's (ADR 0042); Cancel on each, so nothing happens.
+    await page.getByRole("button", { name: "Shut Down" }).click();
+    const shutDown = page.getByRole("dialog", { name: "Shut Down This Screen?" });
+    await expect(shutDown).toBeVisible();
+    await shot(page, `settings-this-screen-shut-down-${theme}`);
+    await shutDown.getByRole("button", { name: "Cancel" }).click();
+    await expect(shutDown).toBeHidden();
+    await page.getByRole("button", { name: "Uninstall Sunroom Screen…" }).click();
+    const uninstall = page.getByRole("dialog", { name: "Uninstall Sunroom Screen?" });
+    await expect(uninstall).toBeVisible();
+    await shot(page, `settings-this-screen-uninstall-${theme}`);
+    await uninstall.getByRole("button", { name: "Cancel" }).click();
+    await expect(uninstall).toBeHidden();
   }
 });
 
