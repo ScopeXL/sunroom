@@ -38,7 +38,7 @@ On a plain home network you can skip the proxy entirely: leave every variable em
    | `APP_SECRET_KEY` | Optional. Without it, Sunroom makes one and keeps it on the volume. If you set it (`openssl rand -base64 48`), keep a copy in a password manager: changing it signs everyone out |
    | `SUNROOM_INSTALL_KIND` | Optional. `portainer` when Portainer manages the stack, so Settings → About says how to update that way (the default, `docker`, means Compose in this folder) |
    | `SUNROOM_UPDATE_CHECK` | Optional. `0` keeps the daily check for new versions off, whatever Settings → About says |
-   | `SUNROOM_FEEDBACK_URL` | Optional. Leave it out, and Settings → Support Sunroom → Send Feedback goes to the people who make Sunroom. Set it empty (`SUNROOM_FEEDBACK_URL=`) to turn Send Feedback off, or to an address of your own (a Discord webhook of yours works) to keep feedback for yourself; it is kept out of the logs |
+   | `SUNROOM_FEEDBACK_URL` | Optional. Leave it out, and Settings → Support Sunroom → Send Feedback opens GitHub's new-issue page, which needs a GitHub account. Set it to an address of your own (a Discord webhook of yours works), and Send Feedback posts there instead, from any device and from the screen, with no account needed; it is kept out of the logs |
 
 3. Keep the `volumes:` block at the end of the file, with `name: sunroom_data`. It creates the
    `sunroom_data` volume, where the database, the nightly backups and the photos live, with the

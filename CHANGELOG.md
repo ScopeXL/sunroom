@@ -15,12 +15,13 @@ Everything that changes in Sunroom, written in plain English. The format follows
 - This Screen can uninstall Sunroom Screen from the computer it runs on: it asks first, unpairs
   the screen, and, when Sunroom itself runs there, removes it and the family's data too once the
   household password is typed.
+- Self-hosters can have Send Feedback post to an address of their own instead of opening
+  GitHub, with `SUNROOM_FEEDBACK_URL` (a Discord webhook works; docs/DEPLOY.md). Then it needs
+  no account, and the screen sends the whole message too. Without it, Send Feedback opens
+  GitHub, as before.
 
 ### Changed
 
-- Send Feedback no longer needs a GitHub account: what you write goes to the people who make
-  Sunroom, from any device and from the screen itself, with Sunroom's version and nothing from
-  your calendar. Self-hosters can turn it off with `SUNROOM_FEEDBACK_URL=`.
 - The Calendar's views are one button in the header, **View**, which opens a menu with a small
   drawing and a line for each: Week, Rolling Week, Day, Month, People and Today. Rolling Week is
   a view of its own now, in that menu and as a Home view in Settings → Display, instead of a
