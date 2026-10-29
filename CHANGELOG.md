@@ -6,6 +6,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-29
+
 ### Added
 
 - Sunroom has a Discord. Its link is in Settings → Support Sunroom and in the Settings header
@@ -783,5 +785,7 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 [0.16.0]: https://github.com/ScopeXL/sunroom/compare/v0.15.0...v0.16.0
 
-[Unreleased]: https://github.com/ScopeXL/sunroom/compare/v0.16.1...HEAD
 [0.16.1]: https://github.com/ScopeXL/sunroom/compare/v0.16.0...v0.16.1
+
+[Unreleased]: https://github.com/ScopeXL/sunroom/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/ScopeXL/sunroom/compare/v0.16.1...v0.17.0

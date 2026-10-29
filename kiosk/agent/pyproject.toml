@@ -1,7 +1,7 @@
 [project]
 name = "sunroom-kiosk"
 # Equals ../../VERSION: scripts/release.py writes it and scripts/check_release_meta.py checks it.
-version = "0.16.1"
+version = "0.17.0"
 description = "Sunroom Screen: runs a Sunroom wall screen, its browser, its sleep and its settings."
 license = "MIT"
 requires-python = ">=3.14,<3.15"
