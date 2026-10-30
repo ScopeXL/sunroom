@@ -232,7 +232,7 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
                 params={{ page: page.key }}
                 {...flagName(page.title, flagged.has(page.key))}
                 aria-current={page.key === current.key ? "page" : undefined}
-                className="press-row flex min-h-16 items-center rounded-button-d px-4 text-d-body font-semibold whitespace-nowrap text-ink-soft aria-[current=page]:bg-surface aria-[current=page]:text-ink"
+                className="press-row flex min-h-16 items-center rounded-button-d px-4 py-2 text-d-body font-semibold text-ink-soft aria-[current=page]:bg-surface aria-[current=page]:text-ink"
               >
                 {t(page.title)}
                 <Flag on={flagged.has(page.key)} />

@@ -347,6 +347,10 @@ size limit.
   wait with `settled()`, never `networkidle`.
 - Sentences outside JSX (`lib/upload.ts`'s refusals) slip past the JSX-only lint; the pseudo check
   or a grep for `"[A-Z][a-z]+ ` in `.ts` finds them.
+- The wall's Settings list kept each page's name on one line (`whitespace-nowrap`), so a name a
+  third longer ("Calendars & Accounts" in the pseudo language) ran into the column's edge. The
+  names wrap now; English's still fit one line, so nothing moved. Look at the pseudo captures
+  for any `nowrap` a longer word meets.
 - `Intl`'s `formatRange` puts thin spaces around its dash ("Oct 4 – 10") and both years across a
   new year's: `lib/dates`' `range()` writes UX §2's dash itself, and `weekSpan` joins two months'
   ends as two `monthDay`s. `formatRange` also drops an equal end and spells out the dates of an

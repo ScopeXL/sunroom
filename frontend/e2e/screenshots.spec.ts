@@ -102,6 +102,13 @@ test("the wall screen", async ({ page }) => {
   await page.goto("/display");
   await expect(page.getByRole("heading", { name: "Set Up Sunroom", exact: true })).toBeVisible();
   await shot(page, "display-setup");
+  // The language button, open (ADR 0043): each language by its own name.
+  await page.getByRole("button", { name: /^Language: / }).click();
+  const languages = page.getByRole("dialog", { name: "Choose a Language" });
+  await expect(languages).toBeVisible();
+  await shot(page, "display-setup-language");
+  await page.keyboard.press("Escape");
+  await expect(languages).toBeHidden();
   await seed(page.request);
   await page.reload();
   await expect(page.getByTestId("pair-code")).toBeVisible();
