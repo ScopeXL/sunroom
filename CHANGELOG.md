@@ -20,6 +20,10 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- Update Now, and the overnight update, now bring everything on that computer to the new version:
+  Sunroom Screen, the way it starts, and Sunroom itself when it runs there. The screen says what
+  it's doing step by step, restarts the computer only when it must, and says Updated when it's
+  back. If the new version doesn't start, the one before comes back.
 - Send Feedback goes to the people who make Sunroom again, with no account: what you write posts
   to the project's relay (feedback.sunroom.day), which puts it in a private channel of the
   Sunroom Discord that only the people who make Sunroom read, with Sunroom's version and nothing

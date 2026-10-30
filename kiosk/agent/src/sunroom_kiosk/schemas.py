@@ -72,6 +72,18 @@ class ScreenNetworkOut(BaseModel):
     strength: int | None  # 0 to 100, Wi-Fi only
 
 
+class ScreenUpdateResultOut(BaseModel):
+    """How the last update ended (ADR 0044), until a page has shown it: Updated to 0.18.0, or
+    the update didn't finish and the version before is back."""
+
+    version: str
+    ok: bool
+    at: str | None
+    message: str  # English
+    message_key: str
+    message_params: dict[str, str] = Field(default_factory=dict[str, str])
+
+
 class ScreenUpdateOut(BaseModel):
     check: ScreenUpdateCheck  # nightly: installed overnight by itself; off: only Update Now
     state: ScreenUpdateState
@@ -84,6 +96,10 @@ class ScreenUpdateOut(BaseModel):
     # An all-in-one Pi: the Sunroom running on this screen is older than the newest release, and
     # this screen can update it (Update Sunroom Too).
     sunroom_outdated: bool = False
+    last_result: ScreenUpdateResultOut | None = None
+    # The installer's one line, when root's part can't be finished from here (ADR 0044): a
+    # Linux or Pi screen whose root helper is from before 0.18.0.
+    needs_terminal: str | None = None
 
 
 class ScreenDisplayOut(BaseModel):

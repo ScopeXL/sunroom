@@ -6,13 +6,17 @@
   this screen's public address (the setup page says so).
 * **Install:** the wheel is downloaded, its sha256 checked against ``SHA256SUMS`` (a mismatch
   stops everything), and kept beside the one running, under ``~/.local/share/sunroom-kiosk/
-  wheels``. Then a separate process, the apply step (apply.py: ``sunroom-kiosk update --apply``,
-  under ``systemd-run`` on Linux so it outlives the agent; on Windows a copy of apply.py run by
-  the Python the agent's environment came from, since Windows locks a running program's files),
-  installs it with ``uv tool install --reinstall``, starts the agent again, and waits 60 s for
-  the new version to answer on 127.0.0.1; if it doesn't, it puts the previous wheel back, starts
-  that, and leaves a note the agent shows ("The update didn't start; the previous version is
-  back.").
+  wheels``, after the small files are copied aside (setup_files.back_up). Then a separate
+  process, the apply step (apply.py: ``sunroom-kiosk update --apply``, under ``systemd-run`` on
+  Linux so it outlives the agent; on Windows a copy of apply.py run by the Python the agent's
+  environment came from, since Windows locks a running program's files), installs it with ``uv
+  tool install --reinstall``, runs the new version's own setup, starts the agent again as that
+  setup says, and waits 60 s for the new version to answer on 127.0.0.1; if it doesn't, it puts
+  the previous wheel back with its own setup, starts that, and leaves a note the agent shows
+  ("The update didn't finish. Sunroom Screen 0.17.0 is back."). The new version finishes the
+  rest at its start (state.py's ``finish_update``; ADR 0044).
+* **Reinstall…:** the version installed, its wheel from the wheels folder (downloaded and checked
+  again when it's gone), through the same apply step with ``--force``: its setup rewritten whole.
 * **Nightly:** at the start of the household's sleep hours (from Sunroom's
   ``/api/display/state``; 03:30 without them) the check runs, and with Updates on Install
   overnight (every screen's default) an update installs.
@@ -81,6 +85,12 @@ class UpdaterLike(Protocol):
     def status(self, check: str) -> dict[str, Any]: ...
     async def check_now(self) -> UpdateStatus: ...
     async def install(self, agent: Agent) -> None: ...
+    async def reinstall(self, agent: Agent) -> None: ...
+    def seen(self) -> None: ...
+    def setup_said(self) -> dict[str, Any]: ...
+    def kept_wheel(self) -> Path | None: ...
+    def rebooted_for(self) -> str | None: ...
+    def note_rebooted(self, release: str) -> None: ...
     async def run(self, agent: Agent) -> None: ...
 
 
@@ -94,6 +104,13 @@ def progress_out(percent: int, step: str, message: Said | None = None) -> dict[s
         "message_key": message.key if message else None,
         "message_params": message.params if message else {},
     }
+
+
+def back_up_here() -> object:
+    """The small files copied aside before an update changes anything (setup_files.back_up)."""
+    from sunroom_kiosk import setup_files
+
+    return setup_files.back_up(setup_files.Machine.here())
 
 
 def now_iso() -> str:
@@ -186,6 +203,7 @@ class Updater:
         spawn: Spawn = spawn_apply,
         port: int = 7800,
         system: str = sys.platform,
+        backup: Callable[[], object] | None = None,
     ) -> None:
         self.http = http or (
             lambda: httpx.AsyncClient(
@@ -199,6 +217,9 @@ class Updater:
         self.spawn = spawn
         self.port = port
         self.system = system
+        # The small files copied aside before an update (the agent's own Updater does; one made
+        # in a test copies nothing from the home it runs in).
+        self.backup: Callable[[], object] = backup or (lambda: None)
         self.current = self._remembered()
         self._busy = asyncio.Lock()
 
@@ -221,7 +242,7 @@ class Updater:
             state = "unknown"
         message = None
         if isinstance(failed, str) and failed == latest and newer(latest, self.installed):
-            state, message = "failed", said("agent.update.didnt_start")
+            state, message = "failed", said("agent.update.didnt_finish", version=self.installed)
         checked = fields.get("checked_at")
         return replace(
             fresh,
@@ -243,7 +264,65 @@ class Updater:
         self.paths.state.write_text(json.dumps(merged, sort_keys=True), encoding="utf-8")
 
     def status(self, check: str) -> dict[str, Any]:
-        return self.current.out(check)
+        return {**self.current.out(check), "last_result": self.last_result()}
+
+    def last_result(self) -> dict[str, Any] | None:
+        """How the last update ended, until a page has shown it (ScreenUpdateResultOut)."""
+        saved = self._saved()
+        last = saved.get("last")
+        if not isinstance(last, dict) or saved.get("last_seen"):
+            return None
+        fields = cast(dict[str, Any], last)
+        release, previous = fields.get("version"), fields.get("previous")
+        if not isinstance(release, str):
+            return None
+        ok = fields.get("ok") is True
+        if ok and fields.get("again") is True:
+            message = said("agent.update.reinstalled", version=release)
+        elif ok:
+            message = said("agent.update.updated", version=release)
+        elif isinstance(previous, str):
+            message = said("agent.update.didnt_finish", version=previous)
+        else:
+            message = said("agent.update.didnt_finish_plain")
+        at = fields.get("at")
+        return {
+            "version": release,
+            "ok": ok,
+            "at": at if isinstance(at, str) else None,
+            "message": message.message,
+            "message_key": message.key,
+            "message_params": message.params,
+        }
+
+    def seen(self) -> None:
+        """A page has shown how the last update ended: it's said once."""
+        self._remember(last_seen=True)
+
+    def setup_said(self) -> dict[str, Any]:
+        """The apply step's setup report (``--from-update``), for the agent's start."""
+        report = self._saved().get("setup")
+        return cast(dict[str, Any], report) if isinstance(report, dict) else {}
+
+    def kept_wheel(self) -> Path | None:
+        """The installed version's wheel, kept for root's part of its setup and Reinstall…."""
+        kept = self.paths.wheels / wheel_name(self.installed)
+        return kept if kept.is_file() else None
+
+    def rebooted_for(self) -> str | None:
+        found = self._saved().get("rebooted_for")
+        return found if isinstance(found, str) else None
+
+    def note_rebooted(self, release: str) -> None:
+        """The computer restarts once for this version's setup, never in a loop."""
+        self._remember(rebooted_for=release)
+
+    def _saved(self) -> dict[str, Any]:
+        try:
+            saved = json.loads(self.paths.state.read_text(encoding="utf-8"))
+        except OSError, ValueError:
+            return {}
+        return cast(dict[str, Any], saved) if isinstance(saved, dict) else {}
 
     # ------------------------------------------------------------------ check
 
@@ -283,7 +362,11 @@ class Updater:
             installed=self.installed,
             latest=latest,
             checked_at=now_iso(),
-            message=said("agent.update.didnt_start") if state == "failed" else None,
+            message=(
+                said("agent.update.didnt_finish", version=self.installed)
+                if state == "failed"
+                else None
+            ),
         )
         self._remember(latest=latest, checked_at=self.current.checked_at)
         return self.current
@@ -294,34 +377,53 @@ class Updater:
         if self._busy.locked():
             return
         async with self._busy:
-            await self._install(agent)
+            await self._install(agent, again=False)
 
-    async def _install(self, agent: Agent) -> None:
+    async def reinstall(self, agent: Agent) -> None:
+        """Reinstall…: the version already installed, its setup rewritten whole (ADR 0044)."""
+        if self._busy.locked():
+            return
+        async with self._busy:
+            await self._install(agent, again=True)
+
+    async def _install(self, agent: Agent, *, again: bool) -> None:
+        """The whole way (ADR 0044): the small files aside, the wheel downloaded and checked, then
+        the apply step, which installs it, sets it up and starts it; its steps arrive here
+        through the state file while this agent still runs."""
+
         async def say(percent: int, step: str) -> None:
             agent.hub.publish("update.progress", progress_out(percent, step))
 
-        if self.current.state not in ("available", "failed") or self.current.latest is None:
-            await self.check_now()
-        release = self.current.latest
-        if release is None or not newer(release, self.installed):
-            agent.toast("agent.update.up_to_date")
-            agent.publish_state()
-            return
+        if again:
+            release = self.installed
+        else:
+            if self.current.state not in ("available", "failed") or self.current.latest is None:
+                await self.check_now()
+            latest = self.current.latest
+            if latest is None or not newer(latest, self.installed):
+                agent.toast("agent.update.up_to_date")
+                agent.publish_state()
+                return
+            release = latest
         self.current = replace(self.current, state="installing", message=None)
         agent.publish_state()
         await say(10, "agent.update.step.downloading")
+        await asyncio.to_thread(self.backup)
         try:
-            wheel = await self.download(release)
+            wheel = await self.download(release, lambda: say(30, "agent.update.step.checking"))
         except UpdateError as error:
             log.info("The update to %s stopped: %s", release, error)
-            self.current = replace(self.current, state="available", message=error.said)
+            self.current = replace(
+                self.current, state="up_to_date" if again else "available", message=error.said
+            )
             agent.publish_state()
             await say(100, "agent.update.step.stopped")
             return
-        await say(60, "agent.update.step.installing")
+        await say(50, "agent.update.step.installing")
         previous = self.paths.wheels / wheel_name(self.installed)
         kept = previous if await asyncio.to_thread(previous.exists) else None
-        argv = await asyncio.to_thread(self.apply_command, wheel, kept)
+        await asyncio.to_thread(self._remember, progress=None, last_seen=False)
+        argv = await asyncio.to_thread(self.apply_command, wheel, kept, force=again)
         log.info("Installing Sunroom Screen %s; it starts again in a moment.", release)
         if not await self.spawn(argv):
             self.current = replace(
@@ -329,14 +431,36 @@ class Updater:
             )
             agent.publish_state()
             await say(100, "agent.update.step.stopped")
+            return
+        agent.spawn(self.relay(agent))
 
-    def apply_command(self, wheel: Path, previous: Path | None) -> list[str]:
+    async def relay(self, agent: Agent, every_s: float = 0.5, for_s: float = 600.0) -> None:
+        """The apply step's own steps (Setting up…, Starting again…), from the state file, for as
+        long as this agent still runs."""
+        said_last = "null"
+        deadline = asyncio.get_running_loop().time() + for_s
+        while asyncio.get_running_loop().time() < deadline:
+            await asyncio.sleep(every_s)
+            progress = (await asyncio.to_thread(self._saved)).get("progress")
+            now = json.dumps(progress, sort_keys=True)
+            if now != said_last and isinstance(progress, dict):
+                fields = cast(dict[str, Any], progress)
+                percent, key = fields.get("percent"), fields.get("key")
+                if isinstance(percent, int) and isinstance(key, str):
+                    agent.hub.publish("update.progress", progress_out(percent, key))
+            said_last = now
+
+    def apply_command(
+        self, wheel: Path, previous: Path | None, *, force: bool = False
+    ) -> list[str]:
         """How the apply step starts: this package's own command, or on Windows a copy of
         apply.py, run by the Python this environment was made from (its own files are locked
         while the agent runs)."""
         tail = ["--apply", str(wheel), "--port", str(self.port)]
         if previous is not None:
             tail += ["--previous", str(previous)]
+        if force:
+            tail.append("--force")
         if self.system != "win32":
             return [sys.executable, "-m", "sunroom_kiosk", "update", *tail]
         script = self.paths.state.parent / "apply.py"
@@ -344,9 +468,15 @@ class Updater:
         shutil.copyfile(apply_step.__file__, script)
         return [base_python(), str(script), *tail]
 
-    async def download(self, release: str) -> Path:
-        """The release's wheel, checked against its SHA256SUMS; kept beside the running one."""
+    async def download(
+        self, release: str, checking: Callable[[], Awaitable[None]] | None = None
+    ) -> Path:
+        """The release's wheel, checked against its SHA256SUMS; kept beside the running one. One
+        kept already (Reinstall…'s, checked when it came) isn't downloaded again."""
         name = wheel_name(release)
+        kept = self.paths.wheels / name
+        if await asyncio.to_thread(kept.is_file):
+            return kept
         try:
             async with self.http() as client:
                 expected = (await self._sums(client, release)).get(name)
@@ -357,6 +487,8 @@ class Updater:
                 data = response.content
         except httpx.HTTPError as error:
             raise UpdateError("agent.update.download_failed") from error
+        if checking is not None:
+            await checking()
         if hashlib.sha256(data).hexdigest() != expected:
             raise UpdateError("agent.update.bad_checksum")
         return await asyncio.to_thread(self._keep, name, data)
@@ -425,6 +557,24 @@ class NoUpdates:
     async def install(self, agent: Agent) -> None:
         agent.toast("agent.update.nothing_here")
 
+    async def reinstall(self, agent: Agent) -> None:
+        agent.toast("agent.update.nothing_here")
+
+    def seen(self) -> None:
+        return None
+
+    def setup_said(self) -> dict[str, Any]:
+        return {}
+
+    def kept_wheel(self) -> Path | None:
+        return None
+
+    def rebooted_for(self) -> str | None:
+        return None
+
+    def note_rebooted(self, release: str) -> None:
+        return None
+
     async def run(self, agent: Agent) -> None:
         await asyncio.Event().wait()
 
@@ -442,7 +592,25 @@ class FakeUpdater:
         self.current = UpdateStatus(state="unknown", installed=version())
 
     def status(self, check: str) -> dict[str, Any]:
-        return self.current.out(check)
+        return {**self.current.out(check), "last_result": None}
+
+    def seen(self) -> None:
+        return None
+
+    def setup_said(self) -> dict[str, Any]:
+        return {}
+
+    def kept_wheel(self) -> Path | None:
+        return None
+
+    def rebooted_for(self) -> str | None:
+        return None
+
+    def note_rebooted(self, release: str) -> None:
+        return None
+
+    async def reinstall(self, agent: Agent) -> None:
+        await self.install(agent)
 
     async def check_now(self) -> UpdateStatus:
         state: UpdateState = "available" if self.current.installed != self.latest else "up_to_date"

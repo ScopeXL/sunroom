@@ -392,14 +392,24 @@ screen instead.
 
 ## Every day
 
-- **The screen's own software (Sunroom Screen) updates itself** when Settings → This Screen →
-  Updates says Install overnight, as every screen starts (Off updates it only when asked): at the
-  start of the household's sleep hours (03:30 without them) it asks GitHub for the newest
-  version, downloads it, checks it against the release's checksums and starts it; if the new
-  version doesn't start within a minute, the one before comes back and This Screen says so.
-  **Update Now** there does the same at once; `sunroom-kiosk update` on the Pi says whether
-  there's one. On an all-in-one Pi, This Screen's **Update Sunroom Too** updates
-  Sunroom itself, as `update.sh` does.
+- **The screen's own software (Sunroom Screen) updates itself, the whole way** (ADR 0044):
+  **Update Now** under Settings → This Screen → Software, or by itself at the start of the
+  household's sleep hours (03:30 without them) when **Updates** says Install overnight, as every
+  screen starts (Off updates only when asked). It asks GitHub for the newest version, downloads
+  it and checks it against the release's checksums, copies its few small files aside
+  (`~/.local/state/sunroom-kiosk/backup/`, the last three versions kept), installs it, puts the
+  new version's own start-up files in order (`sunroom-kiosk setup`) and starts it, saying each
+  step on the wall ("Setting up… 70%"). Then, on a Pi or a Linux computer, the root helper brings
+  the system's part along (the browser's rules, the Wi-Fi and backlight settings, the packages
+  it needs); Sunroom run on that computer follows to the same version (on an all-in-one Pi,
+  through `update.sh`); and the computer restarts only when a change needs it, once. The wall
+  says "Updated to 0.18.0" when it's back. If the new version doesn't start within a minute, the
+  one before comes back with its own setup, and the wall says "The update didn't finish. Sunroom
+  Screen 0.17.0 is back." A screen whose root helper is from before 0.18.0 says under Software
+  to run the install command once more in a terminal. `sunroom-kiosk update` in a terminal says
+  whether there's a new version; `sunroom-kiosk setup --check` says what differs from this
+  version's setup. On an all-in-one Pi, This Screen's **Update Sunroom Too** updates Sunroom
+  itself, as `update.sh` does.
 - **Update Sunroom on the Pi:** `sudo /opt/sunroom/update.sh` (or `sudo /opt/sunroom/update.sh
   0.2.0` for exactly that version, which is also how to go back). Your family's data stays.
 - **The screen's log:** `journalctl --user -u sunroom-kiosk`; **what it says about itself:**

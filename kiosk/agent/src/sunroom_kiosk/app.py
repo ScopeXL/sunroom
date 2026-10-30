@@ -251,6 +251,22 @@ async def install_update(agent: AgentDep) -> ScreenAcceptedOut:
     return ScreenAcceptedOut()
 
 
+@router.post("/reinstall", status_code=202)
+async def reinstall(agent: AgentDep) -> ScreenAcceptedOut:
+    """Reinstall…: Sunroom Screen at the version installed, its setup rewritten (ADR 0044)."""
+    need(agent, "update", "agent.unsupported.update")
+    agent.spawn(agent.updater.reinstall(agent))
+    return ScreenAcceptedOut()
+
+
+@router.post("/update/seen", status_code=202)
+async def update_seen(agent: AgentDep) -> ScreenAcceptedOut:
+    """A page has shown how the last update ended: it's cleared, said once."""
+    agent.updater.seen()
+    agent.publish_state()
+    return ScreenAcceptedOut()
+
+
 @router.post("/update-sunroom", status_code=202)
 async def update_sunroom(agent: AgentDep) -> ScreenAcceptedOut:
     """An all-in-one Pi: the Sunroom on this screen too (it runs /opt/sunroom/update.sh)."""

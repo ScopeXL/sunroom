@@ -425,6 +425,14 @@ async def test_update_now_streams_its_progress(client: httpx.AsyncClient, agent:
     assert (await client.get("/api/screen")).json()["update"]["installed"] == "9.9.9"
 
 
+async def test_reinstall_starts_and_says_how_it_ended_once(
+    client: httpx.AsyncClient, agent: Agent
+) -> None:
+    assert (await client.post("/api/screen/reinstall", headers=CHANGE)).status_code == 202
+    assert (await client.post("/api/screen/update/seen", headers=CHANGE)).status_code == 202
+    assert (await client.get("/api/screen")).json()["update"]["last_result"] is None
+
+
 async def test_the_update_policy_is_kept(client: httpx.AsyncClient, config_path: Path) -> None:
     body = (
         await client.put("/api/screen/update-policy", json={"check": "off"}, headers=CHANGE)
@@ -480,5 +488,8 @@ async def test_the_schema_has_every_route(app: FastAPI) -> None:
     from sunroom_kiosk.app import router
 
     paths = get_openapi(title="t", version="0", routes=router.routes)["paths"]
-    assert len(paths) == 19  # 0.17.0: no open-network-settings, and uninstall (ADR 0042)
+    # 0.17.0: no open-network-settings, and uninstall (ADR 0042); 0.18.0: reinstall and
+    # update/seen (ADR 0044).
+    assert len(paths) == 21
+    assert "/api/screen/reinstall" in paths and "/api/screen/update/seen" in paths
     assert not any("_test" in path for path in paths)

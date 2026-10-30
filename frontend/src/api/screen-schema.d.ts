@@ -110,6 +110,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/screen/reinstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reinstall
+         * @description Reinstall…: Sunroom Screen at the version installed, its setup rewritten (ADR 0044).
+         */
+        post: operations["reinstall_api_screen_reinstall_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/screen/restart": {
         parameters: {
             query?: never;
@@ -306,6 +326,26 @@ export interface paths {
          * @description An all-in-one Pi: the Sunroom on this screen too (it runs /opt/sunroom/update.sh).
          */
         post: operations["update_sunroom_api_screen_update_sunroom_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/screen/update/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Seen
+         * @description A page has shown how the last update ended: it's cleared, said once.
+         */
+        post: operations["update_seen_api_screen_update_seen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -558,6 +598,7 @@ export interface components {
             checked_at: string | null;
             /** Installed */
             installed: string;
+            last_result?: components["schemas"]["ScreenUpdateResultOut"] | null;
             /** Latest */
             latest: string | null;
             /** Message */
@@ -568,6 +609,8 @@ export interface components {
             message_params?: {
                 [key: string]: string;
             };
+            /** Needs Terminal */
+            needs_terminal?: string | null;
             state: components["schemas"]["ScreenUpdateState"];
             /**
              * Sunroom Outdated
@@ -578,6 +621,27 @@ export interface components {
         /** ScreenUpdatePolicyIn */
         ScreenUpdatePolicyIn: {
             check: components["schemas"]["ScreenUpdateCheck"];
+        };
+        /**
+         * ScreenUpdateResultOut
+         * @description How the last update ended (ADR 0044), until a page has shown it: Updated to 0.18.0, or
+         *     the update didn't finish and the version before is back.
+         */
+        ScreenUpdateResultOut: {
+            /** At */
+            at: string | null;
+            /** Message */
+            message: string;
+            /** Message Key */
+            message_key: string;
+            /** Message Params */
+            message_params?: {
+                [key: string]: string;
+            };
+            /** Ok */
+            ok: boolean;
+            /** Version */
+            version: string;
         };
         /** @enum {string} */
         ScreenUpdateState: "unknown" | "up_to_date" | "available" | "installing" | "failed";
@@ -867,6 +931,53 @@ export interface operations {
         };
     };
     quit_screen_api_screen_quit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenAcceptedOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+        };
+    };
+    reinstall_api_screen_reinstall_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -1494,6 +1605,53 @@ export interface operations {
         };
     };
     update_sunroom_api_screen_update_sunroom_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenAcceptedOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+        };
+    };
+    update_seen_api_screen_update_seen_post: {
         parameters: {
             query?: never;
             header?: never;

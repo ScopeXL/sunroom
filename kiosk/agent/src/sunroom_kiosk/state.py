@@ -128,6 +128,9 @@ class Agent:
         self.setup_report: Report | None = None
         # The installer's one line, when root's part can't be put right from here (ADR 0044).
         self.needs_terminal: str | None = None
+        # An update's last steps at this start (finish_update): how it ended waits until they're
+        # done, so the wall says Updated once, when it is.
+        self.finishing = False
         self.reachable = False
         self.running_sunroom = False  # one run at a time (POST /run-sunroom)
         self.known = Known()
@@ -188,7 +191,13 @@ class Agent:
                 version=self.known.version,
                 language=self.known.language,
             )
-        status = {**self.updater.status(self.update_check()), "sunroom_outdated": self._outdated()}
+        status = {
+            **self.updater.status(self.update_check()),
+            "sunroom_outdated": self._outdated(),
+            "needs_terminal": self.needs_terminal,
+        }
+        if self.finishing:
+            status["last_result"] = None
         return ScreenStateOut(
             version=version(),
             platform=self.platform.name,
@@ -286,6 +295,7 @@ class Agent:
         self.spawn(self.updater.run(self))
         if self.local is not None and self.local.installed():
             self.spawn(self.look_after_local())
+        self.spawn(self.finish_update())
         log.info(
             "Sunroom Screen %s is running on %s; it shows %s.",
             version(),
@@ -312,10 +322,73 @@ class Agent:
             self.config = settings_file.load(self.config_path)
         if report.needs_root:
             log.info("Root's part differs: %s.", ", ".join(report.needs_root))
+
+    async def finish_update(self) -> None:
+        """What an update leaves for this version's start (ADR 0044): root's part, through the
+        root helper when it can (else the installer's one line, for This Screen to show); an
+        all-in-one Pi's Docker Sunroom brought to this version; and the computer restarted when
+        the update's setup asked for it, once per version. How the update ended (Updated to
+        0.18.0) shows once this is done."""
+        self.finishing = True
+        try:
+            await self._finish_update()
+        finally:
+            self.finishing = False
+            self.publish_state()
+
+    async def _finish_update(self) -> None:
+        said = self.updater.setup_said()
+        reboot = said.get("version") == version() and said.get("needs_reboot") is True
+        shown = False  # a step on the wall, which Done finishes
+        report = self.setup_report
+        if report is not None and report.needs_root:
             helper = await self.platform.root_helper_version()
+            wheel = await asyncio.to_thread(self.updater.kept_wheel)
+            if helper is not None and wheel is not None:
+                self.hub.publish("update.progress", progress_out(90, "agent.update.step.finishing"))
+                shown = True
+                system = await self.platform.apply_system(wheel)
+                if system is not None:
+                    log.info("The system's part: %s.", ", ".join(system.changed) or "as it was")
+                    reboot = reboot or system.needs_reboot
+                    if self.setup is not None:  # what's left of root's part, looked at again
+                        report = await asyncio.to_thread(self.setup)
+                        self.setup_report = report
+                    helper = await self.platform.root_helper_version()
             self.needs_terminal = setup_files.needs_terminal(
                 helper, report.needs_root, self.platform.install_command()
             )
+            self.publish_state()
+        if self._docker_sunroom_behind():
+            self.hub.publish(
+                "update.progress", progress_out(92, "agent.update.step.updating_sunroom")
+            )
+            shown = True
+            await self.update_sunroom()
+        if reboot and self.updater.rebooted_for() != version():
+            log.info("Restarting the computer to finish the update to %s.", version())
+            self.toast("agent.update.restarting")
+            self.hub.publish("update.progress", progress_out(95, "agent.update.step.restarting"))
+            self.updater.note_rebooted(version())
+            await asyncio.sleep(ACTION_DELAY_S)
+            try:
+                await self.platform.restart()
+            except PlatformError as error:
+                log.info("%s", error)
+            else:
+                return  # the computer is going down; Updated shows when it's back
+        if shown:
+            self.hub.publish("update.progress", progress_out(100, "agent.update.step.done"))
+
+    def _docker_sunroom_behind(self) -> bool:
+        """An all-in-one Pi whose own Sunroom (Docker, update.sh) is older than this version."""
+        return (
+            self.config.mode == "all"
+            and (self.local is None or not self.local.installed())
+            and "update_sunroom" in self.capabilities()
+            and self.known.version is not None
+            and newer(version(), self.known.version)
+        )
 
     def spawn(self, work: Awaitable[Any]) -> None:
         async def guarded() -> None:

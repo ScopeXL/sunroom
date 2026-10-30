@@ -660,6 +660,16 @@
             "title": "Installed",
             "type": "string"
           },
+          "last_result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScreenUpdateResultOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "latest": {
             "anyOf": [
               {
@@ -700,6 +710,17 @@
             "title": "Message Params",
             "type": "object"
           },
+          "needs_terminal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Needs Terminal"
+          },
           "state": {
             "$ref": "#/components/schemas/ScreenUpdateState"
           },
@@ -730,6 +751,54 @@
           "check"
         ],
         "title": "ScreenUpdatePolicyIn",
+        "type": "object"
+      },
+      "ScreenUpdateResultOut": {
+        "description": "How the last update ended (ADR 0044), until a page has shown it: Updated to 0.18.0, or\nthe update didn't finish and the version before is back.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "message_key": {
+            "title": "Message Key",
+            "type": "string"
+          },
+          "message_params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Message Params",
+            "type": "object"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "ok",
+          "at",
+          "message",
+          "message_key"
+        ],
+        "title": "ScreenUpdateResultOut",
         "type": "object"
       },
       "ScreenUpdateState": {
@@ -1155,6 +1224,58 @@
           }
         },
         "summary": "Quit Screen",
+        "tags": [
+          "screen"
+        ]
+      }
+    },
+    "/api/screen/reinstall": {
+      "post": {
+        "description": "Reinstall\u2026: Sunroom Screen at the version installed, its setup rewritten (ADR 0044).",
+        "operationId": "reinstall_api_screen_reinstall_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenAcceptedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Reinstall",
         "tags": [
           "screen"
         ]
@@ -1858,6 +1979,58 @@
           }
         },
         "summary": "Update Sunroom",
+        "tags": [
+          "screen"
+        ]
+      }
+    },
+    "/api/screen/update/seen": {
+      "post": {
+        "description": "A page has shown how the last update ended: it's cleared, said once.",
+        "operationId": "update_seen_api_screen_update_seen_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenAcceptedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Update Seen",
         "tags": [
           "screen"
         ]

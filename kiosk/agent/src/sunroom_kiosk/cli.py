@@ -120,6 +120,7 @@ def _parser() -> argparse.ArgumentParser:
     update = commands.add_parser("update", help="ask GitHub for a newer version (or apply one)")
     update.add_argument("--apply", type=Path, default=None, help=argparse.SUPPRESS)
     update.add_argument("--previous", type=Path, default=None, help=argparse.SUPPRESS)
+    update.add_argument("--force", action="store_true", help=argparse.SUPPRESS)
     update.add_argument("--port", type=int, default=DEFAULT_PORT)
 
     setup = commands.add_parser("setup", help="put this screen's own start-up files in order")
@@ -170,7 +171,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     from sunroom_kiosk.platform import detect
     from sunroom_kiosk.platform.fake import FakePlatform
     from sunroom_kiosk.state import Agent, BrowserLike
-    from sunroom_kiosk.updater import FakeUpdater, NoUpdates, Updater, UpdaterLike
+    from sunroom_kiosk.updater import FakeUpdater, NoUpdates, Updater, UpdaterLike, back_up_here
 
     logs.setup(getattr(logging, cast(str, args.log_level).upper()))
     log = logs.get("cli")
@@ -184,7 +185,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     hub = EventHub()
     discovery = FakeDiscovery(hub.publish, fake_sunrooms) if fake else Discovery(hub.publish)
     updater: UpdaterLike = (
-        FakeUpdater() if fake else Updater(port=port) if installed_as_tool() else NoUpdates()
+        FakeUpdater()
+        if fake
+        else Updater(port=port, backup=back_up_here)
+        if installed_as_tool()
+        else NoUpdates()
     )
     found = None if fake else find_browser()
     holder: dict[str, Agent] = {}
@@ -292,7 +297,12 @@ def cmd_update(args: argparse.Namespace) -> int:
     if wheel is not None:
         from sunroom_kiosk.apply import apply
 
-        return apply(wheel, cast(Path | None, args.previous), cast(int, args.port))
+        return apply(
+            wheel,
+            cast(Path | None, args.previous),
+            cast(int, args.port),
+            force=cast(bool, args.force),
+        )
     status = asyncio.run(updater.Updater().check_now())
     if status.state == "available":
         print(f"Sunroom Screen {status.latest} is ready (this is {status.installed}).")

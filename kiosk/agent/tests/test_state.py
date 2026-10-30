@@ -1,21 +1,31 @@
 """The agent's loops (state.py), a tick at a time: the health check, the re-find of a found
 Sunroom that moved (never a typed one), the watchdog that shows "Can't reach" only after two
-minutes with no Sunroom on the screen, and the page a start opens. Synthetic data only."""
+minutes with no Sunroom on the screen, the page a start opens, and what an update leaves for the
+new version's start (ADR 0044). Synthetic data only."""
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
+import httpx
 import pytest
 
 from sunroom_kiosk import config as settings_file
 from sunroom_kiosk import state as agent_module
+from sunroom_kiosk.apply import Paths
 from sunroom_kiosk.browser import NoBrowser, PageLook
 from sunroom_kiosk.config import Config
+from sunroom_kiosk.platform.base import SystemReport
+from sunroom_kiosk.platform.fake import FakePlatform
+from sunroom_kiosk.platform.linux import INSTALL_COMMAND
+from sunroom_kiosk.setup_files import Report
 from sunroom_kiosk.state import Agent
-from tests.support import AGENT, PORT, SUNROOM, SUNROOM_ID, FakeSunrooms
+from sunroom_kiosk.updater import Updater, wheel_name
+from sunroom_kiosk.version import version
+from tests.support import AGENT, CHANGE, PORT, SUNROOM, SUNROOM_ID, FakeSunrooms
 
 
 class Clock:
@@ -279,3 +289,136 @@ async def test_the_households_language_reaches_the_screens_own_pages(
     await agent.ask_sunroom()
     sunroom = agent.snapshot().sunroom
     assert sunroom is not None and sunroom.language == "es"
+
+
+# ---------------------------------------------------------------------- an update's last steps
+
+
+class Helped(FakePlatform):
+    """A Pi whose root helper is ``helper`` (None: one from before 0.18.0, which can't say)."""
+
+    def __init__(self, helper: str | None, *, needs_reboot: bool = False) -> None:
+        super().__init__("pi")
+        self.helper = helper
+        self.needs_reboot = needs_reboot
+
+    async def root_helper_version(self) -> str | None:
+        return self.helper
+
+    async def apply_system(self, wheel: Path) -> SystemReport | None:
+        self.calls.append(f"apply_system {wheel.name}")
+        return SystemReport(changed=["labwc-rule"], failed=[], needs_reboot=self.needs_reboot)
+
+    def install_command(self) -> str | None:
+        return INSTALL_COMMAND
+
+
+def root_part_of(platform: FakePlatform) -> Callable[[], Report]:
+    """The agent's own setup: root's part differs until the helper has put it right."""
+
+    def setup() -> Report:
+        put_right = any(call.startswith("apply_system") for call in platform.calls)
+        return Report(version=version(), needs_root=[] if put_right else ["labwc-rule"])
+
+    return setup
+
+
+def updater_at(tmp_path: Path, **saved: object) -> Updater:
+    """An updater whose update.json says ``saved``, with this version's wheel kept."""
+    paths = Paths(wheels=tmp_path / "wheels", state=tmp_path / "update.json")
+    paths.wheels.mkdir(parents=True)
+    (paths.wheels / wheel_name(version())).write_bytes(b"a wheel")
+    paths.state.write_text(json.dumps(saved), encoding="utf-8")
+    return Updater(paths=paths, current=version())
+
+
+def heard(agent: Agent) -> list[str]:
+    """The steps and toasts the wall is told, by key."""
+    said: list[str] = []
+
+    def publish(kind: str, data: Any) -> None:
+        if kind in ("update.progress", "toast"):
+            said.append(cast(dict[str, str], data)["key"])
+
+    agent.hub.publish = publish  # type: ignore[method-assign]
+    return said
+
+
+async def test_an_update_finishes_roots_part_through_the_helper(
+    make_agent: Callable[..., Agent], tmp_path: Path
+) -> None:
+    platform = Helped("0.18.0")
+    agent = make_agent(
+        platform=platform, updater=updater_at(tmp_path), setup=root_part_of(platform)
+    )
+    said = heard(agent)
+    await agent.own_setup()
+    await agent.finish_update()
+    assert platform.calls == [f"apply_system {wheel_name(version())}"]
+    assert said == ["agent.update.step.finishing", "agent.update.step.done"]
+    assert agent.needs_terminal is None
+    assert agent.setup_report is not None and agent.setup_report.needs_root == []
+
+
+async def test_a_helper_from_before_0_18_0_shows_the_install_command(
+    make_agent: Callable[..., Agent], tmp_path: Path
+) -> None:
+    platform = Helped(None)
+    agent = make_agent(
+        platform=platform, updater=updater_at(tmp_path), setup=root_part_of(platform)
+    )
+    await agent.own_setup()
+    await agent.finish_update()
+    assert platform.calls == []  # nothing it can't do is tried
+    assert agent.snapshot().update.needs_terminal == INSTALL_COMMAND
+
+
+async def test_the_computer_restarts_once_for_a_version_that_asks(
+    make_agent: Callable[..., Agent], tmp_path: Path, clock: Clock
+) -> None:
+    platform = Helped("0.18.0")
+    updater = updater_at(tmp_path, setup={"version": version(), "needs_reboot": True})
+    agent = make_agent(platform=platform, updater=updater)
+    said = heard(agent)
+    await agent.finish_update()
+    assert platform.calls == ["restart"]
+    assert said == ["agent.update.restarting", "agent.update.step.restarting"]
+    assert updater.rebooted_for() == version()
+    await agent.finish_update()  # back after the restart: never a loop
+    assert platform.calls == ["restart"]
+
+
+async def test_an_all_in_one_pis_own_sunroom_comes_up_to_this_version(
+    make_agent: Callable[..., Agent], tmp_path: Path
+) -> None:
+    platform = Helped("0.18.0")
+    agent = make_agent(platform=platform, updater=updater_at(tmp_path))
+    agent.save(Config(url="http://localhost:8080", found="local", mode="all"))
+    agent.known = agent_module.Known(version="0.1.0")
+    said = heard(agent)
+    await agent.finish_update()
+    assert platform.calls == ["update_sunroom"]
+    assert said[0] == "agent.update.step.updating_sunroom" and said[-1] == "agent.update.step.done"
+
+
+async def test_how_an_update_ended_shows_once_its_last_steps_are_done(
+    make_agent: Callable[..., Agent], tmp_path: Path
+) -> None:
+    ended = {"version": version(), "ok": True, "at": "2026-10-30T03:30:00+00:00"}
+    agent = make_agent(updater=updater_at(tmp_path, last=ended))
+    agent.finishing = True
+    assert agent.snapshot().update.last_result is None  # not before it's all done
+    await agent.finish_update()
+    result = agent.snapshot().update.last_result
+    assert result is not None and result.ok
+    assert result.message == f"Updated to {version()}"
+    assert result.message_key == "agent.update.updated"
+    # The page that showed it says so, and it's said once.
+    from sunroom_kiosk.app import create_app
+
+    app = create_app(agent, static=None, test_routes=True, run_agent=False)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url=AGENT) as http:
+        seen = await http.post("/api/screen/update/seen", headers=CHANGE)
+    assert seen.status_code == 202
+    assert agent.snapshot().update.last_result is None
