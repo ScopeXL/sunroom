@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 
+import { useT, type Key } from "../../lib/lang";
 import { Button } from "../../ui/Button";
 import { Segmented } from "../../ui/Segmented";
 import { TextField } from "../../ui/TextField";
@@ -8,10 +9,13 @@ import { useShell } from "../../ui/shell";
 /** How a person is stored: the family reads Child for `kid` (ADR 0028). */
 export type RoleChoice = "parent" | "kid";
 
-const ROLES: { value: RoleChoice; label: string }[] = [
-  { value: "parent", label: "Parent" },
-  { value: "kid", label: "Child" },
-];
+/** Each role's word, a key said where it's shown (Family, a person's sheet, setup). */
+export const ROLE_WORDS: Readonly<Record<RoleChoice, Key>> = {
+  parent: "settings.family.role.parent",
+  kid: "settings.family.role.kid",
+};
+
+const ROLES: readonly RoleChoice[] = ["parent", "kid"];
 
 /**
  * Add a person in one row (UX §4 Family, §6 the wizard's people step): a name, Parent or Child,
@@ -43,6 +47,7 @@ export function AddPersonRow({
   /** Resolves once the person is added; a refusal keeps the name for another try. */
   onAdd: (name: string, role: RoleChoice) => Promise<unknown>;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const [name, setName] = useState("");
   const [role, setRole] = useState<RoleChoice>("parent");
@@ -79,7 +84,12 @@ export function AddPersonRow({
             }}
           />
         </div>
-        <Segmented label="Parent or child" value={role} onChange={setRole} options={ROLES} />
+        <Segmented
+          label={t("settings.family.role.label")}
+          value={role}
+          onChange={setRole}
+          options={ROLES.map((value) => ({ value, label: t(ROLE_WORDS[value]) }))}
+        />
         <Button
           type="submit"
           variant={primary ? "primary" : "secondary"}

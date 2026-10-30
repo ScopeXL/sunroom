@@ -1,23 +1,24 @@
 import { useState } from "react";
 
+import { useT, type Key } from "../../lib/lang";
 import { Button, ButtonLink } from "../../ui/Button";
 import { Sheet } from "../../ui/Sheet";
 import { useShell } from "../../ui/shell";
 
-/** What Download offers (UX §4 Backup, ADR 0034): the server makes each copy fresh, now. */
-const CHOICES = [
+/** What Download offers (UX §4 Backup, ADR 0034): the server makes each copy fresh, now. Its
+ * words are keys, said where they're shown. */
+const CHOICES: readonly { label: Key; href: string; detail: Key }[] = [
   {
-    label: "Data Only",
+    label: "settings.backup.download.data.action",
     href: "/api/admin/backups/data.db",
-    detail:
-      "A checked copy of the data made now: people, calendars, events, lists, tasks, meals, countdowns and settings. A few MB.",
+    detail: "settings.backup.download.data.detail",
   },
   {
-    label: "Data & Photos",
+    label: "settings.backup.download.photos.action",
     href: "/api/admin/backups/full.zip",
-    detail: "Everything, photos included: this can take a while and be large.",
+    detail: "settings.backup.download.photos.detail",
   },
-] as const;
+];
 
 /**
  * "Download Which?" (the shape of "Change Which?"): Data Only or Data & Photos. Each is a plain
@@ -25,6 +26,7 @@ const CHOICES = [
  * download started and offers Close.
  */
 export function DownloadSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const display = useShell() === "display";
   const [started, setStarted] = useState(false);
   // Opened again, it asks again.
@@ -35,7 +37,7 @@ export function DownloadSheet({ open, onClose }: { open: boolean; onClose: () =>
   }
   const soft = display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft";
   return (
-    <Sheet open={open} title="Download Which?" onClose={onClose}>
+    <Sheet open={open} title={t("settings.backup.download.which.title")} onClose={onClose}>
       <div className="flex flex-col gap-5 pb-2">
         {CHOICES.map((choice) => (
           <div key={choice.href} className="flex flex-col gap-2">
@@ -48,18 +50,18 @@ export function DownloadSheet({ open, onClose }: { open: boolean; onClose: () =>
                 setStarted(true);
               }}
             >
-              {choice.label}
+              {t(choice.label)}
             </ButtonLink>
-            <p className={soft}>{choice.detail}</p>
+            <p className={soft}>{t(choice.detail)}</p>
           </div>
         ))}
         {started ? (
           <>
             <p role="status" className={display ? "text-d-body" : "text-body"}>
-              The download has started. It's saved when your browser says so.
+              {t("settings.backup.download.started")}
             </p>
             <Button variant="secondary" onClick={onClose}>
-              Close
+              {t("app.action.close")}
             </Button>
           </>
         ) : null}

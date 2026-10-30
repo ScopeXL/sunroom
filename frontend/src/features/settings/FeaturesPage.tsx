@@ -58,6 +58,7 @@ function PluginFields({ plugin, modules }: { plugin: PluginInfo; modules: Plugin
  * Google (ADR 0030).
  */
 export function FeaturesPage() {
+  const t = useT();
   const { data: plugins = [] } = usePlugins();
   const modules = usePluginModules();
   const queryClient = useQueryClient();
@@ -96,22 +97,22 @@ export function FeaturesPage() {
 
   if (plugins.length === 0) {
     return (
-      <Group title="In This Version">
+      <Group title={t("settings.features.none.title")}>
         <div className="py-5">
-          <Text>
-            This version has the family calendar. Synced calendars, lists, tasks, meals, countdowns,
-            photos and weather each arrive as a feature you can turn on here.
-          </Text>
+          <Text>{t("settings.features.none.body")}</Text>
         </div>
       </Group>
     );
   }
+  // A plugin's name and description are the server's words.
   return (
     <>
       {plugins.map((plugin) => (
         <Group key={plugin.id} title={plugin.name}>
           <Switch
-            label={plugin.enabled ? "On" : "Off"}
+            label={
+              plugin.enabled ? t("settings.features.on.label") : t("settings.features.off.label")
+            }
             hint={plugin.description}
             checked={plugin.enabled}
             disabled={toggle.isPending}
@@ -121,7 +122,7 @@ export function FeaturesPage() {
           />
           {plugin.status === "errored" ? (
             <div className="flex flex-wrap items-center justify-between gap-3 py-4">
-              <Text>{`${plugin.name} stopped working.`}</Text>
+              <Text>{t("settings.features.stopped", { name: plugin.name })}</Text>
               <Button
                 variant="secondary"
                 pending={retry.isPending}
@@ -129,7 +130,7 @@ export function FeaturesPage() {
                   retry.mutate(plugin.id);
                 }}
               >
-                Retry
+                {t("settings.features.retry.action")}
               </Button>
             </div>
           ) : null}

@@ -25,7 +25,12 @@ export const FEEDBACK_URL_MAX = 2000;
 
 export type FeedbackKind = "problem" | "idea";
 
-/** Where the server is installed, in words: "Docker", "a Raspberry Pi". */
+/**
+ * Where the server is installed, in the project's words: "Docker", "a Raspberry Pi". English by
+ * design, like `core/feedback.py`'s for the Discord message: it goes to the project with the
+ * feedback (M10 Answer E). The sheet says it to the family in their language
+ * (`settings.support.feedback.added`).
+ */
 export function installWords(kind: string | null | undefined): string | null {
   switch (kind) {
     case "docker":
@@ -48,7 +53,9 @@ export function installWords(kind: string | null | undefined): string | null {
  * the words, then the version and the install under a rule. The page's CSP lets the app talk to
  * Sunroom's own server only, and a token inside a public image is out of the question, so the
  * person signs in to GitHub there and taps Submit (ADR 0034). The whole link is at most
- * FEEDBACK_URL_MAX characters: the words are cut, never the title or the version.
+ * FEEDBACK_URL_MAX characters: the words are cut, never the title or the version. Its frame
+ * ("Problem: ", the version line) stays English in every language: it's the project's issue,
+ * as the Discord message is (M10 Answer E); what the family typed goes as typed.
  */
 export function feedbackUrl({
   kind,

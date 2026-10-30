@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useSettings, useUpdateSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useSavedFlash } from "../../lib/savedFlash";
 import { SavedMark } from "../../ui/SavedMark";
 import { Segmented } from "../../ui/Segmented";
@@ -15,6 +16,7 @@ import { Group, Row } from "./parts";
  * this page with it.
  */
 export function DisplayPage() {
+  const t = useT();
   const { data: settings } = useSettings();
   const update = useUpdateSettings();
   if (!settings) return null;
@@ -22,168 +24,169 @@ export function DisplayPage() {
   const placed = settings.latitude !== null && settings.longitude !== null;
   return (
     <>
-      <Group title="Look">
+      <Group title={t("settings.display.look.title")}>
         <Row
-          label="Theme"
+          label={t("settings.display.theme.label")}
           hint={
-            placed
-              ? "Auto turns dark at sunset and light at sunrise."
-              : "Auto turns dark at 7 PM until a location is set in Household."
+            placed ? t("settings.display.theme.hint") : t("settings.display.theme.unplaced.hint")
           }
         >
           <Segmented
-            label="Theme"
+            label={t("settings.display.theme.label")}
             value={settings.theme}
             onChange={(theme) => {
               update.mutate({ theme });
             }}
             options={[
-              { value: "light", label: "Light" },
-              { value: "dark", label: "Dark" },
-              { value: "auto", label: "Auto" },
+              { value: "light", label: t("settings.display.theme.light") },
+              { value: "dark", label: t("settings.display.theme.dark") },
+              { value: "auto", label: t("settings.display.theme.auto") },
             ]}
           />
         </Row>
-        <Row label="Text size" hint="Small suits a screen around 1920×1080 that's read up close.">
+        <Row
+          label={t("settings.display.text_size.label")}
+          hint={t("settings.display.text_size.hint")}
+        >
           <Segmented
-            label="Text size"
+            label={t("settings.display.text_size.label")}
             value={settings.text_size}
             onChange={(text_size) => {
               update.mutate({ text_size });
             }}
             options={[
-              { value: "small", label: "Small" },
-              { value: "standard", label: "Standard" },
-              { value: "large", label: "Large" },
-              { value: "xl", label: "Extra large" },
+              { value: "small", label: t("settings.display.text_size.small") },
+              { value: "standard", label: t("settings.display.text_size.standard") },
+              { value: "large", label: t("settings.display.text_size.large") },
+              { value: "xl", label: t("settings.display.text_size.xl") },
             ]}
           />
         </Row>
         <Switch
-          label="Daylight tint"
-          hint="The background warms through the day: cool in the morning, golden in the afternoon, rosy at dusk. Off keeps the midday shade."
+          label={t("settings.display.tint.label")}
+          hint={t("settings.display.tint.hint")}
           checked={settings.daylight_tint}
           onChange={(daylight_tint) => {
             update.mutate({ daylight_tint });
           }}
         />
         <Switch
-          label="Reduce motion"
-          hint="Everything changes at once, without moving."
+          label={t("settings.display.motion.label")}
+          hint={t("settings.display.motion.hint")}
           checked={settings.display_reduce_motion}
           onChange={(display_reduce_motion) => {
             update.mutate({ display_reduce_motion });
           }}
         />
       </Group>
-      <Group title="Layout">
-        <Row label="Rail side" hint="Where the rooms sit, for a screen hung to one side.">
+      <Group title={t("settings.display.layout.title")}>
+        <Row
+          label={t("settings.display.rail_side.label")}
+          hint={t("settings.display.rail_side.hint")}
+        >
           <Segmented
-            label="Rail side"
+            label={t("settings.display.rail_side.label")}
             value={settings.display_rail_side}
             onChange={(display_rail_side) => {
               update.mutate({ display_rail_side });
             }}
             options={[
-              { value: "left", label: "Left" },
-              { value: "right", label: "Right" },
+              { value: "left", label: t("settings.display.rail_side.left") },
+              { value: "right", label: t("settings.display.rail_side.right") },
             ]}
           />
         </Row>
         <Switch
-          label="Compact rail"
-          hint="Only the rooms' icons, so the board gets more room. Anyone can open it back out from the header."
+          label={t("settings.display.compact.label")}
+          hint={t("settings.display.compact.hint")}
           checked={settings.display_rail_compact}
           onChange={(display_rail_compact) => {
             update.mutate({ display_rail_compact });
           }}
         />
-        <Row label="Home view" hint="What the screen shows until someone picks another view.">
+        <Row
+          label={t("settings.display.home_view.label")}
+          hint={t("settings.display.home_view.hint")}
+        >
           <Segmented
-            label="Home view"
+            label={t("settings.display.home_view.label")}
             value={settings.display_home_view}
             onChange={(display_home_view) => {
               update.mutate({ display_home_view });
             }}
             options={[
-              { value: "week", label: "Week" },
-              { value: "rolling", label: "Rolling Week" },
-              { value: "today", label: "Today" },
-              { value: "people", label: "People" },
+              { value: "week", label: t("settings.display.home_view.week") },
+              { value: "rolling", label: t("settings.display.home_view.rolling") },
+              { value: "today", label: t("settings.display.home_view.today") },
+              { value: "people", label: t("settings.display.home_view.people") },
             ]}
           />
         </Row>
-        <Row
-          label="When it starts"
-          hint="What the screen shows after a refresh, an update or a restart."
-        >
+        <Row label={t("settings.display.start.label")} hint={t("settings.display.start.hint")}>
           <Segmented
-            label="When it starts"
+            label={t("settings.display.start.label")}
             value={settings.display_start}
             onChange={(display_start) => {
               update.mutate({ display_start });
             }}
             options={[
-              { value: "last", label: "Where it left off" },
-              { value: "home", label: "The home view" },
+              { value: "last", label: t("settings.display.start.last") },
+              { value: "home", label: t("settings.display.start.home") },
             ]}
           />
         </Row>
         <Row
-          label="Week layout"
-          hint="Agenda stacks each day's events; Hours draws them on a 24-hour grid."
+          label={t("settings.display.week_layout.label")}
+          hint={t("settings.display.week_layout.hint")}
         >
           <Segmented
-            label="Week layout"
+            label={t("settings.display.week_layout.label")}
             value={settings.display_week_layout}
             onChange={(display_week_layout) => {
               update.mutate({ display_week_layout });
             }}
             options={[
-              { value: "agenda", label: "Agenda" },
-              { value: "hours", label: "Hours" },
+              { value: "agenda", label: t("settings.display.week_layout.agenda") },
+              { value: "hours", label: t("settings.display.week_layout.hours") },
             ]}
           />
         </Row>
         <Switch
-          label="Show tips"
-          hint="A line under the board with one thing Sunroom can do, changing every half hour. Not on phones."
+          label={t("settings.display.tips.label")}
+          hint={t("settings.display.tips.hint")}
           checked={settings.show_tips}
           onChange={(show_tips) => {
             update.mutate({ show_tips });
           }}
         />
         <Switch
-          label="Dim past events"
-          hint="Today's events that are over fade, so what's next stands out."
+          label={t("settings.display.dim_past.label")}
+          hint={t("settings.display.dim_past.hint")}
           checked={settings.display_dim_past}
           onChange={(display_dim_past) => {
             update.mutate({ display_dim_past });
           }}
         />
         <Switch
-          label="Today panel"
-          hint="Up next and the rest of today, beside the week."
+          label={t("settings.display.today_panel.label")}
+          hint={t("settings.display.today_panel.hint")}
           checked={settings.display_show_today_panel}
           onChange={(display_show_today_panel) => {
             update.mutate({ display_show_today_panel });
           }}
         />
-        <Row
-          label="Return to the calendar after"
-          hint="How long Lists, Tasks, Settings and the other rooms stay open with nobody touching the screen. The board itself still comes back to today after 2 minutes."
-        >
+        <Row label={t("settings.display.return.label")} hint={t("settings.display.return.hint")}>
           <Segmented
-            label="Return to the calendar after"
+            label={t("settings.display.return.label")}
             value={String(settings.display_return_minutes) as "2" | "5" | "10" | "0"}
             onChange={(value) => {
               update.mutate({ display_return_minutes: Number(value) as 0 | 2 | 5 | 10 });
             }}
             options={[
-              { value: "0", label: "Never" },
-              { value: "2", label: "2 min" },
-              { value: "5", label: "5 min" },
-              { value: "10", label: "10 min" },
+              { value: "0", label: t("settings.display.return.never") },
+              { value: "2", label: t("settings.display.return.minutes", { n: 2 }) },
+              { value: "5", label: t("settings.display.return.minutes", { n: 5 }) },
+              { value: "10", label: t("settings.display.return.minutes", { n: 10 }) },
             ]}
           />
         </Row>
@@ -194,6 +197,7 @@ export function DisplayPage() {
 }
 
 function SleepGroup() {
+  const t = useT();
   const display = useShell() === "display";
   const { data: settings } = useSettings();
   const update = useUpdateSettings();
@@ -217,17 +221,14 @@ function SleepGroup() {
   };
   const timesHint =
     !isTime(from) || !isTime(to)
-      ? "Set both times."
+      ? t("settings.display.sleep.both.hint")
       : from === to
-        ? "Pick two different times."
+        ? t("settings.display.sleep.different.hint")
         : null;
   return (
-    <Group
-      title="Sleep"
-      note="At night the screen shows a dim clock, or goes dark. A tap wakes it for 2 minutes."
-    >
+    <Group title={t("settings.display.sleep.title")} note={t("settings.display.sleep.note")}>
       <Switch
-        label="Sleep at night"
+        label={t("settings.display.sleep.label")}
         checked={on}
         onChange={(value) => {
           update.mutate(
@@ -246,7 +247,7 @@ function SleepGroup() {
               }}
             >
               <TextField
-                label="From"
+                label={t("settings.display.sleep.from.label")}
                 type="time"
                 layout="numeric"
                 value={from}
@@ -256,7 +257,7 @@ function SleepGroup() {
                 onBlur={saveTimes}
               />
               <TextField
-                label="Until"
+                label={t("settings.display.sleep.until.label")}
                 type="time"
                 layout="numeric"
                 value={to}
@@ -278,22 +279,22 @@ function SleepGroup() {
               <SavedMark show={timesSaved.saved} />
             )}
           </div>
-          <Row label="While asleep">
+          <Row label={t("settings.display.asleep.label")}>
             <Segmented
-              label="While asleep"
+              label={t("settings.display.asleep.label")}
               value={settings.sleep_mode}
               onChange={(sleep_mode) => {
                 update.mutate({ sleep_mode });
               }}
               options={[
-                { value: "dim_clock", label: "Dim clock" },
-                { value: "screen_off", label: "Screen off" },
+                { value: "dim_clock", label: t("settings.display.asleep.dim_clock") },
+                { value: "screen_off", label: t("settings.display.asleep.screen_off") },
               ]}
             />
           </Row>
           <Switch
-            label="Dim in the evening"
-            hint="From this time until it sleeps, the screen is less bright."
+            label={t("settings.display.dim.label")}
+            hint={t("settings.display.dim.hint")}
             checked={settings.dim_from !== null}
             onChange={(value) => {
               update.mutate({ dim_from: value ? dimFrom : null });
@@ -310,7 +311,7 @@ function SleepGroup() {
               >
                 <div className="flex">
                   <TextField
-                    label="Dim from"
+                    label={t("settings.display.dim.from.label")}
                     type="time"
                     layout="numeric"
                     value={dimFrom}
@@ -322,9 +323,9 @@ function SleepGroup() {
                 </div>
                 <SavedMark show={dimSaved.saved} />
               </form>
-              <Row label="Brightness">
+              <Row label={t("settings.display.brightness.label")}>
                 <Segmented
-                  label="Brightness"
+                  label={t("settings.display.brightness.label")}
                   value={String(settings.dim_level) as "60" | "40" | "20"}
                   onChange={(value) => {
                     update.mutate({ dim_level: Number(value) as 20 | 40 | 60 });

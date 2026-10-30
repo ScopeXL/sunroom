@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { shortDate, zonedParts } from "../../lib/dates";
+import { tRich, useT } from "../../lib/lang";
 import { Button } from "../../ui/Button";
 import { useShell } from "../../ui/shell";
 import { useEventChanges, useRemovedEvents } from "../calendar/data";
@@ -13,6 +14,7 @@ import { Group, Text } from "./parts";
  * a toast's Undo is gone before a parent sees what a kid did.
  */
 export function RecentlyRemoved() {
+  const t = useT();
   const { data: removed = [] } = useRemovedEvents();
   const { restore } = useEventChanges();
   const groups = useRemovedGroups();
@@ -23,7 +25,7 @@ export function RecentlyRemoved() {
     <Group>
       {nothing ? (
         <div className={display ? "py-5" : "py-4"}>
-          <Text soft>Things removed in the last 7 days show here.</Text>
+          <Text soft>{t("settings.removed.empty")}</Text>
         </div>
       ) : null}
       {removed.map((event) => {
@@ -68,6 +70,7 @@ export function RemovedRow({
   pending: boolean;
   onPutBack: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const when = removedAt ? zonedParts(new Date(removedAt)).day : null;
   return (
@@ -81,12 +84,17 @@ export function RemovedRow({
         <span
           className={display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft"}
         >
-          {[detail, when ? `removed ${shortDate(when)}` : null].filter(Boolean).join(" · ")}
+          {[detail, when ? t("settings.removed.when", { day: shortDate(when) }) : null]
+            .filter(Boolean)
+            .join(" · ")}
         </span>
       </div>
       <Button variant="secondary" pending={pending} onClick={onPutBack}>
-        Put Back
-        <span className="sr-only"> {title}</span>
+        {/* "Put Back", and for a screen reader what goes back: "Put Back Groceries". */}
+        {tRich("app.action.put_back_named", {
+          hidden: (words) => <span className="sr-only">{words}</span>,
+          name: title,
+        })}
       </Button>
     </div>
   );

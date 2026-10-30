@@ -9,7 +9,7 @@ import { api, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import type { components } from "../../api/schema";
 import { formatTime, shortDate, zonedParts } from "../../lib/dates";
-import { useT } from "../../lib/lang";
+import { t, useT, type Key } from "../../lib/lang";
 import { SETTINGS_PAGES } from "../settings/pages";
 import { usePluginModulesState } from "../usePluginModules";
 
@@ -25,30 +25,28 @@ export function useProblems() {
   });
 }
 
-/** "1 thing needs attention", "2 things need attention". */
-export function attentionWords(count: number): string {
-  return count === 1 ? "1 thing needs attention" : `${String(count)} things need attention`;
-}
-
 /** "Since 9:10 AM" today, "Since Tue, Oct 6, 9:10 AM" before; in the household's zone. */
 export function sinceWords(since: string, now: Date): string {
   const moment = new Date(since);
   const day = zonedParts(moment).day;
   const today = zonedParts(now).day;
   return day === today
-    ? `Since ${formatTime(moment)}`
-    : `Since ${shortDate(day)}, ${formatTime(moment)}`;
+    ? t("problems.since.today", { time: formatTime(moment) })
+    : t("problems.since.earlier", { day: shortDate(day), time: formatTime(moment) });
 }
 
 /** The Settings pages' titles by key, core's and the features' own: "Open Calendars & Accounts". */
 export function usePageTitles(): (page: string | null | undefined) => string | null {
   const t = useT();
   const { modules } = usePluginModulesState();
-  const titles = new Map<string, string>([
-    ...SETTINGS_PAGES.map(({ key, title }): [string, string] => [key, title]),
+  const titles = new Map<string, Key>([
+    ...SETTINGS_PAGES.map(({ key, title }): [string, Key] => [key, title]),
     ...modules.flatMap((module) =>
-      (module.settingsPages ?? []).map(({ key, title }): [string, string] => [key, t(title)]),
+      (module.settingsPages ?? []).map(({ key, title }): [string, Key] => [key, title]),
     ),
   ]);
-  return (page) => (page ? (titles.get(page) ?? null) : null);
+  return (page) => {
+    const title = page ? titles.get(page) : undefined;
+    return title ? t(title) : null;
+  };
 }

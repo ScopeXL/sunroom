@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import type { components } from "../../api/schema";
+import { useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { showToast } from "../../lib/toast";
 import { Button } from "../../ui/Button";
@@ -25,6 +26,7 @@ export function RenameScreenSheet({
   device: Device | null;
   onClose: () => void;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [label, setLabel] = useState(device?.label ?? "");
   // A new screen opened in the sheet starts from its own name.
@@ -47,12 +49,12 @@ export function RenameScreenSheet({
     onSuccess: async (renamed) => {
       await queryClient.invalidateQueries({ queryKey: qk.devices() });
       if (renamed.is_current) await queryClient.invalidateQueries({ queryKey: qk.session() });
-      showToast(`Renamed to ${renamed.label}`);
+      showToast(t("settings.devices.rename.toast", { name: renamed.label }));
       onClose();
     },
   });
   return (
-    <Sheet open={device !== null} title="Rename Screen" onClose={onClose}>
+    <Sheet open={device !== null} title={t("settings.devices.rename.title")} onClose={onClose}>
       <form
         className="flex flex-col items-start gap-6 pb-2"
         onSubmit={(event) => {
@@ -67,7 +69,7 @@ export function RenameScreenSheet({
           </p>
         ) : null}
         <Button type="submit" pending={save.isPending} disabled={!name || name === device?.label}>
-          Save Changes
+          {t("app.action.save_changes")}
         </Button>
       </form>
     </Sheet>

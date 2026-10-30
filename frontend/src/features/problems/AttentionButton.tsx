@@ -1,6 +1,7 @@
 import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
+import { useT } from "../../lib/lang";
 import { Button } from "../../ui/Button";
 import { AttentionSheet } from "./AttentionSheet";
 import { useProblems } from "./data";
@@ -11,16 +12,16 @@ import { useProblems } from "./data";
  * what's wrong.
  */
 export function AttentionButton() {
+  const t = useT();
   const { data: problems = [] } = useProblems();
   const [open, setOpen] = useState(false);
   if (!problems.length) return null;
-  const things = problems.length === 1 ? "1 thing" : `${String(problems.length)} things`;
   return (
     <>
       <Button
         variant="quiet"
         icon
-        aria-label={`Needs attention: ${things}`}
+        aria-label={t("problems.button.aria", { n: problems.length })}
         onClick={() => {
           setOpen(true);
         }}

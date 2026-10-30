@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { ApiError, api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { copyText } from "../../lib/copy";
+import { useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
 import { showToast } from "../../lib/toast";
@@ -26,8 +27,6 @@ import {
   type FeedbackKind,
 } from "./support";
 
-const DISCORD_NOTE = "Join the Sunroom Discord for help, ideas and what's new.";
-
 /** "patreon.com/sunroom" for "https://www.patreon.com/sunroom": what a row shows of a link. */
 function shortLink(url: string): string {
   return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
@@ -40,6 +39,7 @@ function shortLink(url: string): string {
  * QR code where a device has a link, and no Copy (there is nowhere to paste on a screen).
  */
 export function SupportPage() {
+  const t = useT();
   const display = useShell() === "display";
   const { data: session } = useQuery({ queryKey: qk.session(), queryFn: fetchSession });
   const kiosk = session?.device_kind === "kiosk";
@@ -52,22 +52,26 @@ export function SupportPage() {
   const direct = diagnostics?.feedback ?? true;
   const rows = [
     kiosk ? (
-      <Row key="discord" label="Discord" hint={DISCORD_NOTE}>
+      <Row
+        key="discord"
+        label={t("settings.support.discord.label")}
+        hint={t("settings.support.discord.note")}
+      >
         <DiscordMark className="size-8 shrink-0 text-ink-soft" />
         <Text soft>{shortLink(DISCORD_URL)}</Text>
         <QrCode
           value={DISCORD_URL}
-          label="A code that opens the Sunroom Discord"
+          label={t("settings.support.discord.qr.aria")}
           className="size-40"
         />
       </Row>
     ) : (
       <ListRowAnchor
         key="discord"
-        label="Open Discord"
+        label={t("settings.support.discord.open.aria")}
         leading={<DiscordMark className={`shrink-0 ${display ? "size-8" : "size-6"}`} />}
-        title="Discord"
-        subtitle={DISCORD_NOTE}
+        title={t("settings.support.discord.label")}
+        subtitle={t("settings.support.discord.note")}
         href={DISCORD_URL}
         target="_blank"
         rel="noreferrer noopener"
@@ -75,15 +79,19 @@ export function SupportPage() {
     ),
     PATREON_URL ? (
       kiosk ? (
-        <Row key="patreon" label="Patreon">
+        <Row key="patreon" label={t("settings.support.patreon.label")}>
           <Text soft>{shortLink(PATREON_URL)}</Text>
-          <QrCode value={PATREON_URL} label="A code that opens Patreon" className="size-40" />
+          <QrCode
+            value={PATREON_URL}
+            label={t("settings.support.patreon.qr.aria")}
+            className="size-40"
+          />
         </Row>
       ) : (
         <ListRowAnchor
           key="patreon"
-          label="Open Patreon"
-          title="Patreon"
+          label={t("settings.support.patreon.open.aria")}
+          title={t("settings.support.patreon.label")}
           subtitle={shortLink(PATREON_URL)}
           href={PATREON_URL}
           target="_blank"
@@ -115,20 +123,20 @@ export function SupportPage() {
                   void copyText(entry.address).then((copied) => {
                     showToast(
                       copied
-                        ? `Copied the ${entry.name} address`
-                        : "Couldn't copy it here. Hold the address to select it.",
+                        ? t("settings.support.address.copied.toast", { name: entry.name })
+                        : t("settings.support.address.not_copied.toast"),
                     );
                   });
                 }}
               >
-                Copy
+                {t("app.action.copy")}
               </Button>
             </div>
           )}
         </div>
         <QrCode
           value={entry.address}
-          label={`A code of the ${entry.name} address`}
+          label={t("settings.support.address.qr.aria", { name: entry.name })}
           className="size-40 shrink-0"
         />
       </div>
@@ -136,19 +144,15 @@ export function SupportPage() {
   ].filter(Boolean);
   return (
     <>
-      <Group
-        title="Support Sunroom"
-        mark=" 💛"
-        note="Sunroom is free and open source, and not for profit: no ads, no accounts, no subscription. If it has earned a place on your wall, a donation helps it keep growing."
-      >
+      <Group title={t("settings.support.title")} mark=" 💛" note={t("settings.support.note")}>
         {rows.length ? rows : null}
       </Group>
       <Group
-        title="Feedback"
+        title={t("settings.support.feedback.title")}
         note={
           direct
-            ? "Found a problem, or have an idea? It goes straight to the people who make Sunroom. No account needed, and nothing from your calendar is sent."
-            : "Found a problem, or have an idea? Feedback goes to Sunroom's page on GitHub, where everyone can see it. It needs a GitHub account; nothing from your calendar is sent."
+            ? t("settings.support.feedback.direct.note")
+            : t("settings.support.feedback.github.note")
         }
       >
         <div className={display ? "py-5" : "py-4"}>
@@ -158,7 +162,7 @@ export function SupportPage() {
               setFeedback(true);
             }}
           >
-            Send Feedback
+            {t("settings.support.feedback.send.action")}
           </Button>
         </div>
       </Group>
@@ -167,7 +171,7 @@ export function SupportPage() {
         kiosk={kiosk}
         direct={direct}
         version={diagnostics?.version ?? __APP_VERSION__}
-        install={installWords(diagnostics?.install_kind)}
+        installKind={diagnostics?.install_kind ?? null}
         onClose={() => {
           setFeedback(false);
         }}
@@ -190,16 +194,19 @@ function FeedbackSheet({
   kiosk,
   direct,
   version,
-  install,
+  installKind,
   onClose,
 }: {
   open: boolean;
   kiosk: boolean;
   direct: boolean;
   version: string;
-  install: string | null;
+  /** How the server is installed ("docker", "pi"…): the link says it in the project's words,
+   * the sheet in the family's. */
+  installKind: string | null;
   onClose: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const labelClass = useFieldLabel();
   const wordsId = useId();
@@ -220,7 +227,7 @@ function FeedbackSheet({
       unwrap(await api.POST("/api/feedback", { body: { kind, title, body, contact } }));
     },
     onSuccess: () => {
-      showToast("Feedback sent. Thank you!");
+      showToast(t("settings.support.feedback.sent.toast"));
       onClose();
       clear();
     },
@@ -233,20 +240,28 @@ function FeedbackSheet({
     clear();
     send.reset();
   };
-  const url = feedbackUrl({ kind, title, body: kiosk ? "" : body, version, install });
+  const url = feedbackUrl({
+    kind,
+    title,
+    body: kiosk ? "" : body,
+    version,
+    install: installWords(installKind),
+  });
   const ready = title.trim().length > 0;
   const soft = display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft";
+  // On the wall, the words come from the in-app keyboard (data-osk), never the system's.
+  const keyboard = display ? { inputMode: "none" as const, "data-osk": "text" } : {};
   const words = (
     <div className="flex flex-col gap-2">
       <label htmlFor={wordsId} className={labelClass}>
-        What happened, or what would help
+        {t("settings.support.feedback.words.label")}
       </label>
       <textarea
         id={wordsId}
         value={body}
         maxLength={1500}
         rows={5}
-        {...(display ? { inputMode: "none" as const, "data-osk": "text" } : {})}
+        {...keyboard}
         onChange={(event) => {
           setBody(event.target.value);
         }}
@@ -268,7 +283,7 @@ function FeedbackSheet({
             send.mutate();
           }}
         >
-          Send Feedback
+          {t("settings.support.feedback.send.action")}
         </Button>
         {send.isError ? (
           <p role="alert" className={`${soft} font-semibold text-alert`}>
@@ -276,14 +291,14 @@ function FeedbackSheet({
           </p>
         ) : null}
         <Button block variant="secondary" onClick={close}>
-          Cancel
+          {t("app.action.cancel")}
         </Button>
       </div>
     );
   } else if (kiosk) {
     footer = (
       <Button block variant="secondary" onClick={close}>
-        Done
+        {t("app.action.done")}
       </Button>
     );
   } else {
@@ -299,28 +314,33 @@ function FeedbackSheet({
             if (ready) close();
           }}
         >
-          Open GitHub
+          {t("settings.support.feedback.github.action")}
         </ButtonLink>
         <Button block variant="secondary" onClick={close}>
-          Cancel
+          {t("app.action.cancel")}
         </Button>
       </div>
     );
   }
   return (
-    <Sheet open={open} title="Send Feedback" onClose={close} footer={footer}>
+    <Sheet
+      open={open}
+      title={t("settings.support.feedback.send.title")}
+      onClose={close}
+      footer={footer}
+    >
       <div className="flex flex-col gap-5">
         <Segmented
-          label="What is it?"
+          label={t("settings.support.feedback.kind.label")}
           value={kind}
           onChange={setKind}
           options={[
-            { value: "problem", label: "Something's wrong" },
-            { value: "idea", label: "An idea" },
+            { value: "problem", label: t("settings.support.feedback.kind.problem") },
+            { value: "idea", label: t("settings.support.feedback.kind.idea") },
           ]}
         />
         <TextField
-          label="In a few words"
+          label={t("settings.support.feedback.summary.label")}
           value={title}
           maxLength={80}
           autoComplete="off"
@@ -331,8 +351,8 @@ function FeedbackSheet({
         {github && kiosk ? null : words}
         {github ? null : (
           <TextField
-            label="How to reach you (optional)"
-            hint="An email or a Discord name, if you'd like an answer."
+            label={t("settings.support.feedback.contact.label")}
+            hint={t("settings.support.feedback.contact.hint")}
             value={contact}
             maxLength={120}
             autoComplete="off"
@@ -342,13 +362,18 @@ function FeedbackSheet({
           />
         )}
         <p className={soft}>
-          {`Sunroom ${version}${install ? ` on ${install}` : ""} is added for you. Nothing else is.`}
+          {/* A kind the message doesn't know (or none) says no place: its `other`. */}
+          {t("settings.support.feedback.added", { version, install: installKind ?? "none" })}
         </p>
         {github && kiosk && ready ? (
           <div className="flex flex-col items-center gap-4 text-center">
-            <QrCode value={url} label="A code that opens GitHub's new issue" className="size-72" />
+            <QrCode
+              value={url}
+              label={t("settings.support.feedback.github.qr.aria")}
+              className="size-72"
+            />
             <p className={display ? "text-d-body" : "text-body"}>
-              Scan this with your phone to finish on GitHub.
+              {t("settings.support.feedback.github.scan")}
             </p>
           </div>
         ) : null}

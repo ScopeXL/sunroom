@@ -7,11 +7,13 @@ import { useId, useState } from "react";
 
 import { errorMessage } from "../../api/client";
 import { normalizeCode } from "../../lib/joinCode";
+import { useT } from "../../lib/lang";
 import { Button } from "../../ui/Button";
 import { Sheet } from "../../ui/Sheet";
 import { NoCodeYet, PairCodeField, usePairDisplay } from "../phone/PairCode";
 
 export function PairDisplaySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const form = useId();
   const [code, setCode] = useState("");
   const pair = usePairDisplay();
@@ -25,11 +27,11 @@ export function PairDisplaySheet({ open, onClose }: { open: boolean; onClose: ()
   return (
     <Sheet
       open={open}
-      title="Pair a Display"
+      title={t("settings.devices.pair.title")}
       onClose={close}
       footer={
         <Button type="submit" form={form} block pending={pair.isPending} disabled={!valid}>
-          Pair
+          {t("settings.devices.pair.action")}
         </Button>
       }
     >

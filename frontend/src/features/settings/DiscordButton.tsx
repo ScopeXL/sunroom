@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { useT } from "../../lib/lang";
 import { Button, ButtonLink } from "../../ui/Button";
 import { DiscordMark } from "../../ui/DiscordMark";
 import { QrCode } from "../../ui/QrCode";
@@ -13,6 +14,7 @@ import { DISCORD_URL } from "./support";
  * screen opens no other website, so it shows a code to scan instead.
  */
 export function DiscordButton({ kiosk }: { kiosk: boolean }) {
+  const t = useT();
   const display = useShell() === "display";
   const [open, setOpen] = useState(false);
   const mark = <DiscordMark className={display ? "size-8" : "size-6"} />;
@@ -24,7 +26,7 @@ export function DiscordButton({ kiosk }: { kiosk: boolean }) {
         href={DISCORD_URL}
         target="_blank"
         rel="noreferrer noopener"
-        aria-label="Sunroom's Discord"
+        aria-label={t("settings.support.discord.aria")}
       >
         {mark}
       </ButtonLink>
@@ -38,7 +40,7 @@ export function DiscordButton({ kiosk }: { kiosk: boolean }) {
       <Button
         variant="secondary"
         icon
-        aria-label="Sunroom's Discord"
+        aria-label={t("settings.support.discord.aria")}
         onClick={() => {
           setOpen(true);
         }}
@@ -47,25 +49,26 @@ export function DiscordButton({ kiosk }: { kiosk: boolean }) {
       </Button>
       <Sheet
         open={open}
-        title="Join the Sunroom Discord"
+        title={t("settings.support.discord.title")}
         onClose={close}
         footer={
           <Button block variant="secondary" onClick={close}>
-            Done
+            {t("app.action.done")}
           </Button>
         }
       >
         <div className="flex flex-col items-center gap-4 text-center">
           <p className={display ? "text-d-body" : "text-body"}>
-            Help, ideas and what's new, from the people who make Sunroom and the families who use
-            it.
+            {t("settings.support.discord.lead")}
           </p>
           <QrCode
             value={DISCORD_URL}
-            label="A code that opens the Sunroom Discord"
+            label={t("settings.support.discord.qr.aria")}
             className="size-72"
           />
-          <p className={display ? "text-d-body" : "text-body"}>Scan this with your phone.</p>
+          <p className={display ? "text-d-body" : "text-body"}>
+            {t("settings.support.discord.scan")}
+          </p>
         </div>
       </Sheet>
     </>

@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, errorMessage, unwrap } from "../../api/client";
+import { useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { reloadFresh } from "../../lib/update";
 import { Button } from "../../ui/Button";
@@ -26,6 +27,7 @@ export function EraseSheet({
   /** What to do once everything is gone (tests stand in for the reload). */
   reload?: () => Promise<void>;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const [step, setStep] = useState<"copy" | "password">("copy");
   const [downloading, setDownloading] = useState(false);
@@ -48,15 +50,11 @@ export function EraseSheet({
   const body = display ? "text-d-body" : "text-body";
   const soft = display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft";
   return (
-    <Sheet open={open} title="Erase Everything?" step={step} onClose={onClose}>
+    <Sheet open={open} title={t("settings.backup.erase.title")} step={step} onClose={onClose}>
       {step === "copy" ? (
         <div className="flex flex-col gap-4">
-          <p className={`${body} font-semibold`}>Keep a copy first?</p>
-          <p className={body}>
-            This removes every person, calendar, event, list, task, meal, countdown, photo and
-            setting, and signs out every device and screen. A copy of today's database stays on the
-            server in backups/pre-erase, but photos are deleted for good.
-          </p>
+          <p className={`${body} font-semibold`}>{t("settings.backup.erase.copy.lead")}</p>
+          <p className={body}>{t("settings.backup.erase.copy.body")}</p>
           <div className="flex flex-wrap gap-3">
             {/* A plain link: the browser saves the file itself, however big it is. */}
             <a
@@ -71,7 +69,7 @@ export function EraseSheet({
                   : "min-h-11 rounded-button px-5 text-body"
               }`}
             >
-              Download Everything
+              {t("settings.backup.erase.download.action")}
             </a>
             <Button
               variant="secondary"
@@ -79,12 +77,12 @@ export function EraseSheet({
                 setStep("password");
               }}
             >
-              I Have a Copy
+              {t("settings.backup.erase.have_copy.action")}
             </Button>
           </div>
           {downloading ? (
             <p role="status" className={soft}>
-              The download has started. Continue once it's saved.
+              {t("settings.backup.erase.started")}
             </p>
           ) : null}
         </div>
@@ -96,11 +94,9 @@ export function EraseSheet({
             if (password && !erase.isPending) erase.mutate();
           }}
         >
-          <p className={body}>
-            Type the household password to erase everything and start Sunroom over.
-          </p>
+          <p className={body}>{t("settings.backup.erase.password.lead")}</p>
           <TextField
-            label="Household password"
+            label={t("settings.backup.password.label")}
             type="password"
             layout="password"
             autoCapitalize="none"
@@ -118,10 +114,10 @@ export function EraseSheet({
               pending={erase.isPending || erase.isSuccess}
               disabled={!password}
             >
-              Erase Everything
+              {t("settings.backup.erase.action")}
             </Button>
             <Button variant="secondary" onClick={onClose}>
-              Keep Everything
+              {t("settings.backup.keep_everything.action")}
             </Button>
           </div>
         </form>

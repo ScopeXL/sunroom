@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { useSettings, useUpdateSettings, type SettingsChange } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
 import { showToast } from "../../lib/toast";
@@ -33,6 +34,7 @@ import { RestoreSheet } from "./RestoreSheet";
  * a child can reach) sees the backups and the copies, and says nothing about the rest.
  */
 export function BackupPage() {
+  const t = useT();
   const display = useShell() === "display";
   const queryClient = useQueryClient();
   const { data: session } = useQuery({ queryKey: qk.session(), queryFn: fetchSession });
@@ -62,7 +64,7 @@ export function BackupPage() {
     mutationFn: () => asParent(async () => unwrap(await api.POST("/api/admin/backups/run"))),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: qk.backups() });
-      showToast("Backed up");
+      showToast(t("settings.backup.run.toast"));
     },
   });
   const remove = useMutation({
@@ -74,7 +76,7 @@ export function BackupPage() {
       }),
     onSuccess: async (_done, copy) => {
       setAsking(false);
-      showToast(`Removed the copy from ${copyDay(copy.made_at)}`);
+      showToast(t("settings.backup.copy.removed.toast", { day: copyDay(copy.made_at) }));
       await queryClient.invalidateQueries({ queryKey: qk.backups() });
     },
   });
@@ -110,12 +112,8 @@ export function BackupPage() {
   return (
     <>
       <Group
-        title="Backups"
-        note={
-          own
-            ? "A checked copy of the data is kept on the server. Photos are files beside it: only Data & Photos has them."
-            : "A checked copy of the data is kept on the server."
-        }
+        title={t("settings.backup.backups.title")}
+        note={own ? t("settings.backup.backups.own.note") : t("settings.backup.backups.note")}
         action={
           <Button
             variant="secondary"
@@ -124,31 +122,35 @@ export function BackupPage() {
               run.mutate();
             }}
           >
-            Back Up Now
+            {t("settings.backup.run.action")}
           </Button>
         }
       >
         <Row
-          label="Last backup"
-          hint={status?.last_error ? `The last try failed: ${status.last_error}` : undefined}
+          label={t("settings.backup.last.label")}
+          hint={
+            status?.last_error
+              ? t("settings.backup.last.failed.hint", { why: status.last_error })
+              : undefined
+          }
         >
           <Text>
             {status?.last_success_at
               ? copyWhen(status.last_success_at)
               : nightly
-                ? "Not yet. The first runs tonight."
-                : "Not yet."}
+                ? t("settings.backup.last.tonight")
+                : t("settings.backup.last.none")}
           </Text>
         </Row>
         {status?.stale ? (
           <div className="py-4">
-            <Text>The newest backup is over a week old. Try Back Up Now, and check the log.</Text>
+            <Text>{t("settings.backup.stale")}</Text>
           </div>
         ) : null}
         {settings ? (
           <Switch
-            label="Nightly backups"
-            hint="A copy every night at 3:30."
+            label={t("settings.backup.nightly.label")}
+            hint={t("settings.backup.nightly.hint")}
             checked={settings.backups_enabled}
             onChange={(backups_enabled) => {
               change({ backups_enabled });
@@ -157,9 +159,9 @@ export function BackupPage() {
         ) : null}
         {settings?.backups_enabled ? (
           <>
-            <Row label="Daily copies to keep">
+            <Row label={t("settings.backup.keep_daily.label")}>
               <Stepper
-                label="Daily copies to keep"
+                label={t("settings.backup.keep_daily.label")}
                 value={settings.backups_keep_daily}
                 min={1}
                 max={30}
@@ -169,9 +171,12 @@ export function BackupPage() {
                 }}
               />
             </Row>
-            <Row label="Weekly copies to keep" hint="The newest copy of each earlier week.">
+            <Row
+              label={t("settings.backup.keep_weekly.label")}
+              hint={t("settings.backup.keep_weekly.hint")}
+            >
               <Stepper
-                label="Weekly copies to keep"
+                label={t("settings.backup.keep_weekly.label")}
                 value={settings.backups_keep_weekly}
                 min={0}
                 max={12}
@@ -185,8 +190,10 @@ export function BackupPage() {
         ) : null}
       </Group>
       <Group
-        title="Copies on the Server"
-        note={own && busy && status?.files.length ? "A backup is being written." : undefined}
+        title={t("settings.backup.copies.title")}
+        note={
+          own && busy && status?.files.length ? t("settings.backup.copies.busy.note") : undefined
+        }
       >
         {!status ? null : status.files.length ? (
           status.files.map((copy) => (
@@ -197,21 +204,25 @@ export function BackupPage() {
                     variant="secondary"
                     href={`/api/admin/backups/${encodeURIComponent(copy.name)}`}
                     download
-                    aria-label={`Download the copy from ${copyWhen(copy.made_at)}`}
+                    aria-label={t("settings.backup.copy.download.aria", {
+                      when: copyWhen(copy.made_at),
+                    })}
                   >
-                    Download
+                    {t("settings.backup.copy.download.action")}
                   </ButtonLink>
                   <Button
                     variant="quiet-danger"
                     disabled={busy}
-                    aria-label={`Remove the copy from ${copyWhen(copy.made_at)}`}
+                    aria-label={t("settings.backup.copy.remove.aria", {
+                      when: copyWhen(copy.made_at),
+                    })}
                     onClick={() => {
                       remove.reset();
                       setRemoving(copy);
                       setAsking(true);
                     }}
                   >
-                    Remove
+                    {t("app.action.remove")}
                   </Button>
                 </>
               ) : null}
@@ -221,14 +232,17 @@ export function BackupPage() {
           <div className={block}>
             <Text soft>
               {nightly
-                ? "No copies yet. The first nightly copy comes tonight."
-                : "No copies yet. Back Up Now makes one."}
+                ? t("settings.backup.copies.tonight.empty")
+                : t("settings.backup.copies.empty")}
             </Text>
           </div>
         )}
       </Group>
       {own ? (
-        <Group title="Download" note="Save a copy on this device.">
+        <Group
+          title={t("settings.backup.download.title")}
+          note={t("settings.backup.download.note")}
+        >
           <div className={block}>
             <Button
               variant="secondary"
@@ -236,20 +250,19 @@ export function BackupPage() {
                 setChoosing(true);
               }}
             >
-              Download…
+              {t("settings.backup.download.action")}
             </Button>
           </div>
         </Group>
       ) : null}
       {own ? (
-        <Group
-          title="Restore from a File"
-          note="Put back a copy you downloaded: a .db, or a zip with photos. Everything on the server is replaced, every device signs in again, and wall screens show a pair code."
-        >
+        <Group title={t("settings.backup.restore.title")} note={t("settings.backup.restore.note")}>
           {restoreState?.last && !restoreState.last.ok ? (
             <div className={block}>
               <p role="alert" className={`${body} font-semibold text-alert`}>
-                {`The last restore didn't go through: ${restoreState.last.problem ?? "Sunroom didn't say why."}`}
+                {t("settings.backup.restore.failed.error", {
+                  why: restoreState.last.problem ?? t("settings.backup.restore.no_reason"),
+                })}
               </p>
             </div>
           ) : null}
@@ -258,16 +271,13 @@ export function BackupPage() {
               accept=".db,.zip,application/zip,application/vnd.sqlite3"
               onFile={setRestoring}
             >
-              Choose a File…
+              {t("settings.backup.restore.choose.action")}
             </FileButton>
           </div>
         </Group>
       ) : null}
       {own ? (
-        <Group
-          title="Take Your Data with You"
-          note="One file anyone can open and read: everything you added (people, calendars and events, lists, tasks, meals, countdowns and settings) as plain text (JSON), for your own records or for moving on. Sunroom can't restore from it; Download is for that."
-        >
+        <Group title={t("settings.backup.export.title")} note={t("settings.backup.export.note")}>
           <div className={block}>
             <Button
               variant="secondary"
@@ -276,15 +286,15 @@ export function BackupPage() {
                 void exportAll();
               }}
             >
-              Export
+              {t("settings.backup.export.action")}
             </Button>
           </div>
         </Group>
       ) : null}
       {own ? (
         <Group
-          title="Start Over"
-          note="Erase everything Sunroom knows and set it up again from the start."
+          title={t("settings.backup.start_over.title")}
+          note={t("settings.backup.start_over.note")}
         >
           <div className={block}>
             <Button
@@ -293,7 +303,7 @@ export function BackupPage() {
                 setErasing(true);
               }}
             >
-              Erase Everything…
+              {t("settings.backup.erase.open.action")}
             </Button>
           </div>
         </Group>
@@ -313,14 +323,16 @@ export function BackupPage() {
       {/* Asks once, because no Undo can bring a copy back. */}
       <Sheet
         open={asking}
-        title="Remove This Copy?"
+        title={t("settings.backup.copy.remove.title")}
         onClose={() => {
           setAsking(false);
         }}
       >
         {removing ? (
           <div className="flex flex-col gap-4 pb-2">
-            <p className={body}>{`The copy from ${copyWhen(removing.made_at)} goes for good.`}</p>
+            <p className={body}>
+              {t("settings.backup.copy.remove.body", { when: copyWhen(removing.made_at) })}
+            </p>
             <p className={soft}>{copyDetail(removing)}</p>
             <div className="flex flex-wrap gap-3">
               <Button
@@ -330,7 +342,7 @@ export function BackupPage() {
                   remove.mutate(removing);
                 }}
               >
-                Remove
+                {t("app.action.remove")}
               </Button>
               <Button
                 variant="secondary"
@@ -338,7 +350,7 @@ export function BackupPage() {
                   setAsking(false);
                 }}
               >
-                Keep It
+                {t("settings.backup.copy.keep.action")}
               </Button>
             </div>
             {remove.isError ? (

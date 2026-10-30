@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { api, ApiError, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
+import { t, useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { announceRestart, askingHere } from "../../lib/restart";
 import { uploadBackup, type RestoreSummary } from "../../lib/restoreUpload";
@@ -17,30 +18,32 @@ export const COME_BACK_WITHIN_MS = 180_000;
 
 type Step = "sending" | "refused" | "summary" | "password" | "restarting";
 
-function count(n: number, one: string, many: string): string {
-  return `${String(n)} ${n === 1 ? one : many}`;
-}
-
 /** "sunroom-2026-10-07.zip, made Wed, Oct 7, 3:00 PM by Sunroom 0.11.0." */
 export function madeWords(summary: RestoreSummary): string {
-  const by = summary.app_version ? ` by Sunroom ${summary.app_version}` : "";
-  if (summary.created_at) return `${summary.file_name}, made ${copyWhen(summary.created_at)}${by}.`;
-  return summary.app_version
-    ? `${summary.file_name}, from Sunroom ${summary.app_version}.`
-    : `${summary.file_name}.`;
+  const file = summary.file_name;
+  const version = summary.app_version;
+  if (summary.created_at) {
+    const when = copyWhen(summary.created_at);
+    return version
+      ? t("settings.backup.restore.made_by", { file, when, version })
+      : t("settings.backup.restore.made", { file, when });
+  }
+  return version
+    ? t("settings.backup.restore.from", { file, version })
+    : t("settings.backup.restore.file", { file });
 }
 
 /** "It holds 4 people, 12 events, 3 lists and 6 photos." (a .db holds no photos) */
 export function holdsWords(summary: RestoreSummary): string {
   const rows = summary.row_counts;
-  const parts = [
-    count(rows.members ?? 0, "person", "people"),
-    count(rows.events ?? 0, "event", "events"),
-    count(rows.lists ?? 0, "list", "lists"),
-    ...(summary.kind === "zip" ? [count(summary.photo_files, "photo", "photos")] : []),
-  ];
-  const last = parts.pop() ?? "";
-  return `It holds ${parts.join(", ")} and ${last}.`;
+  const counts = {
+    people: rows.members ?? 0,
+    events: rows.events ?? 0,
+    lists: rows.lists ?? 0,
+  };
+  return summary.kind === "zip"
+    ? t("settings.backup.restore.holds_photos", { ...counts, photos: summary.photo_files })
+    : t("settings.backup.restore.holds", counts);
 }
 
 /**
@@ -59,6 +62,7 @@ export function RestoreSheet({
   onClose: () => void;
   upload?: typeof uploadBackup;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("sending");
@@ -149,12 +153,17 @@ export function RestoreSheet({
   const soft = display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft";
   const percent = Math.round(progress * 100);
   return (
-    <Sheet open={file !== null} title="Restore from a File?" step={step} onClose={close}>
+    <Sheet
+      open={file !== null}
+      title={t("settings.backup.restore.sheet.title")}
+      step={step}
+      onClose={close}
+    >
       {step === "sending" ? (
         <div className="flex flex-col gap-4 pb-2">
           <div
             role="progressbar"
-            aria-label="Sending"
+            aria-label={t("settings.backup.restore.sending.aria")}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={percent}
@@ -162,7 +171,9 @@ export function RestoreSheet({
           >
             <div className="h-full bg-ink" style={{ width: `${String(percent)}%` }} />
           </div>
-          <p role="status" className={body}>{`Sending… ${String(percent)}%`}</p>
+          <p role="status" className={body}>
+            {t("settings.backup.restore.sending", { percent })}
+          </p>
         </div>
       ) : null}
       {step === "refused" ? (
@@ -172,7 +183,7 @@ export function RestoreSheet({
           </p>
           <div>
             <Button variant="secondary" onClick={close}>
-              Close
+              {t("app.action.close")}
             </Button>
           </div>
         </div>
@@ -182,17 +193,12 @@ export function RestoreSheet({
           <p className={`${body} font-semibold`}>{madeWords(summary)}</p>
           <p className={body}>{holdsWords(summary)}</p>
           {summary.needs_upgrade ? (
-            <p className={body}>
-              This copy is older than this Sunroom: it will be brought up to date.
-            </p>
+            <p className={body}>{t("settings.backup.restore.upgrade")}</p>
           ) : null}
           {summary.kind === "db" ? (
-            <p className={body}>Photos on the server stay as they are.</p>
+            <p className={body}>{t("settings.backup.restore.photos_stay")}</p>
           ) : null}
-          <p className={soft}>
-            The data on the server now is kept as a copy before the restore; anything added since
-            this copy was made is only in that copy.
-          </p>
+          <p className={soft}>{t("settings.backup.restore.kept")}</p>
           <div className="flex flex-wrap gap-3">
             <Button
               variant="secondary"
@@ -200,10 +206,10 @@ export function RestoreSheet({
                 setStep("password");
               }}
             >
-              Restore This Copy…
+              {t("settings.backup.restore.copy.action")}
             </Button>
             <Button variant="secondary" onClick={close}>
-              Keep Everything
+              {t("settings.backup.keep_everything.action")}
             </Button>
           </div>
         </div>
@@ -216,9 +222,9 @@ export function RestoreSheet({
             if (password && !apply.isPending) apply.mutate();
           }}
         >
-          <p className={body}>Type the household password to restore it.</p>
+          <p className={body}>{t("settings.backup.restore.password.lead")}</p>
           <TextField
-            label="Household password"
+            label={t("settings.backup.password.label")}
             type="password"
             layout="password"
             autoCapitalize="none"
@@ -231,10 +237,10 @@ export function RestoreSheet({
           />
           <div className="flex flex-wrap gap-3">
             <Button type="submit" variant="danger" pending={apply.isPending} disabled={!password}>
-              Restore
+              {t("settings.backup.restore.action")}
             </Button>
             <Button variant="secondary" onClick={close}>
-              Keep Everything
+              {t("settings.backup.keep_everything.action")}
             </Button>
           </div>
         </form>
@@ -242,13 +248,11 @@ export function RestoreSheet({
       {step === "restarting" ? (
         <div className="flex flex-col gap-4 pb-2">
           <p role="status" className={body}>
-            Restoring… Sunroom restarts with the copy. Every device signs in again, and wall screens
-            show a pair code.
+            {t("settings.backup.restore.restarting")}
           </p>
           {slow ? (
             <p role="alert" className={`${body} font-semibold`}>
-              Sunroom hasn't come back yet. Reload this page in a minute; if it stays away, look at
-              the server's log.
+              {t("settings.backup.restore.slow")}
             </p>
           ) : null}
         </div>

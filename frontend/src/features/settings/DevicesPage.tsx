@@ -5,6 +5,7 @@ import { useState } from "react";
 import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import type { components } from "../../api/schema";
+import { t, useT } from "../../lib/lang";
 import { signedOutHere } from "../../lib/live";
 import { asParent } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
@@ -19,11 +20,10 @@ import { Group, Text } from "./parts";
 
 type Device = components["schemas"]["DeviceOut"];
 
+/** "last used today", "last used yesterday", "last used 3 days ago". */
 function lastUsed(device: Device): string {
   const days = Math.floor((Date.now() - new Date(device.last_seen_at).getTime()) / 86_400_000);
-  if (days <= 0) return "last used today";
-  if (days === 1) return "last used yesterday";
-  return `last used ${String(days)} days ago`;
+  return t("settings.devices.last_used", { days: Math.max(0, days) });
 }
 
 /** What each device is (the server's `form`, from the label it signed in with: ADR 0032). */
@@ -33,15 +33,16 @@ const ICONS: Record<Device["form"], LucideIcon> = {
   tablet: Tablet,
   computer: Laptop,
 };
-const WORDS: Record<Exclude<Device["form"], "screen">, string> = {
-  phone: "Phone",
-  tablet: "Tablet",
-  computer: "Computer",
-};
 
 function signOutLabel(device: Device): string {
-  if (device.form === "screen") return device.is_current ? "Unpair This Screen" : "Unpair";
-  return device.is_current ? `Sign Out of This ${WORDS[device.form]}` : "Sign Out";
+  if (device.form === "screen") {
+    return device.is_current
+      ? t("settings.devices.unpair_this.action")
+      : t("settings.devices.unpair.action");
+  }
+  return device.is_current
+    ? t("settings.devices.sign_out_this.action", { form: device.form })
+    : t("settings.devices.sign_out.action");
 }
 
 /**
@@ -50,6 +51,7 @@ function signOutLabel(device: Device): string {
  * from here; the screen itself doesn't offer to.
  */
 export function DevicesPage() {
+  const t = useT();
   const display = useShell() === "display";
   const queryClient = useQueryClient();
   const { data: session } = useQuery({ queryKey: qk.session(), queryFn: fetchSession });
@@ -80,7 +82,9 @@ export function DevicesPage() {
       }
       await refresh();
       showToast(
-        device.kind === "kiosk" ? `Unpaired ${device.label}` : `Signed out ${device.label}`,
+        device.kind === "kiosk"
+          ? t("settings.devices.unpaired.toast", { name: device.label })
+          : t("settings.devices.signed_out.toast", { name: device.label }),
       );
     },
   });
@@ -110,10 +114,14 @@ export function DevicesPage() {
         className={`shrink-0 ${display ? "size-9" : "size-6"}`}
       />
     );
-    const title = `${device.label}${device.is_current ? " (this one)" : ""}`;
+    const title = device.is_current
+      ? t("settings.devices.this_one", { name: device.label })
+      : device.label;
+    // What's known about it, each a phrase of its own: "Used by Ana, a child’s device, last used
+    // today".
     const about = [
-      device.member_name ? `Used by ${device.member_name}` : null,
-      device.is_kid_device ? "a child’s device" : null,
+      device.member_name ? t("settings.devices.used_by", { name: device.member_name }) : null,
+      device.is_kid_device ? t("settings.devices.kid_device") : null,
       lastUsed(device),
     ]
       .filter(Boolean)
@@ -128,7 +136,7 @@ export function DevicesPage() {
           // Unpair stays beside it.
           <div className="min-w-0 flex-1 basis-56">
             <ListRow
-              label={`Rename ${device.label}`}
+              label={t("settings.devices.rename.aria", { name: device.label })}
               leading={icon}
               title={title}
               subtitle={about}
@@ -162,7 +170,9 @@ export function DevicesPage() {
               kidPhone.mutate({ device, kid: !device.is_kid_device });
             }}
           >
-            {device.is_kid_device ? "Not a Child’s Device" : "Child’s Device"}
+            {device.is_kid_device
+              ? t("settings.devices.not_kid.action")
+              : t("settings.devices.kid.action")}
           </Button>
         ) : null}
         <Button
@@ -179,13 +189,10 @@ export function DevicesPage() {
 
   return (
     <>
-      <Group title="Paired Screens">
+      <Group title={t("settings.devices.screens.title")}>
         {screens.length === 0 ? (
           <div className="py-4">
-            <Text soft>
-              No screen paired yet. Open Sunroom on the screen you want to pair and type its code
-              here.
-            </Text>
+            <Text soft>{t("settings.devices.screens.empty")}</Text>
           </div>
         ) : (
           screens.map(row)
@@ -198,14 +205,14 @@ export function DevicesPage() {
                 setPairing(true);
               }}
             >
-              Pair a Display
+              {t("settings.devices.pair.open.action")}
             </Button>
           </div>
         ) : null}
       </Group>
       <Group
-        title="Signed-in Devices"
-        note={session?.has_pin ? undefined : "Set a parent PIN in Family to mark a child’s device."}
+        title={t("settings.devices.signed_in.title")}
+        note={session?.has_pin ? undefined : t("settings.devices.signed_in.note")}
       >
         {phones.map(row)}
         <div className={display ? "py-5" : "py-4"}>
@@ -215,7 +222,7 @@ export function DevicesPage() {
               setAdding(true);
             }}
           >
-            Add a Device
+            {t("settings.devices.add.action")}
           </Button>
         </div>
       </Group>

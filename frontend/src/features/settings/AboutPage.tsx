@@ -4,6 +4,7 @@ import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { formatTime } from "../../lib/dates";
 import { useSettings, useUpdateSettings } from "../../lib/household";
+import { t, useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { Button } from "../../ui/Button";
 import { LiveStatusIcon } from "../../ui/LiveStatus";
@@ -12,62 +13,63 @@ import { Switch } from "../../ui/Switch";
 import { Group, Row, Text } from "./parts";
 
 function gigabytes(bytes: number): string {
-  return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  return t("settings.about.size.gb", { n: (bytes / 1024 ** 3).toFixed(1) });
 }
 
 /** Settings → About (UX §4): version, storage, how this device reaches Sunroom, and the rest. */
 export function AboutPage() {
+  const t = useT();
   const { data: diagnostics } = useQuery({
     queryKey: qk.diagnostics(),
     queryFn: () => asParent(async () => unwrap(await api.GET("/api/admin/diagnostics"))),
   });
   return (
     <>
-      <Group title="Sunroom">
-        <Row label="Version">
+      <Group title={t("app.sunroom")}>
+        <Row label={t("settings.about.version.label")}>
           <Text>
             {diagnostics
               ? `${diagnostics.version} (${diagnostics.revision.slice(0, 7)})`
               : __APP_VERSION__}
           </Text>
         </Row>
-        <Row label="Time zone">
+        <Row label={t("settings.about.timezone.label")}>
           <Text>{diagnostics?.timezone.replaceAll("_", " ") ?? ""}</Text>
         </Row>
       </Group>
       {diagnostics ? (
-        <Group title="Storage">
-          <Row label="Free space">
-            <Text>{`${gigabytes(diagnostics.storage.free_bytes)} of ${gigabytes(diagnostics.storage.total_bytes)}`}</Text>
+        <Group title={t("settings.about.storage.title")}>
+          <Row label={t("settings.about.free_space.label")}>
+            <Text>
+              {t("settings.about.free_space.value", {
+                free: gigabytes(diagnostics.storage.free_bytes),
+                total: gigabytes(diagnostics.storage.total_bytes),
+              })}
+            </Text>
           </Row>
         </Group>
       ) : null}
-      <Group title="Connection">
-        <Row label="Live updates">
+      <Group title={t("settings.about.connection.title")}>
+        <Row label={t("settings.about.live.label")}>
           <LiveStatusIcon />
         </Row>
         {diagnostics ? (
           <>
-            <Row label="URL">
+            <Row label={t("settings.about.url.label")}>
               <Text>{`${diagnostics.client.scheme}://${diagnostics.client.host}`}</Text>
             </Row>
-            <Row
-              label="Recently reached at"
-              hint="Any of these works from a device on your home network."
-            >
+            <Row label={t("settings.about.recent.label")} hint={t("settings.about.recent.hint")}>
               <Text>{diagnostics.recent_addresses.join(", ")}</Text>
             </Row>
           </>
         ) : null}
       </Group>
       <UpdatesGroup />
-      <Group title="The Small Print">
+      <Group title={t("settings.about.small_print.title")}>
         <div className="flex flex-col gap-2 py-4">
-          <Text>Sunroom is open source, under the MIT licence.</Text>
-          <Text soft>
-            Your data stays on your server. No analytics, no ads, no outside scripts.
-          </Text>
-          <Text soft>Weather by Open-Meteo.</Text>
+          <Text>{t("settings.about.small_print.licence")}</Text>
+          <Text soft>{t("settings.about.small_print.privacy")}</Text>
+          <Text soft>{t("settings.about.small_print.weather")}</Text>
         </div>
       </Group>
     </>
@@ -76,6 +78,7 @@ export function AboutPage() {
 
 /** Updates (PLAN §13.6): off until a parent turns it on, because it asks GitHub. */
 function UpdatesGroup() {
+  const t = useT();
   const display = useShell() === "display";
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
@@ -91,23 +94,24 @@ function UpdatesGroup() {
     },
   });
   if (!settings || !status) return null;
+  // `how` and `problem` are the server's words.
   const line = status.available
-    ? `Sunroom ${status.latest ?? ""} is available. ${status.how}.`
+    ? t("settings.about.updates.available", { version: status.latest ?? "", how: status.how })
     : (status.problem ??
       (status.checked_at
-        ? `This is the latest version (checked at ${formatTime(new Date(status.checked_at))}).`
+        ? t("settings.about.updates.latest", {
+            time: formatTime(new Date(status.checked_at)),
+          })
         : null));
   return (
     <Group
-      title="Updates"
+      title={t("settings.about.updates.title")}
       note={
-        status.locked
-          ? "This server keeps update checks off."
-          : "Once a day Sunroom asks GitHub for the latest version. GitHub sees your server's address."
+        status.locked ? t("settings.about.updates.locked.note") : t("settings.about.updates.note")
       }
     >
       <Switch
-        label="Check for updates daily"
+        label={t("settings.about.updates.daily.label")}
         checked={settings.update_check}
         disabled={status.locked}
         onChange={(value) => {
@@ -147,7 +151,7 @@ function UpdatesGroup() {
               check.mutate();
             }}
           >
-            Check Now
+            {t("settings.about.updates.check.action")}
           </Button>
         </div>
       ) : null}

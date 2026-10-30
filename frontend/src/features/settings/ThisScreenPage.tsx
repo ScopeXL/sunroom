@@ -3,6 +3,7 @@ import { Lock, Wifi, WifiHigh, WifiLow } from "lucide-react";
 import { useState } from "react";
 
 import { qk } from "../../api/keys";
+import { t, tRich, useT, type Key } from "../../lib/lang";
 import {
   openScreenPage,
   screenProgress,
@@ -25,43 +26,58 @@ import { UninstallSheet } from "./UninstallSheet";
 
 type Rotation = 0 | 90 | 180 | 270;
 
-const ROTATIONS = [
-  { value: "0", label: "Landscape" },
-  { value: "90", label: "Portrait, left" },
-  { value: "270", label: "Portrait, right" },
-  { value: "180", label: "Upside down" },
-] as const;
+/** This Screen's word tables: each choice's words are a key, said where it's shown. */
+const ROTATIONS: readonly { value: `${Rotation}`; label: Key }[] = [
+  { value: "0", label: "settings.this_screen.rotation.landscape" },
+  { value: "90", label: "settings.this_screen.rotation.left" },
+  { value: "270", label: "settings.this_screen.rotation.right" },
+  { value: "180", label: "settings.this_screen.rotation.upside_down" },
+];
 
-const UPDATES = [
-  { value: "nightly", label: "Install overnight" },
-  { value: "off", label: "Off" },
-] as const;
+const UPDATES: readonly { value: "nightly" | "off"; label: Key }[] = [
+  { value: "nightly", label: "settings.this_screen.updates.nightly" },
+  { value: "off", label: "settings.this_screen.updates.off" },
+];
 
 /** Where the Sunroom runs, not how it was found (ADR 0042). */
-const FOUND_WORDS = {
-  discovered: "on another computer",
-  typed: "on another computer",
-  local: "on this computer",
-} as const;
+const FOUND_WORDS: Readonly<Record<"discovered" | "typed" | "local", Key>> = {
+  discovered: "settings.this_screen.address.elsewhere",
+  typed: "settings.this_screen.address.elsewhere",
+  local: "settings.this_screen.address.here",
+};
+
+/** What a tap on each action says while the screen does it. */
+const DOING: Readonly<Record<"restart" | "shutdown" | "quit" | "update" | "update-sunroom", Key>> =
+  {
+    restart: "settings.this_screen.restart.toast",
+    shutdown: "settings.this_screen.shutdown.toast",
+    quit: "settings.this_screen.quit.toast",
+    update: "settings.this_screen.update.toast",
+    "update-sunroom": "settings.this_screen.update_sunroom.toast",
+  };
 
 /** Change Address leaves for Where Is Your Sunroom? once its toast has shown. */
 const LEAVE_AFTER_MS = 1500;
 
-function strength(percent: number | null | undefined): string {
-  if (percent == null) return "";
+/** A signal's strength as the messages choose their words by it. */
+function strength(percent: number | null | undefined): "strong" | "fair" | "weak" | "none" {
+  if (percent == null) return "none";
   if (percent >= 67) return "strong";
   if (percent >= 34) return "fair";
   return "weak";
 }
 
+/** "Wired", "Wi-Fi: HomeNet, strong", "Not connected". */
 function networkWords(state: ScreenState): string {
   const { network } = state;
-  if (network.kind === "wired") return "Wired";
+  if (network.kind === "wired") return t("settings.this_screen.network.wired");
   if (network.kind === "wifi") {
-    const signal = strength(network.strength);
-    return `Wi-Fi: ${network.ssid ?? "connected"}${signal ? `, ${signal}` : ""}`;
+    return t("settings.this_screen.network.wifi", {
+      name: network.ssid ?? t("settings.this_screen.network.unnamed"),
+      signal: strength(network.strength),
+    });
   }
-  return "Not connected";
+  return t("settings.this_screen.network.none");
 }
 
 /**
@@ -70,6 +86,7 @@ function networkWords(state: ScreenState): string {
  * (`?screen=`), and every row and button only when the agent says this screen can do it.
  */
 export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
+  const t = useT();
   const state = useScreenAgent();
   const queryClient = useQueryClient();
   const progress = useStore(screenProgress);
@@ -87,14 +104,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
     },
     onSuccess: (action) => {
       setAsking(null);
-      const said = {
-        restart: "Restarting…",
-        shutdown: "Shutting down…",
-        quit: "Quitting Sunroom Screen…",
-        update: "Updating… this takes a few minutes",
-        "update-sunroom": "Updating Sunroom… this takes a few minutes",
-      } as const;
-      showToast(said[action]);
+      showToast(t(DOING[action]));
     },
     onError: (error) => {
       showToast(refusal(error));
@@ -108,7 +118,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
       queryClient.setQueryData(qk.screen.state(), fresh);
     },
     onError: (error) => {
-      showToast(`Not turned — ${refusal(error)}`);
+      showToast(t("settings.this_screen.rotation.error", { why: refusal(error) }));
     },
   });
   const policy = useMutation({
@@ -117,7 +127,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
     },
     onSettled: refresh,
     onError: (error) => {
-      showToast(`Not saved — ${refusal(error)}`);
+      showToast(t("app.not_saved", { why: refusal(error) }));
     },
   });
   const forget = useMutation({
@@ -126,7 +136,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
     },
     onSuccess: () => {
       setAsking(null);
-      showToast("Address changed. Looking for another Sunroom…");
+      showToast(t("settings.this_screen.address.changed.toast"));
       // The agent's own twin of this page goes to its Find page itself.
       if (onForgot) {
         onForgot();
@@ -152,7 +162,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
   return (
     <>
       <Group>
-        <Row label="Network">
+        <Row label={t("settings.this_screen.network.label")}>
           <Text>{networkWords(state)}</Text>
           {can("wifi") ? (
             <Button
@@ -161,23 +171,23 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
                 setWifiOpen(true);
               }}
             >
-              Change Wi-Fi
+              {t("settings.this_screen.wifi.change.action")}
             </Button>
           ) : null}
         </Row>
         <Row
-          label="Address"
+          label={t("settings.this_screen.address.label")}
           hint={
             // The one way a found Sunroom still differs: the screen follows it when it moves.
             state.sunroom?.found === "discovered"
-              ? "Found on your network: this screen follows it if its address changes."
+              ? t("settings.this_screen.address.found.hint")
               : undefined
           }
         >
           <Text>
             {state.sunroom
-              ? `${state.sunroom.url} · ${FOUND_WORDS[state.sunroom.found]}`
-              : "None yet"}
+              ? `${state.sunroom.url} · ${t(FOUND_WORDS[state.sunroom.found])}`
+              : t("settings.this_screen.address.none")}
           </Text>
           <Button
             variant="secondary"
@@ -185,19 +195,24 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
               setAsking("address");
             }}
           >
-            Change Address
+            {t("settings.this_screen.address.change.action")}
           </Button>
         </Row>
-        <Row label="Software" hint={update.message ?? undefined}>
+        {/* The hint is Sunroom Screen's own sentence. */}
+        <Row label={t("settings.this_screen.software.label")} hint={update.message ?? undefined}>
           {installing ? (
             <Text>
-              Updating… <Digits value={`${String(progress?.percent ?? 0)}%`} />
+              {tRich("settings.this_screen.software.updating", {
+                percent: <Digits value={`${String(progress?.percent ?? 0)}%`} />,
+              })}
             </Text>
           ) : (
             <Text>
               {update.state === "available" && update.latest
-                ? `${update.latest} is ready`
-                : `Sunroom Screen ${update.installed}${update.state === "up_to_date" ? " · up to date" : ""}`}
+                ? t("settings.this_screen.software.ready", { version: update.latest })
+                : update.state === "up_to_date"
+                  ? t("settings.this_screen.software.up_to_date", { version: update.installed })
+                  : t("settings.this_screen.software.installed", { version: update.installed })}
             </Text>
           )}
           {can("update") && update.state === "available" && !installing ? (
@@ -207,7 +222,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
                 act.mutate("update");
               }}
             >
-              Update Now
+              {t("settings.this_screen.update.action")}
             </Button>
           ) : null}
           {can("update_sunroom") && update.sunroom_outdated ? (
@@ -218,15 +233,15 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
                 act.mutate("update-sunroom");
               }}
             >
-              Update Sunroom Too
+              {t("settings.this_screen.update_sunroom.action")}
             </Button>
           ) : null}
         </Row>
         {can("update") ? (
-          <Row label="Updates">
+          <Row label={t("settings.this_screen.updates.label")}>
             <Segmented
-              label="Updates"
-              options={UPDATES}
+              label={t("settings.this_screen.updates.label")}
+              options={UPDATES.map((option) => ({ value: option.value, label: t(option.label) }))}
               value={update.check}
               onChange={(check) => {
                 policy.mutate(check);
@@ -235,10 +250,13 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
           </Row>
         ) : null}
         {can("rotate") ? (
-          <Row label="Rotation">
+          <Row label={t("settings.this_screen.rotation.label")}>
             <Segmented
-              label="Rotation"
-              options={ROTATIONS}
+              label={t("settings.this_screen.rotation.label")}
+              options={ROTATIONS.map((option) => ({
+                value: option.value,
+                label: t(option.label),
+              }))}
               value={String(state.display.rotation) as `${Rotation}`}
               onChange={(value) => {
                 rotate.mutate(Number(value) as Rotation);
@@ -256,7 +274,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
               act.mutate("restart");
             }}
           >
-            Restart
+            {t("settings.this_screen.restart.action")}
           </Button>
         ) : null}
         {can("shutdown") ? (
@@ -266,7 +284,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
               setAsking("shutdown");
             }}
           >
-            Shut Down
+            {t("settings.this_screen.shutdown.action")}
           </Button>
         ) : null}
         {can("quit") ? (
@@ -277,7 +295,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
               act.mutate("quit");
             }}
           >
-            Quit Sunroom Screen
+            {t("settings.this_screen.quit.action")}
           </Button>
         ) : null}
         <Button
@@ -286,14 +304,17 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
             setHelpOpen(true);
           }}
         >
-          Help
+          {t("settings.this_screen.help.action")}
         </Button>
       </div>
       {/* The wall's alone (ADR 0042): the screen's own pages (`onForgot`) have no Sunroom to
           unpair it with. */}
       {can("uninstall") && !onForgot ? (
         <div className="mt-10">
-          <Group title="Remove" note="Take Sunroom Screen off this computer.">
+          <Group
+            title={t("settings.this_screen.remove.title")}
+            note={t("settings.this_screen.remove.note")}
+          >
             <div className="py-5">
               <Button
                 variant="quiet-danger"
@@ -301,7 +322,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
                   setAsking("uninstall");
                 }}
               >
-                Uninstall Sunroom Screen…
+                {t("settings.this_screen.uninstall.open.action")}
               </Button>
             </div>
           </Group>
@@ -320,15 +341,15 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
 
       <Sheet
         open={asking === "shutdown"}
-        title="Shut Down This Screen?"
+        title={t("settings.this_screen.shutdown.title")}
         onClose={() => {
           setAsking(null);
         }}
       >
         <Confirm
-          text="This turns off the computer this screen runs on. It stays off until someone turns it on again."
-          act="Shut Down"
-          keep="Cancel"
+          text={t("settings.this_screen.shutdown.body")}
+          act={t("settings.this_screen.shutdown.action")}
+          keep={t("app.action.cancel")}
           pending={act.isPending}
           onAct={() => {
             act.mutate("shutdown");
@@ -340,15 +361,15 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
       </Sheet>
       <Sheet
         open={asking === "address"}
-        title="Use a Different Sunroom?"
+        title={t("settings.this_screen.address.title")}
         onClose={() => {
           setAsking(null);
         }}
       >
         <Confirm
-          text={`This screen leaves ${name} and looks for another. Its pairing is kept.`}
-          act="Change Address"
-          keep="Cancel"
+          text={t("settings.this_screen.address.body", { name })}
+          act={t("settings.this_screen.address.change.action")}
+          keep={t("app.action.cancel")}
           pending={forget.isPending}
           onAct={() => {
             forget.mutate();
@@ -423,6 +444,7 @@ export function WifiChooser({
   onChoose: (network: ScreenWifi | null) => void;
   onJoined: () => void;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [password, setPassword] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
@@ -437,7 +459,7 @@ export function WifiChooser({
     onSuccess: async (fresh, network) => {
       queryClient.setQueryData(qk.screen.wifi(), fresh);
       await queryClient.invalidateQueries({ queryKey: qk.screen.state() });
-      showToast(`Joined ${network.ssid}`);
+      showToast(t("settings.this_screen.wifi.joined.toast", { name: network.ssid }));
       setPassword("");
       onJoined();
     },
@@ -461,7 +483,7 @@ export function WifiChooser({
       >
         {chosen.secured ? (
           <TextField
-            label="Password"
+            label={t("settings.this_screen.wifi.password.label")}
             type="password"
             layout="password"
             autoCapitalize="none"
@@ -474,7 +496,7 @@ export function WifiChooser({
             }}
           />
         ) : (
-          <Text soft>This network has no password.</Text>
+          <Text soft>{t("settings.this_screen.wifi.open")}</Text>
         )}
         {!chosen.secured && problem ? (
           <p role="alert" className="font-semibold text-alert">
@@ -483,7 +505,7 @@ export function WifiChooser({
         ) : null}
         <div className="flex flex-wrap gap-3">
           <Button type="submit" pending={join.isPending}>
-            Connect
+            {t("settings.this_screen.wifi.connect.action")}
           </Button>
           <Button
             variant="secondary"
@@ -491,7 +513,7 @@ export function WifiChooser({
               choose(null);
             }}
           >
-            Other Networks
+            {t("settings.this_screen.wifi.others.action")}
           </Button>
         </div>
       </form>
@@ -500,9 +522,13 @@ export function WifiChooser({
   return (
     <div className="flex flex-col gap-2 pb-2 text-left">
       {networks === undefined ? (
-        <Text soft>{isFetching ? "Looking for networks…" : "No networks found."}</Text>
+        <Text soft>
+          {isFetching
+            ? t("settings.this_screen.wifi.looking")
+            : t("settings.this_screen.wifi.not_found")}
+        </Text>
       ) : networks.length === 0 ? (
-        <Text soft>No networks found. Move the screen closer to the router, or try again.</Text>
+        <Text soft>{t("settings.this_screen.wifi.empty")}</Text>
       ) : (
         <ul className="divide-y divide-line rounded-chip border border-line bg-surface px-4">
           {networks.map((network) => (
@@ -511,7 +537,12 @@ export function WifiChooser({
                 type="button"
                 disabled={network.connected}
                 className="press-row flex min-h-20 w-full items-center gap-4 py-3 text-left disabled:opacity-100"
-                aria-label={`${network.ssid}, ${strength(network.strength)} signal${network.secured ? ", needs a password" : ""}${network.connected ? ", connected" : ""}`}
+                aria-label={t("settings.this_screen.wifi.network.aria", {
+                  name: network.ssid,
+                  signal: strength(network.strength),
+                  secured: network.secured ? "yes" : "no",
+                  connected: network.connected ? "yes" : "no",
+                })}
                 onClick={() => {
                   choose(network);
                 }}
@@ -519,7 +550,9 @@ export function WifiChooser({
                 <SignalIcon strength={network.strength} />
                 <span className="min-w-0 flex-1 text-d-body font-semibold">{network.ssid}</span>
                 {network.connected ? (
-                  <span className="text-d-secondary text-ink-soft">Connected</span>
+                  <span className="text-d-secondary text-ink-soft">
+                    {t("settings.this_screen.wifi.connected")}
+                  </span>
                 ) : null}
                 {network.secured ? (
                   <Lock aria-hidden="true" className="size-7 shrink-0 text-ink-soft" />
@@ -535,6 +568,7 @@ export function WifiChooser({
 
 /** Change Wi-Fi, in a sheet over This Screen. */
 function WifiSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const [chosen, setChosen] = useState<ScreenWifi | null>(null);
   const close = () => {
     setChosen(null);
@@ -543,7 +577,7 @@ function WifiSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Sheet
       open={open}
-      title={chosen ? chosen.ssid : "Wi-Fi"}
+      title={chosen ? chosen.ssid : t("settings.this_screen.wifi.title")}
       onClose={close}
       {...(chosen ? { step: chosen.ssid } : {})}
     >
@@ -552,17 +586,19 @@ function WifiSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
+/** "2 days, 3 hours", "1 hour, 5 min", "12 min". */
 function seconds(total: number): string {
   const days = Math.floor(total / 86_400);
   const hours = Math.floor((total % 86_400) / 3600);
   const minutes = Math.floor((total % 3600) / 60);
-  if (days) return `${String(days)} day${days === 1 ? "" : "s"}, ${String(hours)} hours`;
-  if (hours) return `${String(hours)} hour${hours === 1 ? "" : "s"}, ${String(minutes)} min`;
-  return `${String(minutes)} min`;
+  if (days) return t("settings.this_screen.uptime.days", { days, hours });
+  if (hours) return t("settings.this_screen.uptime.hours", { hours, minutes });
+  return t("settings.this_screen.uptime.minutes", { minutes });
 }
 
 /** Help: what this screen is and runs, for whoever helps the family with it. */
 function HelpSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const { data: about } = useQuery({
     queryKey: qk.screen.about(),
     queryFn: async () => {
@@ -571,41 +607,44 @@ function HelpSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
     enabled: open,
   });
   return (
-    <Sheet open={open} title="About This Screen" onClose={onClose}>
+    <Sheet open={open} title={t("settings.this_screen.about.title")} onClose={onClose}>
       <div className="flex flex-col gap-4 pb-2">
         {about ? (
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-d-body">
-            <dt className="text-ink-soft">Sunroom Screen</dt>
+            <dt className="text-ink-soft">{t("settings.this_screen.about.version.label")}</dt>
             <dd>{about.version}</dd>
-            <dt className="text-ink-soft">Computer</dt>
+            <dt className="text-ink-soft">{t("settings.this_screen.about.model.label")}</dt>
             <dd>{about.model}</dd>
-            <dt className="text-ink-soft">System</dt>
+            <dt className="text-ink-soft">{t("settings.this_screen.about.system.label")}</dt>
             <dd>{about.system}</dd>
             {about.browser ? (
               <>
-                <dt className="text-ink-soft">Browser</dt>
+                <dt className="text-ink-soft">{t("settings.this_screen.about.browser.label")}</dt>
                 <dd>{about.browser}</dd>
               </>
             ) : null}
-            <dt className="text-ink-soft">Name</dt>
+            <dt className="text-ink-soft">{t("settings.this_screen.about.name.label")}</dt>
             <dd>{about.hostname}</dd>
             {about.ip ? (
               <>
-                <dt className="text-ink-soft">Its address</dt>
+                <dt className="text-ink-soft">{t("settings.this_screen.about.ip.label")}</dt>
                 <dd>{about.ip}</dd>
               </>
             ) : null}
-            <dt className="text-ink-soft">Shows</dt>
-            <dd className="break-all">{about.sunroom_url ?? "Nothing yet"}</dd>
-            <dt className="text-ink-soft">Running for</dt>
+            <dt className="text-ink-soft">{t("settings.this_screen.about.shows.label")}</dt>
+            <dd className="break-all">
+              {about.sunroom_url ?? t("settings.this_screen.about.shows.none")}
+            </dd>
+            <dt className="text-ink-soft">{t("settings.this_screen.about.uptime.label")}</dt>
             <dd>{seconds(about.uptime_s)}</dd>
           </dl>
         ) : (
-          <Text soft>Asking this screen…</Text>
+          <Text soft>{t("settings.this_screen.about.asking")}</Text>
         )}
         {about?.log?.length ? (
           <section className="flex flex-col gap-2">
-            <h3 className="text-d-body font-bold">What It Did Lately</h3>
+            <h3 className="text-d-body font-bold">{t("settings.this_screen.about.log.title")}</h3>
+            {/* Sunroom Screen's own log lines, as it wrote them. */}
             <ol className="max-h-72 overflow-y-auto rounded-chip border border-line bg-surface px-4 py-3 text-d-secondary">
               {about.log.slice(-20).map((line, index) => (
                 <li key={index}>{line}</li>
@@ -613,7 +652,7 @@ function HelpSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
             </ol>
           </section>
         ) : null}
-        <Text soft>Having trouble? Settings → Support Sunroom.</Text>
+        <Text soft>{t("settings.this_screen.about.trouble")}</Text>
       </div>
     </Sheet>
   );

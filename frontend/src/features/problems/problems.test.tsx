@@ -4,10 +4,11 @@ import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { qk } from "../../api/keys";
+import { t } from "../../lib/lang";
 import { ShellContext } from "../../ui/shell";
 import { AttentionButton } from "./AttentionButton";
 import { AttentionPill } from "./AttentionPill";
-import { attentionWords, sinceWords, type Problem } from "./data";
+import { sinceWords, type Problem } from "./data";
 
 const navigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
@@ -59,8 +60,9 @@ function draw(node: ReactNode, problems: Problem[], shell: "display" | "phone" =
 
 describe("Needs Attention (ADR 0034)", () => {
   it("counts in words", () => {
-    expect(attentionWords(1)).toBe("1 thing needs attention");
-    expect(attentionWords(3)).toBe("3 things need attention");
+    expect(t("problems.pill.label", { n: 1 })).toBe("1 thing needs attention");
+    expect(t("problems.pill.label", { n: 3 })).toBe("3 things need attention");
+    expect(t("problems.button.aria", { n: 1 })).toBe("Needs attention: 1 thing");
   });
 
   it("says since when, with the day once it isn't today", () => {

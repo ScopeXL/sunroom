@@ -20,7 +20,10 @@ import { TextField } from "../../ui/TextField";
 type Field = components["schemas"]["FieldOut"];
 type PluginInfo = components["schemas"]["PluginOut"];
 type Values = Record<string, unknown>;
+/** A saved secret as the server sends it: never the secret itself. */
 const MASK = "***";
+/** A saved secret as its field shows it. */
+const MASK_DOTS = "••••••••";
 
 /** Save a plugin's settings as they change (UX §1 "Undo, drafts, confirmations", ADR 0029):
  * the whole values object goes to the server, what's on screen changes at once, and a refusal
@@ -185,6 +188,7 @@ function FieldInput({
   const t = useT();
   const { data: members = [] } = useMembers();
   const display = useShell() === "display";
+  // A field's label, unit, help and choices are the plugin's own words, from the server.
   // A group's name reads like a field's label (ui/TextField): the shell's body size.
   const groupLabel = `${display ? "text-d-body" : "text-body"} font-semibold`;
   const hint = field.help || null;
@@ -208,7 +212,11 @@ function FieldInput({
       return (
         <TypedField
           field={field}
-          label={field.unit ? `${field.label} (${field.unit})` : field.label}
+          label={
+            field.unit
+              ? t("settings.features.field.unit", { label: field.label, unit: field.unit })
+              : field.label
+          }
           hint={hint}
           inputMode="decimal"
           layout="numeric"
@@ -222,11 +230,11 @@ function FieldInput({
         <TypedField
           field={field}
           label={field.label}
-          hint={value === MASK ? "Saved. Type a new one to replace it." : hint}
+          hint={value === MASK ? t("settings.features.field.secret.hint") : hint}
           type="password"
           layout="password"
           autoComplete="off"
-          placeholder={value === MASK ? "••••••••" : undefined}
+          placeholder={value === MASK ? MASK_DOTS : undefined}
           shown=""
           parse={(typed) => typed}
           onChange={onChange}

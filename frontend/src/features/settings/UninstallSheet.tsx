@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
+import { useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { uninstalling } from "../../lib/screenAgent";
 import { fetchSession } from "../../lib/session";
@@ -38,6 +39,7 @@ export function UninstallSheet({
   onClose: () => void;
   onStarted: () => void;
 }) {
+  const t = useT();
   const [alsoSunroom, setAlsoSunroom] = useState(true);
   const [password, setPassword] = useState("");
   const { data: session } = useQuery({ queryKey: qk.session(), queryFn: fetchSession });
@@ -62,7 +64,7 @@ export function UninstallSheet({
       }
     },
     onSuccess: () => {
-      showToast("Uninstalling…");
+      showToast(t("settings.this_screen.uninstall.toast"));
       uninstalling.set(true);
       onStarted();
     },
@@ -73,23 +75,23 @@ export function UninstallSheet({
       : errorMessage(go.error)
     : null;
   return (
-    <Sheet open={open} title="Uninstall Sunroom Screen?" onClose={onClose}>
+    <Sheet open={open} title={t("settings.this_screen.uninstall.title")} onClose={onClose}>
       <div className="flex flex-col gap-5 pb-2">
         <ul className="flex list-disc flex-col gap-2 pl-8 text-d-body">
-          <li>This screen is unpaired and stops showing Sunroom.</li>
-          <li>Sunroom Screen and its settings are removed from this computer.</li>
+          <li>{t("settings.this_screen.uninstall.unpaired")}</li>
+          <li>{t("settings.this_screen.uninstall.removed")}</li>
         </ul>
         {sunroomHere ? (
           <Switch
-            label="Also remove Sunroom and the family’s data from this computer"
-            hint="Everything the family added goes with it. A backup downloaded from Settings → Backup on another device can bring it back later."
+            label={t("settings.this_screen.uninstall.also.label")}
+            hint={t("settings.this_screen.uninstall.also.hint")}
             checked={alsoSunroom}
             onChange={setAlsoSunroom}
           />
         ) : null}
         {sunroom ? (
           <TextField
-            label="Household password"
+            label={t("settings.this_screen.password.label")}
             type="password"
             layout="password"
             autoCapitalize="none"
@@ -115,10 +117,10 @@ export function UninstallSheet({
               go.mutate();
             }}
           >
-            Uninstall
+            {t("settings.this_screen.uninstall.action")}
           </Button>
           <Button variant="secondary" onClick={onClose}>
-            Cancel
+            {t("app.action.cancel")}
           </Button>
         </div>
       </div>
@@ -133,6 +135,7 @@ export function UninstallSheet({
  * reloads it, so this is never a dead end (CLAUDE.md, hard rule 8).
  */
 export function Uninstalling() {
+  const t = useT();
   const [stuck, setStuck] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -149,8 +152,7 @@ export function Uninstalling() {
         {stuck ? (
           <>
             <p role="status" className="max-w-3xl text-d-body">
-              Sunroom Screen didn’t finish removing itself. Start over, then try again from Settings
-              → This Screen.
+              {t("settings.this_screen.uninstalling.stuck")}
             </p>
             <Button
               className="min-w-72"
@@ -158,12 +160,12 @@ export function Uninstalling() {
                 window.location.reload();
               }}
             >
-              Start Over
+              {t("settings.this_screen.uninstalling.start_over.action")}
             </Button>
           </>
         ) : (
           <p role="status" className="max-w-3xl text-d-body">
-            Sunroom Screen is being removed. This screen closes in a moment.
+            {t("settings.this_screen.uninstalling.status")}
           </p>
         )}
       </main>

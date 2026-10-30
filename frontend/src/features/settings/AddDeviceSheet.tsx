@@ -12,6 +12,7 @@ import { asParent } from "../../lib/parent";
 import type { components } from "../../api/schema";
 import { Button } from "../../ui/Button";
 import { spokenCode } from "../../lib/joinCode";
+import { tRich, useT } from "../../lib/lang";
 import { QrCode } from "../../ui/QrCode";
 import { Sheet } from "../../ui/Sheet";
 
@@ -35,38 +36,38 @@ function useExpired(code: JoinCode | undefined): boolean {
 }
 
 function CodeView({ code, onNew }: { code: JoinCode; onNew: () => void }) {
+  const t = useT();
   const expired = useExpired(code);
   if (expired) {
     return (
       <div className="flex flex-col gap-4">
-        <p className="text-body">That code has run out. Codes work for 10 minutes.</p>
-        <Button onClick={onNew}>Make a New Code</Button>
+        <p className="text-body">{t("settings.devices.add.expired")}</p>
+        <Button onClick={onNew}>{t("settings.devices.add.new.action")}</Button>
       </div>
     );
   }
   return (
     <div className="flex flex-col items-center gap-4 text-center">
-      <p className="text-body">
-        On the new device, open the camera and point it at this code. On a computer, open the
-        address under it.
-      </p>
-      <QrCode value={code.url} label="QR code that signs in another device" />
+      <p className="text-body">{t("settings.devices.add.scan")}</p>
+      <QrCode value={code.url} label={t("settings.devices.add.qr.aria")} />
       <p className="text-secondary break-all text-ink-soft select-all">{code.url}</p>
       <p className="text-body">
-        Or, on the new device’s sign-in screen, tap <strong>Use a code from another device</strong>{" "}
-        and type:
+        {tRich("settings.devices.add.type", {
+          b: (words) => <strong>{words}</strong>,
+        })}
       </p>
       <p className="text-title font-bold tracking-widest " data-testid="join-code">
         <span aria-hidden="true">{code.display}</span>
         {/* Read out letter by letter, the way someone would type it. */}
         <span className="sr-only">{spokenCode(code.code)}</span>
       </p>
-      <p className="text-secondary text-ink-soft">It works once, for the next 10 minutes.</p>
+      <p className="text-secondary text-ink-soft">{t("settings.devices.add.once")}</p>
     </div>
   );
 }
 
 export function AddDeviceSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const make = useMutation({
     mutationFn: () => asParent(async () => unwrap(await api.POST("/api/auth/join-codes"))),
   });
@@ -79,11 +80,11 @@ export function AddDeviceSheet({ open, onClose }: { open: boolean; onClose: () =
   return (
     <Sheet
       open={open}
-      title="Add a Device"
+      title={t("settings.devices.add.title")}
       onClose={onClose}
       footer={
         <Button block variant="secondary" onClick={onClose}>
-          Done
+          {t("app.action.done")}
         </Button>
       }
     >
@@ -103,11 +104,11 @@ export function AddDeviceSheet({ open, onClose }: { open: boolean; onClose: () =
               make.mutate();
             }}
           >
-            Try Again
+            {t("app.action.try_again")}
           </Button>
         </div>
       ) : (
-        <p className="text-body text-ink-soft">Making a code…</p>
+        <p className="text-body text-ink-soft">{t("settings.devices.add.making")}</p>
       )}
     </Sheet>
   );

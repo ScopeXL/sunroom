@@ -3,7 +3,9 @@ import { useState } from "react";
 
 import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
+import { colorWord } from "../../lib/colors";
 import { useMembers, useSettings, useUpdateSettings, type Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
 import { showToast } from "../../lib/toast";
@@ -13,12 +15,13 @@ import { ListRow } from "../../ui/ListRow";
 import { useShell } from "../../ui/shell";
 import { Switch } from "../../ui/Switch";
 import { TextField } from "../../ui/TextField";
-import { AddPersonRow, type RoleChoice } from "./AddPersonRow";
+import { AddPersonRow, ROLE_WORDS, type RoleChoice } from "./AddPersonRow";
 import { MemberSheet } from "./MemberSheet";
 import { Group, Row, Text } from "./parts";
 
 /** Settings → Family (UX §4): the people, the parent PIN and Child-safe editing. */
 export function FamilyPage() {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const { data: archived = [] } = useMembers(true);
@@ -37,25 +40,28 @@ export function FamilyPage() {
       ),
     onSuccess: async (member) => {
       await queryClient.invalidateQueries({ queryKey: ["members"] });
-      showToast(`Put back ${member.name}`);
+      showToast(t("settings.family.put_back.toast", { name: member.name }));
     },
   });
 
   return (
     <>
-      <Group title="People">
+      <Group title={t("settings.family.people.title")}>
         {members.length === 0 ? (
           <div className="py-4">
-            <Text soft>Add the people who live here, children included.</Text>
+            <Text soft>{t("settings.family.people.empty")}</Text>
           </div>
         ) : null}
         {members.map((member) => (
           <ListRow
             key={member.id}
-            label={`Edit ${member.name}`}
+            label={t("settings.family.edit.aria", { name: member.name })}
             leading={<Avatar member={member} size={display ? "lg" : "md"} />}
             title={member.name}
-            subtitle={`${member.role === "kid" ? "Child" : "Parent"}, ${member.color_word}`}
+            subtitle={t("settings.family.person.subtitle", {
+              role: t(ROLE_WORDS[member.role]),
+              color: colorWord(member.color),
+            })}
             onClick={() => {
               setChanging(member);
             }}
@@ -64,7 +70,7 @@ export function FamilyPage() {
         <AddPerson />
       </Group>
       {removed.length > 0 ? (
-        <Group title="Removed People">
+        <Group title={t("settings.family.removed.title")}>
           {removed.map((member) => (
             <Row key={member.id} label={member.name}>
               <Button
@@ -74,7 +80,7 @@ export function FamilyPage() {
                   restore.mutate(member);
                 }}
               >
-                Put Back
+                {t("app.action.put_back")}
               </Button>
             </Row>
           ))}
@@ -92,6 +98,7 @@ export function FamilyPage() {
 }
 
 function AddPerson() {
+  const t = useT();
   const display = useShell() === "display";
   const queryClient = useQueryClient();
   const add = useMutation({
@@ -100,15 +107,15 @@ function AddPerson() {
     onSuccess: async (member) => {
       await queryClient.invalidateQueries({ queryKey: ["members"] });
       await queryClient.invalidateQueries({ queryKey: qk.session() });
-      showToast(`Added ${member.name}`);
+      showToast(t("settings.family.added.toast", { name: member.name }));
     },
   });
   return (
     <div className={display ? "py-6" : "py-4"}>
       <AddPersonRow
-        label="Add a person"
-        placeholder="Name"
-        action="Add"
+        label={t("settings.family.add.label")}
+        placeholder={t("settings.family.add.placeholder")}
+        action={t("app.action.add")}
         pending={add.isPending}
         error={add.isError ? errorMessage(add.error) : null}
         onAdd={(name, role) => add.mutateAsync({ name, role })}
@@ -118,6 +125,7 @@ function AddPerson() {
 }
 
 function ParentPin() {
+  const t = useT();
   const display = useShell() === "display";
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
@@ -149,7 +157,7 @@ function ParentPin() {
       setPin("");
       setCurrent("");
       await refresh();
-      showToast("PIN set");
+      showToast(t("settings.family.pin.saved.toast"));
     },
   });
   const remove = useMutation({
@@ -160,19 +168,15 @@ function ParentPin() {
       }),
     onSuccess: async () => {
       await refresh();
-      showToast("PIN removed");
+      showToast(t("settings.family.pin.removed.toast"));
     },
   });
   const valid = /^\d{4,6}$/.test(pin) && (!needsCurrent || /^\d{4,6}$/.test(current));
 
   return (
     <Group
-      title="Parent PIN"
-      note={
-        hasPin
-          ? "Settings, approvals and changing events on paired screens ask for it."
-          : "Set a parent PIN so children can't open Settings on paired screens."
-      }
+      title={t("settings.family.pin.title")}
+      note={hasPin ? t("settings.family.pin.on.note") : t("settings.family.pin.off.note")}
     >
       {editing ? (
         <form
@@ -184,7 +188,7 @@ function ParentPin() {
         >
           {needsCurrent ? (
             <TextField
-              label="Current PIN"
+              label={t("settings.family.pin.current.label")}
               type="password"
               inputMode="numeric"
               layout="numeric"
@@ -197,7 +201,7 @@ function ParentPin() {
             />
           ) : null}
           <TextField
-            label="New PIN (4 to 6 digits)"
+            label={t("settings.family.pin.new.label")}
             type="password"
             inputMode="numeric"
             layout="numeric"
@@ -211,7 +215,7 @@ function ParentPin() {
           />
           <div className="flex gap-3">
             <Button type="submit" pending={save.isPending} disabled={!valid}>
-              Set PIN
+              {t("settings.family.pin.set.action")}
             </Button>
             <Button
               variant="secondary"
@@ -219,19 +223,23 @@ function ParentPin() {
                 setEditing(false);
               }}
             >
-              Cancel
+              {t("app.action.cancel")}
             </Button>
           </div>
         </form>
       ) : (
-        <Row label={hasPin ? "A PIN is set" : "No PIN yet"}>
+        <Row
+          label={hasPin ? t("settings.family.pin.on.label") : t("settings.family.pin.off.label")}
+        >
           <Button
             variant="secondary"
             onClick={() => {
               setEditing(true);
             }}
           >
-            {hasPin ? "Change PIN" : "Set a PIN"}
+            {hasPin
+              ? t("settings.family.pin.change.action")
+              : t("settings.family.pin.first.action")}
           </Button>
           {hasPin ? (
             <Button
@@ -241,14 +249,14 @@ function ParentPin() {
                 remove.mutate();
               }}
             >
-              Remove PIN
+              {t("settings.family.pin.remove.action")}
             </Button>
           ) : null}
         </Row>
       )}
       <Switch
-        label="Child-safe editing"
-        hint="Changing or removing events on paired screens asks for the PIN. Adding and checking off never do."
+        label={t("settings.family.kid_safe.label")}
+        hint={t("settings.family.kid_safe.hint")}
         checked={settings?.kid_safe_editing ?? true}
         onChange={(value) => {
           updateSettings.mutate({ kid_safe_editing: value });

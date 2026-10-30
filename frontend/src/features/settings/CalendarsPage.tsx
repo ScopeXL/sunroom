@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { api, errorMessage, notSaved, unwrap } from "../../api/client";
 import type { components } from "../../api/schema";
 import { useMembers, useSettings, useUpdateSettings } from "../../lib/household";
+import { t, tRich, useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { useSavedFlash } from "../../lib/savedFlash";
 import { showToast } from "../../lib/toast";
@@ -44,6 +45,7 @@ function useRefreshCalendars() {
  * calendars follow, from the calendar_sync plugin.
  */
 export function CalendarsPage() {
+  const t = useT();
   const display = useShell() === "display";
   const { data: everyCalendar = [] } = useCalendars();
   const { data: withRemoved = [] } = useCalendars(true);
@@ -63,7 +65,7 @@ export function CalendarsPage() {
       ),
     onSuccess: async (_data, calendar) => {
       await refresh();
-      showToast(`Put back ${calendar.name}`);
+      showToast(t("settings.calendars.put_back.toast", { name: calendar.name }));
     },
   });
   return (
@@ -72,13 +74,16 @@ export function CalendarsPage() {
         <DefaultCalendar calendars={everyCalendar} />
         <DefaultReminder />
       </Group>
-      <Group title="Calendars">
+      <Group title={t("settings.calendars.local.title")}>
         {calendars.map((calendar) => {
           const owner = members.find((m) => m.id === calendar.owner_member_id) ?? null;
+          // What's known about it, each a phrase of its own: "Default calendar · Ana's".
           const notes = [
-            calendar.is_default ? "Default calendar" : null,
-            owner ? `${owner.name}'s` : "Everyone's",
-            calendar.visible_on_display ? null : "Hidden on paired screens",
+            calendar.is_default ? t("settings.calendars.default.label") : null,
+            owner
+              ? t("settings.calendars.owned_by", { name: owner.name })
+              : t("settings.calendars.everyone"),
+            calendar.visible_on_display ? null : t("settings.calendars.hidden"),
           ]
             .filter(Boolean)
             .join(" · ");
@@ -104,14 +109,14 @@ export function CalendarsPage() {
                     display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft"
                   }
                 >
-                  {`${notes} · From an account`}
+                  {`${notes} · ${t("settings.calendars.from_account")}`}
                 </span>
               </div>
             </div>
           ) : (
             <ListRow
               key={calendar.id}
-              label={`Edit ${calendar.name}`}
+              label={t("settings.calendars.edit.aria", { name: calendar.name })}
               leading={dot}
               title={calendar.name}
               subtitle={notes}
@@ -128,13 +133,16 @@ export function CalendarsPage() {
               setEditing({ kind: "new" });
             }}
           >
-            Add a Calendar
+            {t("settings.calendars.add.action")}
           </Button>
         </div>
       </Group>
       {Accounts ? <Accounts /> : null}
       {removed.length ? (
-        <Group title="Removed Calendars" note="Their events come back with them.">
+        <Group
+          title={t("settings.calendars.removed.title")}
+          note={t("settings.calendars.removed.note")}
+        >
           {removed.map((calendar) => (
             <div
               key={calendar.id}
@@ -148,8 +156,10 @@ export function CalendarsPage() {
                   restore.mutate(calendar);
                 }}
               >
-                Put Back
-                <span className="sr-only"> {calendar.name}</span>
+                {tRich("app.action.put_back_named", {
+                  hidden: (words) => <span className="sr-only">{words}</span>,
+                  name: calendar.name,
+                })}
               </Button>
             </div>
           ))}
@@ -171,6 +181,7 @@ export function CalendarsPage() {
  * another. It saves as it changes, like every setting (ADR 0029).
  */
 function DefaultCalendar({ calendars }: { calendars: CalendarInfo[] }) {
+  const t = useT();
   const display = useShell() === "display";
   const refresh = useRefreshCalendars();
   const saved = useSavedFlash();
@@ -200,8 +211,8 @@ function DefaultCalendar({ calendars }: { calendars: CalendarInfo[] }) {
     <div className={`flex flex-col gap-1 ${display ? "py-5" : "py-4"}`}>
       <ChoiceRow
         strong
-        label="Default calendar"
-        hint="New events go here. You can pick another when you add one."
+        label={t("settings.calendars.default.label")}
+        hint={t("settings.calendars.default.hint")}
         choices={choices.map((calendar) => ({
           value: calendar.id,
           label: calendarChoiceLabel(calendar),
@@ -221,12 +232,16 @@ type DefaultMinutes = NonNullable<
   components["schemas"]["SettingsUpdate"]["default_reminder_minutes"]
 > | null;
 
+/** The Default reminder's choice for no reminder at all. */
+const NO_REMINDER = "none";
+
 /**
  * How long before an event with no reminder of its own reminds on paired screens (ADR 0034):
  * None, or one of the Remind row's presets. Calendars that only show events never do; an event
  * set to None never does. Saves as it changes.
  */
 function DefaultReminder() {
+  const t = useT();
   const display = useShell() === "display";
   const { data: settings } = useSettings();
   const update = useUpdateSettings();
@@ -237,18 +252,18 @@ function DefaultReminder() {
     <div className={`flex flex-col gap-1 ${display ? "py-5" : "py-4"}`}>
       <ChoiceRow
         strong
-        label="Default reminder"
-        hint="Events with no reminder of their own remind on paired screens this long before. Calendars that only show events (holidays, a calendar address) don't."
+        label={t("settings.calendars.reminder.label")}
+        hint={t("settings.calendars.reminder.hint")}
         choices={[
-          { value: "none", label: "None" },
+          { value: NO_REMINDER, label: t("settings.calendars.reminder.none") },
           ...REMIND_PRESETS.map((preset) => ({
             value: String(preset),
             label: minutesLabel(preset),
           })),
         ]}
-        value={minutes === null ? "none" : String(minutes)}
+        value={minutes === null ? NO_REMINDER : String(minutes)}
         onChange={(value) => {
-          const picked = (value === "none" ? null : Number(value)) as DefaultMinutes;
+          const picked = (value === NO_REMINDER ? null : Number(value)) as DefaultMinutes;
           update.mutate({ default_reminder_minutes: picked }, { onSuccess: saved.flash });
         }}
       />
@@ -269,18 +284,22 @@ export function whyItStays(
   const others = calendars.filter(
     (other) => other.kind === "local" && takesEvents(other) && other.id !== calendar.id,
   );
-  if (!others.length) return "Sunroom keeps one calendar of its own, so this one stays.";
-  if (calendar.is_default)
-    return "New events go here, so it stays while it's the default calendar.";
+  if (!others.length) return t("settings.calendars.stays.own");
+  if (calendar.is_default) return t("settings.calendars.stays.default");
   return null;
 }
 
 function CalendarSheet({ editing, onClose }: { editing: Editing; onClose: () => void }) {
+  const t = useT();
   const calendar = editing?.kind === "change" ? editing.calendar : null;
   return (
     <Sheet
       open={editing !== null}
-      title={calendar ? `Edit ${calendar.name}` : "Add a Calendar"}
+      title={
+        calendar
+          ? t("settings.calendars.edit.title", { name: calendar.name })
+          : t("settings.calendars.add.title")
+      }
       onClose={onClose}
     >
       {editing ? (
@@ -291,9 +310,12 @@ function CalendarSheet({ editing, onClose }: { editing: Editing; onClose: () => 
 }
 
 function CalendarForm({ calendar, onDone }: { calendar: CalendarInfo | null; onDone: () => void }) {
+  const t = useT();
   const { data: members = [] } = useMembers();
   const { data: calendars = [] } = useCalendars();
   const refresh = useRefreshCalendars();
+  // The color radios' group name, unique among the pickers on screen.
+  const colorGroup = useId();
   const [name, setName] = useState(calendar?.name ?? "");
   const [color, setColor] = useState<PersonColor>(calendar?.color ?? "sky");
   const [owner, setOwner] = useState<string | null>(calendar?.owner_member_id ?? null);
@@ -318,7 +340,11 @@ function CalendarForm({ calendar, onDone }: { calendar: CalendarInfo | null; onD
     },
     onSuccess: async (saved) => {
       await refresh();
-      showToast(calendar ? "Changes saved" : `Added ${saved.name}`);
+      showToast(
+        calendar
+          ? t("settings.saved.toast")
+          : t("settings.calendars.added.toast", { name: saved.name }),
+      );
       onDone();
     },
   });
@@ -331,8 +357,8 @@ function CalendarForm({ calendar, onDone }: { calendar: CalendarInfo | null; onD
       ),
     onSuccess: async (_data, target) => {
       await refresh();
-      showToast(`Removed ${target.name}`, {
-        label: "Undo",
+      showToast(t("settings.calendars.removed.toast", { name: target.name }), {
+        label: t("app.action.undo"),
         onAction: () => {
           void (async () => {
             await api.POST("/api/calendar/calendars/{calendar_id}/restore", {
@@ -361,7 +387,7 @@ function CalendarForm({ calendar, onDone }: { calendar: CalendarInfo | null; onD
       }}
     >
       <TextField
-        label="Name"
+        label={t("settings.calendars.name.label")}
         value={name}
         maxLength={80}
         autoComplete="off"
@@ -369,10 +395,10 @@ function CalendarForm({ calendar, onDone }: { calendar: CalendarInfo | null; onD
           setName(event.target.value);
         }}
       />
-      <ColorPicker name="calendar-color" value={color} onChange={setColor} used={usedBy(members)} />
+      <ColorPicker name={colorGroup} value={color} onChange={setColor} used={usedBy(members)} />
       <div className="flex flex-col gap-2">
-        <p className={label}>Whose calendar</p>
-        <ChipRow label="Whose calendar">
+        <p className={label}>{t("settings.calendars.owner.label")}</p>
+        <ChipRow label={t("settings.calendars.owner.label")}>
           <Chip
             on={owner === null}
             onClick={() => {
@@ -380,7 +406,7 @@ function CalendarForm({ calendar, onDone }: { calendar: CalendarInfo | null; onD
             }}
           >
             <Avatar member={null} size="xs" />
-            Everyone
+            {t("settings.calendars.owner.everyone")}
           </Chip>
           {members.map((member) => (
             <Chip
@@ -396,7 +422,7 @@ function CalendarForm({ calendar, onDone }: { calendar: CalendarInfo | null; onD
           ))}
         </ChipRow>
       </div>
-      <Switch label="Show on paired screens" checked={shown} onChange={setShown} />
+      <Switch label={t("settings.calendars.shown.label")} checked={shown} onChange={setShown} />
       {error ? (
         <p role="alert" className="font-semibold text-alert">
           {errorMessage(error)}
@@ -404,7 +430,7 @@ function CalendarForm({ calendar, onDone }: { calendar: CalendarInfo | null; onD
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button type="submit" disabled={!name.trim()} pending={save.isPending}>
-          {calendar ? "Save Changes" : "Add Calendar"}
+          {calendar ? t("app.action.save_changes") : t("settings.calendars.create.action")}
         </Button>
         {calendar && !stays ? (
           <Button
@@ -414,7 +440,7 @@ function CalendarForm({ calendar, onDone }: { calendar: CalendarInfo | null; onD
               remove.mutate(calendar);
             }}
           >
-            Remove {calendar.name}
+            {t("settings.calendars.remove.action", { name: calendar.name })}
           </Button>
         ) : null}
       </div>

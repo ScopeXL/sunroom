@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 import { qk } from "../../api/keys";
+import { useT } from "../../lib/lang";
 import { askForPin } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
 import { useMinute } from "../../lib/time";
@@ -24,6 +25,7 @@ export function AttentionSheet({
   problems: readonly Problem[];
   onClose: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const navigate = useNavigate();
   const now = useMinute();
@@ -38,11 +40,11 @@ export function AttentionSheet({
   return (
     <Sheet
       open={open}
-      title="Needs Attention"
+      title={t("problems.title")}
       onClose={onClose}
       footer={
         <Button block variant="secondary" onClick={onClose}>
-          Done
+          {t("app.action.done")}
         </Button>
       }
     >
@@ -64,7 +66,7 @@ export function AttentionSheet({
                       void go(problem.page ?? "");
                     }}
                   >
-                    {`Open ${page}`}
+                    {t("problems.open.action", { page })}
                   </Button>
                 </div>
               ) : null}

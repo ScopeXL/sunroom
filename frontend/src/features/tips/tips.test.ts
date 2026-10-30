@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { t } from "../../lib/lang";
 import { pickTip, TIPS, type Tip } from "./tips";
 
 const EVERY_PLUGIN = new Set([
@@ -13,9 +14,9 @@ const EVERY_PLUGIN = new Set([
 ]);
 
 const SAMPLE: readonly Tip[] = [
-  { id: "a", text: "A." },
-  { id: "b", text: "B.", needs: ["lists"] },
-  { id: "c", text: "C.", needs: ["meals", "lists"] },
+  { id: "a", text: "tips.drag" },
+  { id: "b", text: "tips.usuals", needs: ["lists"] },
+  { id: "c", text: "tips.ingredients", needs: ["meals", "lists"] },
 ];
 
 describe("tips under the board (ADR 0028)", () => {
@@ -48,15 +49,19 @@ describe("tips under the board (ADR 0028)", () => {
   it("keeps the only tip that fits, and has none when nothing fits", () => {
     expect(pickTip(SAMPLE, new Set(), "a")?.id).toBe("a");
     expect(pickTip([], EVERY_PLUGIN, null)).toBeNull();
-    expect(pickTip([{ id: "x", text: "X.", needs: ["meals"] }], new Set(), null)).toBeNull();
+    expect(
+      pickTip([{ id: "x", text: "tips.copy_week", needs: ["meals"] }], new Set(), null),
+    ).toBeNull();
   });
 
-  it("words every tip as a short plain sentence (UX §2)", () => {
+  it("words every tip as a short plain sentence (UX §2), under its own key", () => {
     expect(new Set(TIPS.map((tip) => tip.id)).size).toBe(TIPS.length);
     for (const tip of TIPS) {
-      expect(tip.text.length, tip.id).toBeLessThanOrEqual(90);
-      expect(tip.text, tip.id).toMatch(/^[A-Z"].*[.]$/);
-      expect(tip.text, tip.id).not.toMatch(/\p{Extended_Pictographic}/u);
+      expect(tip.text, tip.id).toBe(`tips.${tip.id.replaceAll("-", "_")}`);
+      const words = t(tip.text);
+      expect(words.length, tip.id).toBeLessThanOrEqual(90);
+      expect(words, tip.id).toMatch(/^[A-Z"].*[.]$/);
+      expect(words, tip.id).not.toMatch(/\p{Extended_Pictographic}/u);
       for (const id of tip.needs ?? []) expect(EVERY_PLUGIN.has(id), `${tip.id}: ${id}`).toBe(true);
     }
   });

@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { useMembers, type Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
 import { uploadPicture } from "../../lib/upload";
@@ -15,6 +16,7 @@ import { Segmented } from "../../ui/Segmented";
 import { Sheet } from "../../ui/Sheet";
 import { useShell } from "../../ui/shell";
 import { TextField } from "../../ui/TextField";
+import { ROLE_WORDS } from "./AddPersonRow";
 
 type Color = Member["color"];
 
@@ -25,14 +27,24 @@ type Color = Member["color"];
  * history stays (they're archived, and Put back is in Family).
  */
 export function MemberSheet({ member, onClose }: { member: Member | null; onClose: () => void }) {
+  const t = useT();
   return (
-    <Sheet open={member !== null} title={member ? `Edit ${member.name}` : "Edit"} onClose={onClose}>
+    <Sheet
+      open={member !== null}
+      title={
+        member
+          ? t("settings.family.member.title", { name: member.name })
+          : t("settings.family.member.blank.title")
+      }
+      onClose={onClose}
+    >
       {member ? <MemberForm key={member.id} member={member} onClose={onClose} /> : null}
     </Sheet>
   );
 }
 
 function MemberForm({ member, onClose }: { member: Member; onClose: () => void }) {
+  const t = useT();
   const display = useShell() === "display";
   // A photo comes from a signed-in device; a paired screen has no files, so it shows the photo row
   // only to remove a photo (ADR 0028, 0034).
@@ -40,6 +52,8 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
   const kiosk = session?.device_kind === "kiosk";
   const queryClient = useQueryClient();
   const { data: members = [] } = useMembers();
+  // The color radios' group name, unique among the pickers on screen.
+  const colorGroup = useId();
   const [name, setName] = useState(member.name);
   const [role, setRole] = useState<Member["role"]>(member.role);
   const [color, setColor] = useState<Color>(member.color);
@@ -63,7 +77,7 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
       ),
     onSuccess: async () => {
       await refresh();
-      showToast("Changes saved");
+      showToast(t("settings.saved.toast"));
       onClose();
     },
   });
@@ -79,8 +93,8 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
       ),
     onSuccess: async () => {
       await refresh();
-      showToast(`Removed ${member.name}`, {
-        label: "Undo",
+      showToast(t("settings.family.member.removed.toast", { name: member.name }), {
+        label: t("app.action.undo"),
         onAction: () => {
           void api
             .POST("/api/members/{member_id}/restore", {
@@ -115,8 +129,7 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
     return (
       <div className="flex flex-col gap-4">
         <p className={display ? "text-d-body" : "text-body"}>
-          {`Remove ${member.name} from the household? Their history stays, and you can put them back
-          from Family.`}
+          {t("settings.family.member.remove.question", { name: member.name })}
         </p>
         <Button
           variant="danger"
@@ -126,7 +139,7 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
             remove.mutate();
           }}
         >
-          {`Remove ${member.name}`}
+          {t("settings.family.member.remove.action", { name: member.name })}
         </Button>
         <Button
           variant="secondary"
@@ -135,7 +148,7 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
             setConfirming(false);
           }}
         >
-          {`Keep ${member.name}`}
+          {t("settings.family.member.keep.action", { name: member.name })}
         </Button>
       </div>
     );
@@ -151,7 +164,7 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
       }}
     >
       <TextField
-        label="Name"
+        label={t("settings.family.member.name.label")}
         value={name}
         maxLength={40}
         autoComplete="off"
@@ -160,26 +173,26 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
         }}
       />
       <Segmented
-        label="Parent or child"
+        label={t("settings.family.role.label")}
         value={role}
         onChange={setRole}
         options={[
-          { value: "parent", label: "Parent" },
-          { value: "kid", label: "Child" },
+          { value: "parent", label: t(ROLE_WORDS.parent) },
+          { value: "kid", label: t(ROLE_WORDS.kid) },
         ]}
       />
       <ColorPicker
-        name="color"
+        name={colorGroup}
         value={color}
         onChange={setColor}
         used={usedBy(members, member.id)}
         initial={(name.trim() || member.name).charAt(0).toUpperCase()}
       />
       <TextField
-        label="Birthday (optional)"
+        label={t("settings.family.member.birthday.label")}
         type="date"
         value={birthday}
-        hint="Birthdays show up on the calendar by themselves."
+        hint={t("settings.family.member.birthday.hint")}
         onChange={(event) => {
           setBirthday(event.target.value);
         }}
@@ -195,7 +208,9 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
                   : "min-h-11 rounded-button px-4 text-body"
               }`}
             >
-              {member.avatar_url ? "Change Photo" : "Add a Photo"}
+              {member.avatar_url
+                ? t("settings.family.member.photo.change.action")
+                : t("settings.family.member.photo.add.action")}
               <input
                 type="file"
                 accept="image/*"
@@ -214,7 +229,7 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
                 removePhoto.mutate();
               }}
             >
-              Remove Photo
+              {t("settings.family.member.photo.remove.action")}
             </Button>
           ) : null}
         </div>
@@ -225,7 +240,7 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
         </p>
       ) : null}
       <Button type="submit" block pending={save.isPending} disabled={!name.trim()}>
-        Save Changes
+        {t("app.action.save_changes")}
       </Button>
       <Button
         variant="quiet-danger"
@@ -234,7 +249,7 @@ function MemberForm({ member, onClose }: { member: Member; onClose: () => void }
           setConfirming(true);
         }}
       >
-        {`Remove ${member.name}`}
+        {t("settings.family.member.remove.action", { name: member.name })}
       </Button>
     </form>
   );

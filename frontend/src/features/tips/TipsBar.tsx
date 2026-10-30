@@ -2,6 +2,7 @@ import { ChevronRight, Lightbulb } from "lucide-react";
 import { useEffect } from "react";
 
 import { usePlugins, useSettings } from "../../lib/household";
+import { tRich, useT } from "../../lib/lang";
 import { createStore, useStore } from "../../lib/store";
 import { Button } from "../../ui/Button";
 import { useShell } from "../../ui/shell";
@@ -23,6 +24,7 @@ function nextTip(enabled: ReadonlySet<string>): void {
  * shows, toasts sit above it (styles/tokens.css, `--tips-h`).
  */
 export function TipsBar() {
+  const t = useT();
   const display = useShell() === "display";
   const { data: settings } = useSettings();
   const { data: plugins = [] } = usePlugins();
@@ -55,13 +57,16 @@ export function TipsBar() {
     >
       <Lightbulb aria-hidden="true" className="size-6 shrink-0 text-ink-soft" />
       <p className="min-w-0 flex-1 truncate text-d-secondary">
-        <span className="sr-only">Tip: </span>
-        {tip.text}
+        {/* "Tip:" for a screen reader only, before the tip's words. */}
+        {tRich("tips.bar.text", {
+          hidden: (words) => <span className="sr-only">{words}</span>,
+          tip: t(tip.text),
+        })}
       </p>
       <Button
         variant="quiet"
         icon
-        aria-label="Next tip"
+        aria-label={t("tips.bar.next.aria")}
         onClick={() => {
           nextTip(new Set(on.split(" ")));
         }}

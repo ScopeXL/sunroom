@@ -5,9 +5,9 @@ import { useId, type ReactNode } from "react";
 
 import { api } from "../../api/client";
 import { qk } from "../../api/keys";
+import { t, useT, type Key } from "../../lib/lang";
 import { sunroomName, useScreenAgent } from "../../lib/screenAgent";
 import { fetchSession } from "../../lib/session";
-import { useT } from "../../lib/lang";
 import { RoomHeader } from "../../shell/roomHeader";
 import { Button } from "../../ui/Button";
 import { Screen } from "../../ui/Screen";
@@ -44,22 +44,20 @@ const PAGES: Record<SettingsPageKey, () => ReactNode> = {
 
 interface Page {
   key: string;
-  title: string;
+  /** A key, core's (`settings.family.title`) or a plugin's (`tasks.settings.title`). */
+  title: Key;
   render: () => ReactNode;
 }
 
-/** This Screen is the wall's own device, not the household's (ADR 0039): what its link and its
- * page say, apart from the pages every device and screen share. */
+/** This Screen is the wall's own device, not the household's (ADR 0039): its link and its page
+ * say so (`settings.this_screen.hint`, `.lead`), apart from the pages every device and screen
+ * share. */
 const THIS_SCREEN = "this-screen";
-const DEVICE_HINT = "Network, updates and power";
-const DEVICE_LEAD =
-  "These settings are for this screen only: its network, updates and power. They don’t change Sunroom for anyone else.";
 
 /** Core's pages, with the enabled plugins' own (Chores) after Calendars & accounts. This Screen
  * only where the wall's own Sunroom Screen answers (ADR 0035), first there (ADR 0039): never on a
  * phone. */
 function usePages(): { pages: Page[]; ready: boolean } {
-  const t = useT();
   const { modules, ready } = usePluginModulesState();
   const screenAgent = useScreenAgent();
   const core: Page[] = SETTINGS_PAGES.filter(
@@ -68,7 +66,7 @@ function usePages(): { pages: Page[]; ready: boolean } {
   const plugins: Page[] = modules.flatMap((module) =>
     (module.settingsPages ?? []).map(({ key, title, Page }) => ({
       key,
-      title: t(title),
+      title,
       render: () => <Page />,
     })),
   );
@@ -89,15 +87,16 @@ function Flag({ on }: { on: boolean }) {
 }
 
 /** "Calendars & Accounts, needs attention" for a screen reader, on a page with a problem. */
-const flagName = (title: string, on: boolean) =>
-  on ? { "aria-label": `${title}, needs attention` } : {};
+const flagName = (title: Key, on: boolean) =>
+  on ? { "aria-label": t("settings.page.flagged.aria", { title: t(title) }) } : {};
 
 /** Settings on a phone: the list of pages (UX §5), with the Sunroom Discord at the title's end. */
 export function SettingsIndex() {
+  const t = useT();
   const { pages } = usePages();
   const flagged = useFlagged();
   return (
-    <Screen title="Settings" back="/more" corner={<DiscordButton kiosk={false} />}>
+    <Screen title={t("settings.title")} back="/more" corner={<DiscordButton kiosk={false} />}>
       <ul className="divide-y divide-line rounded-chip border border-line bg-surface">
         {pages.map((page) => (
           <li key={page.key}>
@@ -108,7 +107,7 @@ export function SettingsIndex() {
               className="press-row flex min-h-14 items-center justify-between px-4 text-row font-semibold"
             >
               <span className="flex min-w-0 items-center">
-                {page.title}
+                {t(page.title)}
                 <Flag on={flagged.has(page.key)} />
               </span>
               <ChevronRight aria-hidden="true" className="text-ink-soft" />
@@ -123,6 +122,7 @@ export function SettingsIndex() {
 /** One Settings page: full screen with Back on a phone, list and detail on the wall screen. With
  * none named (the wall's /settings), the first: This Screen where there is one, else Family. */
 export function SettingsPageScreen({ page }: { page?: string }) {
+  const t = useT();
   const display = useShell() === "display";
   const { pages, ready } = usePages();
   // A plugin's page waits for its plugin to load; an unknown one shows the first.
@@ -133,7 +133,7 @@ export function SettingsPageScreen({ page }: { page?: string }) {
   if (!current) return null;
   if (!display) {
     return (
-      <Screen title={current.title} back="/settings">
+      <Screen title={t(current.title)} back="/settings">
         {current.render()}
       </Screen>
     );
@@ -142,6 +142,7 @@ export function SettingsPageScreen({ page }: { page?: string }) {
 }
 
 function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
+  const t = useT();
   const flagged = useFlagged();
   const hintId = useId();
   const device = pages.filter((page) => page.key === THIS_SCREEN);
@@ -162,7 +163,7 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
     <div className="flex min-h-0 flex-1">
       {/* At the right: the Sunroom Discord, then Lock while a parent's grant lasts (ADR 0042). */}
       <RoomHeader
-        title="Settings"
+        title={t("settings.title")}
         controls={
           <div className="ml-auto flex items-center gap-3">
             <DiscordButton kiosk={session?.device_kind === "kiosk"} />
@@ -174,14 +175,14 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
                 }}
               >
                 <Lock aria-hidden="true" className="size-7" />
-                Lock
+                {t("settings.lock.action")}
               </Button>
             ) : null}
           </div>
         }
       />
       <nav
-        aria-label="Settings"
+        aria-label={t("settings.title")}
         className="w-96 shrink-0 overflow-y-auto border-r border-line py-4"
       >
         {/* This Screen in a box of its own over a rule, then the household's pages under its
@@ -195,7 +196,9 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
                     to="/settings/$page"
                     params={{ page: page.key }}
                     aria-label={
-                      flagged.has(page.key) ? `${page.title}, needs attention` : page.title
+                      flagged.has(page.key)
+                        ? t("settings.page.flagged.aria", { title: t(page.title) })
+                        : t(page.title)
                     }
                     aria-describedby={hintId}
                     aria-current={page.key === current.key ? "page" : undefined}
@@ -204,11 +207,11 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
                     <MonitorCog aria-hidden="true" className="size-9 shrink-0" />
                     <span className="flex min-w-0 flex-col">
                       <span className="flex items-center text-d-body font-semibold whitespace-nowrap">
-                        {page.title}
+                        {t(page.title)}
                         <Flag on={flagged.has(page.key)} />
                       </span>
                       <span id={hintId} className="text-d-caption text-ink-soft">
-                        {DEVICE_HINT}
+                        {t("settings.this_screen.hint")}
                       </span>
                     </span>
                   </Link>
@@ -231,7 +234,7 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
                 aria-current={page.key === current.key ? "page" : undefined}
                 className="press-row flex min-h-16 items-center rounded-button-d px-4 text-d-body font-semibold whitespace-nowrap text-ink-soft aria-[current=page]:bg-surface aria-[current=page]:text-ink"
               >
-                {page.title}
+                {t(page.title)}
                 <Flag on={flagged.has(page.key)} />
               </Link>
             </li>
@@ -249,14 +252,14 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
             <MonitorCog aria-hidden="true" className="mt-0.5 size-10 shrink-0" />
             <div className="flex max-w-4xl flex-col gap-2">
               <h2 id="settings-page" className="text-d-title font-bold">
-                {current.title}
+                {t(current.title)}
               </h2>
-              <p className="text-d-secondary text-ink-soft">{DEVICE_LEAD}</p>
+              <p className="text-d-secondary text-ink-soft">{t("settings.this_screen.lead")}</p>
             </div>
           </div>
         ) : (
           <h2 id="settings-page" className="mb-8 text-d-title font-bold">
-            {current.title}
+            {t(current.title)}
           </h2>
         )}
         <div className="max-w-4xl">{current.render()}</div>
