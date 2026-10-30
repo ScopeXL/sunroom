@@ -19,6 +19,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
   to teach their helper this; the screen says so under Software.
 - Reinstall… under Software puts Sunroom Screen back the way the installer sets it up, for a
   screen that misbehaves; the pairing and the settings stay.
+- Behind the scenes: every word the app shows now comes from one English file, so Sunroom can be
+  translated (docs/LANGUAGES.md).
 
 ### Changed
 

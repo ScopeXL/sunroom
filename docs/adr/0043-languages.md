@@ -10,8 +10,8 @@
   default, every word the family reads moved out of the code into one English file, and
   instructions so that every later change keeps the languages whole. `docs/M10.md` sets out how
   other self-hosted apps do it (Answer A), five ways to do it here with a recommendation
-  (Answer B), and the tasks; this ADR keeps the decisions a later session must not rediscover. It
-  was started with the batch's first language task (T1) and gains a row with each task after.
+  (Answer B), and the tasks; this ADR keeps the decisions a later session must not rediscover, a
+  row for each task as it was built (T1 to T8), finished with the docs (T9: `docs/LANGUAGES.md`).
 - Three programs say words a family reads: the page (both shells and the screen's own pages),
   the server (its errors, Needs Attention, the plugins' names, the repeat sentence) and Sunroom
   Screen's agent (its toasts, refusals and steps).

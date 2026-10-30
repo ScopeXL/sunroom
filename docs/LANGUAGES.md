@@ -2,8 +2,10 @@
 
 Every word a family reads on a wall, a device or the screen's own pages lives in
 [`lang/en.json`](../lang/en.json), under a key; the code names the key, never the English
-(ADR 0043). This page says how to add a word and how a language is added. (M10's T9 completes it:
-the glossary and each language's style.)
+(ADR 0043). This page is for whoever adds a word and whoever translates: the files, the keys,
+ICU as Sunroom writes it, the server's and Sunroom Screen's words, dates and quick add, the
+keyboards, each language's style and the glossary, the pseudo language, and how a language is
+added.
 
 ## The files
 
@@ -35,6 +37,24 @@ the glossary and each language's style.)
    agent's messages are plain `{name}`s: no plural or select.
 4. `just lang --fix` sorts the file; `just lang` checks everything (a key nothing names fails, so
    a key is added as it is used, never ahead).
+
+## ICU, as Sunroom writes it
+
+Every message is ICU MessageFormat (`intl-messageformat` on the page; plain `{name}`s on the
+server and in Sunroom Screen):
+
+- `{name}` is a value the code fills in, never translated: a person's name, a time, a count
+  written out (`{n}` writes 1000 as "1000").
+- `{n, plural, one {# day} other {# days}}` is a count. `#` is the number as the language writes
+  it ("1,000"); `=1 {…}` is exactly one, where a language's `one` holds 21 and 31 too. Give every
+  category your language has (`few`, `many`…), and keep `other`.
+- `{kind, select, idea {…} other {…}}` picks words by a value the code names; translate inside
+  the branches, never the branch names.
+- `{date, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}` is an ordinal, by your
+  language's own rules.
+- `<b>…</b>` (and `<hidden>…</hidden>`) mark a part drawn differently: keep the tags, move them
+  with the words they hold.
+- An apostrophe right before `{`, `}`, `#`, `<` or `|` quotes it: write `’` or `''` there.
 
 ## The server's words
 
@@ -112,14 +132,80 @@ is English's; `qwerty-es` has ñ after l, and ¿ and ¡ before ? and !. A langua
 Lexend covers Latin and Latin Extended. A language in another script needs a fallback face first
 (not yet).
 
+## Each language's style
+
+- **English** is UX §2 as it stands: plain words; Title Case for titles, headings and navigation
+  (`.title`, `.action`), sentence case for everything else; a button says exactly what happens
+  and its toast repeats the verb; numbers as digits.
+- **Spanish (es)**: sentence case for titles and buttons too ("Añadir evento", not "Añadir
+  Evento"); the familiar "tú" ("Toca para continuar"), as a family speaks; short words for the
+  wall (a button reads from across the room, so "Listo" over "He terminado"); the 24-hour clock
+  follows the household's setting, not the language.
+- A new language adds its paragraph here: its case rules, how it addresses the family, its
+  words for the glossary below.
+
+## The glossary
+
+The words Sunroom uses the same way everywhere (PLAN §2 and UX §2). Each language adds its
+column, filled by its translator, and keeps to it in every message.
+
+| English | Means |
+|---|---|
+| Household, family | The one family Sunroom serves |
+| Person | Someone in the family |
+| Everyone | Shared by the whole family |
+| Wall screen, This Screen | A screen paired on the wall |
+| Device | A phone, tablet or computer signed in |
+| Calendar, Account | Where events come from; a connection to Google, Apple or a server |
+| Event | Something on the calendar |
+| Task | A recurring job for someone, with stars |
+| Routine | A checklist someone runs through |
+| Stars, Reward | What tasks earn; what stars buy |
+| List | A shared checklist |
+| Meal | What's eaten on a day |
+| Countdown | Days until something |
+| Photos & Screensaver | Pictures when the wall is idle |
+| Features | The parts that can be turned on or off |
+| Parent PIN | The code that guards Settings on the wall |
+| Needs Attention | What a parent should look at |
+
 ## Adding a language
 
 Copy `lang/en.json` to `lang/<code>.json`, add its entry to `lang/languages.json` as a
-`preview`, translate, run `just lang` for the count, and mark it `complete` at 100 %. To see a
-preview language, or the pseudo language that shows every word that slipped past the system, set
-`localStorage["sunroom.language"]` to its code (or `pseudo`) in the browser and reload.
+`preview` (its own `name`, its `locale` for `Intl`, `dir`, `chrono`, `keyboard`), translate, run
+`just lang` for the count, and mark it `complete` at 100 %: only then does Settings → Household →
+Language offer it. To see a preview language, set `localStorage["sunroom.language"]` to its code
+in the browser and reload.
+
+## The pseudo language
+
+`pseudo` is English accented and a third longer, in brackets: `[Šéţţíñĝš~~~]`. Every word that
+comes from `lang/` shows that way; anything plain is a word that slipped past (or the family's
+own data, a number or a date). Set `localStorage["sunroom.language"] = "pseudo"` in the browser
+and reload to look; `e2e/lang.spec.ts` looks at the key screens of the wall, a phone and the
+screen's own pages in it, and `just screenshots` shoots the board and Settings → Household in it
+for the longer words (a button that clips is a bug; `+N more` arriving sooner is fine).
+
+## Translating with an AI session
+
+1. Give the session `lang/en.json`, this page and UX §2, and the language's style and glossary
+   above (write them first, with a native speaker).
+2. One area at a time (`calendar.*`, then `settings.*`…), into `lang/<code>.json`: every
+   placeholder and tag kept, plural categories the language's own, the glossary's words.
+3. `just lang` after each area: the count, and any placeholder or tag that went missing.
+4. Look at it: `localStorage["sunroom.language"] = "<code>"` on a wall and a phone.
+5. A native speaker reads it before it's marked `complete` (ask on the Discord).
+
+Weblate (a shared translation site) comes later, when translators arrive; the files are already
+in the shape it reads.
+
 
 ## What stays English
 
-The installers' and the commands' output, the logs, the Discord message Send Feedback posts, the
-docs and the CHANGELOG, and the names Sunroom, Sunroom Screen, Discord, Apple and Google.
+By design (M10's Answer E): the installers' and uninstallers' terminal output and the
+`sunroom` and `sunroom-kiosk` commands (the self-hoster's tools); the logs; the Discord message
+Send Feedback posts (the project's channel, and the relay checks every part of it, so
+`core/feedback.py` never changes; what the family typed goes as typed); the docs and the
+CHANGELOG; and the names Sunroom, Sunroom Screen, Discord, Apple and Google. A family's own words
+(names, titles, places) are never translated either. Everything else a family reads, on a wall,
+a device or the screen's own pages, goes through `lang/`.
