@@ -15,6 +15,7 @@ import { Arrivals, useArrivals } from "../../lib/arrivals";
 import { usePageTurn } from "../../lib/motion";
 import type { BoardPanel } from "../../lib/displayState";
 import { useMembers, useSettings } from "../../lib/household";
+import { useT, type Key } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { ActionBar } from "../../ui/ActionBar";
 import { Avatar } from "../../ui/Avatar";
@@ -35,12 +36,12 @@ import type { Occurrence } from "../calendar/types";
 
 type Mode = "week" | "day" | "agenda" | "month";
 
-const MODES = [
-  { value: "week", label: "Week" },
-  { value: "day", label: "Day" },
-  { value: "agenda", label: "Agenda" },
-  { value: "month", label: "Month" },
-] as const;
+const MODES: readonly { value: Mode; label: Key }[] = [
+  { value: "week", label: "phone.calendar.mode.week" },
+  { value: "day", label: "phone.calendar.mode.day" },
+  { value: "agenda", label: "phone.calendar.mode.agenda" },
+  { value: "month", label: "phone.calendar.mode.month" },
+];
 
 const MODE_KEY = "sunroom.calendar.mode";
 const PEOPLE_KEY = "sunroom.calendar.people";
@@ -90,6 +91,7 @@ function monthStep(day: string, step: number): string {
  * Events open in a sheet; Add and Change open the editor in a sheet.
  */
 export function CalendarScreen() {
+  const t = useT();
   const minute = useMinute();
   const now = wallNow(minute);
   const today = zonedParts(minute).day;
@@ -151,7 +153,7 @@ export function CalendarScreen() {
     else if (mode === "month") setChosen(monthStep(selected, direction));
     else setChosen(addDays(selected, direction * 7));
   };
-  const stepLabel = mode === "day" ? "day" : mode === "month" ? "month" : "week";
+  const unit = mode === "day" ? "day" : mode === "month" ? "month" : "week";
   const listDays = Array.from({ length: LIST_DAYS }, (_, n) => addDays(selected, n));
   const agendaDays = Array.from({ length: AGENDA_PAST + AGENDA_DAYS }, (_, n) =>
     addDays(today, n - AGENDA_PAST),
@@ -183,7 +185,7 @@ export function CalendarScreen() {
                   setChosen(null);
                 }}
               >
-                Today
+                {t("phone.calendar.today.action")}
               </Button>
             ) : null}
             {mode === "agenda" ? null : (
@@ -191,7 +193,7 @@ export function CalendarScreen() {
                 <Button
                   variant="secondary"
                   icon
-                  aria-label={`Previous ${stepLabel}`}
+                  aria-label={t("phone.calendar.previous.aria", { unit })}
                   onClick={() => {
                     step(-1);
                   }}
@@ -201,7 +203,7 @@ export function CalendarScreen() {
                 <Button
                   variant="secondary"
                   icon
-                  aria-label={`Next ${stepLabel}`}
+                  aria-label={t("phone.calendar.next.aria", { unit })}
                   onClick={() => {
                     step(1);
                   }}
@@ -212,7 +214,12 @@ export function CalendarScreen() {
             )}
           </div>
         </header>
-        <Segmented label="View" options={MODES} value={mode} onChange={setMode} />
+        <Segmented
+          label={t("phone.calendar.mode.aria")}
+          options={MODES.map(({ value, label }) => ({ value, label: t(label) }))}
+          value={mode}
+          onChange={setMode}
+        />
         <div className="flex flex-col gap-2">
           {/* The live-updates icon at the right, only while something's wrong (ADR 0030): the
               header has no room beside the arrows. */}
@@ -224,12 +231,20 @@ export function CalendarScreen() {
                 setShowPeople(!showPeople);
               }}
             >
-              Show: {chosenPeople.length ? chosenPeople.map((m) => m.name).join(", ") : "everyone"}
+              {chosenPeople.length
+                ? t("phone.calendar.show.people", {
+                    names: chosenPeople.map((m) => m.name).join(", "),
+                  })
+                : t("phone.calendar.show.everyone")}
             </Chip>
             <LiveStatusButton />
           </div>
           {showPeople ? (
-            <div role="group" aria-label="Show" className="flex flex-wrap gap-2">
+            <div
+              role="group"
+              aria-label={t("phone.calendar.show.aria")}
+              className="flex flex-wrap gap-2"
+            >
               {members.map((member) => {
                 const on = people.includes(member.id);
                 return (
@@ -258,7 +273,7 @@ export function CalendarScreen() {
                     setPeople([]);
                   }}
                 >
-                  Everyone
+                  {t("phone.calendar.everyone.action")}
                 </Button>
               ) : null}
             </div>
@@ -291,7 +306,9 @@ export function CalendarScreen() {
           ) : mode === "day" ? (
             <section aria-label={shortDate(selected)} className="flex flex-col">
               <h2 className="text-row font-bold">
-                {selected === today ? `${shortDate(selected)} · today` : shortDate(selected)}
+                {selected === today
+                  ? t("phone.calendar.day.today", { date: shortDate(selected) })
+                  : shortDate(selected)}
               </h2>
               <DayView
                 day={selected}
@@ -351,7 +368,7 @@ export function CalendarScreen() {
             }}
           >
             <Plus aria-hidden="true" className="size-5" />
-            Add
+            {t("app.action.add")}
           </Button>
         </ActionBar>
         <EventSheet
@@ -410,17 +427,18 @@ function MonthPicker({
   onFound: (day: string) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [year, setYear] = useState(() => Number(selected.slice(0, 4)));
   const { data: hits = [], isFetching } = useEventSearch(open ? query : "");
   const words = query.trim();
   return (
-    <Sheet open={open} title="Find a Day" onClose={onClose}>
+    <Sheet open={open} title={t("phone.calendar.find.title")} onClose={onClose}>
       <div className="flex flex-col gap-5">
         <TextField
-          label="Search"
+          label={t("phone.calendar.find.search.label")}
           type="search"
-          placeholder="Title or place"
+          placeholder={t("phone.calendar.find.search.placeholder")}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -428,9 +446,15 @@ function MonthPicker({
           enterKeyHint="search"
         />
         {words.length >= 2 ? (
-          <ul aria-label="Found" aria-busy={isFetching} className="flex flex-col">
+          <ul
+            aria-label={t("phone.calendar.find.found.aria")}
+            aria-busy={isFetching}
+            className="flex flex-col"
+          >
             {hits.length === 0 && !isFetching ? (
-              <li className="text-secondary text-ink-soft">Nothing matches “{words}”.</li>
+              <li className="text-secondary text-ink-soft">
+                {t("phone.calendar.find.none.empty", { words })}
+              </li>
             ) : null}
             {hits.map((hit) => {
               const day = hit.next_start_date ?? hit.next_start_local?.slice(0, 10) ?? null;
@@ -460,7 +484,7 @@ function MonthPicker({
           <Button
             variant="secondary"
             icon
-            aria-label="Previous year"
+            aria-label={t("phone.calendar.find.previous_year.aria")}
             onClick={() => {
               setYear(year - 1);
             }}
@@ -471,7 +495,7 @@ function MonthPicker({
           <Button
             variant="secondary"
             icon
-            aria-label="Next year"
+            aria-label={t("phone.calendar.find.next_year.aria")}
             onClick={() => {
               setYear(year + 1);
             }}
@@ -479,7 +503,11 @@ function MonthPicker({
             <ChevronRight aria-hidden="true" className="size-6" />
           </Button>
         </div>
-        <div role="group" aria-label="Months" className="grid grid-cols-3 gap-2">
+        <div
+          role="group"
+          aria-label={t("phone.calendar.find.months.aria")}
+          className="grid grid-cols-3 gap-2"
+        >
           {MONTHS.map((index) => {
             const first = `${String(year)}-${String(index + 1).padStart(2, "0")}-01`;
             const on = selected.slice(0, 7) === first.slice(0, 7);

@@ -10,7 +10,7 @@ import { whenIdle, watchActivity } from "../../lib/idle";
 import { watchKeyboardFields } from "../../lib/keyboard";
 import { MotionProvider } from "../../lib/motion";
 import { watchPointer } from "../../lib/pointer";
-import { useFollowLanguage } from "../../lib/lang";
+import { tRich, useFollowLanguage, useT } from "../../lib/lang";
 import { keepPairing } from "../../lib/screenAgent";
 import { fetchSession, type Session } from "../../lib/session";
 import {
@@ -197,37 +197,43 @@ function Frame({
 /** Set Up Sunroom (ADR 0039): right here on the wall's keyboard, or on another device, side by
  * side in landscape and one above the other in portrait, like the screen's own Welcome. */
 function Welcome({ address, onSetUpHere }: { address: string; onSetUpHere: () => void }) {
+  const t = useT();
   return (
     <div className="flex w-full max-w-[110rem] flex-col items-center gap-8">
       <Brand size="entry" />
-      <h1 className="text-d-glance font-bold">Set Up Sunroom</h1>
+      <h1 className="text-d-glance font-bold">{t("display.welcome.title")}</h1>
       <div className="grid w-full gap-6 portrait:grid-cols-1 landscape:grid-cols-2">
         <Choice
-          heading="On This Screen"
-          lead="Set it up right here."
-          action={<Button onClick={onSetUpHere}>Set Up Here</Button>}
+          heading={t("display.welcome.here.title")}
+          lead={t("display.welcome.here.lead")}
+          action={<Button onClick={onSetUpHere}>{t("display.welcome.here.action")}</Button>}
         >
-          <p className="text-d-body">
-            Type on the keyboard that opens on this screen. You can change all of it later in
-            Settings.
-          </p>
-          <p className="text-d-body text-ink-soft">
-            This screen becomes your family’s shared screen, and other devices join afterwards.
-          </p>
+          <p className="text-d-body">{t("display.welcome.here.keyboard")}</p>
+          <p className="text-d-body text-ink-soft">{t("display.welcome.here.shared")}</p>
         </Choice>
-        <Choice heading="On Another Device" lead="Scan this code with your phone’s camera.">
+        <Choice
+          heading={t("display.welcome.elsewhere.title")}
+          lead={t("display.welcome.elsewhere.lead")}
+        >
           {isLoopbackAddress(address) ? (
             <p className="text-d-body">
-              Open Sunroom on another device with this computer’s name or network address instead of{" "}
-              <span className="font-bold">{new URL(address).hostname}</span>. Then come back here:
-              this screen will show a code to pair it.
+              {tRich("display.welcome.elsewhere.loopback", {
+                host: new URL(address).hostname,
+                b: (words) => <span className="font-bold">{words}</span>,
+              })}
             </p>
           ) : (
             <div className="flex flex-wrap items-center gap-6">
-              <QrCode value={address} label={`A code that opens ${address}`} className="size-56" />
+              <QrCode
+                value={address}
+                label={t("display.welcome.elsewhere.qr.aria", { address })}
+                className="size-56"
+              />
               <p className="min-w-0 flex-1 basis-64 text-d-body">
-                Or open <span className="font-bold break-all">{address}</span> on any device. Then
-                come back here: this screen will show a code to pair it.
+                {tRich("display.welcome.elsewhere.address", {
+                  address,
+                  b: (words) => <span className="font-bold break-all">{words}</span>,
+                })}
               </p>
             </div>
           )}
@@ -254,12 +260,13 @@ function WallSetup({
   onStep: (next: WallStep) => void;
   onLeave: () => void;
 }) {
+  const t = useT();
   useEffect(() => whenIdle(SETUP_IDLE_MS, onLeave), [onLeave]);
   if (step === "name") {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-10 py-12 pb-[calc(var(--osk-h,0px)+48px)] text-center">
         <NameThisScreen
-          action="Next"
+          action={t("app.action.next")}
           onDone={() => {
             onStep("done");
           }}
@@ -291,6 +298,7 @@ interface Pairing {
 }
 
 function PairThisScreen({ onPaired }: { onPaired: () => void }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [pairing, setPairing] = useState<Pairing | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -345,29 +353,26 @@ function PairThisScreen({ onPaired }: { onPaired: () => void }) {
   return (
     <>
       <Brand size="entry" />
-      <h1 className="text-d-glance font-bold">Pair This Screen</h1>
+      <h1 className="text-d-glance font-bold">{t("display.pair.title")}</h1>
       {pairing ? (
         <>
           <p
-            aria-label={`Pair code: ${pairing.code.split("").join(" ")}`}
+            aria-label={t("display.pair.code.aria", { code: pairing.code.split("").join(" ") })}
             data-testid="pair-code"
             className="text-d-code font-extrabold tracking-[0.12em]"
           >
             {pairing.display}
           </p>
           <div className="flex items-center gap-10 text-left">
-            <QrCode value={pairing.pair_url} label="A code that opens Pair a Display on a phone" />
+            <QrCode value={pairing.pair_url} label={t("display.pair.qr.aria")} />
             <div className="flex max-w-xl flex-col gap-3">
-              <p className="text-d-body">
-                On a signed-in device, open Pair a Display (under More on a phone, Settings →
-                Devices on a computer) and type this code.
-              </p>
-              <p className="text-d-secondary text-ink-soft">The code changes every 10 minutes.</p>
+              <p className="text-d-body">{t("display.pair.how")}</p>
+              <p className="text-d-secondary text-ink-soft">{t("display.pair.changes")}</p>
             </div>
           </div>
         </>
       ) : (
-        <p className="text-d-body text-ink-soft">{problem ?? "Getting a code…"}</p>
+        <p className="text-d-body text-ink-soft">{problem ?? t("display.pair.getting")}</p>
       )}
       <Button
         variant="quiet"
@@ -375,7 +380,7 @@ function PairThisScreen({ onPaired }: { onPaired: () => void }) {
           setTyping(true);
         }}
       >
-        Type the household password here instead
+        {t("display.pair.password.action")}
       </Button>
       <LanguageButton />
     </>
@@ -383,6 +388,7 @@ function PairThisScreen({ onPaired }: { onPaired: () => void }) {
 }
 
 function PasswordPairing({ onCancel, onPaired }: { onCancel: () => void; onPaired: () => void }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
@@ -390,7 +396,8 @@ function PasswordPairing({ onCancel, onPaired }: { onCancel: () => void; onPaire
     mutationFn: async () =>
       unwrap(
         await api.POST("/api/auth/kiosk/pair-with-password", {
-          body: { password, label: "Wall screen" },
+          // The name it's paired with, until Name This Screen gives it another.
+          body: { password, label: t("display.name.default") },
         }),
       ),
     onSuccess: (session) => {
@@ -417,9 +424,9 @@ function PasswordPairing({ onCancel, onPaired }: { onCancel: () => void; onPaire
       }}
     >
       <Brand size="entry" />
-      <h1 className="text-d-glance font-bold">Type the Household Password</h1>
+      <h1 className="text-d-glance font-bold">{t("display.password.title")}</h1>
       <TextField
-        label="Household password"
+        label={t("display.password.label")}
         type={visible ? "text" : "password"}
         layout="password"
         autoComplete="off"
@@ -432,7 +439,7 @@ function PasswordPairing({ onCancel, onPaired }: { onCancel: () => void; onPaire
       />
       <div className="flex flex-wrap items-center gap-3 whitespace-nowrap">
         <Button type="submit" pending={pair.isPending} disabled={!password}>
-          Pair This Screen
+          {t("display.password.pair.action")}
         </Button>
         <Button
           variant="secondary"
@@ -446,10 +453,10 @@ function PasswordPairing({ onCancel, onPaired }: { onCancel: () => void; onPaire
           ) : (
             <Eye aria-hidden="true" className="size-7" />
           )}
-          {visible ? "Hide Password" : "Show Password"}
+          {visible ? t("display.password.hide.action") : t("display.password.show.action")}
         </Button>
         <Button variant="quiet" onClick={onCancel}>
-          Show the Code Instead
+          {t("display.password.code.action")}
         </Button>
       </div>
     </form>
@@ -463,12 +470,14 @@ function PasswordPairing({ onCancel, onPaired }: { onCancel: () => void; onPaire
  */
 function NameThisScreen({
   onDone,
-  action = "Done",
+  action: given,
 }: {
   onDone: () => void;
-  /** Next while the wall sets Sunroom up, before All Done! */
-  action?: "Done" | "Next";
+  /** Done, unless it's said otherwise: Next while the wall sets Sunroom up, before All Done! */
+  action?: string;
 }) {
+  const t = useT();
+  const action = given ?? t("app.action.done");
   const queryClient = useQueryClient();
   const [label, setLabel] = useState<string | null>(null);
   const rename = useMutation({
@@ -490,7 +499,7 @@ function NameThisScreen({
       }}
     >
       <Brand size="entry" />
-      <h1 className="text-d-glance font-bold">Name This Screen</h1>
+      <h1 className="text-d-glance font-bold">{t("display.name.title")}</h1>
       <ScreenNameFields label={label} onChange={setLabel} field="other" />
       <Button type="submit" pending={rename.isPending} disabled={name === ""} className="min-w-64">
         {action}

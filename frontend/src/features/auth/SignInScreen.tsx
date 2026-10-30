@@ -6,12 +6,14 @@ import { useId, useState } from "react";
 import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { normalizeCode } from "../../lib/joinCode";
+import { useT } from "../../lib/lang";
 import { rememberSignedIn } from "../../lib/session";
 import { Button } from "../../ui/Button";
 import { Brand } from "../../ui/Brand";
 import { useJoinWithCode } from "./useJoin";
 
 function PasswordForm({ onUseCode }: { onUseCode: () => void }) {
+  const t = useT();
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +45,7 @@ function PasswordForm({ onUseCode }: { onUseCode: () => void }) {
       }}
     >
       <label htmlFor={inputId} className="text-body font-semibold">
-        Household password
+        {t("auth.sign_in.password.label")}
       </label>
       <div className="flex gap-2">
         <input
@@ -63,7 +65,9 @@ function PasswordForm({ onUseCode }: { onUseCode: () => void }) {
         <Button
           variant="secondary"
           icon
-          aria-label={visible ? "Hide password" : "Show password"}
+          aria-label={
+            visible ? t("auth.sign_in.password.hide.aria") : t("auth.sign_in.password.show.aria")
+          }
           aria-pressed={visible}
           onClick={() => {
             setVisible((v) => !v);
@@ -76,19 +80,18 @@ function PasswordForm({ onUseCode }: { onUseCode: () => void }) {
         {error}
       </p>
       <Button type="submit" block pending={signIn.isPending} disabled={password.length === 0}>
-        {signIn.isPending ? "Signing In…" : "Sign In"}
+        {signIn.isPending ? t("auth.sign_in.pending.action") : t("auth.sign_in.action")}
       </Button>
-      <p className="mt-2 text-secondary text-ink-soft">
-        Ask whoever set up Sunroom for the password.
-      </p>
+      <p className="mt-2 text-secondary text-ink-soft">{t("auth.sign_in.password.hint")}</p>
       <Button variant="quiet" className="-ml-5 self-start" onClick={onUseCode}>
-        Use a code from another device
+        {t("auth.sign_in.code.action")}
       </Button>
     </form>
   );
 }
 
 function CodeForm({ onUsePassword }: { onUsePassword: () => void }) {
+  const t = useT();
   const [code, setCode] = useState("");
   const join = useJoinWithCode();
   const inputId = useId();
@@ -105,7 +108,7 @@ function CodeForm({ onUsePassword }: { onUsePassword: () => void }) {
       }}
     >
       <label htmlFor={inputId} className="text-body font-semibold">
-        Code from another device
+        {t("auth.sign_in.code.label")}
       </label>
       <input
         id={inputId}
@@ -123,17 +126,16 @@ function CodeForm({ onUsePassword }: { onUsePassword: () => void }) {
         className="min-h-12 rounded-button border-2 border-line bg-surface px-4 text-title font-bold tracking-widest uppercase"
       />
       <p id={hintId} className="text-secondary text-ink-soft">
-        On a device that’s already signed in, open Settings, then Devices, then Add a Device (on a
-        phone, Settings is under More).
+        {t("auth.sign_in.code.hint")}
       </p>
       <p id={errorId} role="alert" className="min-h-7 text-secondary font-semibold text-alert">
         {join.isError ? errorMessage(join.error) : null}
       </p>
       <Button type="submit" block pending={join.isPending} disabled={!valid}>
-        {join.isPending ? "Signing In…" : "Sign In"}
+        {join.isPending ? t("auth.sign_in.pending.action") : t("auth.sign_in.action")}
       </Button>
       <Button variant="quiet" className="-ml-5 self-start" onClick={onUsePassword}>
-        Use the Password Instead
+        {t("auth.sign_in.password.action")}
       </Button>
     </form>
   );

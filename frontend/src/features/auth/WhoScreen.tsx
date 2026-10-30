@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
+import { useT } from "../../lib/lang";
 import { fetchSession, type Session } from "../../lib/session";
 import { Button } from "../../ui/Button";
 import { AddPersonRow, type RoleChoice } from "../settings/AddPersonRow";
@@ -20,6 +21,7 @@ export type WhoFrom = "more" | "settings";
  * (or Skip for now).
  */
 export function WhoScreen({ from }: { from?: WhoFrom | undefined }) {
+  const t = useT();
   const navigate = useNavigate();
   const router = useRouter();
   const canGoBack = useCanGoBack();
@@ -69,10 +71,8 @@ export function WhoScreen({ from }: { from?: WhoFrom | undefined }) {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 pt-[calc(env(safe-area-inset-top)+32px)] pb-12">
-      <h1 className="text-title font-bold">Who’s Using This Device?</h1>
-      <p className="mt-2 mb-6 text-body text-ink-soft">
-        Pick your name so everyone can see who added or checked off what.
-      </p>
+      <h1 className="text-title font-bold">{t("auth.who.title")}</h1>
+      <p className="mt-2 mb-6 text-body text-ink-soft">{t("auth.who.lead")}</p>
       <ul className="flex flex-col gap-3">
         {members.map((member) => (
           <li key={member.id}>
@@ -91,8 +91,8 @@ export function WhoScreen({ from }: { from?: WhoFrom | undefined }) {
       {showForm ? (
         <div className="mt-6 flex flex-col gap-3">
           <AddPersonRow
-            label="Your name"
-            action="Add Me"
+            label={t("auth.who.name.label")}
+            action={t("auth.who.add_me.action")}
             primary
             autoComplete="given-name"
             pending={addMe.isPending}
@@ -107,7 +107,7 @@ export function WhoScreen({ from }: { from?: WhoFrom | undefined }) {
                 setAdding(false);
               }}
             >
-              Cancel
+              {t("app.action.cancel")}
             </Button>
           ) : null}
         </div>
@@ -122,7 +122,7 @@ export function WhoScreen({ from }: { from?: WhoFrom | undefined }) {
               }}
             >
               <UserPlus aria-hidden="true" />
-              Someone Else
+              {t("auth.who.someone_else.action")}
             </Button>
           ) : null}
           <Button
@@ -132,7 +132,8 @@ export function WhoScreen({ from }: { from?: WhoFrom | undefined }) {
               choose.mutate(null);
             }}
           >
-            <UserRound aria-hidden="true" />A Guest
+            <UserRound aria-hidden="true" />
+            {t("auth.who.guest.action")}
           </Button>
         </div>
       )}
@@ -147,7 +148,7 @@ export function WhoScreen({ from }: { from?: WhoFrom | undefined }) {
             void leave();
           }}
         >
-          Back
+          {t("app.action.back")}
         </Button>
       ) : (
         <Button
@@ -157,7 +158,7 @@ export function WhoScreen({ from }: { from?: WhoFrom | undefined }) {
             void navigate({ to: "/" });
           }}
         >
-          Skip for Now
+          {t("auth.who.skip.action")}
         </Button>
       )}
     </main>

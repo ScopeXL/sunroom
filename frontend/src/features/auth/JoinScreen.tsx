@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 import { errorMessage } from "../../api/client";
 import { codeFromHash, displayCode, spokenCode } from "../../lib/joinCode";
+import { tRich, useT } from "../../lib/lang";
 import { isIOS, isStandalone } from "../../lib/platform";
 import { SunMark } from "../../ui/SunMark";
 import { Button } from "../../ui/Button";
@@ -24,6 +25,7 @@ function Code({ code }: { code: string }) {
 }
 
 export function JoinScreen() {
+  const t = useT();
   const navigate = useNavigate();
   const [code] = useState(() => codeFromHash(window.location.hash));
   const join = useJoinWithCode();
@@ -37,15 +39,13 @@ export function JoinScreen() {
     return (
       <main className="mx-auto w-full max-w-md px-4 pt-[calc(env(safe-area-inset-top)+48px)] pb-12">
         <SunMark className="mb-6 size-16" />
-        <h1 className="mb-3 text-title font-bold">That Link Is Missing Its Code</h1>
-        <p className="mb-6 text-body text-ink-soft">
-          Scan the QR code again, or type the code on the sign-in screen.
-        </p>
+        <h1 className="mb-3 text-title font-bold">{t("auth.join.missing.title")}</h1>
+        <p className="mb-6 text-body text-ink-soft">{t("auth.join.missing.how")}</p>
         <Link
           to="/sign-in"
           className={`inline-flex min-h-11 items-center text-body font-semibold text-ink underline decoration-ink-soft/60 decoration-2 underline-offset-4`}
         >
-          Go to sign in
+          {t("auth.join.missing.sign_in")}
         </Link>
       </main>
     );
@@ -61,10 +61,10 @@ export function JoinScreen() {
       }}
     >
       {join.isPending
-        ? "Signing In…"
+        ? t("auth.sign_in.pending.action")
         : installFirst
-          ? "Sign in here in Safari instead"
-          : "Sign In on This Device"}
+          ? t("auth.join.safari.action")
+          : t("auth.join.sign_in.action")}
     </Button>
   );
 
@@ -73,15 +73,12 @@ export function JoinScreen() {
       <SunMark className="mb-6 size-16" />
       {installFirst ? (
         <>
-          <h1 className="mb-3 text-title font-bold">Put Sunroom on Your Home Screen First</h1>
+          <h1 className="mb-3 text-title font-bold">{t("auth.join.install.title")}</h1>
           <p className="text-body text-ink-soft">
-            On iPhone, the home-screen app keeps its own sign-in. Once it’s there, open it, tap{" "}
-            <strong>Use a code from another device</strong>, and type:
+            {tRich("auth.join.install.how", { b: (words) => <strong>{words}</strong> })}
           </p>
           <Code code={code} />
-          <p className="mb-6 text-secondary text-ink-soft">
-            The code works once, for 10 minutes. The other device shows it too.
-          </p>
+          <p className="mb-6 text-secondary text-ink-soft">{t("auth.join.install.once")}</p>
           <div className="flex flex-col gap-2">
             <Button
               block
@@ -89,17 +86,15 @@ export function JoinScreen() {
                 void navigate({ to: "/install", search: {} });
               }}
             >
-              Show Me How
+              {t("auth.join.install.action")}
             </Button>
             {signInHere}
           </div>
         </>
       ) : (
         <>
-          <h1 className="mb-3 text-title font-bold">Sign in with a Code</h1>
-          <p className="text-body text-ink-soft">
-            Another device made this code to add this one to Sunroom:
-          </p>
+          <h1 className="mb-3 text-title font-bold">{t("auth.join.title")}</h1>
+          <p className="text-body text-ink-soft">{t("auth.join.lead")}</p>
           <Code code={code} />
           {signInHere}
         </>
@@ -112,7 +107,7 @@ export function JoinScreen() {
           to="/sign-in"
           className={`inline-flex min-h-11 items-center text-body font-semibold text-ink underline decoration-ink-soft/60 decoration-2 underline-offset-4`}
         >
-          Sign in with the password instead
+          {t("auth.join.password")}
         </Link>
       ) : null}
     </main>

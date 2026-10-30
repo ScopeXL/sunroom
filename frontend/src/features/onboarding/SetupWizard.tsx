@@ -6,8 +6,9 @@ import { useState } from "react";
 import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { isLoopbackAddress } from "../../lib/address";
+import { weekdayLong } from "../../lib/dates";
 import { useMembers } from "../../lib/household";
-import { setLanguage, useLanguage, useT } from "../../lib/lang";
+import { setLanguage, tRich, useLanguage, useT, type Key } from "../../lib/lang";
 import { keepPairing } from "../../lib/screenAgent";
 import { rememberSignedIn } from "../../lib/session";
 import { previewTheme, type ThemeChoice } from "../../lib/theme";
@@ -49,6 +50,13 @@ function phoneTimeFormat(): "12h" | "24h" {
 /** The household password's least length (auth/password.py's MIN_PASSWORD_LENGTH; ADR 0034). */
 const MIN_PASSWORD = 8;
 
+/** Names to start from, in the page's language; the step starts with the first (ADR 0034). */
+const IDEAS: readonly Key[] = [
+  "setup.household.idea.home",
+  "setup.household.idea.family",
+  "setup.household.idea.our_home",
+];
+
 function zones(): string[] {
   try {
     return Intl.supportedValuesOf("timeZone");
@@ -81,6 +89,7 @@ export interface OnScreen {
  * instead: nobody is bound to it, and the PIN it sets opens its ten minutes for the last step.
  */
 export function SetupWizard({ step, onScreen }: { step: SetupStep; onScreen?: OnScreen }) {
+  const t = useT();
   const navigate = useNavigate();
   const go =
     onScreen?.go ??
@@ -91,10 +100,8 @@ export function SetupWizard({ step, onScreen }: { step: SetupStep; onScreen?: On
   switch (step) {
     case "welcome":
       return (
-        <SetupEnd title="Welcome to Sunroom">
-          <p>
-            Let’s set it up. It takes a few minutes, and you can change all of it later in Settings.
-          </p>
+        <SetupEnd title={t("setup.welcome.title")}>
+          <p>{t("setup.welcome.lead")}</p>
           <Button
             block
             className="lg:min-h-16 lg:w-auto lg:min-w-72 lg:text-d-body"
@@ -102,7 +109,7 @@ export function SetupWizard({ step, onScreen }: { step: SetupStep; onScreen?: On
               go("password");
             }}
           >
-            Start
+            {t("setup.welcome.start.action")}
           </Button>
           <LanguageButton />
         </SetupEnd>
@@ -168,8 +175,8 @@ export function SetupWizard({ step, onScreen }: { step: SetupStep; onScreen?: On
     case "done":
       if (onScreen) return <ScreenDone address={onScreen.address} onOpen={onScreen.open} />;
       return (
-        <SetupEnd title="All Done!" done>
-          <p>Sunroom is ready for your family.</p>
+        <SetupEnd title={t("setup.done.title")} done>
+          <p>{t("setup.done.ready")}</p>
           <Button
             block
             className="lg:min-h-16 lg:w-auto lg:min-w-72 lg:text-d-body"
@@ -177,9 +184,9 @@ export function SetupWizard({ step, onScreen }: { step: SetupStep; onScreen?: On
               void navigate({ to: "/" });
             }}
           >
-            Open Sunroom
+            {t("setup.done.open.action")}
           </Button>
-          <p className="text-ink-soft">Everyone at home signs in with the household password.</p>
+          <p className="text-ink-soft">{t("setup.done.sign_in")}</p>
         </SetupEnd>
       );
   }
@@ -187,24 +194,28 @@ export function SetupWizard({ step, onScreen }: { step: SetupStep; onScreen?: On
 
 /** All Done! on the wall screen (ADR 0039, ADR 0042): how other devices join, then the board. */
 function ScreenDone({ address, onOpen }: { address: string; onOpen: () => void }) {
+  const t = useT();
   return (
-    <SetupEnd title="All Done!" done>
+    <SetupEnd title={t("setup.done.title")} done>
       {isLoopbackAddress(address) ? (
-        <p>
-          Open Sunroom on your other devices with this computer’s name or network address, then sign
-          in with the household password.
-        </p>
+        <p>{t("setup.done.screen.loopback")}</p>
       ) : (
         <>
-          <QrCode value={address} label={`A code that opens ${address}`} className="size-56" />
+          <QrCode
+            value={address}
+            label={t("setup.done.screen.qr.aria", { address })}
+            className="size-56"
+          />
           <p>
-            Scan this with a phone to add it, or open <span className="font-bold">{address}</span>{" "}
-            on any device, then sign in with the household password.
+            {tRich("setup.done.screen.address", {
+              address,
+              b: (words) => <span className="font-bold">{words}</span>,
+            })}
           </p>
         </>
       )}
       <Button className="min-w-72" onClick={onOpen}>
-        Open Sunroom
+        {t("setup.done.open.action")}
       </Button>
     </SetupEnd>
   );
@@ -222,6 +233,7 @@ function PasswordStep({
   onBack?: (() => void) | undefined;
   onNext: () => void;
 }) {
+  const t = useT();
   const { data: status } = useQuery({
     queryKey: qk.setupStatus(),
     queryFn: async () => unwrap(await api.GET("/api/setup/status")),
@@ -233,12 +245,8 @@ function PasswordStep({
   return (
     <SetupFrame
       step="password"
-      title={fromServer ? "Type the Household Password" : "Set a Household Password"}
-      lead={
-        fromServer
-          ? "This server already has one (APP_PASSWORD). Type it to set up the household."
-          : "Everyone at home signs in on their devices with this one password. Paired screens don't need it."
-      }
+      title={fromServer ? t("setup.password.type.title") : t("setup.password.set.title")}
+      lead={fromServer ? t("setup.password.type.lead") : t("setup.password.set.lead")}
     >
       <form
         className="flex flex-col gap-4"
@@ -248,14 +256,14 @@ function PasswordStep({
         }}
       >
         <TextField
-          label="Household password"
+          label={t("setup.password.label")}
           type={visible ? "text" : "password"}
           layout="password"
           autoComplete="new-password"
           autoCapitalize="none"
           value={password}
-          hint={fromServer ? null : "8 characters or more. A few words together work well."}
-          error={short ? "Use at least 8 characters." : null}
+          hint={fromServer ? null : t("setup.password.hint")}
+          error={short ? t("setup.password.short.error") : null}
           onChange={(event) => {
             onPassword(event.target.value);
           }}
@@ -269,19 +277,19 @@ function PasswordStep({
           }}
         >
           {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-          {visible ? "Hide Password" : "Show Password"}
+          {visible ? t("setup.password.hide.action") : t("setup.password.show.action")}
         </Button>
         <StepActions
           back={
             onBack ? (
               <Button variant="quiet" block onClick={onBack}>
-                Back
+                {t("app.action.back")}
               </Button>
             ) : undefined
           }
         >
           <Button type="submit" block disabled={password.length < least}>
-            Next
+            {t("app.action.next")}
           </Button>
         </StepActions>
       </form>
@@ -305,7 +313,9 @@ function HouseholdStep({
   const type = useSetupType();
   // The page's language is the household's: chosen here or on Choose a Language before.
   const language = useLanguage();
-  const [name, setName] = useState("Home");
+  // Home until a name is typed or picked, in the page's language as it changes above.
+  const [typed, setName] = useState<string | null>(null);
+  const name = typed ?? t("setup.household.idea.home");
   const [zone, setZone] = useState(phoneZone);
   const [changingZone, setChangingZone] = useState(false);
   const [weekStart, setWeekStart] = useState<"6" | "0">("6");
@@ -343,8 +353,8 @@ function HouseholdStep({
   });
   if (!password) {
     return (
-      <SetupFrame step="household" title="Name Your Household">
-        <p className={type.body}>Choose the household password first.</p>
+      <SetupFrame step="household" title={t("setup.household.title")}>
+        <p className={type.body}>{t("setup.household.no_password")}</p>
         <StepActions>
           <Button block onClick={onBack}>
             {t("app.action.back")}
@@ -354,7 +364,7 @@ function HouseholdStep({
     );
   }
   return (
-    <SetupFrame step="household" title="Name Your Household">
+    <SetupFrame step="household" title={t("setup.household.title")}>
       <form
         className="flex flex-col gap-5"
         onSubmit={(event) => {
@@ -375,7 +385,7 @@ function HouseholdStep({
           />
         </div>
         <TextField
-          label="Household name"
+          label={t("setup.household.name.label")}
           value={name}
           maxLength={80}
           autoComplete="off"
@@ -383,24 +393,26 @@ function HouseholdStep({
             setName(event.target.value);
           }}
         />
-        <ChipRow label="Ideas">
-          {["Home", "Family", "Our home"].map((idea) => (
+        <ChipRow label={t("setup.household.ideas.label")}>
+          {IDEAS.map((idea) => (
             <Chip
               key={idea}
-              on={name === idea}
+              on={name === t(idea)}
               onClick={() => {
-                setName(idea);
+                setName(t(idea));
               }}
             >
-              {idea}
+              {t(idea)}
             </Chip>
           ))}
         </ChipRow>
         <div className="flex flex-col gap-2">
-          <span className={`${type.body} font-semibold`}>Time zone</span>
+          <span className={`${type.body} font-semibold`}>
+            {t("setup.household.timezone.label")}
+          </span>
           {changingZone ? (
             <Select
-              aria-label="Time zone"
+              aria-label={t("setup.household.timezone.label")}
               value={zone}
               onChange={(event) => {
                 setZone(event.target.value);
@@ -421,39 +433,38 @@ function HouseholdStep({
                   setChangingZone(true);
                 }}
               >
-                Change
+                {t("app.action.change")}
               </Button>
             </div>
           )}
         </div>
         <div className="flex flex-col gap-2">
-          <span className={`${type.body} font-semibold`}>The week starts on</span>
+          <span className={`${type.body} font-semibold`}>
+            {t("setup.household.week_start.label")}
+          </span>
           <Segmented
-            label="The week starts on"
+            label={t("setup.household.week_start.label")}
             value={weekStart}
             onChange={setWeekStart}
             options={[
-              { value: "6", label: "Sunday" },
-              { value: "0", label: "Monday" },
+              { value: "6", label: weekdayLong(6) },
+              { value: "0", label: weekdayLong(0) },
             ]}
           />
         </div>
         <div className="flex flex-col gap-2">
-          <span className={`${type.body} font-semibold`}>Theme</span>
+          <span className={`${type.body} font-semibold`}>{t("setup.household.theme.label")}</span>
           <Segmented
-            label="Theme"
+            label={t("setup.household.theme.label")}
             value={theme}
             onChange={pickTheme}
             options={[
-              { value: "light", label: "Light" },
-              { value: "dark", label: "Dark" },
-              { value: "auto", label: "Auto" },
+              { value: "light", label: t("setup.household.theme.light") },
+              { value: "dark", label: t("setup.household.theme.dark") },
+              { value: "auto", label: t("setup.household.theme.auto") },
             ]}
           />
-          <p className={`${type.secondary} text-ink-soft`}>
-            Auto is dark from sunset to sunrise once Sunroom knows where home is (the next step),
-            and from 7 PM until then. On a phone, Auto follows the phone.
-          </p>
+          <p className={`${type.secondary} text-ink-soft`}>{t("setup.household.theme.hint")}</p>
         </div>
         {setup.isError ? (
           <p role="alert" className="font-semibold text-alert">
@@ -477,6 +488,7 @@ function HouseholdStep({
 }
 
 function PeopleStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => void }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const type = useSetupType();
   const { data: members = [] } = useMembers();
@@ -501,12 +513,8 @@ function PeopleStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => voi
   return (
     <SetupFrame
       step="people"
-      title="Who Lives Here?"
-      lead={
-        first
-          ? "Start with you. Each person gets a color, used everywhere they appear."
-          : "Add everyone, children included."
-      }
+      title={t("setup.people.title")}
+      lead={first ? t("setup.people.first.lead") : t("setup.people.more.lead")}
     >
       {members.length > 0 ? (
         <ul className="flex flex-col gap-2">
@@ -522,15 +530,17 @@ function PeopleStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => voi
                 {member.name}
               </span>
               <span className={`ml-auto ${type.secondary} text-ink-soft`}>
-                {member.role === "kid" ? "Child" : "Parent"}
+                {member.role === "kid"
+                  ? t("setup.people.role.child")
+                  : t("setup.people.role.parent")}
               </span>
             </li>
           ))}
         </ul>
       ) : null}
       <AddPersonRow
-        label={first ? "Your name" : "Name"}
-        action={first ? "Add Me" : "Add"}
+        label={first ? t("setup.people.you.label") : t("setup.people.name.label")}
+        action={first ? t("setup.people.add_me.action") : t("app.action.add")}
         primary={first}
         autoComplete={first ? "given-name" : "off"}
         pending={add.isPending}
@@ -540,7 +550,7 @@ function PeopleStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => voi
       {!first ? (
         <StepActions>
           <Button block onClick={onNext}>
-            Next
+            {t("app.action.next")}
           </Button>
         </StepActions>
       ) : null}
@@ -549,6 +559,7 @@ function PeopleStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => voi
 }
 
 function PinStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => void }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [pin, setPin] = useState("");
   const set = useMutation({
@@ -565,11 +576,7 @@ function PinStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => void }
     },
   });
   return (
-    <SetupFrame
-      step="pin"
-      title="Set a Parent PIN?"
-      lead="It keeps children out of Settings on paired screens. Adding events and checking off tasks never ask for it."
-    >
+    <SetupFrame step="pin" title={t("setup.pin.title")} lead={t("setup.pin.lead")}>
       <form
         className="flex flex-col gap-4"
         onSubmit={(event) => {
@@ -578,7 +585,7 @@ function PinStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => void }
         }}
       >
         <TextField
-          label="PIN (4 to 6 digits)"
+          label={t("setup.pin.label")}
           type="password"
           layout="numeric"
           inputMode="numeric"
@@ -593,12 +600,12 @@ function PinStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => void }
         <StepActions
           back={
             <Button variant="quiet" block onClick={onNext}>
-              Later
+              {t("setup.pin.action.later")}
             </Button>
           }
         >
           <Button type="submit" block pending={set.isPending} disabled={!/^\d{4,6}$/.test(pin)}>
-            Set a PIN
+            {t("setup.pin.action.set")}
           </Button>
         </StepActions>
       </form>
@@ -609,15 +616,16 @@ function PinStep({ onScreen, onNext }: { onScreen: boolean; onNext: () => void }
 /** Step 3: where home is, for the weather and the sunset, through the weather plugin's search.
  * With the plugin off, the step skips itself. */
 function PlaceStep({ onNext }: { onNext: () => void }) {
+  const t = useT();
   const Setup = usePluginModules().find((m) => m.id === "weather")?.onboarding;
   return (
-    <SetupFrame step="place" title="Where’s Home?">
+    <SetupFrame step="place" title={t("setup.place.title")}>
       {Setup ? (
         <Setup onDone={onNext} />
       ) : (
         <StepActions>
           <Button block onClick={onNext}>
-            Next
+            {t("app.action.next")}
           </Button>
         </StepActions>
       )}
@@ -628,15 +636,16 @@ function PlaceStep({ onNext }: { onNext: () => void }) {
 /** Step 6 (UX first run): bring in calendars, through the calendar_sync plugin's own flows.
  * With the plugin off, the step skips itself. */
 function CalendarsStep({ onNext }: { onNext: () => void }) {
+  const t = useT();
   const Setup = usePluginModules().find((m) => m.id === "calendar_sync")?.onboarding;
   return (
-    <SetupFrame step="calendars" title="Bring in Your Calendars">
+    <SetupFrame step="calendars" title={t("setup.calendars.title")}>
       {Setup ? (
         <Setup onDone={onNext} />
       ) : (
         <StepActions>
           <Button block onClick={onNext}>
-            Next
+            {t("app.action.next")}
           </Button>
         </StepActions>
       )}

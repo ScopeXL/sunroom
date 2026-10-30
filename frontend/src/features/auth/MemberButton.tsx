@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 
 import type { Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { Avatar } from "../../ui/Avatar";
 
 /**
@@ -19,6 +20,7 @@ export function MemberButton({
   disabled?: boolean;
   onChoose: () => void;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
@@ -30,7 +32,9 @@ export function MemberButton({
       <Avatar member={member} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-row font-semibold">{member.name}</span>
-        {chosen ? <span className="text-secondary text-ink-soft">Using this device</span> : null}
+        {chosen ? (
+          <span className="text-secondary text-ink-soft">{t("auth.who.member.using")}</span>
+        ) : null}
       </span>
       {chosen ? <Check aria-hidden="true" className="size-6 shrink-0 text-ink" /> : null}
     </button>

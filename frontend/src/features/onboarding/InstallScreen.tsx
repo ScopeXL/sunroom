@@ -2,6 +2,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { EllipsisVertical } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { tRich, useT } from "../../lib/lang";
 import { isAndroid, isIOS, skipInstallGuide } from "../../lib/platform";
 import { SunMark } from "../../ui/SunMark";
 import { Button } from "../../ui/Button";
@@ -37,7 +38,7 @@ function Step({ number, art, children }: { number: number; art: ReactNode; child
 }
 
 /** A button that is only dots on screen: shown as the dots, read aloud as words. */
-function Dots({ shown, spoken }: { shown: ReactNode; spoken: string }) {
+function Dots({ shown, spoken }: { shown: ReactNode; spoken: ReactNode }) {
   return (
     <>
       <strong aria-hidden="true">{shown}</strong>
@@ -49,6 +50,7 @@ function Dots({ shown, spoken }: { shown: ReactNode; spoken: string }) {
 /** "Put Sunroom on your home screen" (UX §5 "Install the app"; PLAN §13.8: on an iPhone any
  * home-screen site opens as a web app, even over plain HTTP). */
 export function InstallScreen() {
+  const t = useT();
   const navigate = useNavigate();
   const { from } = useSearch({ from: "/public/install" });
   const beforeSignIn = from !== "more";
@@ -56,60 +58,56 @@ export function InstallScreen() {
   return (
     <main className="mx-auto w-full max-w-md px-4 pt-[calc(env(safe-area-inset-top)+32px)] pb-12">
       <SunMark className="mb-6 size-16" />
-      <h1 className="text-title font-bold">Put Sunroom on Your Home Screen</h1>
-      <p className="mt-2 mb-6 text-body text-ink-soft">
-        It opens like an app, straight to your family’s calendar, without the browser around it.
-      </p>
+      <h1 className="text-title font-bold">{t("setup.install.title")}</h1>
+      <p className="mt-2 mb-6 text-body text-ink-soft">{t("setup.install.lead")}</p>
 
       {isIOS() ? (
         <>
           <Steps>
             <Step number={1} art={<SafariBarArt />}>
-              Tap <strong>Share</strong>. On newer iPhones, tap{" "}
-              <Dots shown="•••" spoken="the three dots" /> next to the address first.
+              {tRich("setup.install.ios.share", {
+                b: (words) => <strong>{words}</strong>,
+                dots: (words) => <Dots shown="•••" spoken={words} />,
+              })}
             </Step>
             <Step number={2} art={<ShareSheetArt />}>
-              Tap <strong>Add to Home Screen</strong> (scroll down, or tap{" "}
-              <strong>View More</strong>, if you don’t see it), then <strong>Add</strong>.
+              {tRich("setup.install.ios.add", { b: (words) => <strong>{words}</strong> })}
             </Step>
             <Step number={3} art={<HomeScreenArt kind="iphone" />}>
-              Open Sunroom from your home screen.
+              {t("setup.install.open")}
             </Step>
           </Steps>
-          <p className="mt-4 text-secondary text-ink-soft">
-            On iPhone, the home-screen app keeps its own sign-in. Sign in there once more: with the
-            household password, or with a code from a device that’s already signed in (Settings,
-            then Devices, then Add a Device; on a phone, Settings is under More).
-          </p>
+          <p className="mt-4 text-secondary text-ink-soft">{t("setup.install.ios.sign_in")}</p>
         </>
       ) : isAndroid() ? (
         <Steps>
           <Step number={1} art={<ChromeBarArt />}>
-            Tap the{" "}
-            <Dots
-              // The ⋮ character isn't in the app's font, and fallback fonts draw it thin. The
-              // icon's box is wider than its dots, so the margins pull the words back in.
-              shown={
-                <EllipsisVertical
-                  strokeWidth={3}
-                  className="-mx-[0.3em] inline size-[1em] align-[-0.125em]"
+            {tRich("setup.install.android.menu", {
+              dots: (words) => (
+                <Dots
+                  // The ⋮ character isn't in the app's font, and fallback fonts draw it thin. The
+                  // icon's box is wider than its dots, so the margins pull the words back in.
+                  shown={
+                    <EllipsisVertical
+                      strokeWidth={3}
+                      className="-mx-[0.3em] inline size-[1em] align-[-0.125em]"
+                    />
+                  }
+                  spoken={words}
                 />
-              }
-              spoken="three dots"
-            />{" "}
-            menu in Chrome.
+              ),
+            })}
           </Step>
           <Step number={2} art={<ChromeMenuArt />}>
-            Tap <strong>Install app</strong> (or <strong>Add to Home screen</strong>), then{" "}
-            <strong>Install</strong>.
+            {tRich("setup.install.android.install", { b: (words) => <strong>{words}</strong> })}
           </Step>
           <Step number={3} art={<HomeScreenArt kind="android" />}>
-            Open Sunroom from your home screen.
+            {t("setup.install.open")}
           </Step>
         </Steps>
       ) : (
         <p className="rounded-chip border border-line bg-surface p-4 text-body">
-          On a phone, open this page in Safari (iPhone) or Chrome (Android) to install it.
+          {t("setup.install.elsewhere")}
         </p>
       )}
 
@@ -123,7 +121,7 @@ export function InstallScreen() {
               void navigate({ to: "/sign-in" });
             }}
           >
-            Continue in Safari
+            {t("setup.install.continue.action")}
           </Button>
         ) : (
           <Button
@@ -133,7 +131,7 @@ export function InstallScreen() {
               void navigate({ to: "/more" });
             }}
           >
-            Back
+            {t("app.action.back")}
           </Button>
         )}
       </div>

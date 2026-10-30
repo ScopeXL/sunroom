@@ -1,13 +1,9 @@
 [
-  "src/features/auth/",
   "src/features/calendar/",
   "src/features/chores/",
   "src/features/countdowns/",
-  "src/features/display/",
   "src/features/lists/",
   "src/features/meals/",
-  "src/features/onboarding/",
-  "src/features/phone/",
   "src/features/problems/",
   "src/features/screensaver/",
   "src/features/settings/",

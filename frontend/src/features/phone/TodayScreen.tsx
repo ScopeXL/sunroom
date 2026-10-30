@@ -7,6 +7,7 @@ import { qk } from "../../api/keys";
 import { addDays, formatWallTime, shortDate, wallNow, zonedParts } from "../../lib/dates";
 import type { BoardPanel } from "../../lib/displayState";
 import { useMembers, useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { fetchSession } from "../../lib/session";
 import { useMinute } from "../../lib/time";
 import { ActionBar } from "../../ui/ActionBar";
@@ -27,6 +28,7 @@ import { AttentionPill } from "../problems/AttentionPill";
  * after 6 PM, or once today is done, tomorrow. Sections follow the display's Today panel.
  */
 export function TodayScreen() {
+  const t = useT();
   const minute = useMinute();
   const now = wallNow(minute);
   const { day: today, hour } = zonedParts(minute);
@@ -78,8 +80,8 @@ export function TodayScreen() {
             search={{ from: "more" }}
             aria-label={
               session?.member
-                ? `Using this device: ${session.member.name}`
-                : "Who's using this device?"
+                ? t("phone.today.who.aria", { name: session.member.name })
+                : t("phone.today.who.nobody.aria")
             }
             className="press flex size-11 shrink-0 items-center justify-center rounded-full"
           >
@@ -94,7 +96,7 @@ export function TodayScreen() {
       {onNow.length ? (
         <section aria-labelledby="today-now" className="flex flex-col gap-1">
           <h2 id="today-now" className="text-row font-bold text-ink-soft">
-            Now
+            {t("phone.today.now.title")}
           </h2>
           <ul className="flex flex-col">
             {onNow.map((occurrence) => (
@@ -107,7 +109,9 @@ export function TodayScreen() {
                   {...(!occurrence.all_day && occurrence.end_local
                     ? // The time stays whole when the narrow column wraps: "until / 4:15 PM".
                       {
-                        when: `until ${formatWallTime(occurrence.end_local).replace(" ", "\u00a0")}`,
+                        when: t("phone.today.until", {
+                          time: formatWallTime(occurrence.end_local).replace(" ", "\u00a0"),
+                        }),
                       }
                     : {})}
                   onOpen={() => {
@@ -121,7 +125,7 @@ export function TodayScreen() {
       ) : null}
       <section aria-labelledby="up-next" className="flex flex-col gap-1">
         <h2 id="up-next" className="text-row font-bold text-ink-soft">
-          Up Next
+          {t("phone.today.up_next.title")}
         </h2>
         {upNext ? (
           <button
@@ -140,7 +144,9 @@ export function TodayScreen() {
             <span className="text-big font-bold break-words">{upNext.title}</span>
             <span className="text-body text-ink-soft">
               {[
-                upNextPeople.length ? upNextPeople.map((p) => p.name).join(", ") : "Everyone",
+                upNextPeople.length
+                  ? upNextPeople.map((p) => p.name).join(", ")
+                  : t("phone.today.everyone"),
                 upNext.location,
               ]
                 .filter(Boolean)
@@ -149,14 +155,14 @@ export function TodayScreen() {
           </button>
         ) : (
           <p className="text-big font-bold">
-            {hadToday ? "Nothing else today." : "Nothing today."}
+            {hadToday ? t("phone.today.nothing_else.empty") : t("phone.today.nothing.empty")}
           </p>
         )}
       </section>
       {todays.length ? (
         <section aria-labelledby="today-rest" className="flex flex-col gap-1">
           <h2 id="today-rest" className="text-row font-bold text-ink-soft">
-            Today
+            {t("phone.today.today.title")}
           </h2>
           <ul className="flex flex-col">
             {todays.map((occurrence) => (
@@ -178,7 +184,7 @@ export function TodayScreen() {
       {showTomorrow ? (
         <section aria-labelledby="today-tomorrow" className="flex flex-col gap-1">
           <h2 id="today-tomorrow" className="text-row font-bold text-ink-soft">
-            Tomorrow
+            {t("phone.today.tomorrow.title")}
           </h2>
           <ul className="flex flex-col">
             {tomorrows.map((occurrence) => (
@@ -206,7 +212,7 @@ export function TodayScreen() {
           }}
         >
           <Plus aria-hidden="true" className="size-5" />
-          Add
+          {t("app.action.add")}
         </Button>
       </ActionBar>
       <EventSheet

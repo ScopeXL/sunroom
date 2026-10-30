@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { api, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
+import { t, useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { showToast } from "../../lib/toast";
 import { useShell } from "../../ui/shell";
@@ -19,13 +20,14 @@ export function usePairDisplay() {
       asParent(async () =>
         unwrap(
           await api.POST("/api/auth/kiosk/pair", {
-            body: { code, label: "Wall screen" },
+            // The name it's paired with, until the screen's Name This Screen gives it another.
+            body: { code, label: t("display.name.default") },
           }),
         ),
       ),
     onSuccess: async (paired) => {
       await queryClient.invalidateQueries({ queryKey: qk.devices() });
-      showToast(`${paired.label ?? "Wall screen"} paired`);
+      showToast(t("phone.pair.paired.toast", { name: paired.label ?? t("display.name.default") }));
     },
   });
 }
@@ -39,11 +41,12 @@ export function PairCodeField({
   error: string | null;
   onChange: (value: string) => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   return (
     <TextField
-      label="The code on the screen"
-      hint="The screen shows a code. Type it here."
+      label={t("phone.pair.code.label")}
+      hint={t("phone.pair.code.hint")}
       value={value}
       maxLength={10}
       autoComplete="one-time-code"
@@ -59,10 +62,11 @@ export function PairCodeField({
 
 /** Under the field: what to do when the screen shows no code. */
 export function NoCodeYet() {
+  const t = useT();
   const display = useShell() === "display";
   return (
     <p className={`${display ? "text-d-secondary" : "text-secondary"} text-ink-soft`}>
-      No code? On the screen, open Sunroom. A screen that’s already paired shows the calendar.
+      {t("phone.pair.no_code.hint")}
     </p>
   );
 }

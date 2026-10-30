@@ -25,7 +25,7 @@ export function MoreScreen() {
   const rooms = usePluginRooms().slice(PLUGIN_TABS);
   const rowClass = "press-row flex min-h-14 items-center gap-3 px-4 text-row font-semibold";
   return (
-    <Screen title="More">
+    <Screen title={t("phone.more.title")}>
       {rooms.length ? (
         <ul className="mb-6 divide-y divide-line rounded-chip border border-line bg-surface">
           {rooms.map(({ key, label, icon: Icon }) => (
@@ -43,7 +43,7 @@ export function MoreScreen() {
         <li>
           <Link to="/settings" className={rowClass}>
             <Settings aria-hidden="true" />
-            <span className="flex-1">Settings</span>
+            <span className="flex-1">{t("settings.title")}</span>
             <ChevronRight aria-hidden="true" className="text-ink-soft" />
           </Link>
         </li>
@@ -51,9 +51,9 @@ export function MoreScreen() {
           <Link to="/who" search={{ from: "more" }} className={rowClass}>
             <UserRound aria-hidden="true" />
             <span className="flex flex-1 flex-col">
-              Who’s Using This
+              {t("phone.more.who.title")}
               <span className="text-secondary font-normal text-ink-soft">
-                {session?.member ? session.member.name : "Nobody picked"}
+                {session?.member ? session.member.name : t("phone.more.who.nobody")}
               </span>
             </span>
             <ChevronRight aria-hidden="true" className="text-ink-soft" />
@@ -62,7 +62,7 @@ export function MoreScreen() {
         <li>
           <Link to="/pair" className={rowClass}>
             <MonitorSmartphone aria-hidden="true" />
-            <span className="flex-1">Pair a Display</span>
+            <span className="flex-1">{t("phone.pair.title")}</span>
             <ChevronRight aria-hidden="true" className="text-ink-soft" />
           </Link>
         </li>
@@ -70,7 +70,7 @@ export function MoreScreen() {
           <li>
             <Link to="/install" search={{ from: "more" }} className={rowClass}>
               <Smartphone aria-hidden="true" />
-              <span className="flex-1">Install the App</span>
+              <span className="flex-1">{t("phone.more.install.title")}</span>
               <ChevronRight aria-hidden="true" className="text-ink-soft" />
             </Link>
           </li>
@@ -78,7 +78,7 @@ export function MoreScreen() {
         <li>
           <Link to="/settings/$page" params={{ page: "about" }} className={rowClass}>
             <Info aria-hidden="true" />
-            <span className="flex-1">About</span>
+            <span className="flex-1">{t("phone.more.about.title")}</span>
             <ChevronRight aria-hidden="true" className="text-ink-soft" />
           </Link>
         </li>

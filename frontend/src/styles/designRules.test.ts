@@ -200,8 +200,9 @@ function literalTitles(): { where: string; title: string }[] {
     ];
     for (const match of found) {
       const title = (match[1] ?? "").trim();
-      // A key (a plugin's Settings page): its words are English's, checked there.
-      if (!/^[a-z0-9_]+(\.[a-z0-9_]+)+$/.test(title)) titles.push({ where: path, title });
+      // Only space before a child element (a heading that is a button) is no title. A key (a
+      // plugin's Settings page): its words are English's, checked there.
+      if (title && !/^[a-z0-9_]+(\.[a-z0-9_]+)+$/.test(title)) titles.push({ where: path, title });
     }
   }
   return titles;

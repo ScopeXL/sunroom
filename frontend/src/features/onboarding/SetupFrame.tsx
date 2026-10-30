@@ -1,18 +1,19 @@
 import { Check, CircleCheck } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { tRich, useT, type Key } from "../../lib/lang";
 import { Brand } from "../../ui/Brand";
 import { useShell } from "../../ui/shell";
 
 /** The six steps of first run, in order (UX §6), as the list beside the form names them. */
 export const SETUP_STEPS = [
-  { key: "password", name: "Household password" },
-  { key: "household", name: "Your household" },
-  { key: "place", name: "Where’s home" },
-  { key: "people", name: "Who lives here" },
-  { key: "pin", name: "A parent PIN" },
-  { key: "calendars", name: "Your calendars" },
-] as const;
+  { key: "password", name: "setup.steps.password" },
+  { key: "household", name: "setup.steps.household" },
+  { key: "place", name: "setup.steps.place" },
+  { key: "people", name: "setup.steps.people" },
+  { key: "pin", name: "setup.steps.pin" },
+  { key: "calendars", name: "setup.steps.calendars" },
+] as const satisfies readonly { key: string; name: Key }[];
 export type FramedStep = (typeof SETUP_STEPS)[number]["key"];
 
 // How many steps this page has shown: the first paints still, the ones after it rise in.
@@ -47,7 +48,10 @@ export function SetupFrame({
   lead?: ReactNode;
   children: ReactNode;
 }) {
+  const t = useT();
   const at = SETUP_STEPS.findIndex((one) => one.key === step);
+  const shown = SETUP_STEPS[at];
+  const count = SETUP_STEPS.length;
   const rise = useRiseIn();
   const display = useShell() === "display";
   const type = useSetupType();
@@ -66,10 +70,8 @@ export function SetupFrame({
           className={`hidden lg:flex lg:flex-col lg:gap-6 ${display ? "landscape:self-center" : "lg:self-center"}`}
         >
           <Brand size="entry" />
-          <p className={`${type.secondary} text-ink-soft`}>
-            You can change all of this later in Settings.
-          </p>
-          <ol aria-label="Setup steps" className="flex flex-col">
+          <p className={`${type.secondary} text-ink-soft`}>{t("setup.frame.later")}</p>
+          <ol aria-label={t("setup.frame.steps.aria")} className="flex flex-col">
             {SETUP_STEPS.map((one, index) => {
               const done = index < at;
               const current = index === at;
@@ -98,8 +100,12 @@ export function SetupFrame({
                         : `${type.body} font-semibold text-ink-soft`
                     }
                   >
-                    {done ? <span className="sr-only">Done: </span> : null}
-                    {one.name}
+                    {done
+                      ? tRich("setup.frame.step.done", {
+                          name: t(one.name),
+                          hidden: (words) => <span className="sr-only">{words}</span>,
+                        })
+                      : t(one.name)}
                   </span>
                 </li>
               );
@@ -109,15 +115,21 @@ export function SetupFrame({
         <div className="mb-8 flex flex-col gap-4 lg:hidden">
           <div className="flex items-center gap-3">
             <Brand size="line" />
-            <span className="ml-auto text-secondary text-ink-soft">{`${String(at + 1)} of 6`}</span>
+            <span className="ml-auto text-secondary text-ink-soft">
+              {t("setup.frame.count", { step: at + 1, count })}
+            </span>
           </div>
           <div
             role="progressbar"
-            aria-label="Setup"
+            aria-label={t("setup.frame.progress.aria")}
             aria-valuemin={1}
-            aria-valuemax={SETUP_STEPS.length}
+            aria-valuemax={count}
             aria-valuenow={at + 1}
-            aria-valuetext={`Step ${String(at + 1)} of 6: ${SETUP_STEPS[at]?.name ?? ""}`}
+            aria-valuetext={t("setup.frame.progress.step", {
+              step: at + 1,
+              count,
+              name: shown ? t(shown.name) : "",
+            })}
             className="flex gap-1"
           >
             {SETUP_STEPS.map((one, index) => (

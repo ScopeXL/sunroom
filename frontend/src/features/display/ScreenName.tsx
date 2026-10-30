@@ -1,13 +1,28 @@
+import { t, useT, type Key } from "../../lib/lang";
 import { Chip, ChipRow } from "../../ui/Chip";
 import { TextField } from "../../ui/TextField";
 
-/** Where a screen might hang: suggestions, never assumptions (ADR 0042). */
-export const PLACES = ["Kitchen", "Hallway", "Living room", "Office"] as const;
+type Place = "kitchen" | "hallway" | "living_room" | "office";
 
-/** The chip a name reads as: a place's "Hallway screen", else Other (null: nothing chosen). */
-export function placeOf(label: string | null): string | null {
+/** Where a screen might hang: suggestions, never assumptions (ADR 0042). Each place's word on
+ * its chip, and the name a screen there is given, both in the page's language (ADR 0043): the
+ * name is saved in the words shown. */
+export const PLACES: readonly { place: Place; word: Key; name: Key }[] = [
+  { place: "kitchen", word: "display.name.place.kitchen", name: "display.name.screen.kitchen" },
+  { place: "hallway", word: "display.name.place.hallway", name: "display.name.screen.hallway" },
+  {
+    place: "living_room",
+    word: "display.name.place.living_room",
+    name: "display.name.screen.living_room",
+  },
+  { place: "office", word: "display.name.place.office", name: "display.name.screen.office" },
+];
+
+/** The chip a name reads as: the place whose name it is ("Hallway screen"), else Other (null:
+ * nothing chosen). */
+export function placeOf(label: string | null): Place | "other" | null {
   if (label === null) return null;
-  return PLACES.find((place) => label === `${place} screen`) ?? "Other";
+  return PLACES.find((one) => label === t(one.name))?.place ?? "other";
 }
 
 /**
@@ -25,27 +40,36 @@ export function ScreenNameFields({
   onChange: (label: string) => void;
   field: "other" | "always";
 }) {
+  const t = useT();
   const chosen = placeOf(label);
-  const showField = field === "always" || chosen === "Other";
+  const showField = field === "always" || chosen === "other";
   return (
     <>
-      <ChipRow label="Where is this screen?" center={field === "other"}>
-        {[...PLACES, "Other"].map((option) => (
+      <ChipRow label={t("display.name.where.label")} center={field === "other"}>
+        {PLACES.map((one) => (
           <Chip
-            key={option}
-            on={chosen === option}
+            key={one.place}
+            on={chosen === one.place}
             onClick={() => {
-              onChange(option === "Other" ? "" : `${option} screen`);
+              onChange(t(one.name));
             }}
           >
-            {option}
+            {t(one.word)}
           </Chip>
         ))}
+        <Chip
+          on={chosen === "other"}
+          onClick={() => {
+            onChange("");
+          }}
+        >
+          {t("display.name.place.other")}
+        </Chip>
       </ChipRow>
       {showField ? (
         <div className="w-full max-w-xl text-left">
           <TextField
-            label="What should it be called?"
+            label={t("display.name.called.label")}
             value={label ?? ""}
             maxLength={80}
             onChange={(event) => {
