@@ -7,8 +7,6 @@ import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-import unswept from "./scripts/unswept.json" with { type: "json" };
-
 export default defineConfig(
   {
     ignores: [
@@ -45,14 +43,10 @@ export default defineConfig(
   },
   {
     // Every word the family reads comes from lang/en.json through t() (ADR 0043,
-    // docs/LANGUAGES.md): JSX text and the props that carry words are never literals. The
-    // ratchet: scripts/unswept.json, the folders and files not yet swept, which each sweep task
-    // shortens until it's empty (styles/designRules.test.ts reads it too).
+    // docs/LANGUAGES.md): JSX text and the props that carry words are never literals, anywhere
+    // in src/ (e2e/lang.spec.ts looks at the screens themselves, in the pseudo language).
     files: ["src/**/*.tsx"],
-    ignores: [
-      "src/**/*.test.tsx",
-      ...unswept.map((entry) => (entry.endsWith("/") ? `${entry}**` : entry)),
-    ],
+    ignores: ["src/**/*.test.tsx"],
     plugins: { i18next },
     rules: {
       "i18next/no-literal-string": [

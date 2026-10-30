@@ -1115,7 +1115,74 @@ test("Settings → This Screen on a wall run by Sunroom Screen (ADR 0035)", asyn
     await shot(page, `settings-this-screen-uninstall-${theme}`);
     await uninstall.getByRole("button", { name: "Cancel" }).click();
     await expect(uninstall).toBeHidden();
+    // The Software row's states (ADR 0044): Reinstall…'s question, a helper too old to finish
+    // an update, an update ready and its question, then its steps as the pretend screen goes.
+    await page.getByRole("button", { name: "Reinstall…" }).click();
+    const reinstall = page.getByRole("dialog", { name: "Reinstall Sunroom Screen?" });
+    await expect(reinstall).toBeVisible();
+    await shot(page, `settings-this-screen-reinstall-${theme}`);
+    await reinstall.getByRole("button", { name: "Cancel" }).click();
+    await expect(reinstall).toBeHidden();
+    const pretend = async (data: Record<string, unknown>) => {
+      const response = await page.request.post(`${agent}/api/screen/_test/fake`, {
+        headers: screenChange,
+        data,
+      });
+      expect(response.status()).toBe(204);
+    };
+    await pretend({ update: "terminal" });
+    await expect(page.getByText("To finish updates on this computer")).toBeVisible();
+    await shot(page, `settings-this-screen-terminal-${theme}`);
+    await pretend({ update: "available" });
+    await expect(page.getByRole("button", { name: "Update Now" })).toBeVisible();
+    await shot(page, `settings-this-screen-ready-${theme}`);
+    await page.getByRole("button", { name: "Update Now" }).click();
+    const updating = page.getByRole("dialog", { name: "Update This Screen?" });
+    await expect(updating).toBeVisible();
+    await shot(page, `settings-this-screen-update-${theme}`);
+    await updating.getByRole("button", { name: "Update", exact: true }).click();
+    await expect(page.getByText(/Setting up…/)).toBeVisible();
+    await shot(page, `settings-this-screen-updating-${theme}`);
+    await expect(page.getByText(/Starting again…/)).toBeVisible();
+    await shot(page, `settings-this-screen-starting-again-${theme}`);
+    await expect(page.locator("[data-toast]").filter({ hasText: "Updated to" })).toBeVisible({
+      timeout: 15_000,
+    });
+    // As it was, for the next theme's shots.
+    const again = await page.request.post(`${agent}/api/screen/_test/reset`, {
+      headers: screenChange,
+    });
+    expect(again.status()).toBe(204);
+    await pretend({ sunroom: new URL(testInfo.project.use.baseURL ?? "").origin });
   }
+});
+
+test("the pseudo language: words a third longer, still inside their boxes (ADR 0043)", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "display-1080p", "the wall at 1920×1080");
+  await moveClock(page, STOPS[1]?.at ?? "");
+  // No parent PIN, as the wall's other shots: Settings opens without one.
+  await seed(page.request);
+  const paired = await page.request.post("/api/auth/kiosk/pair-with-password", {
+    headers: CSRF,
+    data: { password: PASSWORD, label: "Wall screen" },
+  });
+  expect(paired.status()).toBe(200);
+  await page.addInitScript(() => {
+    localStorage.setItem("sunroom.language", "pseudo");
+  });
+  await page.goto("/display");
+  // "This Week" and "Settings", accented (lib/lang.ts's pseudo language).
+  await expect(page.getByRole("region", { name: /Ţĥíš Ŵééķ/ })).toBeVisible();
+  await shot(page, "pseudo-board");
+  await page
+    .getByRole("button", { name: /Šéţţíñĝš/ })
+    .first()
+    .click();
+  await page.getByRole("link", { name: /Ĥöüšéĥöļð/ }).click();
+  await expect(page.getByRole("heading", { name: /Ĥöüšéĥöļð/, level: 2 })).toBeVisible();
+  await shot(page, "pseudo-settings-household");
 });
 
 test("a phone's lists and chores", async ({ page, isMobile }) => {

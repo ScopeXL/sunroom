@@ -20,6 +20,8 @@ class FakeIn(BaseModel):
     offline: bool | None = None  # no Wi-Fi joined (and no cable): the Wi-Fi step shows
     sunroom: str | None = None  # an address saved without checking it (Can't Reach)
     run: Literal["ok", "hold", "fail"] | None = None  # how Run Sunroom Here goes
+    # This Screen's Software row: a newer version found, or a helper too old to finish one.
+    update: Literal["available", "terminal"] | None = None
 
 
 def _agent(request: Request) -> Agent:
@@ -35,5 +37,10 @@ async def reset(request: Request) -> None:
 @router.post("/fake", status_code=204)
 async def fake(body: FakeIn, request: Request) -> None:
     await _agent(request).change_fake(
-        kind=body.kind, wired=body.wired, offline=body.offline, sunroom=body.sunroom, run=body.run
+        kind=body.kind,
+        wired=body.wired,
+        offline=body.offline,
+        sunroom=body.sunroom,
+        run=body.run,
+        update=body.update,
     )

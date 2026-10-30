@@ -214,6 +214,9 @@ size limit.
 
 ## End-to-end tests
 
+- A run in one worktree tested another's build: every checkout's `just e2e` uses ports 4173 and
+  4174, and `reuseExistingServer` quietly takes a server that's already up. With sessions working
+  side by side, run `CI=1 just e2e …`, which refuses a busy port instead.
 - The test server keeps plugin settings between tests (`/api/_test/reset` leaves
   `plugin_state`): a test that changes one puts it back in `finally`.
 - Tap-target checks flagged the page behind an open sheet: a modal `<dialog>` makes the rest
@@ -315,4 +318,11 @@ size limit.
   so it draws again when the language changes. A screen reader's hidden prefix can be a tag in
   the message (`<hidden>Done: </hidden>{name}`), so translators see the whole phrase.
 - A word made by editing other English (`allDoneText(null).toLowerCase()`) needs a key of its own.
+- The pseudo check (`e2e/lang.spec.ts`) can't tell the family's words from the app's by looking,
+  so it counts every string in the API answers the page read as data, except `message`,
+  `repeat_text` and `step` (the server's own English) and the plugins' and problems' lists
+  (keys). A list item is `text`: don't skip that name. The live stream keeps the network busy:
+  wait with `settled()`, never `networkidle`.
+- Sentences outside JSX (`lib/upload.ts`'s refusals) slip past the JSX-only lint; the pseudo check
+  or a grep for `"[A-Z][a-z]+ ` in `.ts` finds them.
 

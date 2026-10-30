@@ -785,6 +785,7 @@ class Agent:
             self.updater.reset()
         self.save(Config())
         self.known = Known()
+        self.needs_terminal = None
         self.reachable = False
         self.discovery.found = []
         await self.refresh_network()
@@ -798,11 +799,16 @@ class Agent:
         offline: bool | None = None,
         sunroom: str | None = None,
         run: str | None = None,
+        update: str | None = None,
     ) -> None:
         from sunroom_kiosk.platform.fake import FakePlatform
+        from sunroom_kiosk.platform.linux import INSTALL_COMMAND
 
         if not isinstance(self.platform, FakePlatform):
             return
+        if update == "available":  # the check has found a newer version
+            await self.updater.check_now()
+        self.needs_terminal = INSTALL_COMMAND if update == "terminal" else None
         if kind == "pi" or kind == "desktop":
             self.platform.kind = kind
         if run == "ok" or run == "hold" or run == "fail":

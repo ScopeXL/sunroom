@@ -7,20 +7,11 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 import en from "../../../lang/en.json";
-import unsweptList from "../../scripts/unswept.json";
 
 const sources = import.meta.glob<string>(
   ["../**/*.{ts,tsx}", "!../**/*.test.{ts,tsx}", "!../api/schema.d.ts"],
   { query: "?raw", import: "default", eager: true },
 );
-
-const unswept: readonly string[] = unsweptList;
-
-/** A source swept into lang/ (ADR 0043): out of scripts/unswept.json's ratchet. */
-function swept(path: string): boolean {
-  const file = path.replace(/^\.\.\//, "src/");
-  return !unswept.some((entry) => (entry.endsWith("/") ? file.startsWith(entry) : file === entry));
-}
 
 /** A message's words each way it can come out: a placeholder as "#" (a word with no letters, as
  * a name), and every branch of a plural or a select. */
@@ -333,12 +324,12 @@ describe("design rules", () => {
     expect(wrong.map(({ where, label }) => `${where} ${label}`)).toEqual([]);
   });
 
-  it("leaves no words in a swept folder's code: buttons, titles and toasts name keys (ADR 0043)", () => {
+  it("leaves no words in code: buttons, titles and toasts name keys (ADR 0043)", () => {
     const left = [
       ...buttonLabels().map(({ where, label }) => `${where} ${label}`),
       ...literalTitles().map(({ where, title }) => `${where} ${title}`),
       ...literalToasts().map(({ where, words }) => `${where} ${words}`),
-    ].filter((found) => swept(found.split(":")[0]?.split(" ")[0] ?? ""));
+    ];
     expect(left).toEqual([]);
   });
 
