@@ -4,6 +4,7 @@ import { useState } from "react";
 import { errorMessage } from "../../api/client";
 import { zonedParts } from "../../lib/dates";
 import { useMembers, usePlugins, useSettings } from "../../lib/household";
+import { useT, type Key } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Button } from "../../ui/Button";
 import { PanelActions } from "../../ui/PanelActions";
@@ -35,19 +36,21 @@ import { STEP_ICONS, stepIcon } from "./icons";
 import { RewardPanel } from "./RewardsPage";
 import { clockText, customPoints } from "./words";
 
-const SUGGESTED_STEPS: { icon: string; title: string }[] = [
-  { icon: "toothbrush", title: "Brush teeth" },
-  { icon: "shirt", title: "Pajamas on" },
-  { icon: "bath", title: "Bath" },
-  { icon: "book", title: "Read a book" },
-  { icon: "bed", title: "Into bed" },
-  { icon: "shirt", title: "Get dressed" },
-  { icon: "plate", title: "Breakfast" },
-  { icon: "backpack", title: "Pack your bag" },
-  { icon: "shoes", title: "Shoes on" },
-  { icon: "hands", title: "Wash hands" },
-  { icon: "tidy", title: "Tidy up" },
-  { icon: "dog", title: "Feed the pet" },
+/** The steps a parent can add with a tap, each with its picture; a step's words are the
+ * family's once added, in the language they were added in. */
+const SUGGESTED_STEPS: { icon: string; title: Key }[] = [
+  { icon: "toothbrush", title: "tasks.suggested_step.brush_teeth" },
+  { icon: "shirt", title: "tasks.suggested_step.pajamas_on" },
+  { icon: "bath", title: "tasks.suggested_step.bath" },
+  { icon: "book", title: "tasks.suggested_step.read_book" },
+  { icon: "bed", title: "tasks.suggested_step.into_bed" },
+  { icon: "shirt", title: "tasks.suggested_step.get_dressed" },
+  { icon: "plate", title: "tasks.suggested_step.breakfast" },
+  { icon: "backpack", title: "tasks.suggested_step.pack_bag" },
+  { icon: "shoes", title: "tasks.suggested_step.shoes_on" },
+  { icon: "hands", title: "tasks.suggested_step.wash_hands" },
+  { icon: "tidy", title: "tasks.suggested_step.tidy_up" },
+  { icon: "dog", title: "tasks.suggested_step.feed_pet" },
 ];
 
 /**
@@ -56,13 +59,14 @@ const SUGGESTED_STEPS: { icon: string; title: string }[] = [
  * are added and changed in the Chores room.
  */
 export function SettingsChores() {
+  const t = useT();
   const { data: plugins = [] } = usePlugins();
   const plugin = plugins.find((p) => p.id === "chores");
   const settings = useChoreSettings();
   return (
     <>
       {plugin ? (
-        <Group title="What Tasks Include">
+        <Group title={t("tasks.settings.include.title")}>
           <PluginSettingsForm
             pluginId="chores"
             spec={plugin.settings_spec}
@@ -78,20 +82,21 @@ export function SettingsChores() {
 }
 
 function RewardsGroup() {
+  const t = useT();
   const display = useShell() === "display";
   const { data } = useRewards();
   const [editing, setEditing] = useState<Reward | "new" | null>(null);
   return (
-    <Group title="Rewards">
+    <Group title={t("tasks.settings.rewards.title")}>
       {data?.rewards.length === 0 ? (
         <div className={display ? "py-4" : "py-3"}>
-          <Text soft>Rewards are what stars buy: movie night, an ice cream run.</Text>
+          <Text soft>{t("tasks.rewards.none.hint")}</Text>
         </div>
       ) : null}
       {(data?.rewards ?? []).map((reward) => (
         <ListRow
           key={reward.id}
-          label={`Edit ${reward.title}`}
+          label={t("tasks.edit.aria", { name: reward.title })}
           title={reward.title}
           value={`★${String(reward.cost_points)}`}
           onClick={() => {
@@ -106,7 +111,7 @@ function RewardsGroup() {
             setEditing("new");
           }}
         >
-          Add Reward
+          {t("tasks.reward.add.action")}
         </Button>
       </div>
       <RewardPanel
@@ -121,6 +126,7 @@ function RewardsGroup() {
 }
 
 function RoutinesGroup() {
+  const t = useT();
   const display = useShell() === "display";
   const today = zonedParts(useMinute()).day;
   const { data } = useRoutines(today);
@@ -128,12 +134,10 @@ function RoutinesGroup() {
   const [editing, setEditing] = useState<Routine | "new" | null>(null);
   const routines = data?.routines ?? [];
   return (
-    <Group title="Routines">
+    <Group title={t("tasks.settings.routines.title")}>
       {routines.length === 0 ? (
         <div className={display ? "py-4" : "py-3"}>
-          <Text soft>
-            A routine is a short checklist a child runs on their own: pajamas, teeth, book.
-          </Text>
+          <Text soft>{t("tasks.settings.routines.hint")}</Text>
         </div>
       ) : null}
       {routines.map((routine) => {
@@ -141,9 +145,9 @@ function RoutinesGroup() {
         return (
           <ListRow
             key={routine.id}
-            label={`Edit ${routine.title}`}
+            label={t("tasks.edit.aria", { name: routine.title })}
             title={routine.title}
-            subtitle={`${kid ? kid.name : "Every child"} · ${clockText(routine.window_start)} · ${String(routine.steps.length)} steps`}
+            subtitle={`${kid ? kid.name : t("tasks.routine.every_child")} · ${clockText(routine.window_start)} · ${t("tasks.routine.step_count", { n: routine.steps.length })}`}
             onClick={() => {
               setEditing(routine);
             }}
@@ -157,12 +161,16 @@ function RoutinesGroup() {
             setEditing("new");
           }}
         >
-          Add Routine
+          {t("tasks.routine.add.action")}
         </Button>
       </div>
       <SidePanel
         open={editing !== null}
-        title={editing && editing !== "new" ? `Edit ${editing.title}` : "Add Routine"}
+        title={
+          editing && editing !== "new"
+            ? t("tasks.edit.title", { name: editing.title })
+            : t("tasks.routine.add.title")
+        }
         onClose={() => {
           setEditing(null);
         }}
@@ -189,12 +197,13 @@ const hhmmOf = (minutes: number) => {
 
 /** A routine's fields and its steps, each with a picture from the step library. */
 function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: () => void }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const weekStartsOn = useSettings().data?.week_starts_on ?? 6;
   const { stars: starsOn } = useChoreSettings();
   const { saveRoutine, removeRoutine } = useChoreChanges();
-  const [title, setTitle] = useState(routine?.title ?? "Bedtime routine");
+  const [title, setTitle] = useState(routine?.title ?? t("tasks.routine.default_name"));
   const [kid, setKid] = useState<string | null>(routine?.member_id ?? null);
   const [days, setDays] = useState<number[]>(routine?.days ?? [0, 1, 2, 3, 4, 5, 6]);
   const [start, setStart] = useState(routine?.window_start ?? "19:30");
@@ -247,7 +256,7 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
       }}
     >
       <TextField
-        label="Name"
+        label={t("tasks.routine.name.label")}
         autoComplete="off"
         value={title}
         onChange={(event) => {
@@ -255,19 +264,19 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
         }}
       />
       <div className="flex flex-col gap-2">
-        <p className={heading}>Whose</p>
-        <ChipRow label="Whose">
+        <p className={heading}>{t("tasks.routine.whose.label")}</p>
+        <ChipRow label={t("tasks.routine.whose.label")}>
           <Chip
             on={kid === null}
             onClick={() => {
               setKid(null);
             }}
           >
-            Every child
+            {t("tasks.routine.every_child")}
           </Chip>
         </ChipRow>
         <WhoPicker
-          label="Which child"
+          label={t("tasks.routine.which.label")}
           members={members}
           kidsOnly
           everyone={false}
@@ -278,9 +287,9 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
         />
       </div>
       <div className="flex flex-col gap-2">
-        <p className={heading}>Days</p>
+        <p className={heading}>{t("tasks.routine.days.label")}</p>
         <WeekdayPicker
-          label="Days"
+          label={t("tasks.routine.days.label")}
           weekStartsOn={weekStartsOn}
           value={days}
           onChange={setDays}
@@ -289,18 +298,18 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
       </div>
       {/* The same time and length pickers as Add's (ADR 0030): any start, not seven fixed ones. */}
       <TimeField
-        label="Starts"
+        label={t("tasks.routine.starts.label")}
         value={start}
         none={null}
         onChange={(time) => {
           if (time) setStart(time);
         }}
       />
-      <LengthField label="Shows for" value={last} onChange={setLast} />
+      <LengthField label={t("tasks.routine.length.label")} value={last} onChange={setLast} />
       {starsOn ? (
         <div className="flex flex-col gap-2">
-          <p className={heading}>Stars for finishing</p>
-          <ChipRow label="Stars for finishing">
+          <p className={heading}>{t("tasks.routine.stars.label")}</p>
+          <ChipRow label={t("tasks.routine.stars.label")}>
             {[0, 1, 2, 3, 5].map((count) => (
               <Chip
                 key={count}
@@ -309,14 +318,14 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
                   setPoints(count);
                 }}
               >
-                {count === 0 ? "None" : `★${String(count)}`}
+                {count === 0 ? t("tasks.stars.none") : `★${String(count)}`}
               </Chip>
             ))}
           </ChipRow>
         </div>
       ) : null}
       <div className="flex flex-col gap-3">
-        <p className={heading}>Steps</p>
+        <p className={heading}>{t("tasks.routine.steps.label")}</p>
         <ol className="flex flex-col gap-3">
           {steps.map((step, index) => {
             const Icon = stepIcon(step.icon);
@@ -329,7 +338,7 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
                   <Button
                     variant="secondary"
                     icon
-                    aria-label={`Picture for step ${String(index + 1)}`}
+                    aria-label={t("tasks.routine.step.picture.aria", { n: index + 1 })}
                     onClick={() => {
                       setChoosingIcon(choosingIcon === index ? null : index);
                     }}
@@ -338,7 +347,7 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
                   </Button>
                   <div className="min-w-0 flex-1">
                     <TextField
-                      label={`Step ${String(index + 1)}`}
+                      label={t("tasks.routine.step.label", { n: index + 1 })}
                       hideLabel
                       autoComplete="off"
                       value={step.title}
@@ -352,7 +361,7 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
                   <Button
                     variant="secondary"
                     icon
-                    aria-label={`Move step ${String(index + 1)} up`}
+                    aria-label={t("tasks.routine.step.up.aria", { n: index + 1 })}
                     disabled={index === 0}
                     onClick={() => {
                       move(index, index - 1);
@@ -363,7 +372,7 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
                   <Button
                     variant="secondary"
                     icon
-                    aria-label={`Move step ${String(index + 1)} down`}
+                    aria-label={t("tasks.routine.step.down.aria", { n: index + 1 })}
                     disabled={index === steps.length - 1}
                     onClick={() => {
                       move(index, index + 1);
@@ -374,7 +383,7 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
                   <Button
                     variant="secondary"
                     icon
-                    aria-label={`Remove step ${String(index + 1)}`}
+                    aria-label={t("tasks.routine.step.remove.aria", { n: index + 1 })}
                     onClick={() => {
                       setSteps(steps.filter((_, at) => at !== index));
                     }}
@@ -383,7 +392,7 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
                   </Button>
                 </div>
                 {choosingIcon === index ? (
-                  <ChipRow label="Pictures">
+                  <ChipRow label={t("tasks.routine.pictures.label")}>
                     {Object.entries(STEP_ICONS).map(([key, { label, Icon: Option }]) => (
                       <Chip
                         key={key}
@@ -396,7 +405,7 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
                         }}
                       >
                         <Option aria-hidden="true" className={display ? "size-7" : "size-5"} />
-                        {label}
+                        {t(label)}
                       </Chip>
                     ))}
                   </ChipRow>
@@ -406,23 +415,21 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
           })}
         </ol>
         <p className={display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft"}>
-          Add a step
+          {t("tasks.routine.add_step.label")}
         </p>
-        <ChipRow label="Add a step">
+        <ChipRow label={t("tasks.routine.add_step.label")}>
           {SUGGESTED_STEPS.map((suggestion) => {
             const Icon = stepIcon(suggestion.icon);
+            const words = t(suggestion.title);
             return (
               <Chip
                 key={suggestion.title}
                 onClick={() => {
-                  setSteps([
-                    ...steps,
-                    { id: null, title: suggestion.title, icon: suggestion.icon },
-                  ]);
+                  setSteps([...steps, { id: null, title: words, icon: suggestion.icon }]);
                 }}
               >
                 <Icon aria-hidden="true" className={display ? "size-7" : "size-5"} />
-                {suggestion.title}
+                {words}
               </Chip>
             );
           })}
@@ -431,7 +438,7 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
               setSteps([...steps, { id: null, title: "", icon: "smile" }]);
             }}
           >
-            Another step
+            {t("tasks.routine.another_step")}
           </Chip>
         </ChipRow>
       </div>
@@ -448,12 +455,12 @@ function RoutineForm({ routine, onClose }: { routine: Routine | null; onClose: (
             removeRoutine.mutate({ routine }, { onSuccess: onClose });
           }}
         >
-          Remove {routine.title}
+          {t("tasks.remove.action", { name: routine.title })}
         </Button>
       ) : null}
       <PanelActions>
         <Button type="submit" block disabled={!ready} pending={saveRoutine.isPending}>
-          {routine ? "Save Changes" : "Add Routine"}
+          {routine ? t("app.action.save_changes") : t("tasks.routine.add.action")}
         </Button>
       </PanelActions>
     </form>
@@ -469,6 +476,7 @@ const PRESETS = [-5, -1, 1, 5, 10];
  * stay picked after, the reason clears (ADR 0034).
  */
 function AdjustGroup() {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const { adjust } = useChoreChanges();
@@ -481,10 +489,10 @@ function AdjustGroup() {
   const chosen = kids.flatMap((id) => personOf(members, id) ?? []);
   const points = custom ? customPoints(direction, count) : preset;
   return (
-    <Group title="Stars">
+    <Group title={t("tasks.stars.title")}>
       <div className={`flex flex-col ${display ? "gap-5 py-5" : "gap-4 py-4"}`}>
         <WhoPicker
-          label="Who"
+          label={t("tasks.who.label")}
           members={members}
           kidsOnly
           everyone={false}
@@ -492,7 +500,7 @@ function AdjustGroup() {
           value={kids}
           onChange={setKids}
         />
-        <ChipRow label="How many">
+        <ChipRow label={t("tasks.adjust.how_many.label")}>
           {PRESETS.map((value) => (
             <Chip
               key={value}
@@ -517,36 +525,36 @@ function AdjustGroup() {
               setCustom(!custom);
             }}
           >
-            Custom…
+            {t("tasks.adjust.custom")}
           </Chip>
         </ChipRow>
         {custom ? (
           <>
-            <Field label="Give or take">
+            <Field label={t("tasks.adjust.direction.label")}>
               <Segmented
-                label="Give or take"
+                label={t("tasks.adjust.direction.label")}
                 value={direction}
                 onChange={setDirection}
                 options={[
-                  { value: "give", label: "Give" },
-                  { value: "take", label: "Take" },
+                  { value: "give", label: t("tasks.adjust.direction.give") },
+                  { value: "take", label: t("tasks.adjust.direction.take") },
                 ]}
               />
             </Field>
-            <Field label="How many stars">
+            <Field label={t("tasks.adjust.count.label")}>
               <Stepper
-                label="How many stars"
+                label={t("tasks.adjust.count.label")}
                 value={count}
                 min={1}
                 max={100}
-                words={(n) => `${String(n)} ${n === 1 ? "star" : "stars"}`}
+                words={(n) => t("tasks.stars.count", { n })}
                 onChange={setCount}
               />
             </Field>
           </>
         ) : null}
         <TextField
-          label="What for (optional)"
+          label={t("tasks.adjust.reason.label")}
           autoComplete="off"
           value={reason}
           onChange={(event) => {
@@ -579,7 +587,7 @@ function AdjustGroup() {
               );
             }}
           >
-            {points > 0 ? "Give Stars" : "Take Stars"}
+            {points > 0 ? t("tasks.adjust.give.action") : t("tasks.adjust.take.action")}
           </Button>
         </div>
       </div>

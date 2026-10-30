@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, asMember, unwrap } from "../../api/client";
 import type { components } from "../../api/schema";
 import { qk } from "../../api/keys";
+import { t } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { showToast } from "../../lib/toast";
 
@@ -56,9 +57,6 @@ export function useRemovedLists() {
   });
 }
 
-const plural = (count: number, one: string, many: string) =>
-  count === 1 ? one : `${String(count)} ${many}`;
-
 export function useListChanges() {
   const queryClient = useQueryClient();
   const refresh = async () => {
@@ -85,8 +83,8 @@ export function useListChanges() {
       );
     },
     onSuccess: (_data, { item }) => {
-      showToast(`Removed ${item.text}`, {
-        label: "Undo",
+      showToast(t("lists.removed.toast", { name: item.text }), {
+        label: t("app.action.undo"),
         onAction: () => {
           restoreItems.mutate({ listId: item.list_id, ids: [item.id] });
         },
@@ -127,17 +125,17 @@ export function useListChanges() {
       if (added.items.length === 0) {
         showToast(
           added.already.length === 1
-            ? `${added.already[0] ?? ""} is on the list already`
-            : "They're on the list already",
+            ? t("lists.added.already.toast", { name: added.already[0] ?? "" })
+            : t("lists.added.already_several.toast"),
         );
         return;
       }
       showToast(
         added.items.length === 1 && first
-          ? `Added ${first.text}`
-          : `Added ${String(added.items.length)} items`,
+          ? t("lists.added.toast", { name: first.text })
+          : t("lists.added.several.toast", { n: added.items.length }),
         {
-          label: "Undo",
+          label: t("app.action.undo"),
           onAction: () => {
             for (const item of added.items) removeItem.mutate({ item, member });
           },
@@ -174,8 +172,8 @@ export function useListChanges() {
       {
         onSuccess: () => {
           if (!checked) return;
-          showToast(`Checked off ${item.text}`, {
-            label: "Undo",
+          showToast(t("lists.checked.toast", { name: item.text }), {
+            label: t("app.action.undo"),
             onAction: () => {
               patchItem.mutate({ item, change: { checked: false }, member });
             },
@@ -193,8 +191,8 @@ export function useListChanges() {
         }),
       ),
     onSuccess: ({ ids }, { listId }) => {
-      showToast(`Cleared ${plural(ids.length, "1 done item", "done items")}`, {
-        label: "Undo",
+      showToast(t("lists.cleared.toast", { n: ids.length }), {
+        label: t("app.action.undo"),
         onAction: () => {
           restoreItems.mutate({ listId, ids });
         },
@@ -207,7 +205,7 @@ export function useListChanges() {
     mutationFn: async ({ name }: { name: string }) =>
       unwrap(await api.POST("/api/lists", { body: { name } })),
     onSuccess: (list) => {
-      showToast(`Made ${list.name}`);
+      showToast(t("lists.made.toast", { name: list.name }));
     },
     onSettled: refresh,
   });
@@ -221,7 +219,7 @@ export function useListChanges() {
         }),
       ),
     onSuccess: () => {
-      showToast("Changes saved");
+      showToast(t("lists.saved.toast"));
     },
     onSettled: refresh,
   });
@@ -236,7 +234,7 @@ export function useListChanges() {
         ),
       ),
     onSuccess: (list) => {
-      showToast(`Put back ${list.name}`);
+      showToast(t("lists.put_back.toast", { name: list.name }));
     },
     onSettled: refresh,
   });
@@ -247,11 +245,11 @@ export function useListChanges() {
         unwrap(
           await api.DELETE("/api/lists/{list_id}", { params: { path: { list_id: list.id } } }),
         );
-      }, "Removing a list on this screen asks for the parent PIN.");
+      }, t("lists.remove.pin"));
     },
     onSuccess: (_data, { list }) => {
-      showToast(`Removed ${list.name}`, {
-        label: "Undo",
+      showToast(t("lists.removed.toast", { name: list.name }), {
+        label: t("app.action.undo"),
         onAction: () => {
           restoreList.mutate({ listId: list.id });
         },

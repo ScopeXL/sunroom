@@ -5,6 +5,7 @@ import { useState } from "react";
 import { errorMessage } from "../../api/client";
 import { zonedParts } from "../../lib/dates";
 import { useMembers, type Member } from "../../lib/household";
+import { useT, type Key } from "../../lib/lang";
 import { useLongPress } from "../../lib/longPress";
 import { useMinute } from "../../lib/time";
 import { HeaderBack } from "../../shell/HeaderLinks";
@@ -21,7 +22,14 @@ import { useList, useListChanges, useLists, type ListInfo } from "./data";
 import { AddBar, ItemRows } from "./ListItems";
 import { countLine, lastChangeLine } from "./words";
 
-export const SUGGESTED = ["Groceries", "To do", "Packing", "Costco", "Pharmacy"];
+/** The usual lists, as chips under a new list's name (and Add → Item's, before there's one). */
+export const SUGGESTED: readonly Key[] = [
+  "lists.suggested.groceries",
+  "lists.suggested.todo",
+  "lists.suggested.packing",
+  "lists.suggested.costco",
+  "lists.suggested.pharmacy",
+];
 
 /** The Lists room on the wall screen (UX §4): the lists as tiles, or one list. */
 export function ListsRoom({ path }: { path: string[] }) {
@@ -30,6 +38,7 @@ export function ListsRoom({ path }: { path: string[] }) {
 }
 
 function ListTiles() {
+  const t = useT();
   const { data: lists, isSuccess } = useLists();
   const { data: members = [] } = useMembers();
   const today = zonedParts(useMinute()).day;
@@ -38,9 +47,9 @@ function ListTiles() {
   const [held, setHeld] = useState<{ id: string; open: boolean } | null>(null);
   const heldList = lists?.find((list) => list.id === held?.id);
   return (
-    <section aria-label="Lists" className="flex min-h-0 flex-1 flex-col">
+    <section aria-label={t("lists.room.title")} className="flex min-h-0 flex-1 flex-col">
       <RoomHeader
-        title="Lists"
+        title={t("lists.room.title")}
         controls={
           <Button
             variant="secondary"
@@ -50,7 +59,7 @@ function ListTiles() {
             }}
           >
             <Plus aria-hidden="true" className="size-7" />
-            New List
+            {t("lists.new.action")}
           </Button>
         }
       />
@@ -58,15 +67,15 @@ function ListTiles() {
         {isSuccess && lists.length === 0 ? (
           <EmptyState
             icon={ListChecks}
-            line="No lists yet"
-            note="Groceries, to-dos, packing: everyone sees them on paired screens and on their own devices."
+            line={t("lists.none.empty")}
+            note={t("lists.none.hint")}
             action={
               <Button
                 onClick={() => {
                   setMaking(true);
                 }}
               >
-                New List
+                {t("lists.new.action")}
               </Button>
             }
           />
@@ -145,6 +154,7 @@ export function tileCount(list: ListInfo): string {
 /** New list (UX §4, ADR 0030): one field for its name, with the usual names as chips under it
  * that fill the field; it opens once made. */
 export function NewListPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const display = useShell() === "display";
   const navigate = useNavigate();
   const { createList } = useListChanges();
@@ -163,7 +173,7 @@ export function NewListPanel({ open, onClose }: { open: boolean; onClose: () => 
     );
   };
   return (
-    <SidePanel open={open} title="New List" onClose={onClose}>
+    <SidePanel open={open} title={t("lists.new.title")} onClose={onClose}>
       <form
         className={`flex flex-col ${display ? "gap-6" : "gap-5"}`}
         onSubmit={(event) => {
@@ -173,7 +183,7 @@ export function NewListPanel({ open, onClose }: { open: boolean; onClose: () => 
       >
         <div className="flex flex-col gap-3">
           <TextField
-            label="Name"
+            label={t("lists.name.label")}
             autoComplete="off"
             data-autofocus=""
             value={name}
@@ -182,23 +192,26 @@ export function NewListPanel({ open, onClose }: { open: boolean; onClose: () => 
               setName(event.target.value);
             }}
           />
-          <ChipRow label="Usual lists">
-            {SUGGESTED.map((suggestion) => (
-              <Chip
-                key={suggestion}
-                on={name.trim() === suggestion}
-                onClick={() => {
-                  setName(suggestion);
-                }}
-              >
-                {suggestion}
-              </Chip>
-            ))}
+          <ChipRow label={t("lists.usual_lists.aria")}>
+            {SUGGESTED.map((key) => {
+              const suggestion = t(key);
+              return (
+                <Chip
+                  key={key}
+                  on={name.trim() === suggestion}
+                  onClick={() => {
+                    setName(suggestion);
+                  }}
+                >
+                  {suggestion}
+                </Chip>
+              );
+            })}
           </ChipRow>
         </div>
         <PanelActions>
           <Button type="submit" block disabled={!name.trim()} pending={createList.isPending}>
-            Add List
+            {t("lists.new.add.action")}
           </Button>
         </PanelActions>
       </form>
@@ -207,6 +220,7 @@ export function NewListPanel({ open, onClose }: { open: boolean; onClose: () => 
 }
 
 function ListPage({ listId }: { listId: string }) {
+  const t = useT();
   const { data: detail, isError } = useList(listId);
   const navigate = useNavigate();
   const { clearDone } = useListChanges();
@@ -214,17 +228,17 @@ function ListPage({ listId }: { listId: string }) {
   if (isError) {
     return (
       <section className="p-6">
-        <RoomHeader title="Lists" />
+        <RoomHeader title={t("lists.room.title")} />
         <EmptyState
           icon={ListX}
-          line="That list isn't here any more"
+          line={t("lists.list.gone.empty")}
           action={
             <Button
               onClick={() => {
                 void navigate({ to: "/$room", params: { room: "lists" } });
               }}
             >
-              Back to Lists
+              {t("lists.back.action")}
             </Button>
           }
         />
@@ -240,7 +254,7 @@ function ListPage({ listId }: { listId: string }) {
         visibleTitle
         back={
           <HeaderBack to="/$room" params={{ room: "lists" }}>
-            Lists
+            {t("lists.room.title")}
           </HeaderBack>
         }
         controls={
@@ -253,7 +267,7 @@ function ListPage({ listId }: { listId: string }) {
                   clearDone.mutate({ listId: list.id });
                 }}
               >
-                Clear Done
+                {t("lists.list.clear_done.action")}
               </Button>
             ) : null}
             <Button
@@ -262,7 +276,7 @@ function ListPage({ listId }: { listId: string }) {
                 setChanging(true);
               }}
             >
-              Change List
+              {t("lists.list.change.action")}
             </Button>
           </div>
         }
@@ -273,7 +287,7 @@ function ListPage({ listId }: { listId: string }) {
           <Pop value={tileCount(list)} className="inline-block" />
         </p>
         {detail.items.length === 0 && detail.done.length === 0 ? (
-          <QuietLine>{`Nothing on ${list.name} yet. Add the first thing.`}</QuietLine>
+          <QuietLine>{t("lists.list.empty", { name: list.name })}</QuietLine>
         ) : (
           <ItemRows detail={detail} />
         )}
@@ -307,6 +321,7 @@ export function ChangeListPanel({
   asking?: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const navigate = useNavigate();
   const { renameList, removeList } = useListChanges();
@@ -333,7 +348,7 @@ export function ChangeListPanel({
   return (
     <SidePanel
       open={open}
-      title={`Change ${list.name}`}
+      title={t("lists.list.change.title", { name: list.name })}
       onClose={() => {
         setAsking(false);
         onClose();
@@ -349,7 +364,7 @@ export function ChangeListPanel({
         }}
       >
         <TextField
-          label="Name"
+          label={t("lists.name.label")}
           autoComplete="off"
           value={name}
           onChange={(event) => {
@@ -364,11 +379,11 @@ export function ChangeListPanel({
         {asking ? (
           <div className="flex flex-col gap-3 rounded-button border-2 border-line p-4">
             <p className={display ? "text-d-body font-semibold" : "text-body font-semibold"}>
-              {`${list.name} still has ${String(holds)} ${holds === 1 ? "thing" : "things"} on it.`}
+              {t("lists.list.holds", { name: list.name, n: holds })}
             </p>
             <div className="flex flex-wrap gap-3">
               <Button variant="danger" pending={removeList.isPending} onClick={remove}>
-                Remove {list.name}
+                {t("lists.remove.action", { name: list.name })}
               </Button>
               <Button
                 variant="secondary"
@@ -376,7 +391,7 @@ export function ChangeListPanel({
                   setAsking(false);
                 }}
               >
-                Keep {list.name}
+                {t("lists.list.keep.action", { name: list.name })}
               </Button>
             </div>
           </div>
@@ -389,12 +404,12 @@ export function ChangeListPanel({
               else remove();
             }}
           >
-            Remove {list.name}
+            {t("lists.remove.action", { name: list.name })}
           </Button>
         )}
         <PanelActions>
           <Button type="submit" block disabled={!name.trim()} pending={renameList.isPending}>
-            Save Changes
+            {t("app.action.save_changes")}
           </Button>
         </PanelActions>
       </form>

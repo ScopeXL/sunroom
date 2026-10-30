@@ -7,6 +7,7 @@ import { errorMessage } from "../../api/client";
 import { qk } from "../../api/keys";
 import { zonedParts } from "../../lib/dates";
 import { useMembers } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { fetchSession } from "../../lib/session";
 import { useMinute } from "../../lib/time";
 import { showToast } from "../../lib/toast";
@@ -30,6 +31,7 @@ export function ListsTab({ path }: { path: string[] }) {
  * still has things on it, in Change List; ADR 0036). Only where Remove can work: a parent's
  * phone, or the list's own maker's (a phone has no PIN pad to unlock the rest). */
 function PhoneLists() {
+  const t = useT();
   const { data: lists, isSuccess } = useLists();
   const { data: members = [] } = useMembers();
   const { data: session } = useQuery({ queryKey: qk.session(), queryFn: fetchSession });
@@ -56,7 +58,7 @@ function PhoneLists() {
   };
   return (
     <Screen
-      title="Lists"
+      title={t("lists.room.title")}
       actions={
         <Button
           block
@@ -65,23 +67,19 @@ function PhoneLists() {
           }}
         >
           <Plus aria-hidden="true" className="size-5" />
-          New List
+          {t("lists.new.action")}
         </Button>
       }
     >
       {isSuccess && lists.length === 0 ? (
-        <EmptyState
-          icon={ListChecks}
-          line="No lists yet"
-          note="Groceries, to-dos, packing: everyone sees them on paired screens and on their own devices."
-        />
+        <EmptyState icon={ListChecks} line={t("lists.none.empty")} note={t("lists.none.hint")} />
       ) : (
         <ul className="divide-y divide-line rounded-chip border border-line bg-surface">
           {(lists ?? []).map((list) => (
             <li key={list.id}>
               <SwipeRow
-                action="Remove"
-                label={`Remove ${list.name}`}
+                action={t("app.action.remove")}
+                label={t("lists.remove.action", { name: list.name })}
                 disabled={!mayRemove(list)}
                 onAction={() => {
                   remove(list);
@@ -134,13 +132,14 @@ function PhoneLists() {
 }
 
 function PhoneList({ listId }: { listId: string }) {
+  const t = useT();
   const { data: detail, isError } = useList(listId);
   const { clearDone } = useListChanges();
   const [changing, setChanging] = useState(false);
   if (isError) {
     return (
-      <Screen title="Lists" back="/lists">
-        <EmptyState icon={ListX} line="That list isn't here any more" />
+      <Screen title={t("lists.room.title")} back="/lists">
+        <EmptyState icon={ListX} line={t("lists.list.gone.empty")} />
       </Screen>
     );
   }
@@ -169,7 +168,7 @@ function PhoneList({ listId }: { listId: string }) {
                 clearDone.mutate({ listId: list.id });
               }}
             >
-              Clear Done
+              {t("lists.list.clear_done.action")}
             </Button>
           ) : null}
           <Button
@@ -178,12 +177,12 @@ function PhoneList({ listId }: { listId: string }) {
               setChanging(true);
             }}
           >
-            Change List
+            {t("lists.list.change.action")}
           </Button>
         </div>
       </div>
       {detail.items.length === 0 && detail.done.length === 0 ? (
-        <QuietLine>{`Nothing on ${list.name} yet. Add the first thing.`}</QuietLine>
+        <QuietLine>{t("lists.list.empty", { name: list.name })}</QuietLine>
       ) : (
         <div className="rounded-chip border border-line bg-surface">
           <ItemRows detail={detail} />

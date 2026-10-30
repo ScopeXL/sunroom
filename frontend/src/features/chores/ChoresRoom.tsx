@@ -4,6 +4,7 @@ import { useState } from "react";
 import { dayNumber, shortWeekday, weekOf, zonedParts } from "../../lib/dates";
 import { updateDisplay } from "../../lib/displayState";
 import { useMembers, useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { HeaderLink } from "../../shell/HeaderLinks";
 import { RoomHeader } from "../../shell/roomHeader";
@@ -35,6 +36,7 @@ export function ChoresRoom({ path }: { path: string[] }) {
 }
 
 function ChoresBoard() {
+  const t = useT();
   const today = zonedParts(useMinute()).day;
   const { data: day, isSuccess } = useChoresDay(today);
   const [mode, setMode] = useState<"today" | "week" | "all">("today");
@@ -42,18 +44,18 @@ function ChoresBoard() {
     updateDisplay({ panel: { kind: "add", day: null, hour: null, type: "chore" } });
   };
   return (
-    <section aria-label="Tasks" className="flex min-h-0 flex-1 flex-col">
+    <section aria-label={t("tasks.room.title")} className="flex min-h-0 flex-1 flex-col">
       <RoomHeader
-        title="Tasks"
+        title={t("tasks.room.title")}
         controls={
           <>
             <Segmented
-              label="Show"
+              label={t("tasks.show.label")}
               value={mode}
               options={[
-                { value: "today", label: "Today" },
-                { value: "week", label: "This Week" },
-                { value: "all", label: "All Tasks" },
+                { value: "today", label: t("tasks.show.today") },
+                { value: "week", label: t("tasks.show.week") },
+                { value: "all", label: t("tasks.show.all") },
               ]}
               onChange={setMode}
             />
@@ -64,7 +66,7 @@ function ChoresBoard() {
                 className="ml-auto"
               >
                 <Star aria-hidden="true" className="size-7 fill-sun stroke-sun-ink" />
-                {day.rewards_on ? "Stars & Rewards" : "Stars"}
+                {day.rewards_on ? t("tasks.rewards.title") : t("tasks.stars.title")}
               </HeaderLink>
             ) : null}
           </>
@@ -79,9 +81,9 @@ function ChoresBoard() {
         <div className="flex min-h-0 flex-1 flex-col px-6">
           <EmptyState
             icon={ListTodo}
-            line="No tasks yet"
-            note="Give each person a few, and watch them get stamped."
-            action={<Button onClick={add}>Add Task</Button>}
+            line={t("tasks.none.empty")}
+            note={t("tasks.none.hint")}
+            action={<Button onClick={add}>{t("tasks.add.action")}</Button>}
           />
         </div>
       ) : mode === "today" && day ? (
@@ -119,6 +121,7 @@ function TodayColumns({ day }: { day: Day }) {
 
 /** This week (UX §4): seven compact rows a column, a check or a dash, the fridge-chart feel. */
 function WeekColumns({ today }: { today: string }) {
+  const t = useT();
   const { data: settings } = useSettings();
   const { data: members = [] } = useMembers();
   const start = weekOf(today, settings?.week_starts_on ?? 6)[0] ?? today;
@@ -133,14 +136,14 @@ function WeekColumns({ today }: { today: string }) {
         return (
           <section
             key={column.member_id ?? "anyone"}
-            aria-label={person ? person.name : "Anyone"}
+            aria-label={person ? person.name : t("tasks.anyone")}
             data-person={person?.color ?? "everyone"}
             className="min-w-[16rem] shrink-0 overflow-y-auto border-r border-line px-4 py-4"
             style={{ width }}
           >
             <header className="flex items-center gap-3 pb-3">
               <Avatar member={person ?? null} size="lg" />
-              <h2 className="text-d-title font-bold">{person ? person.name : "Anyone"}</h2>
+              <h2 className="text-d-title font-bold">{person ? person.name : t("tasks.anyone")}</h2>
             </header>
             <WeekRows column={column} today={today} />
           </section>
@@ -151,6 +154,7 @@ function WeekColumns({ today }: { today: string }) {
 }
 
 export function WeekRows({ column, today }: { column: Week["columns"][number]; today: string }) {
+  const t = useT();
   return (
     <ul className="flex flex-col">
       {column.days.map((cell) => {
@@ -167,7 +171,11 @@ export function WeekRows({ column, today }: { column: Week["columns"][number]; t
             <span className="flex items-center gap-2 text-d-secondary">
               {cell.total > 0 ? countText(cell.done, cell.total) : null}
               {all ? (
-                <Check aria-label="all done" className="size-7 text-p-text" strokeWidth={3} />
+                <Check
+                  aria-label={t("tasks.status.all_done")}
+                  className="size-7 text-p-text"
+                  strokeWidth={3}
+                />
               ) : cell.total === 0 || cell.date > today ? (
                 <Minus aria-hidden="true" className="size-6 text-ink-soft" />
               ) : null}

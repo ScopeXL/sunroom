@@ -3,6 +3,7 @@ import { useRef, useState, type ReactNode } from "react";
 
 import { errorMessage } from "../../api/client";
 import { useMembers } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { HeaderBack } from "../../shell/HeaderLinks";
 import { RoomHeader } from "../../shell/roomHeader";
 import { Avatar } from "../../ui/Avatar";
@@ -30,23 +31,24 @@ const COSTS = [5, 10, 20, 30, 50, 100];
  * screen) and Not now. A reward costing more than a kid has says so under a disabled button.
  */
 export function RewardsPage() {
+  const t = useT();
   const display = useShell() === "display";
   const body = <RewardsBody />;
   if (!display) {
     return (
-      <Screen title="Stars & Rewards" back="/chores">
+      <Screen title={t("tasks.rewards.title")} back="/chores">
         {body}
       </Screen>
     );
   }
   return (
-    <section aria-label="Stars & Rewards" className="flex min-h-0 flex-1 flex-col">
+    <section aria-label={t("tasks.rewards.title")} className="flex min-h-0 flex-1 flex-col">
       <RoomHeader
-        title="Stars & Rewards"
+        title={t("tasks.rewards.title")}
         visibleTitle
         back={
           <HeaderBack to="/$room" params={{ room: "chores" }}>
-            Tasks
+            {t("tasks.room.title")}
           </HeaderBack>
         }
       />
@@ -56,6 +58,7 @@ export function RewardsPage() {
 }
 
 function RewardsBody() {
+  const t = useT();
   const display = useShell() === "display";
   const { data } = useRewards();
   const { data: members = [] } = useMembers();
@@ -92,15 +95,15 @@ function RewardsBody() {
       {data.rewards.length === 0 ? (
         <EmptyState
           icon={Star}
-          line="No rewards yet"
-          note="Rewards are what stars buy: movie night, an ice cream run."
+          line={t("tasks.rewards.none.empty")}
+          note={t("tasks.rewards.none.hint")}
           action={
             <Button
               onClick={() => {
                 setEditing("new");
               }}
             >
-              Add Reward
+              {t("tasks.reward.add.action")}
             </Button>
           }
         />
@@ -126,7 +129,7 @@ function RewardsBody() {
                   setEditing("new");
                 }}
               >
-                Add Reward
+                {t("tasks.reward.add.action")}
               </Button>
             </div>
           ) : null}
@@ -159,6 +162,7 @@ function RewardTile({
   stars: Stars[];
   onAsk: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const viewer = useViewer();
   const { data: members = [] } = useMembers();
@@ -182,7 +186,7 @@ function RewardTile({
           className={display ? "size-6 fill-sun stroke-sun-ink" : "size-4 fill-sun stroke-sun-ink"}
         />
         {reward.cost_points}
-        <span className="sr-only"> stars</span>
+        <span className="sr-only"> {t("tasks.stars.unit.aria")}</span>
       </span>
       <Button
         variant="secondary"
@@ -193,13 +197,17 @@ function RewardTile({
           else onAsk();
         }}
       >
-        Ask for It
+        {t("tasks.reward.ask.action")}
       </Button>
       {short && me && mine ? (
         <span
           className={display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft"}
         >
-          {`${me.name} has ${String(mine.balance - mine.held)} of ${String(reward.cost_points)} stars`}
+          {t("tasks.reward.short", {
+            name: me.name,
+            has: mine.balance - mine.held,
+            cost: reward.cost_points,
+          })}
         </span>
       ) : null}
     </li>
@@ -216,6 +224,7 @@ function AskPanel({
   stars: Stars[];
   onClose: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const { redeem } = useChoreChanges();
@@ -231,16 +240,16 @@ function AskPanel({
   return (
     <SidePanel
       open={reward !== null}
-      title={reward ? `Ask for ${reward.title}` : ""}
+      title={reward ? t("tasks.reward.ask.title", { name: reward.title }) : ""}
       onClose={close}
     >
       {reward ? (
         <div className={`flex flex-col ${display ? "gap-6" : "gap-5"}`}>
           <p className={display ? "text-d-body font-semibold" : "text-body font-semibold"}>
-            Who's asking?
+            {t("tasks.reward.who.label")}
           </p>
           <WhoPicker
-            label="Who's asking?"
+            label={t("tasks.reward.who.label")}
             members={members}
             kidsOnly
             everyone={false}
@@ -252,8 +261,8 @@ function AskPanel({
           {chosen ? (
             <p className={display ? "text-d-body" : "text-body"}>
               {short
-                ? `${chosen.name} has ${String(has)} of ${String(reward.cost_points)} stars`
-                : `${chosen.name} has ${String(has)} stars`}
+                ? t("tasks.reward.short", { name: chosen.name, has, cost: reward.cost_points })
+                : t("tasks.reward.has", { name: chosen.name, has })}
             </p>
           ) : null}
           {redeem.isError ? (
@@ -270,7 +279,7 @@ function AskPanel({
               redeem.mutate({ reward, member: chosen.id, name: chosen.name }, { onSuccess: close });
             }}
           >
-            Ask for It
+            {t("tasks.reward.ask.action")}
           </Button>
         </div>
       ) : null}
@@ -280,16 +289,17 @@ function AskPanel({
 
 /** What kids asked for, with Approve and Not now (UX §6). A yes gets the big burst. */
 export function AskedStrip({ asked }: { asked: Redemption[] }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const { decide } = useChoreChanges();
   const strip = useRef<HTMLDivElement>(null);
   return (
     <div ref={strip}>
-      <Strip title="Asked">
+      <Strip title={t("tasks.asked.title")}>
         {asked.map((redemption) => {
           const kid = personOf(members, redemption.member_id);
-          const name = kid?.name ?? "Someone";
+          const name = kid?.name ?? t("tasks.asked.someone");
           return (
             <Row key={redemption.id}>
               <span className={display ? "text-d-body font-semibold" : "text-body font-semibold"}>
@@ -313,7 +323,7 @@ export function AskedStrip({ asked }: { asked: Redemption[] }) {
                     );
                   }}
                 >
-                  Approve
+                  {t("tasks.asked.approve.action")}
                 </Button>
                 <Button
                   variant="secondary"
@@ -321,7 +331,7 @@ export function AskedStrip({ asked }: { asked: Redemption[] }) {
                     decide.mutate({ redemption, yes: false, name });
                   }}
                 >
-                  Not Now
+                  {t("tasks.asked.not_now.action")}
                 </Button>
               </span>
             </Row>
@@ -351,14 +361,20 @@ export function RewardPanel({
   open: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
   return (
-    <SidePanel open={open} title={reward ? `Edit ${reward.title}` : "Add Reward"} onClose={onClose}>
+    <SidePanel
+      open={open}
+      title={reward ? t("tasks.edit.title", { name: reward.title }) : t("tasks.reward.add.title")}
+      onClose={onClose}
+    >
       {open ? <RewardForm key={reward?.id ?? "new"} reward={reward} onClose={onClose} /> : null}
     </SidePanel>
   );
 }
 
 function RewardForm({ reward, onClose }: { reward: Reward | null; onClose: () => void }) {
+  const t = useT();
   const display = useShell() === "display";
   const { saveReward, removeReward } = useChoreChanges();
   const [title, setTitle] = useState(reward?.title ?? "");
@@ -374,8 +390,8 @@ function RewardForm({ reward, onClose }: { reward: Reward | null; onClose: () =>
       }}
     >
       <TextField
-        label="What"
-        placeholder="Movie night"
+        label={t("tasks.reward.what.label")}
+        placeholder={t("tasks.reward.what.placeholder")}
         autoComplete="off"
         value={title}
         onChange={(event) => {
@@ -383,13 +399,13 @@ function RewardForm({ reward, onClose }: { reward: Reward | null; onClose: () =>
         }}
       />
       <div className="flex flex-col gap-2">
-        <p className={label}>Costs</p>
-        <ChipRow label="Costs">
+        <p className={label}>{t("tasks.reward.cost.label")}</p>
+        <ChipRow label={t("tasks.reward.cost.label")}>
           {COSTS.map((value) => (
             <Chip
               key={value}
               on={cost === value}
-              label={`${String(value)} stars`}
+              label={t("tasks.reward.cost.aria", { n: value })}
               onClick={() => {
                 setCost(value);
               }}
@@ -417,12 +433,12 @@ function RewardForm({ reward, onClose }: { reward: Reward | null; onClose: () =>
             removeReward.mutate({ reward }, { onSuccess: onClose });
           }}
         >
-          Remove {reward.title}
+          {t("tasks.remove.action", { name: reward.title })}
         </Button>
       ) : null}
       <PanelActions>
         <Button type="submit" block disabled={!title.trim()} pending={saveReward.isPending}>
-          {reward ? "Save Changes" : "Add Reward"}
+          {reward ? t("app.action.save_changes") : t("tasks.reward.add.action")}
         </Button>
       </PanelActions>
     </form>

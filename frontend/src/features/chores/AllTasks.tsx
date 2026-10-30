@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { errorMessage } from "../../api/client";
 import { zonedParts } from "../../lib/dates";
 import { useMembers, type Member } from "../../lib/household";
+import { t, useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { showToast } from "../../lib/toast";
 import { Avatar } from "../../ui/Avatar";
@@ -44,7 +45,7 @@ export function taskColumns(chores: readonly Chore[], members: readonly Member[]
 
 /** "1 task", "5 tasks". */
 export function tasksCount(count: number): string {
-  return count === 1 ? "1 task" : `${String(count)} tasks`;
+  return t("tasks.how_many", { n: count });
 }
 
 /**
@@ -53,6 +54,7 @@ export function tasksCount(count: number): string {
  * No boxes: a box completes, and that belongs to Today.
  */
 export function AllTasksColumns({ starsOn }: { starsOn: boolean }) {
+  const t = useT();
   const { data: chores } = useChores();
   const { data: members = [] } = useMembers();
   if (!chores) return null;
@@ -65,14 +67,14 @@ export function AllTasksColumns({ starsOn }: { starsOn: boolean }) {
         return (
           <section
             key={memberId ?? "anyone"}
-            aria-label={person ? person.name : "Anyone"}
+            aria-label={person ? person.name : t("tasks.anyone")}
             data-person={person?.color ?? "everyone"}
             className="min-h-0 min-w-[16rem] shrink-0 snap-start overflow-y-auto border-r border-line px-4 py-4"
             style={{ width }}
           >
             <header className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-3">
               <Avatar member={person ?? null} size="lg" />
-              <h2 className="text-d-title font-bold">{person ? person.name : "Anyone"}</h2>
+              <h2 className="text-d-title font-bold">{person ? person.name : t("tasks.anyone")}</h2>
               <span className="text-d-body font-semibold text-ink-soft">
                 {tasksCount(tasks.length)}
               </span>
@@ -95,6 +97,7 @@ export function AllTasksColumns({ starsOn }: { starsOn: boolean }) {
  * tasks, a swipe to the left shows Remove.
  */
 export function TaskRuleRow({ chore, starsOn }: { chore: Chore; starsOn: boolean }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const today = zonedParts(useMinute()).day;
@@ -104,8 +107,8 @@ export function TaskRuleRow({ chore, starsOn }: { chore: Chore; starsOn: boolean
   return (
     <li className="border-b border-line">
       <SwipeRow
-        action="Remove"
-        label={`Remove ${chore.title}`}
+        action={t("app.action.remove")}
+        label={t("tasks.remove.action", { name: chore.title })}
         disabled={!viewer.answers}
         onAction={() => {
           changes.removeChore.mutate(

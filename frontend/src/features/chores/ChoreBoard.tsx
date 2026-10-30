@@ -11,6 +11,7 @@ import { playDone } from "../../lib/done";
 import { zonedParts } from "../../lib/dates";
 import { flyPoints } from "../../lib/fly";
 import { useMembers, useSettings, type Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { GLIDE, useChangeCount } from "../../lib/motion";
 import { askForPin } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
@@ -90,6 +91,7 @@ export function ChoreColumn({
   /** Another day than today (the People view paged): rows without boxes (`ChoreRow`). */
   readOnly?: boolean;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const person = personOf(members, column.member_id);
@@ -108,13 +110,13 @@ export function ChoreColumn({
   const todo = column.boxes.filter((box) => !box.completion || lingering.includes(boxKey(box)));
   const done = column.boxes.filter((box) => box.completion && !lingering.includes(boxKey(box)));
   const color = person?.color ?? "everyone";
-  const name = person ? person.name : "Anyone";
+  const name = person ? person.name : t("tasks.anyone");
   return (
     <section
       // On its own (the Chores room) the column is a region named for its person; inside a
       // person's column elsewhere (Who's doing what, a phone's section) it's just a group.
       role={header ? undefined : "group"}
-      aria-label={header ? name : `${name}'s tasks`}
+      aria-label={header ? name : t("tasks.column.aria", { name })}
       data-person={color}
       className={`flex min-h-0 flex-col ${display ? "gap-2" : "gap-1"}`}
     >
@@ -126,9 +128,7 @@ export function ChoreColumn({
           <span data-points-to={person?.id} className="inline-flex shrink-0">
             <Avatar member={person ?? null} size={display ? "lg" : "sm"} />
           </span>
-          <h2 className={display ? "text-d-title font-bold" : "text-row font-bold"}>
-            {person ? person.name : "Anyone"}
-          </h2>
+          <h2 className={display ? "text-d-title font-bold" : "text-row font-bold"}>{name}</h2>
           {column.total > 0 ? (
             <span
               key={pops}
@@ -152,7 +152,7 @@ export function ChoreColumn({
               <span key={starPops} className={starPops ? "pop" : ""}>
                 {stars}
               </span>
-              <span className="sr-only"> stars</span>
+              <span className="sr-only"> {t("tasks.stars.unit.aria")}</span>
             </span>
           ) : null}
         </header>
@@ -164,7 +164,7 @@ export function ChoreColumn({
       ) : null}
       {column.total === 0 && !column.routines.some((run) => run.open_now) ? (
         <p className={display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft"}>
-          Nothing today
+          {t("tasks.column.nothing")}
         </p>
       ) : null}
       <ul className="flex flex-col">
@@ -189,7 +189,7 @@ export function ChoreColumn({
           <h3
             className={`font-bold text-ink-soft ${display ? "mt-2 text-d-secondary" : "mt-1 text-secondary"}`}
           >
-            Done
+            {t("tasks.column.done.title")}
           </h3>
           <ul className="flex flex-col">
             {done.map((box) => (
@@ -238,6 +238,7 @@ export function ChoreRow({
   onTicked?: () => void;
   onAllDone?: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const { data: settings } = useSettings();
@@ -301,7 +302,7 @@ export function ChoreRow({
         { box, member: box.completion.member_id },
         {
           onSuccess: () => {
-            showToast("Not done yet");
+            showToast(t("tasks.undone.toast"));
           },
           onError: (error) => {
             showToast(errorMessage(error));
@@ -327,7 +328,7 @@ export function ChoreRow({
     ? box.completion
       ? doneLine(box.completion, members)
       : doer
-        ? `Done by ${doer.name}`
+        ? t("tasks.done.by_name", { name: doer.name })
         : ""
     : boxLine(box, members, starsOn);
   const label = boxLabel(
@@ -356,8 +357,8 @@ export function ChoreRow({
       className="relative flex flex-col border-b border-line"
     >
       <SwipeRow
-        action="Remove"
-        label={`Remove ${box.title}`}
+        action={t("app.action.remove")}
+        label={t("tasks.remove.action", { name: box.title })}
         // Removing is a parent's: a child's phone has no PIN pad to unlock it (lib/parent).
         disabled={!viewer.answers}
         onAction={() => {
@@ -488,6 +489,7 @@ function WhoDidIt({
   onPick: (memberId: string) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const [chosen, setChosen] = useState<string | null>(turn);
@@ -507,10 +509,10 @@ function WhoDidIt({
   return (
     <div className={`flex flex-col gap-3 ${display ? "pb-4 pl-24" : "pb-3 pl-2"}`}>
       <p className={display ? "text-d-body font-semibold" : "text-body font-semibold"}>
-        Who did it?
+        {t("tasks.who_did.label")}
       </p>
       <WhoPicker
-        label="Who did it?"
+        label={t("tasks.who_did.label")}
         members={members}
         value={chosen ? [chosen] : []}
         everyone={false}
@@ -524,7 +526,7 @@ function WhoDidIt({
       />
       <div>
         <Button variant="quiet" onClick={onCancel}>
-          Cancel
+          {t("app.action.cancel")}
         </Button>
       </div>
     </div>
@@ -533,6 +535,7 @@ function WhoDidIt({
 
 /** A kid's routine in their column during its window (UX §4): Start, Continue, or done. */
 export function RoutineStart({ run, day }: { run: RoutineRun; day: string }) {
+  const t = useT();
   const display = useShell() === "display";
   const navigate = useNavigate();
   const { data: members = [] } = useMembers();
@@ -558,16 +561,18 @@ export function RoutineStart({ run, day }: { run: RoutineRun; day: string }) {
         <span className={display ? "text-d-body font-bold" : "text-body font-bold"}>{title}</span>
         <span className={display ? "text-d-secondary" : "text-secondary"}>
           {run.finished
-            ? "All done"
+            ? t("tasks.routine.all_done")
             : checked > 0
-              ? `Step ${String(Math.min(checked + 1, total))} of ${String(total)}`
+              ? t("tasks.runner.step", { n: Math.min(checked + 1, total), total })
               : when}
         </span>
       </span>
       {run.finished ? (
         <Check aria-hidden="true" className={display ? "size-9" : "size-6"} />
       ) : run.open_now ? (
-        <Button onClick={start}>{checked > 0 ? "Continue" : "Start"}</Button>
+        <Button onClick={start}>
+          {checked > 0 ? t("tasks.routine.continue.action") : t("tasks.routine.start.action")}
+        </Button>
       ) : null}
     </div>
   );
@@ -575,13 +580,14 @@ export function RoutineStart({ run, day }: { run: RoutineRun; day: string }) {
 
 /** Chores waiting for a parent's OK, for a parent (or the PIN on the wall screen). */
 export function WaitingStrip({ waiting }: { waiting: Waiting[] }) {
+  const t = useT();
   const display = useShell() === "display";
   const viewer = useViewer();
   const { data: members = [] } = useMembers();
   const { answer } = useChoreChanges();
   if (!waiting.length || !viewer.answers) return null;
   return (
-    <Strip title="Waiting for a Parent">
+    <Strip title={t("tasks.waiting.title")}>
       {waiting.map((item) => {
         const who = personOf(members, item.completion.member_id);
         return (
@@ -602,7 +608,7 @@ export function WaitingStrip({ waiting }: { waiting: Waiting[] }) {
                   answer.mutate({ waiting: item, yes: true });
                 }}
               >
-                Yes, It's Done
+                {t("tasks.waiting.yes.action")}
               </Button>
               <Button
                 variant="secondary"
@@ -610,7 +616,7 @@ export function WaitingStrip({ waiting }: { waiting: Waiting[] }) {
                   answer.mutate({ waiting: item, yes: false });
                 }}
               >
-                Not Yet
+                {t("tasks.waiting.no.action")}
               </Button>
             </span>
           </div>
@@ -650,6 +656,7 @@ export function ChoreSheet({
   starsOn: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: chores = [] } = useChores();
   const { data: members = [] } = useMembers();
@@ -666,7 +673,11 @@ export function ChoreSheet({
     onClose();
   };
   return (
-    <SidePanel open={open} title={changing ? `Change ${task.title}` : task.title} onClose={close}>
+    <SidePanel
+      open={open}
+      title={changing ? t("tasks.sheet.change.title", { name: task.title }) : task.title}
+      onClose={close}
+    >
       {changing && chore ? (
         <ChoreEditor chore={chore} onDone={close} />
       ) : (
@@ -682,12 +693,12 @@ export function ChoreSheet({
             disabled={!chore}
             onClick={() => {
               void (async () => {
-                if (guarded && !(await askForPin(PARENT_CHANGE))) return;
+                if (guarded && !(await askForPin(t(PARENT_CHANGE)))) return;
                 setChanging(true);
               })();
             }}
           >
-            Change
+            {t("app.action.change")}
           </Button>
           {chore?.rrule && chore.next_due === today ? (
             <Button
@@ -701,7 +712,7 @@ export function ChoreSheet({
                 );
               }}
             >
-              Skip Today
+              {t("tasks.sheet.skip.action")}
             </Button>
           ) : null}
           <Button
@@ -715,7 +726,7 @@ export function ChoreSheet({
               );
             }}
           >
-            Remove {task.title}
+            {t("tasks.remove.action", { name: task.title })}
           </Button>
           {changes.skip.isError || changes.removeChore.isError ? (
             <p role="alert" className="font-semibold text-alert">

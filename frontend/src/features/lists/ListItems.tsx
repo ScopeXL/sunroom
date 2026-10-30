@@ -6,6 +6,7 @@ import { errorMessage } from "../../api/client";
 import { addDays, shortWeekday, zonedParts } from "../../lib/dates";
 import { useMembers, useSettings, type Member } from "../../lib/household";
 import { whenIdle } from "../../lib/idle";
+import { t, useT } from "../../lib/lang";
 import { createStore, useStore } from "../../lib/store";
 import { showToast } from "../../lib/toast";
 import { useMinute } from "../../lib/time";
@@ -55,7 +56,7 @@ function nameOf(members: Member[], id: string | null | undefined): Member | unde
 export function itemMeta(item: Item, members: Member[], today: string): string {
   if (item.checked_at) {
     const by = nameOf(members, item.checked_by_member_id);
-    return by ? `Checked off by ${by.name}` : "Checked off";
+    return by ? t("lists.item.checked_by", { name: by.name }) : t("lists.item.checked");
   }
   const parts: string[] = [];
   const who = nameOf(members, item.assigned_member_id);
@@ -63,17 +64,17 @@ export function itemMeta(item: Item, members: Member[], today: string): string {
   if (item.due_date) {
     parts.push(
       item.due_date === today
-        ? "Today"
+        ? t("lists.item.today")
         : item.due_date === addDays(today, 1)
-          ? "Tomorrow"
+          ? t("lists.item.tomorrow")
           : item.due_date < today
-            ? `Since ${shortWeekday(item.due_date)}`
+            ? t("lists.item.since", { day: shortWeekday(item.due_date) })
             : shortWeekday(item.due_date),
     );
   }
   if (parts.length) return parts.join(" · ");
   const by = nameOf(members, item.created_by_member_id);
-  return by ? `Added by ${by.name}` : "";
+  return by ? t("lists.item.added_by", { name: by.name }) : "";
 }
 
 /**
@@ -82,6 +83,7 @@ export function itemMeta(item: Item, members: Member[], today: string): string {
  * row folds into Done. Done is collapsed under its count; ticking a done box puts it back.
  */
 export function ItemRows({ detail }: { detail: ListDetail }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const changes = useListChanges();
@@ -124,7 +126,7 @@ export function ItemRows({ detail }: { detail: ListDetail }) {
 
   return (
     <>
-      <ul aria-label={`On ${detail.list.name}`} className="flex flex-col">
+      <ul aria-label={t("lists.items.aria", { name: detail.list.name })} className="flex flex-col">
         {open.map((item) => {
           const strike = striking[item.id];
           const checker = strike ? nameOf(members, strike.by) : undefined;
@@ -149,7 +151,7 @@ export function ItemRows({ detail }: { detail: ListDetail }) {
         })}
       </ul>
       {done.length ? (
-        <section aria-label="Done" className="mt-2">
+        <section aria-label={t("lists.done.aria")} className="mt-2">
           <ul className="flex flex-col">
             {shownDone.map((item) => {
               const checker = nameOf(members, item.checked_by_member_id);
@@ -189,7 +191,7 @@ export function ItemRows({ detail }: { detail: ListDetail }) {
               ) : (
                 <ChevronDown aria-hidden="true" className={display ? "size-7" : "size-5"} />
               )}
-              {showDone ? "Show less" : `${String(done.length - 1)} more done`}
+              {showDone ? t("lists.done.show_less") : t("lists.done.more", { n: done.length - 1 })}
             </button>
           ) : null}
         </section>
@@ -226,6 +228,7 @@ function ItemRow({
   onOpen: () => void;
   onRemove: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const text = item.quantity ? `${item.text} (${item.quantity})` : item.text;
   return (
@@ -238,7 +241,11 @@ function ItemRow({
       data-person={person ?? "everyone"}
       className="border-b border-line"
     >
-      <SwipeRow action="Remove" label={`Remove ${item.text}`} onAction={onRemove}>
+      <SwipeRow
+        action={t("app.action.remove")}
+        label={t("lists.remove.action", { name: item.text })}
+        onAction={onRemove}
+      >
         <div className={`flex items-stretch gap-2 ${display ? "min-h-[72px]" : "min-h-20"}`}>
           <TickBox
             checked={checked}
@@ -284,6 +291,7 @@ function ItemRow({
  * several at once.
  */
 export function AddBar({ detail }: { detail: ListDetail }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const changes = useListChanges();
@@ -303,9 +311,13 @@ export function AddBar({ detail }: { detail: ListDetail }) {
           <span
             className={`shrink-0 font-semibold text-ink-soft ${display ? "text-d-secondary" : "text-secondary"}`}
           >
-            Usuals
+            {t("lists.usuals.label")}
           </span>
-          <div role="group" aria-label="Usuals" className={`flex ${display ? "gap-3" : "gap-2"}`}>
+          <div
+            role="group"
+            aria-label={t("lists.usuals.label")}
+            className={`flex ${display ? "gap-3" : "gap-2"}`}
+          >
             {detail.usuals.map((usual) => (
               <Chip
                 key={usual}
@@ -331,9 +343,9 @@ export function AddBar({ detail }: { detail: ListDetail }) {
         <div className="min-w-0 flex-1">
           <TextField
             ref={field}
-            label={`Add to ${detail.list.name}`}
+            label={t("lists.add_to.label", { name: detail.list.name })}
             hideLabel
-            placeholder={`Add to ${detail.list.name}`}
+            placeholder={t("lists.add_to.label", { name: detail.list.name })}
             autoComplete="off"
             enterKeyHint="done"
             value={text}
@@ -347,7 +359,7 @@ export function AddBar({ detail }: { detail: ListDetail }) {
             <button
               type="button"
               aria-label={
-                me ? `Adding as ${me.name}. Change who` : "Adding as Everyone. Change who"
+                me ? t("lists.actor.aria", { name: me.name }) : t("lists.actor.everyone.aria")
               }
               aria-expanded={choosing}
               onClick={() => {
@@ -359,9 +371,9 @@ export function AddBar({ detail }: { detail: ListDetail }) {
             </button>
             {choosing ? (
               <div className="absolute right-0 bottom-full z-30 mb-3 w-[36rem] rounded-panel border border-line bg-surface p-5 shadow-[0_8px_32px_rgb(0_0_0/0.18)]">
-                <p className="mb-3 text-d-body font-semibold">Who's adding and checking?</p>
+                <p className="mb-3 text-d-body font-semibold">{t("lists.actor.label")}</p>
                 <WhoPicker
-                  label="Who's adding and checking?"
+                  label={t("lists.actor.label")}
                   members={members}
                   value={actor ? [actor] : []}
                   onChange={(ids) => {
@@ -374,7 +386,7 @@ export function AddBar({ detail }: { detail: ListDetail }) {
           </div>
         ) : null}
         <Button type="submit" disabled={!text.trim()} pending={changes.addItems.isPending}>
-          Add
+          {t("app.action.add")}
         </Button>
       </form>
     </div>
@@ -391,6 +403,7 @@ function ItemSheet({ item, onClose }: { item: Item | null; onClose: () => void }
 }
 
 function ItemEditor({ item, onClose }: { item: Item; onClose: () => void }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const { data: settings } = useSettings();
@@ -418,16 +431,16 @@ function ItemEditor({ item, onClose }: { item: Item; onClose: () => void }) {
   return (
     <div className={`flex flex-col ${gap}`}>
       <TextField
-        label="What"
+        label={t("lists.field.what.label")}
         value={text}
         autoComplete="off"
         onChange={(event) => {
           setText(event.target.value);
         }}
       />
-      <Field label="Who">
+      <Field label={t("lists.field.who.label")}>
         <WhoPicker
-          label="Who"
+          label={t("lists.field.who.label")}
           members={members}
           value={who ? [who] : []}
           onChange={(ids) => {
@@ -442,7 +455,7 @@ function ItemEditor({ item, onClose }: { item: Item; onClose: () => void }) {
         weekStartsOn={settings?.week_starts_on ?? 6}
         onChange={setDay}
         optional={{
-          label: "No day",
+          label: t("lists.field.no_day.label"),
           onChoose: () => {
             setDay(null);
           },
@@ -465,11 +478,11 @@ function ItemEditor({ item, onClose }: { item: Item; onClose: () => void }) {
           changes.removeItem.mutate({ item }, { onSuccess: onClose });
         }}
       >
-        Remove {item.text}
+        {t("lists.remove.action", { name: item.text })}
       </Button>
       <PanelActions>
         <Button block pending={changes.patchItem.isPending} onClick={save}>
-          Save Changes
+          {t("app.action.save_changes")}
         </Button>
       </PanelActions>
     </div>

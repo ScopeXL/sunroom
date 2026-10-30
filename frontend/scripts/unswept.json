@@ -1,8 +1,6 @@
 [
   "src/features/calendar/",
-  "src/features/chores/",
   "src/features/countdowns/",
-  "src/features/lists/",
   "src/features/meals/",
   "src/features/problems/",
   "src/features/screensaver/",

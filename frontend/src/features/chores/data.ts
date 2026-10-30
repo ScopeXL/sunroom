@@ -10,6 +10,7 @@ import { api, asMember, unwrap } from "../../api/client";
 import type { components } from "../../api/schema";
 import { qk } from "../../api/keys";
 import { usePlugins } from "../../lib/household";
+import { t, type Key } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { showToast } from "../../lib/toast";
 import { starsToast } from "./words";
@@ -35,8 +36,9 @@ export type Routine = components["schemas"]["RoutineOut"];
 export type RoutineIn = components["schemas"]["RoutineIn"];
 export type StepIn = components["schemas"]["StepIn"];
 
-export const PARENT_CHANGE = "Changing tasks on this screen asks for the parent PIN.";
-const PARENT_ANSWER = "Only a parent can say yes or no. Enter the parent PIN.";
+/** Why the PIN pad opens, as keys: said in the page's language when it asks. */
+export const PARENT_CHANGE: Key = "tasks.pin.change";
+const PARENT_ANSWER: Key = "tasks.pin.answer";
 
 export function useChoresDay(day: string) {
   return useQuery({
@@ -117,10 +119,10 @@ export function useChoreChanges() {
     onSuccess: (done, { box, member, name }) => {
       showToast(
         done.completion.status === "pending"
-          ? `Done by ${name}. A parent will check.`
-          : `Done by ${name}`,
+          ? t("tasks.complete.pending.toast", { name })
+          : t("tasks.complete.toast", { name }),
         {
-          label: "Undo",
+          label: t("app.action.undo"),
           onAction: () => {
             undo.mutate({ box, member });
           },
@@ -143,10 +145,14 @@ export function useChoreChanges() {
                   params: { path: { completion_id: waiting.completion.id } },
                 }),
           ),
-        PARENT_ANSWER,
+        t(PARENT_ANSWER),
       ),
     onSuccess: (_data, { waiting, yes }) => {
-      showToast(yes ? `${waiting.title}: done` : `${waiting.title}: not done yet`);
+      showToast(
+        yes
+          ? t("tasks.answer.yes.toast", { name: waiting.title })
+          : t("tasks.answer.no.toast", { name: waiting.title }),
+      );
     },
     onSettled: refresh,
   });
@@ -155,8 +161,8 @@ export function useChoreChanges() {
     mutationFn: async ({ chore, member }: { chore: ChoreIn; member?: string | null }) =>
       unwrap(await api.POST("/api/chores", { body: chore, ...asMember(member) })),
     onSuccess: (chore) => {
-      showToast(`Added ${chore.title}`, {
-        label: "Undo",
+      showToast(t("tasks.added.toast", { name: chore.title }), {
+        label: t("app.action.undo"),
         onAction: () => {
           removeChore.mutate({ chore, quiet: true });
         },
@@ -180,10 +186,10 @@ export function useChoreChanges() {
               },
             }),
           ),
-        PARENT_CHANGE,
+        t(PARENT_CHANGE),
       ),
     onSuccess: () => {
-      showToast("Changes saved");
+      showToast(t("tasks.saved.toast"));
     },
     onSettled: refresh,
   });
@@ -197,10 +203,10 @@ export function useChoreChanges() {
               params: { path: { chore_id: choreId } },
             }),
           ),
-        PARENT_CHANGE,
+        t(PARENT_CHANGE),
       ),
     onSuccess: (chore) => {
-      showToast(`Put back ${chore.title}`);
+      showToast(t("tasks.put_back.toast", { name: chore.title }));
     },
     onSettled: refresh,
   });
@@ -211,12 +217,12 @@ export function useChoreChanges() {
         unwrap(
           await api.DELETE("/api/chores/{chore_id}", { params: { path: { chore_id: chore.id } } }),
         );
-      }, PARENT_CHANGE);
+      }, t(PARENT_CHANGE));
     },
     onSuccess: (_data, { chore, quiet }) => {
       if (quiet) return;
-      showToast(`Removed ${chore.title}`, {
-        label: "Undo",
+      showToast(t("tasks.removed.toast", { name: chore.title }), {
+        label: t("app.action.undo"),
         onAction: () => {
           restoreChore.mutate({ choreId: chore.id });
         },
@@ -235,7 +241,7 @@ export function useChoreChanges() {
               body: { date: day },
             }),
           ),
-        PARENT_CHANGE,
+        t(PARENT_CHANGE),
       ),
     onSettled: refresh,
   });
@@ -250,11 +256,11 @@ export function useChoreChanges() {
               body: { date: day },
             }),
           ),
-        PARENT_CHANGE,
+        t(PARENT_CHANGE),
       ),
     onSuccess: (_data, { choreId, day, title }) => {
-      showToast(`Skipped ${title} today`, {
-        label: "Undo",
+      showToast(t("tasks.skipped.toast", { name: title }), {
+        label: t("app.action.undo"),
         onAction: () => {
           unskip.mutate({ choreId, day });
         },
@@ -284,8 +290,8 @@ export function useChoreChanges() {
         }),
       ),
     onSuccess: (redemption, { reward }) => {
-      showToast(`Asked for ${reward.title}. A parent will say yes or no.`, {
-        label: "Take It Back",
+      showToast(t("tasks.reward.asked.toast", { name: reward.title }), {
+        label: t("tasks.reward.take_back.action"),
         onAction: () => {
           cancelAsk.mutate({ redemption });
         },
@@ -314,10 +320,14 @@ export function useChoreChanges() {
                   params: { path: { redemption_id: redemption.id } },
                 }),
           ),
-        PARENT_ANSWER,
+        t(PARENT_ANSWER),
       ),
     onSuccess: (_data, { redemption, yes, name }) => {
-      showToast(yes ? `${name} got ${redemption.reward_title}` : `Told ${name} not now`);
+      showToast(
+        yes
+          ? t("tasks.decide.yes.toast", { name, reward: redemption.reward_title })
+          : t("tasks.decide.no.toast", { name }),
+      );
     },
     onSettled: refresh,
   });
@@ -342,10 +352,10 @@ export function useChoreChanges() {
                 })
               : await api.POST("/api/chores/rewards", { body: { title, cost_points: cost } }),
           ),
-        PARENT_CHANGE,
+        t(PARENT_CHANGE),
       ),
     onSuccess: (saved, { reward }) => {
-      showToast(reward ? "Changes saved" : `Added ${saved.title}`);
+      showToast(reward ? t("tasks.saved.toast") : t("tasks.added.toast", { name: saved.title }));
     },
     onSettled: refresh,
   });
@@ -358,10 +368,10 @@ export function useChoreChanges() {
             params: { path: { reward_id: reward.id } },
           }),
         );
-      }, PARENT_CHANGE);
+      }, t(PARENT_CHANGE));
     },
     onSuccess: (_data, { reward }) => {
-      showToast(`Removed ${reward.title}`);
+      showToast(t("tasks.removed.toast", { name: reward.title }));
     },
     onSettled: refresh,
   });
@@ -398,7 +408,7 @@ export function useChoreChanges() {
         }),
       ),
     onSuccess: (_data, { run }) => {
-      showToast(`${run.title} done`);
+      showToast(t("tasks.routine.done.toast", { name: run.title }));
     },
     onSettled: refresh,
   });
@@ -429,9 +439,9 @@ export function useChoreChanges() {
             body: { steps },
           }),
         );
-      }, PARENT_CHANGE),
+      }, t(PARENT_CHANGE)),
     onSuccess: (saved, { routine }) => {
-      showToast(routine ? "Changes saved" : `Added ${saved.title}`);
+      showToast(routine ? t("tasks.saved.toast") : t("tasks.added.toast", { name: saved.title }));
     },
     onSettled: refresh,
   });
@@ -444,10 +454,10 @@ export function useChoreChanges() {
             params: { path: { routine_id: routine.id } },
           }),
         );
-      }, PARENT_CHANGE);
+      }, t(PARENT_CHANGE));
     },
     onSuccess: (_data, { routine }) => {
-      showToast(`Removed ${routine.title}`);
+      showToast(t("tasks.removed.toast", { name: routine.title }));
     },
     onSettled: refresh,
   });
@@ -471,7 +481,7 @@ export function useChoreChanges() {
               body: { member_ids: members, points, reason },
             }),
           ),
-        PARENT_CHANGE,
+        t(PARENT_CHANGE),
       ),
     onSuccess: (_data, { points, names }) => {
       showToast(starsToast(points, names));

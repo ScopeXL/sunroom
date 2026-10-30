@@ -6,6 +6,7 @@ import { holdIdle } from "../../lib/displayState";
 import { playDone } from "../../lib/done";
 import { useMembers, useSettings } from "../../lib/household";
 import { whenIdle } from "../../lib/idle";
+import { useT } from "../../lib/lang";
 import { EXIT, useMotionReduced } from "../../lib/motion";
 import { Button } from "../../ui/Button";
 import { celebrate } from "../../ui/Celebration";
@@ -35,6 +36,7 @@ export function RoutineRunner({
   memberId: string;
   day: string;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const navigate = useNavigate();
   const { data } = useRoutines(day);
@@ -79,9 +81,9 @@ export function RoutineRunner({
     return data ? (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-wall">
         <p className={display ? "text-d-title font-bold" : "text-title font-bold"}>
-          That routine isn't on today.
+          {t("tasks.runner.missing")}
         </p>
-        <Button onClick={back}>Back to Tasks</Button>
+        <Button onClick={back}>{t("tasks.back.action")}</Button>
       </div>
     ) : null;
   }
@@ -92,6 +94,15 @@ export function RoutineRunner({
   const current = steps.find((step) => !checked.has(step.id) && !skipped.includes(step.id));
   const position = current ? steps.indexOf(current) + 1 : steps.length;
   const evening = run.window_start >= "16:00";
+  // A dot's state, a code its words (`tasks.runner.dot.aria`) and its look are picked by.
+  const stateOf = (id: string): "done" | "skipped" | "now" | "todo" =>
+    checked.has(id)
+      ? "done"
+      : skipped.includes(id)
+        ? "skipped"
+        : id === current?.id
+          ? "now"
+          : "todo";
 
   const complete = (anyDone: boolean) => {
     setFinished({ stars: 0 });
@@ -149,11 +160,11 @@ export function RoutineRunner({
         <h1 className={display ? "text-d-title font-bold" : "text-row font-bold"}>{title}</h1>
         {!finished ? (
           <span className={display ? "text-d-body font-semibold" : "text-body font-semibold"}>
-            {`Step ${String(position)} of ${String(steps.length)}`}
+            {t("tasks.runner.step", { n: position, total: steps.length })}
           </span>
         ) : null}
         <Button variant="secondary" onClick={back}>
-          {finished ? "Back to Tasks" : "Stop"}
+          {finished ? t("tasks.back.action") : t("tasks.runner.stop.action")}
         </Button>
       </header>
       {finished || !current ? (
@@ -163,7 +174,9 @@ export function RoutineRunner({
           className="appear flex flex-1 flex-col items-center justify-center gap-6 px-6 text-center"
         >
           <span className={display ? "text-d-step font-extrabold" : "text-big font-extrabold"}>
-            {`All done, ${kid.name}!${evening ? " Night night." : ""}`}
+            {evening
+              ? t("tasks.runner.all_done.night", { name: kid.name })
+              : t("tasks.all_done.person", { name: kid.name })}
           </span>
           {finished && finished.stars > 0 ? (
             <span
@@ -173,7 +186,7 @@ export function RoutineRunner({
                   : "text-title font-bold text-sun-ink"
               }
             >
-              {`+${String(finished.stars)} stars`}
+              {t("tasks.runner.stars", { n: finished.stars })}
             </span>
           ) : null}
         </button>
@@ -192,19 +205,13 @@ export function RoutineRunner({
             >
               {current.title}
             </h2>
-            <ol aria-label="Steps" className="flex gap-3">
+            <ol aria-label={t("tasks.runner.steps.aria")} className="flex gap-3">
               {steps.map((step) => {
-                const state = checked.has(step.id)
-                  ? "done"
-                  : skipped.includes(step.id)
-                    ? "skipped"
-                    : step.id === current.id
-                      ? "now"
-                      : "to do";
+                const state = stateOf(step.id);
                 return (
                   <li
                     key={step.id}
-                    aria-label={`${step.title}: ${state}`}
+                    aria-label={t("tasks.runner.dot.aria", { step: step.title, state })}
                     className={`rounded-full border-[3px] ${display ? "size-6" : "size-4"} ${
                       state === "done"
                         ? "border-p bg-p"
@@ -230,7 +237,7 @@ export function RoutineRunner({
                 display ? "h-[120px] w-3/5 text-d-glance" : "min-h-16 w-full text-title"
               }`}
             >
-              Done
+              {t("tasks.runner.step_done.action")}
             </button>
             <Button
               variant="quiet"
@@ -238,7 +245,7 @@ export function RoutineRunner({
                 next(false);
               }}
             >
-              Skip This One
+              {t("tasks.runner.skip.action")}
             </Button>
           </Step>
         </AnimatePresence>

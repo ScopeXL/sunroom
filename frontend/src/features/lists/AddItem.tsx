@@ -4,6 +4,7 @@ import { useState } from "react";
 import { errorMessage } from "../../api/client";
 import { zonedParts } from "../../lib/dates";
 import { useMembers, useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Button } from "../../ui/Button";
 import { Chip, ChipRow } from "../../ui/Chip";
@@ -27,6 +28,7 @@ import { splitItems } from "./words";
  * while the panel is open sets the day.
  */
 export function AddItem({ day: boardDay, onDone }: AddEditorProps) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: lists = [] } = useLists();
   const { data: members = [] } = useMembers();
@@ -53,18 +55,21 @@ export function AddItem({ day: boardDay, onDone }: AddEditorProps) {
   if (!chosen) {
     return (
       <div className={`flex flex-col ${gap}`}>
-        <p className={heading}>Make a list first.</p>
-        <ChipRow label="Usual lists">
-          {SUGGESTED.map((name) => (
-            <Chip
-              key={name}
-              onClick={() => {
-                createList.mutate({ name });
-              }}
-            >
-              {name}
-            </Chip>
-          ))}
+        <p className={heading}>{t("lists.add.first")}</p>
+        <ChipRow label={t("lists.usual_lists.aria")}>
+          {SUGGESTED.map((suggestion) => {
+            const name = t(suggestion);
+            return (
+              <Chip
+                key={suggestion}
+                onClick={() => {
+                  createList.mutate({ name });
+                }}
+              >
+                {name}
+              </Chip>
+            );
+          })}
         </ChipRow>
       </div>
     );
@@ -81,10 +86,10 @@ export function AddItem({ day: boardDay, onDone }: AddEditorProps) {
         );
       }}
     >
-      <FormSection title="What and Who" quiet>
+      <FormSection title={t("lists.add.what_who.title")} quiet>
         <TextField
-          label="What"
-          hint="Commas add several: milk, eggs, bread."
+          label={t("lists.field.what.label")}
+          hint={t("lists.add.what.hint")}
           autoComplete="off"
           autoFocus
           value={text}
@@ -92,8 +97,8 @@ export function AddItem({ day: boardDay, onDone }: AddEditorProps) {
             setText(event.target.value);
           }}
         />
-        <Field label="Which list">
-          <ChipRow label="Which list">
+        <Field label={t("lists.field.which.label")}>
+          <ChipRow label={t("lists.field.which.label")}>
             {lists.map((list) => (
               <Chip
                 key={list.id}
@@ -107,9 +112,9 @@ export function AddItem({ day: boardDay, onDone }: AddEditorProps) {
             ))}
           </ChipRow>
         </Field>
-        <Field label="Who">
+        <Field label={t("lists.field.who.label")}>
           <WhoPicker
-            label="Who"
+            label={t("lists.field.who.label")}
             members={members}
             value={who ? [who] : []}
             onChange={(ids) => {
@@ -118,14 +123,14 @@ export function AddItem({ day: boardDay, onDone }: AddEditorProps) {
           />
         </Field>
       </FormSection>
-      <FormSection title="When">
+      <FormSection title={t("lists.add.when.title")}>
         <DayField
           value={day}
           today={today}
           weekStartsOn={settings?.week_starts_on ?? 6}
           onChange={setDay}
           optional={{
-            label: "No day",
+            label: t("lists.field.no_day.label"),
             onChoose: () => {
               setDay(null);
             },
@@ -139,7 +144,7 @@ export function AddItem({ day: boardDay, onDone }: AddEditorProps) {
       ) : null}
       <PanelActions>
         <Button type="submit" block disabled={!texts.length} pending={addItems.isPending}>
-          {texts.length > 1 ? `Add ${String(texts.length)} Items` : "Add Item"}
+          {t("lists.add.action", { n: Math.max(texts.length, 1) })}
         </Button>
       </PanelActions>
     </form>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { errorMessage } from "../../api/client";
 import { zonedParts } from "../../lib/dates";
 import { useMembers, useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Button } from "../../ui/Button";
 import { Chip, ChipRow } from "../../ui/Chip";
@@ -48,6 +49,7 @@ export function ChoreEditor({
   startDay?: string | null;
   onDone: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const today = zonedParts(useMinute()).day;
   const { data: members = [] } = useMembers();
@@ -130,21 +132,21 @@ export function ChoreEditor({
         save();
       }}
     >
-      <FormSection title="What and Who" quiet>
+      <FormSection title={t("tasks.editor.what_who.title")} quiet>
         <TextField
-          label="What"
+          label={t("tasks.editor.what.label")}
           autoComplete="off"
           autoFocus={!chore}
-          placeholder="Feed the dog"
+          placeholder={t("tasks.editor.what.placeholder")}
           value={title}
           onChange={(event) => {
             setTitle(event.target.value);
           }}
         />
-        <Field label="Who">
+        <Field label={t("tasks.who.label")}>
           <WhoPicker
-            label="Who"
-            everyoneLabel="Anyone"
+            label={t("tasks.who.label")}
+            everyoneLabel={t("tasks.anyone")}
             members={members}
             value={who}
             multiple
@@ -152,11 +154,11 @@ export function ChoreEditor({
           />
           {who.length > 1 ? (
             <Segmented
-              label="How they share it"
+              label={t("tasks.editor.share.label")}
               value={turns ? "turns" : "each"}
               options={[
-                { value: "each", label: "Each does it" },
-                { value: "turns", label: "They take turns" },
+                { value: "each", label: t("tasks.editor.share.each") },
+                { value: "turns", label: t("tasks.editor.share.turns") },
               ]}
               onChange={(value) => {
                 setTurns(value === "turns");
@@ -165,22 +167,22 @@ export function ChoreEditor({
           ) : null}
         </Field>
       </FormSection>
-      <FormSection title="When">
+      <FormSection title={t("tasks.editor.when.title")}>
         <DayField
           value={day}
           today={today}
           weekStartsOn={weekStartsOn}
-          hint={repeat || kept ? "The day it starts." : undefined}
+          hint={repeat || kept ? t("tasks.editor.day.hint") : undefined}
           onChange={(next) => {
             setDay(next);
             setWhenTouched(true);
           }}
         />
         <TimeField
-          label="Due"
+          label={t("tasks.editor.due.label")}
           value={time}
-          none={{ label: "Any time" }}
-          words={(hhmm) => `by ${clockText(hhmm)}`}
+          none={{ label: t("tasks.editor.due.any") }}
+          words={(hhmm) => t("tasks.box.by", { time: clockText(hhmm) })}
           onChange={setTime}
         />
         <RepeatField
@@ -200,19 +202,19 @@ export function ChoreEditor({
         />
       </FormSection>
       {starsOn ? (
-        <FormSection title="Details">
-          <Field label="Stars">
-            <ChipRow label="Stars">
+        <FormSection title={t("tasks.editor.details.title")}>
+          <Field label={t("tasks.editor.stars.label")}>
+            <ChipRow label={t("tasks.editor.stars.label")}>
               {STARS.map((count) => (
                 <Chip
                   key={count}
                   on={points === count}
-                  label={count === 1 ? "1 star" : `${String(count)} stars`}
+                  label={t("tasks.stars.count", { n: count })}
                   onClick={() => {
                     setPoints(count);
                   }}
                 >
-                  {count === 0 ? "None" : `★${String(count)}`}
+                  {count === 0 ? t("tasks.stars.none") : `★${String(count)}`}
                 </Chip>
               ))}
             </ChipRow>
@@ -226,7 +228,7 @@ export function ChoreEditor({
       ) : null}
       <PanelActions>
         <Button type="submit" block disabled={!ready} pending={pending}>
-          {chore ? "Save Changes" : "Add Task"}
+          {chore ? t("app.action.save_changes") : t("tasks.add.action")}
         </Button>
       </PanelActions>
     </form>

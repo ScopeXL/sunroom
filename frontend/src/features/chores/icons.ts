@@ -1,7 +1,7 @@
 /**
  * The step library (UX §4 "Routine runner"): a picture for each routine step, chosen when the
  * routine is made, so a child who can't read yet can follow along. Keys are stored; the labels
- * are what a parent sees when choosing.
+ * (keys in lang/en.json, translated where they're shown) are what a parent sees when choosing.
  */
 import {
   Apple,
@@ -29,29 +29,31 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export const STEP_ICONS: Record<string, { label: string; Icon: LucideIcon }> = {
-  toothbrush: { label: "Teeth", Icon: Toothbrush },
-  bed: { label: "Bed", Icon: BedDouble },
-  book: { label: "Book", Icon: BookOpen },
-  shirt: { label: "Clothes", Icon: Shirt },
-  backpack: { label: "Backpack", Icon: Backpack },
-  sun: { label: "Morning", Icon: Sun },
-  moon: { label: "Night", Icon: Moon },
-  bath: { label: "Bath", Icon: Bath },
-  shower: { label: "Shower", Icon: ShowerHead },
-  plate: { label: "Meal", Icon: UtensilsCrossed },
-  dog: { label: "Pet", Icon: Dog },
-  water: { label: "Water", Icon: GlassWater },
-  snack: { label: "Snack", Icon: Apple },
-  shoes: { label: "Shoes", Icon: Footprints },
-  hands: { label: "Wash hands", Icon: Hand },
-  glasses: { label: "Glasses", Icon: Glasses },
-  medicine: { label: "Medicine", Icon: Pill },
-  tidy: { label: "Tidy up", Icon: Sparkles },
-  trash: { label: "Trash", Icon: Trash2 },
-  homework: { label: "Homework", Icon: PencilLine },
-  music: { label: "Practice", Icon: Music },
-  smile: { label: "Anything else", Icon: Smile },
+import type { Key } from "../../lib/lang";
+
+export const STEP_ICONS: Record<string, { label: Key; Icon: LucideIcon }> = {
+  toothbrush: { label: "tasks.step_icon.toothbrush", Icon: Toothbrush },
+  bed: { label: "tasks.step_icon.bed", Icon: BedDouble },
+  book: { label: "tasks.step_icon.book", Icon: BookOpen },
+  shirt: { label: "tasks.step_icon.shirt", Icon: Shirt },
+  backpack: { label: "tasks.step_icon.backpack", Icon: Backpack },
+  sun: { label: "tasks.step_icon.sun", Icon: Sun },
+  moon: { label: "tasks.step_icon.moon", Icon: Moon },
+  bath: { label: "tasks.step_icon.bath", Icon: Bath },
+  shower: { label: "tasks.step_icon.shower", Icon: ShowerHead },
+  plate: { label: "tasks.step_icon.plate", Icon: UtensilsCrossed },
+  dog: { label: "tasks.step_icon.dog", Icon: Dog },
+  water: { label: "tasks.step_icon.water", Icon: GlassWater },
+  snack: { label: "tasks.step_icon.snack", Icon: Apple },
+  shoes: { label: "tasks.step_icon.shoes", Icon: Footprints },
+  hands: { label: "tasks.step_icon.hands", Icon: Hand },
+  glasses: { label: "tasks.step_icon.glasses", Icon: Glasses },
+  medicine: { label: "tasks.step_icon.medicine", Icon: Pill },
+  tidy: { label: "tasks.step_icon.tidy", Icon: Sparkles },
+  trash: { label: "tasks.step_icon.trash", Icon: Trash2 },
+  homework: { label: "tasks.step_icon.homework", Icon: PencilLine },
+  music: { label: "tasks.step_icon.music", Icon: Music },
+  smile: { label: "tasks.step_icon.smile", Icon: Smile },
 };
 
 export function stepIcon(key: string | null | undefined): LucideIcon {

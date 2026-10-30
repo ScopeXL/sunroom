@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 
+import { useT } from "../../lib/lang";
 import { RemovedRow } from "../settings/RecentlyRemoved";
 import { useListChanges, useRemovedLists } from "./data";
 
 /** Lists and items removed in the last 7 days, in Recently removed (UX §4). */
 export function RemovedListRows({ onCount }: { onCount: (count: number) => void }) {
+  const t = useT();
   const { data } = useRemovedLists();
   const { restoreList, restoreItems } = useListChanges();
   const lists = data?.lists ?? [];
@@ -19,11 +21,7 @@ export function RemovedListRows({ onCount }: { onCount: (count: number) => void 
         <RemovedRow
           key={list.id}
           title={list.name}
-          detail={
-            list.item_count === 1
-              ? "A list with 1 thing"
-              : `A list with ${String(list.item_count)} things`
-          }
+          detail={t("lists.removed.list", { n: list.item_count })}
           removedAt={list.deleted_at}
           pending={restoreList.isPending && restoreList.variables.listId === list.id}
           onPutBack={() => {

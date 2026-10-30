@@ -1,9 +1,10 @@
 /**
  * What chores say (UX §2, §4 "Chores room"): "by 5:00 PM · ★2 · Mia's turn", "Done by Mia ·
  * 7:42 AM", "2 of 3", "★ 42 · +12 this week · 6 days in a row". Stars are always the star glyph
- * with a number.
+ * with a number. The words are `tasks.*` in lang/en.json (ADR 0043).
  */
 import { addDays, formatTime, formatWallTime, shortDate, shortWeekday } from "../../lib/dates";
+import { t } from "../../lib/lang";
 
 export interface Named {
   id: string;
@@ -16,17 +17,14 @@ const nameOf = (people: Named[], id: string | null | undefined) =>
 /** Names in a sentence: "Mia", "Mia and Leo", "Mia, Leo and Sam". */
 export function namesText(names: readonly string[]): string {
   if (names.length <= 1) return names[0] ?? "";
-  return `${names.slice(0, -1).join(", ")} and ${names.at(-1) ?? ""}`;
+  return t("tasks.names.and", { rest: names.slice(0, -1).join(", "), last: names.at(-1) ?? "" });
 }
 
 /** The toast after a parent gives or takes stars (UX §2): "Gave Mia and Leo 5 stars", "Took
  * 1 star from Mia". The button that sent it says Give Stars or Take Stars by the same sign. */
 export function starsToast(points: number, names: readonly string[]): string {
-  const count = Math.abs(points);
-  const stars = `${String(count)} ${count === 1 ? "star" : "stars"}`;
-  return points > 0
-    ? `Gave ${namesText(names)} ${stars}`
-    : `Took ${stars} from ${namesText(names)}`;
+  const values = { n: Math.abs(points), names: namesText(names) };
+  return points > 0 ? t("tasks.stars.gave.toast", values) : t("tasks.stars.took.toast", values);
 }
 
 /** What Custom… gives or takes (ADR 0034): the stepper's count, below zero to take. */
@@ -53,20 +51,22 @@ export function boxLine(
   stars: boolean,
 ): string {
   const parts: string[] = [];
-  if (box.since) parts.push(`since ${shortWeekday(box.since)}`);
-  if (box.due_time && !box.completion) parts.push(`by ${clockText(box.due_time)}`);
+  if (box.since) parts.push(t("tasks.box.since", { day: shortWeekday(box.since) }));
+  if (box.due_time && !box.completion) {
+    parts.push(t("tasks.box.by", { time: clockText(box.due_time) }));
+  }
   if (stars && box.points > 0) parts.push(`★${String(box.points)}`);
   const turn = nameOf(people, box.turn_id);
-  if (turn && !box.completion) parts.push(`${turn}'s turn`);
+  if (turn && !box.completion) parts.push(t("tasks.box.turn", { name: turn }));
   return parts.join(" · ");
 }
 
 /** A task's next day (All Tasks, ADR 0036): "Today", "Tomorrow", "Sat, Nov 14"; "Finished" when
  * it has none (a one-off that's done, a rule that has ended: it leaves the next day). */
 export function nextWord(nextDue: string | null, today: string): string {
-  if (nextDue === null) return "Finished";
-  if (nextDue === today) return "Today";
-  if (nextDue === addDays(today, 1)) return "Tomorrow";
+  if (nextDue === null) return t("tasks.next.finished");
+  if (nextDue === today) return t("tasks.next.today");
+  if (nextDue === addDays(today, 1)) return t("tasks.next.tomorrow");
   return shortDate(nextDue);
 }
 
@@ -87,15 +87,18 @@ export function ruleLine(
   stars: boolean,
   today: string,
 ): string {
-  const parts = [chore.rrule ? chore.repeat_text : "Once", nextWord(chore.next_due, today)];
-  if (chore.due_time) parts.push(`by ${clockText(chore.due_time)}`);
+  const parts = [
+    chore.rrule ? chore.repeat_text : t("tasks.rule.once"),
+    nextWord(chore.next_due, today),
+  ];
+  if (chore.due_time) parts.push(t("tasks.box.by", { time: clockText(chore.due_time) }));
   if (stars && chore.points > 0) parts.push(`★${String(chore.points)}`);
   const names = chore.assignee_member_ids.flatMap((id) => nameOf(people, id) ?? []);
   if (chore.assignee_mode === "rotate" && names.length)
-    parts.push(`${namesText(names)} take turns`);
+    parts.push(t("tasks.rule.turns", { names: namesText(names) }));
   else if (chore.assignee_mode === "fixed" && names.length > 1) {
-    parts.push(`${namesText(names)} each`);
-  } else if (chore.assignee_mode === "any") parts.push("Anyone");
+    parts.push(t("tasks.rule.each", { names: namesText(names) }));
+  } else if (chore.assignee_mode === "any") parts.push(t("tasks.anyone"));
   return parts.join(" · ");
 }
 
@@ -117,12 +120,12 @@ export function boxLabel(
   const parts = [box.title];
   const owner = nameOf(people, box.owner_id);
   const turn = nameOf(people, box.turn_id);
-  parts.push(owner ?? (turn ? `${turn}'s turn` : "anyone"));
-  if (stars && box.points > 0) {
-    parts.push(box.points === 1 ? "1 star" : `${String(box.points)} stars`);
+  parts.push(owner ?? (turn ? t("tasks.box.turn", { name: turn }) : t("tasks.box.anyone")));
+  if (stars && box.points > 0) parts.push(t("tasks.stars.count", { n: box.points }));
+  if (box.due_time && !box.completion) {
+    parts.push(t("tasks.box.due", { time: clockText(box.due_time) }));
   }
-  if (box.due_time && !box.completion) parts.push(`due ${clockText(box.due_time)}`);
-  if (box.since) parts.push(`since ${shortWeekday(box.since)}`);
+  if (box.since) parts.push(t("tasks.box.since", { day: shortWeekday(box.since) }));
   if (box.completion) parts.push(doneLine(box.completion, people));
   return parts.join(", ");
 }
@@ -132,32 +135,34 @@ export function doneLine(
   completion: { member_id: string; completed_at: string; status: string },
   people: Named[],
 ): string {
-  const who = nameOf(people, completion.member_id) ?? "someone";
+  const who = nameOf(people, completion.member_id) ?? t("tasks.done.someone");
   const at = formatTime(new Date(completion.completed_at));
   return completion.status === "pending"
-    ? `${who} says it's done · waiting for a parent`
-    : `Done by ${who} · ${at}`;
+    ? t("tasks.done.pending", { name: who })
+    : t("tasks.done.by", { name: who, time: at });
 }
 
 /** "2 of 3" (UX §2: never "2/3"). */
 export function countText(done: number, total: number): string {
-  return `${String(done)} of ${String(total)}`;
+  return t("tasks.progress", { done, total });
 }
 
 /** "★ 42 · +12 this week · 6 days in a row"; a broken streak just says 0 (UX §10). */
 export function starsLine(stars: { balance: number; week: number; streak: number }): string {
-  const days = stars.streak === 1 ? "1 day in a row" : `${String(stars.streak)} days in a row`;
-  const week = stars.week > 0 ? ` · +${String(stars.week)} this week` : "";
-  return `★ ${String(stars.balance)}${week} · ${days}`;
+  const parts = [`★ ${String(stars.balance)}`];
+  if (stars.week > 0) parts.push(t("tasks.stars.week", { n: stars.week }));
+  parts.push(t("tasks.stars.streak", { n: stars.streak }));
+  return parts.join(" · ");
 }
 
 /** "All done, Mia!", or "All done!" for Anyone's chores. */
 export function allDoneText(name: string | null): string {
-  return name ? `All done, ${name}!` : "All done!";
+  return name ? t("tasks.all_done.person", { name }) : t("tasks.all_done.anyone");
 }
 
 /** "Leo's bedtime routine" unless its title already says whose it is. */
 export function routineTitle(title: string, name: string | undefined): string {
   if (!name || title.toLowerCase().startsWith(name.toLowerCase())) return title;
-  return `${name}'s ${title.charAt(0).toLowerCase()}${title.slice(1)}`;
+  const routine = `${title.charAt(0).toLowerCase()}${title.slice(1)}`;
+  return t("tasks.routine.for_kid", { name, routine });
 }

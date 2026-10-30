@@ -1,24 +1,26 @@
 /**
  * What lists say (UX §2, §4 "Lists room"): counts in each kind's own words ("12 to get", "4 to
  * do", "9 to pack"), a tile's last change ("Mia added Milk · 2:10 PM"), and several items typed
- * at once ("Milk, eggs, bread").
+ * at once ("Milk, eggs, bread"). The words are `lists.*` in lang/en.json (ADR 0043).
  */
 import { formatTime, monthDay, shortWeekday, zonedParts } from "../../lib/dates";
+import { t, type Key } from "../../lib/lang";
 
 export type ListKind = "grocery" | "todo" | "packing" | "custom";
 
-const LEFT: Record<ListKind, string> = {
-  grocery: "to get",
-  todo: "to do",
-  packing: "to pack",
-  custom: "left",
+/** How many are left, in each kind's words: "12 to get". */
+const LEFT: Record<ListKind, Key> = {
+  grocery: "lists.count.left.grocery",
+  todo: "lists.count.left.todo",
+  packing: "lists.count.left.packing",
+  custom: "lists.count.left.custom",
 };
 
 /** "12 to get", "4 to do · 1 for today", "All done", "Nothing on it yet". */
 export function countLine(kind: ListKind, open: number, done: number, due = 0): string {
-  if (open === 0) return done > 0 ? "All done" : "Nothing on it yet";
-  const count = `${String(open)} ${LEFT[kind]}`;
-  return due > 0 ? `${count} · ${String(due)} for today` : count;
+  if (open === 0) return done > 0 ? t("lists.count.all_done") : t("lists.count.empty");
+  const count = t(LEFT[kind], { n: open });
+  return due > 0 ? `${count} · ${t("lists.count.due", { n: due })}` : count;
 }
 
 /** When something happened, as the tile says it: "2:10 PM" today, "Mon" this week, else
@@ -38,9 +40,13 @@ export function lastChangeLine(
   today: string,
 ): string {
   const who = change.member_id ? nameOf(change.member_id) : undefined;
-  const verb = change.action === "added" ? "added" : "checked off";
-  const what = who ? `${who} ${verb} ${change.text}` : `${capitalize(verb)} ${change.text}`;
-  return `${what} · ${whenText(change.at, today)}`;
+  const values = { item: change.text, when: whenText(change.at, today) };
+  if (change.action === "added") {
+    return who ? t("lists.last.added_by", { name: who, ...values }) : t("lists.last.added", values);
+  }
+  return who
+    ? t("lists.last.checked_by", { name: who, ...values })
+    : t("lists.last.checked", values);
 }
 
 export function capitalize(text: string): string {

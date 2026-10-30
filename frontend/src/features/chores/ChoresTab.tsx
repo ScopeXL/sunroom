@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { weekOf, zonedParts } from "../../lib/dates";
 import type { BoardPanel } from "../../lib/displayState";
 import { useMembers, useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
@@ -17,7 +18,7 @@ import { useChores, useChoresDay, useChoresWeek, useRewards, type Column, type D
 import { AskedStrip, RewardsPage } from "./RewardsPage";
 import { RoutineRunner } from "./RoutineRunner";
 import { WeekRows } from "./ChoresRoom";
-import { allDoneText, countText } from "./words";
+import { countText } from "./words";
 
 /** Chores on a phone (UX §5): Today, This Week or All Tasks (ADR 0036), Stars & rewards, and
  * the routine runner. */
@@ -34,6 +35,7 @@ export function ChoresTab({ path }: { path: string[] }) {
 }
 
 function PhoneChores() {
+  const t = useT();
   const today = zonedParts(useMinute()).day;
   const { data: day, isSuccess } = useChoresDay(today);
   const viewer = useViewer();
@@ -45,7 +47,7 @@ function PhoneChores() {
   const me = personOf(members, viewer.memberId);
   return (
     <Screen
-      title="Tasks"
+      title={t("tasks.room.title")}
       actions={
         <Button
           block
@@ -54,7 +56,7 @@ function PhoneChores() {
           }}
         >
           <Plus aria-hidden="true" className="size-5" />
-          Add
+          {t("app.action.add")}
         </Button>
       }
     >
@@ -63,12 +65,12 @@ function PhoneChores() {
           <p className="text-body font-bold">{`★ ${String(mine.balance)} ${me.name}`}</p>
         ) : null}
         <Segmented
-          label="Show"
+          label={t("tasks.show.label")}
           value={mode}
           options={[
-            { value: "today", label: "Today" },
-            { value: "week", label: "This Week" },
-            { value: "all", label: "All Tasks" },
+            { value: "today", label: t("tasks.show.today") },
+            { value: "week", label: t("tasks.show.week") },
+            { value: "all", label: t("tasks.show.all") },
           ]}
           onChange={setMode}
         />
@@ -77,11 +79,7 @@ function PhoneChores() {
         {rewards?.asked.length && viewer.answers ? <AskedStrip asked={rewards.asked} /> : null}
         {day?.waiting.length ? <WaitingStrip waiting={day.waiting} /> : null}
         {isSuccess && day.columns.length === 0 ? (
-          <EmptyState
-            icon={ListTodo}
-            line="No tasks yet"
-            note="Give each person a few, and watch them get stamped."
-          />
+          <EmptyState icon={ListTodo} line={t("tasks.none.empty")} note={t("tasks.none.hint")} />
         ) : day && mode === "today" ? (
           <Sections day={day} first={viewer.memberId} />
         ) : day && mode === "all" ? (
@@ -95,7 +93,7 @@ function PhoneChores() {
             params={{ room: "chores", _splat: "rewards" }}
             className="press-row flex min-h-14 items-center justify-between rounded-chip border border-line bg-surface px-4 text-row font-semibold"
           >
-            {day.rewards_on ? "Stars & Rewards" : "Stars"}
+            {day.rewards_on ? t("tasks.rewards.title") : t("tasks.stars.title")}
             <ChevronRight aria-hidden="true" className="text-ink-soft" />
           </Link>
         ) : null}
@@ -144,15 +142,16 @@ function Section({
   day: Day;
   open: boolean;
 }) {
+  const t = useT();
   const { data: members = [] } = useMembers();
   const person = personOf(members, column.member_id);
-  const name = person ? person.name : "Anyone";
+  const name = person ? person.name : t("tasks.anyone");
   const allDone = column.total > 0 && column.done === column.total;
   const status = allDone
-    ? allDoneText(null).toLowerCase().replace("!", "")
+    ? t("tasks.status.all_done")
     : column.total > 0
       ? countText(column.done, column.total)
-      : "nothing today";
+      : t("tasks.status.nothing");
   return (
     <Folding title={`${name} · ${status}`} open={initiallyOpen}>
       <ChoreColumn
@@ -169,6 +168,7 @@ function Section({
 /** All Tasks on a phone (ADR 0036): a section per person, the phone's person first and open (and
  * Anyone's), the rest folded with how many tasks; rows a swipe can remove, on a parent's phone. */
 function PhoneAllTasks({ first, starsOn }: { first: string | null; starsOn: boolean }) {
+  const t = useT();
   const { data: chores } = useChores();
   const { data: members = [] } = useMembers();
   if (!chores) return null;
@@ -182,7 +182,7 @@ function PhoneAllTasks({ first, starsOn }: { first: string | null; starsOn: bool
       {ordered.map(({ memberId, tasks }, index) => (
         <Folding
           key={memberId ?? "anyone"}
-          title={`${personOf(members, memberId)?.name ?? "Anyone"} · ${tasksCount(tasks.length)}`}
+          title={`${personOf(members, memberId)?.name ?? t("tasks.anyone")} · ${tasksCount(tasks.length)}`}
           open={index === 0 || memberId === null}
         >
           <ul className="flex flex-col">
@@ -231,6 +231,7 @@ function Folding({
 }
 
 function PhoneWeek({ day, today }: { day: Day; today: string }) {
+  const t = useT();
   const { data: settings } = useSettings();
   const { data: members = [] } = useMembers();
   const start = weekOf(today, settings?.week_starts_on ?? 6)[0] ?? today;
@@ -246,7 +247,7 @@ function PhoneWeek({ day, today }: { day: Day; today: string }) {
             data-person={person?.color ?? "everyone"}
             className="rounded-chip border border-line bg-surface px-3 py-2"
           >
-            <h2 className="py-2 text-row font-bold">{person ? person.name : "Anyone"}</h2>
+            <h2 className="py-2 text-row font-bold">{person ? person.name : t("tasks.anyone")}</h2>
             <WeekRows column={column} today={today} />
           </section>
         );

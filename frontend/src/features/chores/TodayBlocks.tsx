@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 
 import { zonedParts } from "../../lib/dates";
 import { useMembers } from "../../lib/household";
+import { t, useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Avatar } from "../../ui/Avatar";
 import { useShell } from "../../ui/shell";
@@ -38,8 +39,10 @@ function Ring({ done, total }: { done: number; total: number }) {
 }
 
 function statusOf(column: Column): string {
-  if (column.total === 0) return "nothing today";
-  return column.done === column.total ? "all done" : countText(column.done, column.total);
+  if (column.total === 0) return t("tasks.status.nothing");
+  return column.done === column.total
+    ? t("tasks.status.all_done")
+    : countText(column.done, column.total);
 }
 
 /**
@@ -47,6 +50,7 @@ function statusOf(column: Column): string {
  * routine whose window is open ("Leo's bedtime routine · Start"). A line opens the Chores room.
  */
 export function ChoresTodayWall() {
+  const t = useT();
   const today = zonedParts(useMinute()).day;
   const { data: day } = useChoresDay(today);
   const { data: members = [] } = useMembers();
@@ -58,7 +62,7 @@ export function ChoresTodayWall() {
   return (
     <section aria-labelledby="today-chores" className="flex flex-col gap-2">
       <h2 id="today-chores" className="text-d-body font-bold text-ink-soft">
-        Tasks Today
+        {t("tasks.today.title")}
       </h2>
       {people.map((column) => {
         const person = personOf(members, column.member_id);
@@ -94,7 +98,9 @@ export function ChoresTodayWall() {
           >
             <span className="text-d-body font-semibold">{routineTitle(run.title, kid?.name)}</span>
             <span className="rounded-full bg-p px-4 py-1 text-d-secondary font-bold text-on-ink">
-              {run.checked.length ? "Continue" : "Start"}
+              {run.checked.length
+                ? t("tasks.routine.continue.action")
+                : t("tasks.routine.start.action")}
             </span>
           </Link>
         );
@@ -108,6 +114,7 @@ export function ChoresTodayWall() {
  * parent's phone what's waiting for them: rewards asked for and chores to check.
  */
 export function ChoresTodayPhone() {
+  const t = useT();
   const today = zonedParts(useMinute()).day;
   const { data: day } = useChoresDay(today);
   const { data: members = [] } = useMembers();
@@ -121,7 +128,7 @@ export function ChoresTodayPhone() {
   return (
     <section aria-labelledby="phone-chores" className="flex flex-col gap-2">
       <h2 id="phone-chores" className="text-row font-bold text-ink-soft">
-        Tasks
+        {t("tasks.room.title")}
       </h2>
       {asked.length ? <AskedStrip asked={asked} /> : null}
       {day.waiting.length ? <WaitingStrip waiting={day.waiting} /> : null}
@@ -138,7 +145,9 @@ export function ChoresTodayPhone() {
           >
             <Avatar member={person} size="sm" />
             <span className="flex-1 text-body font-bold">{`${person.name} · ${statusOf(column)}`}</span>
-            <span className="text-secondary font-semibold text-ink-soft">See tasks</span>
+            <span className="text-secondary font-semibold text-ink-soft">
+              {t("tasks.today.see")}
+            </span>
           </Link>
         );
       })}
