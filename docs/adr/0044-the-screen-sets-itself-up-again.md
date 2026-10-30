@@ -18,8 +18,8 @@
   browser's profile), leave the screen dark for minutes, and leave nothing to come back to if it
   failed halfway. What the family needs is a fresh install's end state with their settings kept,
   which a rerun of the installer already promises. This ADR records how Sunroom Screen does that
-  rerun itself. It was started with the batch's first task of this part (T10) and gains a row
-  with each task after.
+  rerun itself, a row for each task as it was built (T10 to T14), finished with their docs
+  (T15, `docs/KIOSK.md`'s Updates).
 
 ## Decision
 
@@ -59,6 +59,12 @@
   `ScreenUpdateOut.last_result` (`ScreenUpdateResultOut`) and `needs_terminal`; the routes
   `POST /api/screen/reinstall` and `POST /api/screen/update/seen`; `sunroom-kiosk update --force`.
   The agent's API has 21 paths.
+- This Screen (T13): `lib/screenAgent`'s `followUpdate` and `useScreenAgentAway` (the state polled
+  every 2 s while an update's steps are on); `agentCalls.reinstall`; `ThisScreenPage`'s
+  `InstallCommand` and `Confirm`'s `tone`; Update Sunroom Too's button and words gone (the route
+  stays, for older pages). The pretend agent: `FakeUpdater` runs the real steps and comes back
+  with `last_result`; `Agent.go_away` and `away_for`, which the Guard honours; `_test/fake`'s
+  `update` ("available", "terminal") for the screenshots.
 - The installers (T14): `install.sh` lost `install_units`, `write_labwc_autostart` (with
   `strip_block`, `drop_trailing_blank_lines`, `labwc_block`, `remove_labwc_block`),
   `write_xdg_autostart`, `apply_labwc_settings`, `install_launch_agent` and

@@ -194,6 +194,19 @@ size limit.
   rewrote labwc's autostart after every update and asked a Pi to restart each time.
   `setup_files.comparable` drops the "Written by" line and turns every version into a mark:
   a version-only difference is rewritten quietly, and only a real change asks for a restart.
+- A test made `~/.local/state/sunroom-kiosk/backup/` in the real home: an `Updater` made in a test
+  copied the small files aside from wherever it ran. The backup is the agent's own (`cli` passes
+  `back_up_here`); an `Updater` made bare copies nothing.
+- A Mac kept running the old Sunroom Screen after an update that changed its LaunchAgent:
+  `kickstart -k` restarts a job with the definition it loaded. When setup says `launch-agent`
+  changed, the apply step does `bootout` then `bootstrap` (ADR 0044).
+- "Updated to 0.18.0" can't be a toast at the agent's start: no page listens yet. It's
+  `last_result` in the state, held back until the start's last steps are done, said by
+  `lib/screenAgent.followUpdate` once (kept by version and time) and cleared by `POST
+  /api/screen/update/seen`.
+- The pretend agent's restart can't answer 503: an `EventSource` never retries after a refusal,
+  only after a dropped connection. `Agent.go_away` ends the streams and the Guard holds requests
+  until it's back.
 
 ## The board
 

@@ -111,6 +111,8 @@ Wall screen:
       Settings → About shows the version)
   [ ] on a screen with Sunroom Screen: Settings → This Screen → Software offers X.Y.Z, or has
       installed it overnight when Updates says Install overnight
+  [ ] Update Now from This Screen on one screen: Update This Screen? asks, the row says each
+      step, and the screen comes back by itself saying "Updated to X.Y.Z"
 ```
 
 Database change is "yes" when the release added a migration (new lines in
