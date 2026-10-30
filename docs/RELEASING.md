@@ -21,6 +21,17 @@ does the rest. This page explains the pieces, and how to release without Claude.
   computer (ADR 0038), `install.sh` and `install.ps1`, and `SHA256SUMS`, uploaded last. The
   installers and Sunroom Screen's own updates take the wheels from there and check them against
   `SHA256SUMS`; nothing is uploaded from the Mac. Sunroom's own update check stays on tags (ADR 0032).
+- **Sunroom Screen's wheel carries its setup** (ADR 0044): `kiosk/files/`, with `uninstall.sh`,
+  `labwc-rule.py` and `update.sh`, goes in as `sunroom_kiosk/files/` (hatchling's
+  `force-include` in `kiosk/agent/pyproject.toml`), and the release workflow refuses a wheel
+  without `sunroom_kiosk/files/sunroom-kiosk-root`. From those templates `sunroom-kiosk setup`
+  writes the user's part of a screen's setup (the installers run it, and so do every update and
+  every start), and the root helper's `apply-system` takes the system's part from the wheel it
+  has checked. **A change to a root-owned file** under `kiosk/files/` (the root helper, the
+  sudoers rule, the Wi-Fi, backlight, i2c or avahi file) or to a list in `kiosk/files/packages/`
+  bumps `SYSTEM_PART_SINCE` in `kiosk/agent/src/sunroom_kiosk/setup_files.py` to the release it
+  ships in: a screen whose root helper is older can't apply it by itself, and This Screen asks for
+  the install command once more.
 - A multi-arch image (`linux/amd64`, `linux/arm64`), `scopexl/sunroom:X.Y.Z`, also tagged `X.Y`
   and `latest`. Version tags are immutable on Docker Hub.
 

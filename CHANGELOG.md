@@ -27,6 +27,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
   it's doing step by step, restarts the computer only when it must, and says Updated when it's
   back. If the new version doesn't start, the one before comes back. Update Now asks first, and
   the Update Sunroom Too button is gone: the update brings Sunroom along.
+- Behind the scenes: the installers let Sunroom Screen write its own start-up entries, the same
+  way an update does.
 - Holidays are named in the household's language when Sunroom has them in it for that country,
   so a family whose Sunroom speaks English sees another country's holidays in English (Spain's
   "Año Nuevo" becomes "New Year's Day"). They change at the next sync. The town search in

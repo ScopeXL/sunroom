@@ -1,7 +1,8 @@
 """``sunroom-kiosk setup`` (setup_files.py, ADR 0044): the screen's own start-up files from this
 version's templates, on temporary folders (a home and a root of their own) and the pretend
 commands; nothing on this machine changes. The golden test runs the installer's own functions on
-another home and compares. Synthetic values only."""
+another home and compares; others run the installer's install-state and its reading of setup's
+report beside setup itself. Synthetic values only."""
 
 from __future__ import annotations
 
@@ -79,10 +80,9 @@ INSTALLER_FUNCTIONS = (
     "render",
     "install_template",
     "install_stamped",
-    "strip_block",
-    "drop_trailing_blank_lines",
-    "labwc_block",
-    "write_labwc_autostart",
+    "save_state",
+    "report_says",
+    "report_failures",
 )
 
 
@@ -99,10 +99,10 @@ def installer_script(tmp_path: Path, home: Path) -> Path:
     path.write_text(
         "set -euo pipefail\n"
         f"KIOSK_VERSION={RELEASE}\nSRC_DIR='{KIOSK}'\nTMP_DIR='{tmp_path / 'tmp'}'\n"
-        f"HOME='{home}'\nLABWC_DIR=\"$HOME/.config/labwc\"\nLABWC_AUTOSTART_CREATED=0\n"
+        f"HOME='{home}'\nLABWC_DIR=\"$HOME/.config/labwc\"\n"
+        'STATE_DIR="$HOME/.local/state/sunroom-kiosk"\nSTATE_FILE="$STATE_DIR/install-state"\n'
         "SUNROOM_IMAGE=scopexl/sunroom\nIMAGE_TAG=latest\nPORT=8080\n"
         "TEMPLATE_TZ=Etc/UTC\nTEMPLATE_ADVERTISED=\n"
-        "BLOCK_BEGIN='# >>> sunroom-kiosk'\nBLOCK_END='# <<< sunroom-kiosk <<<'\n"
         "note() { :; }\ntidy() { printf '%s' \"$1\"; }\nid() { printf 'ana\\n'; }\n"
         + "".join(bodies),
         encoding="utf-8",
@@ -111,8 +111,21 @@ def installer_script(tmp_path: Path, home: Path) -> Path:
     return path
 
 
+def bash(functions: Path, steps: str, *args: str) -> subprocess.CompletedProcess[str]:
+    """``steps`` run with the installer's functions; ``args`` are their ``$1``…"""
+    return subprocess.run(  # noqa: S603
+        ["bash", "-c", f". '{functions}'\n{steps}", "installer", *args],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
 @pytest.mark.skipif(sys.platform == "win32" or not shutil.which("bash"), reason="needs bash")
 def test_each_piece_is_what_the_installer_writes(tmp_path: Path) -> None:
+    """The user's part, as 0.17.0's installer wrote it with the render, install_template and
+    install_stamped it still writes root's part with: since 0.18.0 setup alone writes it (T14),
+    and a screen installed before finds its files unchanged but for their version."""
     by_installer = tmp_path / "installer"
     functions = installer_script(tmp_path, by_installer)
     files, share = '"$SRC_DIR/files', '"$HOME/.local/share/sunroom-kiosk'
@@ -125,13 +138,17 @@ def test_each_piece_is_what_the_installer_writes(tmp_path: Path) -> None:
             '  "$HOME/.config/autostart/sunroom-kiosk.desktop" 0644',
             f'install_stamped "$SRC_DIR/uninstall.sh" {share}/uninstall.sh" 0755',
             f'install_stamped "$SRC_DIR/labwc-rule.py" {share}/labwc-rule.py" 0755',
-            'mkdir -p "$LABWC_DIR" && printf "some-panel &\\n\\n" >"$LABWC_DIR/autostart"',
-            "write_labwc_autostart",
+            # The block after the desktop's own lines and one blank line, as its
+            # write_labwc_autostart put it.
+            'mkdir -p "$LABWC_DIR"',
+            '{ printf "some-panel &\\n\\n"; render "$SRC_DIR/files/labwc/autostart-block"; } \\',
+            '  >"$LABWC_DIR/autostart"',
             'mkdir -p "$HOME/Library/LaunchAgents"',
             f'render {files}/launchd/{plist}" >"$HOME/Library/LaunchAgents/{plist}"',
         ]
     )
-    subprocess.run(["bash", "-c", f". '{functions}'\n{steps}"], check=True)  # noqa: S603, S607
+    done = bash(functions, steps)
+    assert done.returncode == 0, done.stderr
 
     linux = machine(tmp_path / "linux")
     setup_files.run(linux)
@@ -153,6 +170,130 @@ def test_each_piece_is_what_the_installer_writes(tmp_path: Path) -> None:
         ours = text(home / relative).replace(str(home), "~")
         assert ours == text(by_installer / relative).replace(str(by_installer), "~"), relative
     assert os.stat(linux.home / ".local/share/sunroom-kiosk/uninstall.sh").st_mode & 0o777 == 0o755
+
+
+# save_state's variables, the changes only the installer makes (with sudo, in a terminal).
+STATE_VARIABLES = (
+    "MODE",
+    "SESSION",
+    "TIME_WAIT_SYNC_BY_US",
+    "NM_DROPIN_WRITTEN",
+    "CMDLINE_FILE",
+    "CMDLINE_BACKUP",
+    "CMDLINE_KEYS",
+    "BACKLIGHT_RULE_WRITTEN",
+    "I2C_MODULES_WRITTEN",
+)
+
+
+def save_state(functions: Path, values: dict[str, str]) -> None:
+    steps = "".join(f'{name}="${{{at}}}"\n' for at, name in enumerate(STATE_VARIABLES, 1))
+    given = [values.get(name, "") for name in STATE_VARIABLES]
+    done = bash(functions, f"{steps}save_state", *given)
+    assert done.returncode == 0, done.stderr
+
+
+@pytest.mark.skipif(sys.platform == "win32" or not shutil.which("bash"), reason="needs bash")
+def test_the_installer_and_setup_keep_each_others_keys_in_the_install_state(
+    tmp_path: Path,
+) -> None:
+    """One file, two writers (T14): the installer's save_state sets its own keys and keeps
+    setup's, setup keeps the installer's, and both start a file with the same header. An older
+    installer's header goes."""
+    pi = machine(tmp_path, "pi")
+    state = pi.state_dir / "install-state"
+    state.parent.mkdir(parents=True)
+    state.write_text(
+        "# What the Sunroom installer (kiosk/install.sh 0.17.0) changed outside its own files,\n"
+        "# read by kiosk/uninstall.sh to put things back. Rewritten on every run.\n"
+        "STATE_MODE=display\nSTATE_LABWC_AUTOSTART_CREATED=0\nSTATE_TIME_WAIT_SYNC_BY_US=1\n",
+        encoding="utf-8",
+    )
+    setup_files.run(pi)  # the installer's run of it, before its own root steps
+    functions = installer_script(tmp_path, pi.home)
+    save_state(
+        functions,
+        {
+            "MODE": "all",
+            "SESSION": "wayland",
+            "TIME_WAIT_SYNC_BY_US": "1",
+            "NM_DROPIN_WRITTEN": "/etc/NetworkManager/conf.d/zz-sunroom-kiosk-wifi.conf",
+            "CMDLINE_FILE": "/boot/firmware/cmdline.txt",
+            "CMDLINE_KEYS": "video=HDMI-A-1: vc4.force_hotplug=",
+        },
+    )
+    saved = text(state)
+    assert saved.startswith(setup_files._STATE_HEADER)
+    assert "Rewritten on every run" not in saved
+    assert settings_file.parse_values(saved) == {
+        "STATE_MODE": "all",
+        "STATE_SESSION": "wayland",
+        "STATE_TIME_WAIT_SYNC_BY_US": "1",
+        "STATE_NM_DROPIN": "/etc/NetworkManager/conf.d/zz-sunroom-kiosk-wifi.conf",
+        "STATE_CMDLINE_FILE": "/boot/firmware/cmdline.txt",
+        "STATE_CMDLINE_BACKUP": "",
+        "STATE_CMDLINE_KEYS": "video=HDMI-A-1: vc4.force_hotplug=",
+        "STATE_BACKLIGHT_RULE": "",
+        "STATE_I2C_MODULES": "",
+        "STATE_LABWC_AUTOSTART_CREATED": "1",  # setup made labwc's autostart: its word stands
+        "STATE_SETUP_VERSION": RELEASE,
+    }
+    # The screen's next start: nothing in it to change, the installer's keys as they were.
+    assert "install-state" not in setup_files.run(pi).changed
+    assert text(state) == saved
+    # Sunroom alone has no setup: the installer starts the file, with the same header.
+    state.unlink()
+    save_state(functions, {"MODE": "server"})
+    assert text(state).startswith(setup_files._STATE_HEADER)
+    assert settings_file.parse_values(text(state))["STATE_MODE"] == "server"
+
+
+@pytest.mark.skipif(sys.platform == "win32" or not shutil.which("bash"), reason="needs bash")
+def test_the_installer_reads_setups_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """install.sh's report_says and report_failures on the --json report as the command prints it
+    (T14): a Pi's first install asks for a restart, the next run doesn't, and an entry that
+    couldn't be written is named."""
+    here: list[Machine] = [machine(tmp_path / "pi", "pi")]
+
+    def this_one(cls: type[Machine]) -> Machine:
+        return here[0]
+
+    monkeypatch.setattr(setup_files.Machine, "here", classmethod(this_one))
+    reports: list[str] = []
+    for _ in range(2):
+        assert cli.main(["setup", "--first-install", "--json"]) == 0
+        reports.append(capsys.readouterr().out)
+    functions = installer_script(tmp_path, here[0].home)
+    assert bash(functions, 'report_says "$1" needs_reboot', reports[0]).returncode == 0
+    assert bash(functions, 'report_says "$1" needs_reboot', reports[1]).returncode == 1
+    assert bash(functions, 'report_says "$1" needs_restart', reports[1]).returncode == 1
+    assert bash(functions, 'report_failures "$1"', reports[0]).stdout == ""
+
+    broken = machine(tmp_path / "broken")
+    (broken.home / ".config").mkdir(parents=True)
+    (broken.home / ".config" / "systemd").write_text("", encoding="utf-8")  # not a folder
+    here[0] = broken
+    assert cli.main(["setup", "--first-install", "--json"]) == 1
+    failures = bash(functions, 'report_failures "$1"', capsys.readouterr().out).stdout
+    assert failures.startswith("service: ") and failures.count("\n") == 1
+
+
+def test_a_pi_is_raspberry_pi_os_as_the_installer_sees_it(tmp_path: Path) -> None:
+    """install.sh sets up a Pi only on Raspberry Pi OS (raspi-config), and any other system as
+    another Linux computer; setup agrees, or it would swap the XDG entry the installer handed it
+    for labwc's block (T14)."""
+    model = tmp_path / "proc" / "device-tree" / "model"
+    model.parent.mkdir(parents=True)
+    model.write_text("Raspberry Pi 5 Model B Rev 1.0\x00", encoding="utf-8")
+    assert not setup_files.raspberry_pi_os(tmp_path)  # another system on a Pi
+    tool = tmp_path / "usr" / "bin" / "raspi-config"
+    tool.parent.mkdir(parents=True)
+    tool.write_text("", encoding="utf-8")
+    assert setup_files.raspberry_pi_os(tmp_path)
+    model.write_text("Generic Board\x00", encoding="utf-8")
+    assert not setup_files.raspberry_pi_os(tmp_path)
 
 
 def test_the_templates_are_the_packages_or_the_checkouts() -> None:

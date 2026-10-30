@@ -23,9 +23,12 @@
 #
 # Run it as your normal user, not root; it uses sudo where it must. Running it again is
 # safe: packages and Docker are installed only when missing, the files it owns are
-# rewritten with the same content, and its edits to shared files sit between marker lines
-# or are recorded (~/.local/state/sunroom-kiosk/install-state) so kiosk/uninstall.sh can
-# take them back. Everything it prints is also logged to
+# rewritten with the same content, and its edits to shared files are recorded
+# (~/.local/state/sunroom-kiosk/install-state) so kiosk/uninstall.sh can take them back.
+# Sunroom Screen's own start-up entries (its service, what the desktop starts at sign-in and
+# labwc's window rule, or a Mac's LaunchAgent, and the uninstaller's copy) are Sunroom Screen's
+# to write: once it is installed, the installer runs `sunroom-kiosk setup`, as every update and
+# every start of it do (ADR 0044). Everything it prints is also logged to
 # ~/.local/state/sunroom-kiosk/install.log.
 #
 # The rest of the kiosk/ folder (files/, labwc-rule.py, update.sh, uninstall.sh) is taken from
@@ -80,8 +83,6 @@ I2C_MODULES_FILE="/etc/modules-load.d/sunroom-kiosk-i2c.conf"
 # Sunroom Screen's few root tasks on a Pi (the browser's policy, updates), and who may run them.
 ROOT_HELPER="/usr/local/sbin/sunroom-kiosk-root"
 SUDOERS_FILE="/etc/sudoers.d/sunroom-kiosk"
-BLOCK_BEGIN="# >>> sunroom-kiosk"
-BLOCK_END="# <<< sunroom-kiosk <<<"
 HEALTH_TIMEOUT=300
 
 # Options
@@ -134,9 +135,9 @@ TEE_PID=""
 LAUNCHED=0             # a Mac: Sunroom Screen was running and started again on this version
 TEMPLATE_TZ=""         # the compose file's TZ
 TEMPLATE_ADVERTISED="" # the address devices open, printed on QR codes
+SETUP_NEEDS_REBOOT=0   # Sunroom Screen's setup changed what the desktop starts (its needs_reboot)
 
 # Remembered between runs for kiosk/uninstall.sh (see save_state)
-LABWC_AUTOSTART_CREATED=0
 TIME_WAIT_SYNC_BY_US=0
 NM_DROPIN_WRITTEN=""
 CMDLINE_FILE=""
@@ -690,7 +691,6 @@ load_previous_state() {
 		# shellcheck source=/dev/null
 		. "$STATE_FILE"
 	fi
-	LABWC_AUTOSTART_CREATED=${STATE_LABWC_AUTOSTART_CREATED:-0}
 	TIME_WAIT_SYNC_BY_US=${STATE_TIME_WAIT_SYNC_BY_US:-0}
 	NM_DROPIN_WRITTEN=${STATE_NM_DROPIN:-}
 	CMDLINE_FILE=${STATE_CMDLINE_FILE:-}
@@ -700,14 +700,17 @@ load_previous_state() {
 	I2C_MODULES_WRITTEN=${STATE_I2C_MODULES:-}
 }
 
+# The install-state, which kiosk/uninstall.sh reads to put things back and Sunroom Screen's setup
+# reads for root's part: first the installer's own keys, the changes only it makes (with sudo, in
+# a terminal), then every other line as it was, Sunroom Screen's own keys among them
+# (STATE_SETUP_VERSION, and STATE_LABWC_AUTOSTART_CREATED now that it writes labwc's autostart),
+# so neither writer undoes the other's. The header is the one setup starts a file with
+# (setup_files.py's _STATE_HEADER); an older installer's goes.
 save_state() {
-	local tmp="$TMP_DIR/install-state"
+	local ours="$TMP_DIR/install-state.ours" tmp="$TMP_DIR/install-state"
 	{
-		printf '# What the Sunroom installer (kiosk/install.sh %s) changed outside its own files,\n' "$KIOSK_VERSION"
-		printf '# read by kiosk/uninstall.sh to put things back. Rewritten on every run.\n'
 		printf 'STATE_MODE=%q\n' "$MODE"
 		printf 'STATE_SESSION=%q\n' "$SESSION"
-		printf 'STATE_LABWC_AUTOSTART_CREATED=%q\n' "$LABWC_AUTOSTART_CREATED"
 		printf 'STATE_TIME_WAIT_SYNC_BY_US=%q\n' "$TIME_WAIT_SYNC_BY_US"
 		printf 'STATE_NM_DROPIN=%q\n' "$NM_DROPIN_WRITTEN"
 		printf 'STATE_CMDLINE_FILE=%q\n' "$CMDLINE_FILE"
@@ -715,6 +718,20 @@ save_state() {
 		printf 'STATE_CMDLINE_KEYS=%q\n' "$CMDLINE_KEYS"
 		printf 'STATE_BACKLIGHT_RULE=%q\n' "$BACKLIGHT_RULE_WRITTEN"
 		printf 'STATE_I2C_MODULES=%q\n' "$I2C_MODULES_WRITTEN"
+	} >"$ours"
+	{
+		printf '%s\n' "# What Sunroom's setup changed outside its own files, read by kiosk/uninstall.sh to put" \
+			"# things back. Sunroom Screen and the installer keep it up to date."
+		cat "$ours"
+		if [[ -f $STATE_FILE ]]; then
+			# Every line but ours, a comment (a header) or a blank one, in its order.
+			awk -F= '
+				NR == FNR { ours[$1] = 1; next }
+				{ key = $1; sub(/^[ \t]+/, "", key) }
+				(key == "") || (key ~ /^#/) || (key in ours) { next }
+				{ print }
+			' "$ours" "$STATE_FILE"
+		fi
 	} >"$tmp"
 	mkdir -p "$STATE_DIR"
 	install -m 0644 "$tmp" "$STATE_FILE"
@@ -1330,14 +1347,13 @@ write_avahi_service() {
 	note "Sunroom screens on this network can find this Pi by themselves now."
 }
 
-# ---------------------------------------------------------------------------- step 4: the screen
-
-install_helper_copies() {
+# Sunroom alone (--server-only) has no Sunroom Screen to set itself up, so the uninstaller's copy
+# the summary names is the installer's to keep here; with a screen, Sunroom Screen's setup keeps it.
+keep_uninstaller() {
 	install_stamped "$SRC_DIR/uninstall.sh" "$SHARE_DIR/uninstall.sh" 0755
-	install_stamped "$SRC_DIR/labwc-rule.py" "$SHARE_DIR/labwc-rule.py" 0755
 }
 
-# ---------------------------------------------------------------------------- Sunroom Screen
+# ---------------------------------------------------------------------------- step 4: the screen, Sunroom Screen
 
 # uv installs Sunroom Screen and the Python it runs on (3.14, kept apart from the system's).
 install_uv() {
@@ -1477,6 +1493,9 @@ existing_setting() {
 	bash -c 'set +u; . "$1" >/dev/null 2>&1; printf "%s" "${!2:-}"' _ "$CONFIG_DIR/config" "$1" 2>/dev/null || true
 }
 
+# The screen's settings: the installer's keys, and the agent's kept. SUNROOM_CONFIG_VERSION is
+# Sunroom Screen's setup's (config.py's migrate), which runs right after and writes it again, so a
+# release that renames a key here gives migrate a step too (ADR 0044).
 write_kiosk_config() {
 	local url found id check tmp="$TMP_DIR/kiosk-config"
 	if [[ $MODE == display ]]; then
@@ -1529,69 +1548,68 @@ write_kiosk_config() {
 	fi
 }
 
-install_units() {
-	retire_old_screen
-	install_template "$SRC_DIR/files/systemd/sunroom-kiosk.service" "$UNIT_DIR/sunroom-kiosk.service" 0644
+# Sunroom Screen's own command; on Linux with the address of this user's systemd, as
+# user_systemctl has it (its setup reloads its service).
+screen_command() {
+	if [[ $PLATFORM == macos ]]; then
+		"$BIN_DIR/sunroom-kiosk" "$@"
+	else
+		XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" "$BIN_DIR/sunroom-kiosk" "$@"
+	fi
+}
+
+# Whether setup's --json report says KEY is true. The report is Sunroom Screen's own JSON, one
+# level deep, so a pattern reads it, with no jq or Python (a Mac has neither for certain).
+report_says() {
+	local pattern="\"$2\"[[:space:]]*:[[:space:]]*true"
+	[[ $1 =~ $pattern ]]
+}
+
+# The entries setup couldn't write, one a line, from its --json report (indented: its own).
+report_failures() {
+	printf '%s\n' "$1" | awk '
+		/"failed": \[$/ { inside = 1; next }
+		inside && /^[ \t]*\]/ { exit }
+		inside { sub(/^[ \t]*"/, ""); sub(/",?$/, ""); print }
+	'
+}
+
+# Sunroom Screen puts its own start-up entries in place from the templates its version carries
+# (ADR 0044), as every update and every start of it do: its service and what the desktop starts
+# at sign-in (on a Pi with labwc, a block in ~/.config/labwc/autostart, which labwc runs at login
+# besides /etc/xdg/labwc/autostart, and its window rule; an XDG autostart entry on X11, which the
+# Pi's X11 session is expected to run, unverified on hardware, and on other desktops), or a Mac's
+# LaunchAgent; the uninstaller's and labwc-rule.py's copies; its settings file brought to this
+# version's keys; its own keys in the install-state. Its report says whether the desktop's part
+# counts only from a restart (offer_reboot reads it).
+setup_screen() {
+	local report status=0 failures entry
+	report=$(screen_command setup --first-install --json 2>>"$LOG_FILE") || status=$?
+	log_only "sunroom-kiosk setup --first-install --json: ${report:-(no report)}"
+	if ((status != 0)); then
+		failures=$(report_failures "$report")
+		if [[ -n $failures ]]; then
+			say "Sunroom Screen couldn't set up:"
+			printf '%s\n' "$failures" | sed 's/^/    /'
+		fi
+		die "Sunroom Screen couldn't set up its start-up entries; the log has the details." \
+			"Running the installer again is safe."
+	fi
+	if report_says "$report" needs_reboot; then
+		SETUP_NEEDS_REBOOT=1
+	fi
+	case $PLATFORM:$SESSION in
+	macos:*) entry=$LAUNCH_AGENT ;;
+	pi:wayland) entry="$LABWC_DIR/autostart" ;;
+	*) entry=$XDG_AUTOSTART_FILE ;;
+	esac
+	note "Sunroom Screen set up its start-up entries; it starts when you sign in ($(tidy "$entry"))."
+}
+
+# A Sunroom Screen that was running switches to this version now (its service is its setup's).
+restart_running_screen() {
 	user_systemctl daemon-reload >/dev/null 2>&1 || true
-	# Sunroom Screen from an earlier install switches to this version now.
 	user_systemctl try-restart sunroom-kiosk.service >/dev/null 2>&1 || true
-	note "Installed Sunroom Screen's service; the desktop starts it at login."
-}
-
-# Print FILE without the managed block. An unfinished block is printed back unchanged.
-strip_block() {
-	awk -v begin="$BLOCK_BEGIN" -v end="$BLOCK_END" '
-		index($0, begin) == 1 && !inblock { inblock = 1; held = $0; next }
-		inblock { held = held "\n" $0; if ($0 == end) { inblock = 0; held = "" } next }
-		{ print }
-		END { if (inblock) print held }
-	' "$1"
-}
-
-drop_trailing_blank_lines() {
-	awk '{ line[NR] = $0 } END { n = NR; while (n > 0 && line[n] ~ /^[ \t]*$/) n--; for (i = 1; i <= n; i++) print line[i] }' "$1"
-}
-
-# The rotation isn't in this block any more: Sunroom Screen applies it when it starts (and touch
-# follows, labwc-rule.py --rotate).
-labwc_block() {
-	render "$SRC_DIR/files/labwc/autostart-block"
-}
-
-# labwc runs ~/.config/labwc/autostart with sh at login; Raspberry Pi OS starts labwc with
-# --merge-config, so this file runs in addition to /etc/xdg/labwc/autostart.
-write_labwc_autostart() {
-	local file="$LABWC_DIR/autostart" base="$TMP_DIR/autostart.base" new="$TMP_DIR/autostart.new"
-	mkdir -p "$LABWC_DIR"
-	if [[ -f $file ]]; then
-		strip_block "$file" >"$base"
-	else
-		: >"$base"
-		LABWC_AUTOSTART_CREATED=1
-	fi
-	drop_trailing_blank_lines "$base" >"$new"
-	if [[ -s $new ]]; then
-		printf '\n' >>"$new"
-	fi
-	labwc_block >>"$new"
-	if [[ -f $file ]] && cmp -s "$new" "$file"; then
-		note "The desktop already starts the screen."
-		return 0
-	fi
-	if [[ -f $file ]]; then
-		cat "$new" >"$file"
-	else
-		install -m 0644 "$new" "$file"
-	fi
-	note "The desktop now starts the screen at login ($(tidy "$file"))."
-}
-
-remove_labwc_block() {
-	local file="$LABWC_DIR/autostart"
-	if [[ -f $file ]] && grep -q "^$BLOCK_BEGIN" "$file"; then
-		strip_block "$file" >"$TMP_DIR/autostart.stripped"
-		cat "$TMP_DIR/autostart.stripped" >"$file"
-	fi
 }
 
 # raspi-config's do_blanking only edits the labwc autostart when labwc is running; on a
@@ -1603,23 +1621,6 @@ remove_swayidle() {
 		cat "$TMP_DIR/autostart.noidle" >"$file"
 		note "Turned off the desktop's screen blanking (swayidle) in $(tidy "$file")."
 	fi
-}
-
-# Unverified on hardware: that the Pi's X11 session (lxsession: rpd-x on Trixie, LXDE-pi-x
-# on Bookworm) runs ~/.config/autostart entries, as XDG autostart says it should.
-write_xdg_autostart() {
-	install_template "$SRC_DIR/files/xdg/sunroom-kiosk.desktop" "$XDG_AUTOSTART_FILE" 0644
-	note "The desktop now starts the screen at login ($(tidy "$XDG_AUTOSTART_FILE"))."
-}
-
-apply_labwc_settings() {
-	local status=0
-	python3 "$SHARE_DIR/labwc-rule.py" --installer-version "$KIOSK_VERSION" --rotate "$ROTATE" --output "$OUTPUT" 2>&1 |
-		sed 's/^/    /' || status=$?
-	if ((status != 0 && status != 2)); then
-		warn "couldn't adjust the pointer and touch settings (labwc rc.xml); the screen still works."
-	fi
-	pkill -HUP -u "$(id -u)" -x labwc 2>/dev/null || true # reload labwc's settings if it is running
 }
 
 write_wifi_dropin() {
@@ -1894,20 +1895,15 @@ setup_kiosk() {
 	install_root_helper
 	setup_brightness
 	write_kiosk_config
-	install_units
-	if [[ $SESSION == wayland ]]; then
-		write_labwc_autostart
-		rm -f "$XDG_AUTOSTART_FILE"
-		apply_labwc_settings
-	else
-		write_xdg_autostart
-		remove_labwc_block
-	fi
+	retire_old_screen
+	setup_screen
 	write_wifi_dropin
 	enable_time_wait_sync
 	if [[ -n $FORCE_HDMI ]]; then
 		apply_force_hdmi
 	fi
+	# Last, so the screen it starts finds root's part in place too.
+	restart_running_screen
 	if [[ $ROTATE != 0 ]]; then
 		note "The picture on $OUTPUT will be turned $ROTATE degrees, and touch with it."
 		note "To change it later: Settings → This Screen → Rotation, on the screen."
@@ -1999,14 +1995,23 @@ summary() {
 	say "This install's log:  $(tidy "$LOG_FILE")"
 }
 
+# A Pi offers a restart at the end: its log-in to the desktop, its groups and its kernel command
+# line count from then, and it starts the screen. Another Linux computer offers one only when
+# Sunroom Screen's setup said what the desktop starts changed (its report's needs_reboot), as an
+# update restarts one; a Mac's setup never asks.
 offer_reboot() {
+	if [[ $PLATFORM != pi ]] && ((!SETUP_NEEDS_REBOOT)); then
+		return 0
+	fi
 	say ""
 	if ((NO_REBOOT)); then
-		say "Restart the Pi when you're ready (sudo reboot)."
+		say "Restart $MACHINE when you're ready (sudo reboot)."
 		return 0
 	fi
 	if [[ $MODE == server ]]; then
 		say "A restart is optional; it checks that Sunroom comes back by itself."
+	elif ((SETUP_NEEDS_REBOOT)); then
+		say "A restart starts the screen with its new start-up settings."
 	else
 		say "A restart starts the screen."
 	fi
@@ -2331,24 +2336,16 @@ launch_agent_loaded() {
 	launchctl print "gui/$(id -u)/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1
 }
 
-# The LaunchAgent starts Sunroom Screen at sign-in, and again if it fails (not after Quit). One
-# that was running is started again at once, on this version.
-install_launch_agent() {
-	local plist="$TMP_DIR/launch-agent.plist" was_loaded=0
-	render "$SRC_DIR/files/launchd/$LAUNCH_AGENT_LABEL.plist" >"$plist"
-	plutil -lint "$plist" >/dev/null || die "Sunroom Screen's LaunchAgent didn't check out (plutil); nothing was changed."
-	mkdir -p "$(dirname "$LAUNCH_AGENT")" "$HOME/Library/Logs"
-	if launch_agent_loaded; then
-		was_loaded=1
-		launchctl bootout "gui/$(id -u)/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 || true
-	fi
-	install -m 0644 "$plist" "$LAUNCH_AGENT"
-	note "Sunroom Screen now starts when you sign in ($(tidy "$LAUNCH_AGENT"))."
-	if ((was_loaded)); then
-		launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT" ||
-			die "Sunroom Screen didn't start again. Its log: ~/Library/Logs/sunroom-kiosk.log"
-		LAUNCHED=1
-	fi
+# The LaunchAgent, which Sunroom Screen's setup writes, starts it at sign-in and again if it fails
+# (not after Quit), with its log in ~/Library/Logs. One that was running is started again at once,
+# on this version: out and in, since launchd reads a LaunchAgent when it's loaded.
+restart_running_mac() {
+	mkdir -p "$HOME/Library/Logs"
+	launch_agent_loaded || return 0
+	launchctl bootout "gui/$(id -u)/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 || true
+	launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT" ||
+		die "Sunroom Screen didn't start again. Its log: ~/Library/Logs/sunroom-kiosk.log"
+	LAUNCHED=1
 }
 
 # Start Sunroom Screen now when this Mac's desktop is signed in; else at the next sign-in.
@@ -2460,10 +2457,11 @@ dry_run_screen() {
 	esac
 	say "  - save the screen's settings in $(tidy "$CONFIG_DIR/config"), where it shows"
 	say "    $shows"
+	say "  - set up Sunroom Screen's start-up entries (sunroom-kiosk setup), as every update does:"
 	if [[ $PLATFORM == pi ]]; then
+		say "    its service (sunroom-kiosk.service), which the desktop starts when it logs in"
 		say "  - log in to the desktop by itself, turn off screen blanking and Wi-Fi power saving,"
-		say "    wait for the clock at startup, and start Sunroom Screen with the desktop"
-		say "    (sunroom-kiosk.service)"
+		say "    and wait for the clock at startup"
 		if [[ $ROTATE != 0 ]]; then
 			say "  - turn the picture ${ROTATE} degrees, and touch with it"
 		fi
@@ -2476,13 +2474,12 @@ dry_run_screen() {
 			say "  - offer to restart"
 		fi
 	elif [[ $PLATFORM == macos ]]; then
-		say "  - start Sunroom Screen when you sign in (a LaunchAgent,"
-		say "    $(tidy "$LAUNCH_AGENT"))"
+		say "    a LaunchAgent that starts it when you sign in ($(tidy "$LAUNCH_AGENT"))"
 		say "  - start Sunroom Screen now when this Mac's desktop is signed in (it fills the screen)"
 		say "Nothing else is installed, nothing needs an administrator, and no other settings change."
 	else
-		say "  - start Sunroom Screen when you sign in ($(tidy "$XDG_AUTOSTART_FILE"),"
-		say "    sunroom-kiosk.service)"
+		say "    its service (sunroom-kiosk.service), and $(tidy "$XDG_AUTOSTART_FILE"), which"
+		say "    starts it when you sign in"
 		say "  - set the browser's policy with sudo, and let Sunroom Screen keep it in step with the"
 		say "    address it shows through one root helper ($ROOT_HELPER, allowed by"
 		say "    $SUDOERS_FILE)"
@@ -2553,8 +2550,9 @@ install_on_pi() {
 		write_avahi_service
 	fi
 
-	install_helper_copies
-	if [[ $MODE != server ]]; then
+	if [[ $MODE == server ]]; then
+		keep_uninstaller
+	else
 		step "Setting up the screen" "setting up the screen"
 		setup_kiosk
 	fi
@@ -2565,9 +2563,9 @@ install_on_pi() {
 	offer_reboot
 }
 
-# A Mac: Sunroom Screen alone, started at sign-in by a LaunchAgent, and Google Chrome when there's
-# no browser. No administrator, no other settings; Sunroom Screen writes the browser's policy
-# itself (defaults, as this user).
+# A Mac: Sunroom Screen alone, started at sign-in by a LaunchAgent its setup writes, and Google
+# Chrome when there's no browser. No administrator, no other settings; Sunroom Screen writes the
+# browser's policy itself (defaults, as this user).
 install_on_macos() {
 	begin_run
 	step "Checking this Mac" "checking this Mac"
@@ -2584,10 +2582,10 @@ install_on_macos() {
 	fi
 
 	step "Setting up the screen" "setting up the screen"
-	install_helper_copies
 	install_agent
 	write_kiosk_config
-	install_launch_agent
+	setup_screen
+	restart_running_mac
 	save_state
 
 	step "All done" "finishing"
@@ -2595,8 +2593,9 @@ install_on_macos() {
 	start_screen_mac
 }
 
-# Another Linux computer: Sunroom Screen alone, started at sign-in, and a browser when there's
-# none. No other packages, no system settings; root only for the browser and its policy.
+# Another Linux computer: Sunroom Screen alone, started at sign-in by the entries its setup writes,
+# and a browser when there's none. No other packages, no system settings; root only for the
+# browser and its policy.
 install_on_linux() {
 	begin_run
 	step "Checking this computer" "checking this computer"
@@ -2613,17 +2612,18 @@ install_on_linux() {
 	fi
 
 	step "Setting up the screen" "setting up the screen"
-	install_helper_copies
 	install_agent
 	write_kiosk_config
-	install_units
-	write_xdg_autostart
+	retire_old_screen
+	setup_screen
 	write_linux_policy
+	restart_running_screen
 	save_state
 
 	step "All done" "finishing"
 	summary
 	start_screen
+	offer_reboot
 }
 
 main() {

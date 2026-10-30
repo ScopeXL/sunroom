@@ -79,6 +79,9 @@ _STAMP = re.compile(
     r"^.*\b[Ww]ritten by (?:the Sunroom installer|Sunroom Screen)\b.*(?:\n|$)", re.M
 )
 _VERSION = re.compile(r"\b\d+\.\d+\.\d+(?:[-+.][0-9A-Za-z][0-9A-Za-z.-]*)?\b")
+# install.sh's save_state writes the same header, then its own keys (the system changes only it
+# makes) above the rest, which it keeps: STATE_SETUP_VERSION and STATE_LABWC_AUTOSTART_CREATED
+# are setup's, the others the installer's (test_setup_files.py runs both on one file).
 _STATE_HEADER = (
     "# What Sunroom's setup changed outside its own files, read by kiosk/uninstall.sh to put\n"
     "# things back. Sunroom Screen and the installer keep it up to date.\n"
@@ -183,9 +186,8 @@ class Machine:
             state_dir = config_path.parent
             registry = registry or system_registry()
         else:
-            from sunroom_kiosk.platform.pi import is_pi
-
-            kind = "macos" if sys.platform == "darwin" else "pi" if is_pi(root) else "linux"
+            pi = raspberry_pi_os(root)
+            kind = "macos" if sys.platform == "darwin" else "pi" if pi else "linux"
             state_dir = home / ".local" / "state" / "sunroom-kiosk"
         return cls(
             kind=kind,
@@ -212,6 +214,15 @@ class Machine:
     @property
     def session(self) -> str:
         return self.settings.session or "wayland"
+
+
+def raspberry_pi_os(root: Path = Path("/")) -> bool:
+    """A Pi as the installer sees one (install.sh's detect_platform): the board, and Raspberry Pi
+    OS's raspi-config. Another system on a Pi is set up as any Linux computer, by both, so the
+    entries setup writes are the ones the installer handed it (T14)."""
+    from sunroom_kiosk.platform.pi import is_pi
+
+    return is_pi(root) and (root / "usr" / "bin" / "raspi-config").is_file()
 
 
 def _user() -> str:

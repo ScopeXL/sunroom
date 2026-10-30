@@ -19,12 +19,15 @@ from typing import Any
 
 import pytest
 
-from sunroom_kiosk import cli, policy
+from sunroom_kiosk import cli, policy, setup_files
+from sunroom_kiosk.config import Config
 from sunroom_kiosk.files import files_dir
 from sunroom_kiosk.platform import linux
+from tests.support import FakeRegistry
 
 # The package's copy when the wheel carries it, the checkout's otherwise (ADR 0044).
 FILES = files_dir()
+KIOSK = Path(__file__).resolve().parents[2]  # the installers aren't in the wheel
 URL = "http://192.168.1.20:8080"
 
 
@@ -141,6 +144,72 @@ def test_the_desktop_starts_the_agent_through_its_unit() -> None:
     assert not any("wlr-randr" in line for line in block)  # the agent turns the picture now
     (exec_line,) = [line for line in lines("xdg/sunroom-kiosk.desktop") if line.startswith("Exec=")]
     assert "restart sunroom-kiosk.service" in exec_line
+
+
+# What the installers wrote themselves before 0.18.0, by the piece of ``sunroom-kiosk setup``
+# that writes it now (T14): the user's part has one writer.
+HANDED_TO_SETUP: dict[setup_files.Kind, set[str]] = {
+    # install_units, write_labwc_autostart (and the X11 entry taken out), apply_labwc_settings,
+    # install_helper_copies, and save_state's STATE_LABWC_AUTOSTART_CREATED
+    "pi": {
+        "service",
+        "labwc-autostart",
+        "xdg-autostart",
+        "labwc-rule",
+        "helper-uninstall.sh",
+        "helper-labwc-rule.py",
+        "install-state",
+    },
+    # install_units, write_xdg_autostart, install_helper_copies
+    "linux": {"service", "xdg-autostart", "helper-uninstall.sh", "helper-labwc-rule.py"},
+    # install_launch_agent, install_helper_copies
+    "macos": {"launch-agent", "helper-uninstall.sh", "helper-labwc-rule.py"},
+    # install.ps1's Add-StartupShortcut (a shortcut then, the Run value now)
+    "windows": {"run-value", "startup-shortcut"},
+}
+
+
+@pytest.mark.parametrize("kind", list(HANDED_TO_SETUP))
+def test_setup_writes_all_the_installers_used_to(tmp_path: Path, kind: setup_files.Kind) -> None:
+    """Nothing the installers stopped writing is missing from setup's pieces; the golden test in
+    test_setup_files.py shows they write it the same."""
+    home = tmp_path / "home"
+    here = setup_files.Machine(
+        kind=kind,
+        home=home,
+        user="ana",
+        release="9.9.9",
+        settings=Config(session="wayland"),
+        config_path=home / "config",
+        state_dir=home / "state",
+        root=tmp_path / "root",
+        command=lambda argv: True,
+        registry=FakeRegistry(),
+    )
+    names = {piece.name for piece in setup_files.user_pieces(here)}
+    assert HANDED_TO_SETUP[kind] <= names
+
+
+def test_the_installers_leave_the_users_part_to_setup() -> None:
+    """install.sh renders none of the user's templates any more: each of its runs calls setup,
+    as install.ps1 does for Windows' Run value."""
+    installer = (KIOSK / "install.sh").read_text(encoding="utf-8")
+    for relative in (
+        "systemd/sunroom-kiosk.service",
+        "labwc/autostart-block",
+        "xdg/sunroom-kiosk.desktop",
+        "launchd/app.sunroom.kiosk.plist",
+    ):
+        assert (FILES / relative).is_file(), relative  # setup's, and the uninstaller's lists
+        assert f'"$SRC_DIR/files/{relative}"' not in installer, relative
+    assert '"$SRC_DIR/labwc-rule.py"' not in installer
+    for run in ("setup_kiosk", "install_on_linux", "install_on_macos"):
+        start = installer.index(f"\n{run}() {{\n")
+        assert "\n\tsetup_screen\n" in installer[start : installer.index("\n}\n", start)], run
+    assert "setup --first-install --json" in installer
+    windows = (KIOSK / "install.ps1").read_text(encoding="utf-8")
+    assert '@("setup", "--first-install")' in windows
+    assert "CreateShortcut" not in windows
 
 
 def test_the_policy_command_prints_one_policy_for_every_address(

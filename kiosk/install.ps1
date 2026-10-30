@@ -19,9 +19,10 @@
 # It installs uv (a pinned version, into %USERPROFILE%\.local\bin, only when there's no uv: uv's
 # own zip from its GitHub release, checked against the sums below), then Sunroom Screen with uv
 # from this version's GitHub Release, its wheel checked against the Release's SHA256SUMS before
-# anything installs it; puts a shortcut in the Startup folder, so it starts at sign-in without a
-# console window; and starts it. Sunroom Screen opens Microsoft Edge (or Google Chrome) full
-# screen, and writes the browser's policy itself, for this user only.
+# anything installs it; has Sunroom Screen set up its own start-up entry (`sunroom-kiosk setup`,
+# as every update does, ADR 0044: a Run value under HKEY_CURRENT_USER, so it starts at sign-in
+# without a console window); and starts it. Sunroom Screen opens Microsoft Edge (or Google
+# Chrome) full screen, and writes the browser's policy itself, for this user only.
 #
 # Running it again is safe: it keeps the screen's settings and its pairing. -Uninstall takes it
 # off again, and asks before it deletes the pairing; Sunroom run on this computer (ADR 0038) is
@@ -75,6 +76,10 @@ $Options = [pscustomobject]@{
     $DataDir = Join-Path $env:LOCALAPPDATA "sunroom-kiosk" # its settings, browser profile and log
     $WheelsDir = Join-Path $DataDir "wheels" # the running wheel and the one before, for updates
     $LogFile = Join-Path $DataDir "install.log"
+    # What starts it at sign-in: the Run value its setup writes (setup_files.py), and before
+    # 0.18.0 a shortcut in the Startup folder, which setup and -Uninstall take out.
+    $RunKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+    $RunName = "SunroomScreen"
     $Shortcut = Join-Path ([Environment]::GetFolderPath("Startup")) "Sunroom Screen.lnk"
     $ReleaseBase = "https://github.com/$SunroomRepo/releases/download/v$KioskVersion"
     $WheelName = "sunroom_kiosk-$KioskVersion-py3-none-any.whl"
@@ -303,7 +308,7 @@ $Options = [pscustomobject]@{
     }
 
     # A running Sunroom Screen holds its own files open, so it quits before uv replaces them (the
-    # same Quit as This Screen's); the shortcut or this installer starts it again.
+    # same Quit as This Screen's); its start-up entry or this installer starts it again.
     function Close-RunningScreen {
         if (-not (Test-ScreenRunning)) { return }
         Write-Note "Closing the Sunroom Screen that's running..."
@@ -351,16 +356,16 @@ $Options = [pscustomobject]@{
         }
     }
 
-    # The Startup folder starts it at sign-in, with no console window (the windowless command).
-    function Add-StartupShortcut {
-        $shell = New-Object -ComObject WScript.Shell
-        $link = $shell.CreateShortcut($Shortcut)
-        $link.TargetPath = $AgentWindowless
-        $link.Arguments = "run"
-        $link.WorkingDirectory = $DataDir
-        $link.Description = "Sunroom Screen: the family calendar on this screen"
-        $link.Save()
-        Write-Note "Sunroom Screen now starts when you sign in (a shortcut in the Startup folder)."
+    # Sunroom Screen sets up its own start-up entry, as every update does (ADR 0044): the Run value
+    # that starts the windowless command at sign-in, with no console window, an old Startup-folder
+    # shortcut taken out, and its settings brought to this version's keys.
+    function Add-StartupEntry {
+        $ran = Invoke-Native $Agent @("setup", "--first-install")
+        if ($ran.Code -ne 0) {
+            Write-Host $ran.Output
+            Exit-Install @("Sunroom Screen couldn't set itself up to start at sign-in; its messages are above. Running the installer again is safe.")
+        }
+        Write-Note "Sunroom Screen now starts when you sign in (the Run value $RunName, for this user)."
     }
 
     function Open-SunroomScreen {
@@ -376,9 +381,10 @@ $Options = [pscustomobject]@{
         Write-Host ""
         Write-Host "This computer: Windows $([Environment]::OSVersion.Version)."
         if ($Options.Uninstall) {
-            Write-Host "A real run would close Sunroom Screen, take it out of the Startup folder and the"
-            Write-Host "browser's policy, stop and uninstall Sunroom if it runs on this computer (its data"
-            Write-Host "kept), uninstall Sunroom Screen with uv, and ask before deleting its settings and pairing."
+            Write-Host "A real run would close Sunroom Screen, take it out of what starts at sign-in (the Run"
+            Write-Host "value $RunName, and an old Startup-folder shortcut) and out of the browser's policy,"
+            Write-Host "stop and uninstall Sunroom if it runs on this computer (its data kept), uninstall"
+            Write-Host "Sunroom Screen with uv, and ask before deleting its settings and pairing."
             return
         }
         if ($Options.Url) { $shows = $Options.Url } else { $shows = "the Sunroom it finds on the network (or an address typed on it)" }
@@ -398,7 +404,9 @@ $Options = [pscustomobject]@{
         }
         Write-Host "  - save the screen's settings in $DataDir, where it shows"
         Write-Host "    $shows"
-        Write-Host "  - start Sunroom Screen when you sign in ($Shortcut), and start it now"
+        Write-Host "  - set up Sunroom Screen's start-up entries (sunroom-kiosk setup), as every update does:"
+        Write-Host "    the Run value $RunName for this user, which starts it when you sign in"
+        Write-Host "  - start Sunroom Screen now"
         Write-Host "Nothing else is installed, nothing needs an administrator, and no other settings change."
     }
 
@@ -430,7 +438,7 @@ $Options = [pscustomobject]@{
         Close-RunningScreen
         Install-Agent -Uv $uv -Wheel $wheel
         Write-ScreenSetting
-        Add-StartupShortcut
+        Add-StartupEntry
 
         Write-Step "All done"
         Write-Host "The screen is set up. When it starts, it shows a six-character code: on a device"
@@ -444,6 +452,11 @@ $Options = [pscustomobject]@{
     function Uninstall-SunroomScreen {
         Write-Host "Removing Sunroom Screen from this computer..."
         Close-RunningScreen
+        $startup = Get-Item -LiteralPath $RunKey -ErrorAction SilentlyContinue
+        if ($startup -and $null -ne $startup.GetValue($RunName)) {
+            Remove-ItemProperty -LiteralPath $RunKey -Name $RunName
+            Write-Note "Took it out of what starts at sign-in."
+        }
         if (Test-Path -LiteralPath $Shortcut) {
             Remove-Item -LiteralPath $Shortcut -Force
             Write-Note "Took it out of the Startup folder."

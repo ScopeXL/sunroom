@@ -18,7 +18,7 @@ dependencies = [
 [project.scripts]
 sunroom-kiosk = "sunroom_kiosk.cli:main"
 
-# The same command with no console window, for Windows' Startup folder (install.ps1); elsewhere
+# The same command with no console window, for Windows' Run value (setup_files.py); elsewhere
 # it's just a second name.
 [project.gui-scripts]
 sunroom-kioskw = "sunroom_kiosk.cli:main"

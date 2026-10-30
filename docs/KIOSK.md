@@ -75,6 +75,15 @@ Other options (`--help` lists them all):
   newest. The screen's own software is always the installer's version.
 - `--x11` uses the older X11 desktop instead of labwc.
 
+What the installer does, in order: it checks the computer and installs what's missing (the
+packages and a browser; with `--with-sunroom`, Docker and Sunroom), installs Sunroom Screen and
+saves the screen's settings, then has **Sunroom Screen set up its own start-up entries**
+(`sunroom-kiosk setup --first-install`, the same step every update runs; ADR 0044). On Linux it
+does root's part itself, with `sudo` (the root helper and the browser's policy; on a Pi also the
+Wi-Fi, brightness and start-up settings). Last it notes what it changed, for the uninstaller,
+and starts the screen: a Pi offers to restart; another Linux computer offers only when Sunroom
+Screen's setup says what the desktop starts has changed (its report's `needs_reboot`).
+
 Running the installer again is safe: it keeps what is already right (the address the screen
 found, its pairing, its Updates choice) and replaces only its own files. Its log is
 `~/.local/state/sunroom-kiosk/install.log`.
@@ -96,9 +105,9 @@ found, its pairing, its Updates choice) and replaces only its own files. Its log
   the copy it was installed from stays in `~/.local/share/sunroom-kiosk/wheels`, for updates to
   fall back on.
 - The user service `sunroom-kiosk.service` (started again 3 seconds after it fails), which the
-  desktop starts when it logs in. Sunroom Screen runs the browser (and restarts it at about 04:00
-  to give back memory), the screen's sleep and brightness, and its own pages on
-  `http://127.0.0.1:7800`, which only this computer can open. Its settings are in
+  desktop starts when it logs in (Sunroom Screen's own entries, below). Sunroom Screen runs the
+  browser (and restarts it at about 04:00 to give back memory), the screen's sleep and
+  brightness, and its own pages on `http://127.0.0.1:7800`, which only this computer can open. Its settings are in
   `~/.config/sunroom-kiosk/config`; the browser profile, which holds the screen's pairing, is in
   `~/.config/sunroom-kiosk/profile`.
 - One root helper, `/usr/local/sbin/sunroom-kiosk-root`, which `/etc/sudoers.d/sunroom-kiosk`
@@ -136,18 +145,24 @@ found, its pairing, its Updates choice) and replaces only its own files. Its log
 - **Sunroom Screen's own start-up entries are its own** (ADR 0044): its user service, the labwc
   block and window rule or the X11 autostart entry, the copies of the uninstaller and the labwc
   helper in `~/.local/share/sunroom-kiosk`, the service of Sunroom run on this computer, its
-  settings file (brought to its version's keys) and `~/.local/state/sunroom-kiosk/install-state`.
-  `sunroom-kiosk setup` writes them from the templates its version carries, and Sunroom Screen
-  runs it every time it starts: a file that differs is rewritten (one that got broken heals
-  itself), and before it changes anything it copies its settings and notes to
+  settings file (brought to its version's keys) and its keys in
+  `~/.local/state/sunroom-kiosk/install-state`. `sunroom-kiosk setup` writes them from the
+  templates its version carries: the installer runs it once Sunroom Screen is installed (since
+  0.18.0; it wrote them itself before), every update runs it, and Sunroom Screen runs it every
+  time it starts: a file that differs is rewritten (one that got broken heals itself), and before
+  it changes anything it copies its settings and notes to
   `~/.local/state/sunroom-kiosk/backup/<version>/` (the last three versions are kept). It never
   touches the browser's profile (the pairing) or Sunroom's data. `sunroom-kiosk setup --check`
-  says what differs without changing anything. Root's files are never its own to write.
+  says what differs without changing anything. Root's files are never its own to write: the
+  installer writes them, and after an update the root helper.
 - With `--force-hdmi`: two options in the kernel command line (`cmdline.txt`), with the original
   kept beside it.
 
 `~/.local/state/sunroom-kiosk/install-state` records the changes to shared files, so the
-uninstaller can put them back. The files the installer copies are in `kiosk/files/`.
+uninstaller can put them back: the installer's keys for what it changes as root, Sunroom
+Screen's for its own (`STATE_SETUP_VERSION`, and whether it made labwc's autostart file), each
+keeping the other's. The files the installer and Sunroom Screen's setup copy are in
+`kiosk/files/`, which Sunroom Screen's wheel carries.
 
 ### A Pi set up before Sunroom 0.13.0
 
@@ -172,8 +187,9 @@ pacman), or Google Chrome from Google where the system's Chromium is a snap (Ubu
 package adds Google's software source, so the system's own updates keep Chrome up to date. A
 snap's browser is never used: its sandbox can't open the screen's profile or read its policy.
 
-Then it installs uv and Sunroom Screen as above, the user service, and
-`~/.config/autostart/sunroom-kiosk.desktop`, which starts it when you sign in. With `sudo` it
+Then it installs uv and Sunroom Screen as above, which writes its own user service and
+`~/.config/autostart/sunroom-kiosk.desktop` (`sunroom-kiosk setup`), and that starts it when you
+sign in. With `sudo` it
 writes the browser's policy and puts in the root helper (below), which lets Sunroom Screen write
 that policy again as it starts, so the browser never asks on the screen to let Sunroom reach
 Sunroom Screen (without `sudo`, it asks once). Nothing else on the computer changes. When the
@@ -202,9 +218,11 @@ begin (ADR 0041). The installer itself starts no other PowerShell.
 
 It needs no administrator and installs no service. It installs uv (uv's own zip from GitHub,
 checked against its checksum) and Sunroom Screen (the same release and checks as above) for this
-user, has **Sunroom Screen** start at sign-in with no console window (since 0.18.0 a `Run` value
-under `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`, which Sunroom Screen
-writes itself; the Startup folder's shortcut before, which it takes out), and starts it: Microsoft Edge full screen, or Google Chrome when there's no Edge.
+user, has **Sunroom Screen** set itself up to start at sign-in with no console window
+(`sunroom-kiosk setup`, as every update does: since 0.18.0 the `Run` value `SunroomScreen` under
+`HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`, starting
+`sunroom-kioskw.exe run`; the Startup folder's shortcut before, which it takes out), and starts
+it: Microsoft Edge full screen, or Google Chrome when there's no Edge.
 Sunroom Screen writes the browser's policy for this user itself
 (`HKEY_CURRENT_USER\Software\Policies\…`), so Sunroom reaches it without a prompt.
 
@@ -230,7 +248,8 @@ run the same download as a script block, in the PowerShell window too:
 ```
 
 or save the file and run `powershell -ExecutionPolicy Bypass -File install.ps1 -Url …`.
-`-Uninstall` takes it off again, asking before it deletes the pairing; uv stays. The installer
+`-Uninstall` takes it off again (the `Run` value, and an old Startup shortcut, with it), asking
+before it deletes the pairing; uv stays. The installer
 ends by printing the exact command that removes it. On the screen, **Settings → This Screen →
 Uninstall Sunroom Screen…** does the same without a terminal (ADR 0042).
 
@@ -245,9 +264,10 @@ curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.
 It needs no administrator. With no Google Chrome, Chromium or Microsoft Edge in `/Applications`
 or `~/Applications`, it downloads Google Chrome from Google, checks Google's signature on it,
 and puts it in `/Applications` (in `~/Applications` for an account that can't write there).
-Then it installs uv and Sunroom Screen (the same release and checks as above) for this user, and
-a LaunchAgent, `~/Library/LaunchAgents/app.sunroom.kiosk.plist`, which starts it at sign-in and
-again if it fails, and starts it now when the Mac is signed in (before the screen is paired,
+Then it installs uv and Sunroom Screen (the same release and checks as above) for this user,
+which writes its own LaunchAgent (`sunroom-kiosk setup`),
+`~/Library/LaunchAgents/app.sunroom.kiosk.plist`, which starts it at sign-in and again if it
+fails; and it starts it now when the Mac is signed in (before the screen is paired,
 `launchctl bootout gui/$(id -u)/app.sunroom.kiosk` in Terminal closes it until the next
 sign-in). Sunroom Screen sets the browser's policy in its own preferences (`defaults`, this user
 only), keeps the display awake while the household's times say on (`caffeinate`) and lets it sleep

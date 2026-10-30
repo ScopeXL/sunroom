@@ -1,6 +1,7 @@
 """Windows' uninstaller (uninstall.py, ADR 0042) against a temporary folder: what it removes, in
 what order, and that it waits for Sunroom Screen to quit first. Its commands are recorded, never
-run, so it passes on every system. Synthetic paths only."""
+run, and the registry is never asked (``forget``), so it passes on every system and leaves a
+Windows computer's own start-up entry alone. Synthetic paths only."""
 
 from __future__ import annotations
 
@@ -8,6 +9,10 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from sunroom_kiosk import uninstall
+
+
+def no_run_value() -> bool:
+    return False
 
 
 def places(tmp_path: Path, *, uv: bool = True) -> uninstall.Places:
@@ -37,7 +42,7 @@ def test_it_takes_off_what_install_ps1_put_on(tmp_path: Path) -> None:
         ran.append(list(argv))
         return 0
 
-    said = uninstall.uninstall(where, sunroom=False, run=run)
+    said = uninstall.uninstall(where, sunroom=False, run=run, forget=no_run_value)
     agent, uv = str(where.agent), str(where.uv)
     assert ran == [[agent, "policy", "--remove"], [uv, "tool", "uninstall", "sunroom-kiosk"]]
     assert not where.shortcut.exists()
@@ -53,7 +58,7 @@ def test_with_sunroom_it_takes_sunroom_and_the_familys_data_first(tmp_path: Path
         ran.append(list(argv))
         return 0
 
-    uninstall.uninstall(where, sunroom=True, run=run)
+    uninstall.uninstall(where, sunroom=True, run=run, forget=no_run_value)
     assert ran[0] == [str(where.agent), "sunroom", "remove", "--delete-data"]
 
 
@@ -63,7 +68,7 @@ def test_a_step_that_fails_is_said_and_the_rest_go_on(tmp_path: Path) -> None:
     def run(argv: Sequence[str]) -> int:
         return 1
 
-    said = uninstall.uninstall(where, sunroom=False, run=run)
+    said = uninstall.uninstall(where, sunroom=False, run=run, forget=no_run_value)
     assert said[0] == "Took the browser's policy out didn't work (exit 1)."
     assert not where.data.exists()
 
@@ -74,8 +79,9 @@ def test_it_waits_for_sunroom_screen_to_quit() -> None:
     assert not uninstall.wait_for_quit(lambda: True, within=0.01, pause=0)
 
 
-def test_it_takes_out_the_run_value_that_starts_it(tmp_path: Path) -> None:
-    """Since 0.18.0 the Run value starts Sunroom Screen at sign-in (setup_files.py)."""
+def test_it_takes_out_the_run_value_that_starts_it_and_an_old_shortcut(tmp_path: Path) -> None:
+    """Since 0.18.0 the Run value starts Sunroom Screen at sign-in (setup_files.py, which the
+    installer runs); a screen installed before may still have the Startup folder's shortcut."""
     where = places(tmp_path)
     asked: list[str] = []
 
@@ -86,3 +92,10 @@ def test_it_takes_out_the_run_value_that_starts_it(tmp_path: Path) -> None:
     said = uninstall.uninstall(where, sunroom=False, run=lambda argv: 0, forget=forget)
     assert asked == ["run-value"]
     assert "Took Sunroom Screen out of what starts at sign-in." in said
+    assert "Took Sunroom Screen out of the Startup folder." in said
+    assert not where.shortcut.exists()
+    # Neither there: nothing said about either.
+    again = places(tmp_path / "again")
+    again.shortcut.unlink()
+    said = uninstall.uninstall(again, sunroom=False, run=lambda argv: 0, forget=no_run_value)
+    assert not any("sign-in" in line or "Startup" in line for line in said)

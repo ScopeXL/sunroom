@@ -10,12 +10,14 @@ environment was made from, as it does apply.py (updater.py):
     pythonw uninstall.py --agent C:\\Users\\…\\.local\\bin\\sunroom-kiosk.exe [--sunroom]
 
 It waits for Sunroom Screen to quit (the agent quits right after starting this, closing its
-browser), then takes off what install.ps1 put on: Sunroom run on this computer with the family's
-data when ``--sunroom`` says so (the agent's own ``sunroom remove --delete-data``), the browser's
-policy for this user (``policy --remove``), the Startup shortcut, Sunroom Screen itself (``uv
-tool uninstall sunroom-kiosk``) and its folder, ``%LOCALAPPDATA%\\sunroom-kiosk`` (its settings,
-the browser profile with the pairing, the log). uv stays, as ``install.ps1 -Uninstall`` leaves it.
-Each step that fails is noted in the log beside this file and the rest go on.
+browser), then takes off what install.ps1 and Sunroom Screen's setup put on: Sunroom run on this
+computer with the family's data when ``--sunroom`` says so (the agent's own ``sunroom remove
+--delete-data``), the browser's policy for this user (``policy --remove``), the ``Run`` value that
+starts it at sign-in and an older install's Startup shortcut, Sunroom Screen itself (``uv tool
+uninstall sunroom-kiosk``) and its folder, ``%LOCALAPPDATA%\\sunroom-kiosk`` (its settings, the
+browser profile with the pairing, the log). uv stays, as ``install.ps1 -Uninstall`` (which takes
+out the same two start-up entries) leaves it. Each step that fails is noted in the log beside
+this file and the rest go on.
 """
 
 from __future__ import annotations
@@ -41,7 +43,7 @@ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 class Places:
     agent: Path  # sunroom-kiosk.exe, uv's command for Sunroom Screen
     data: Path  # %LOCALAPPDATA%\sunroom-kiosk
-    shortcut: Path  # the Startup folder's Sunroom Screen.lnk
+    shortcut: Path  # the Startup folder's Sunroom Screen.lnk, from an install before 0.18.0
     uv: Path | None
     log: Path
 

@@ -27,8 +27,8 @@
                                   and every update and every start do
     sunroom-kiosk --version
 
-Started with no console (Windows' ``sunroom-kioskw``, from the Startup folder), it writes what it
-says to ``sunroom-kiosk.log`` beside its settings.
+Started with no console (Windows' ``sunroom-kioskw``, from its ``Run`` value at sign-in), it writes
+what it says to ``sunroom-kiosk.log`` beside its settings.
 
 The service runs ``sunroom-kiosk run``; on a Pi that's the user unit sunroom-kiosk.service.
 """

@@ -1,5 +1,6 @@
 """Windows 10 and 11 (docs/M7.md T14): a computer someone signs in to, where Sunroom Screen runs
-for that person from the Startup folder, with no administrator rights and no service.
+for that person from a ``Run`` value it writes itself (setup_files.py; the Startup folder before
+0.18.0), with no administrator rights and no service.
 
 * **Power:** ``shutdown /r /t 5`` and ``shutdown /s /t 5``, which a signed-in user may run.
 * **The network:** Windows joins Wi-Fi itself, and the Network row reads ``netsh wlan show
