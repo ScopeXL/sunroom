@@ -5,11 +5,14 @@ Synthetic addresses only."""
 from __future__ import annotations
 
 import argparse
+import getpass
+import hashlib
 import importlib.machinery
 import importlib.util
 import io
 import json
 import sys
+import zipfile
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -223,3 +226,175 @@ def test_the_uninstallers_dry_run_from_the_screen_changes_nothing(tmp_path: Path
     assert "delete it and ALL its data" in said
     assert profile.is_dir() and unit.is_file()
     assert not (home / ".local" / "state").exists()  # not even a log
+
+
+# ---------------------------------------------------------------------------- apply-system
+
+RELEASE = "9.9.9"
+WHEEL_NAME = f"sunroom_kiosk-{RELEASE}-py3-none-any.whl"
+
+
+def wheel(tmp_path: Path, files: dict[str, str]) -> Path:
+    """A wheel of our own, with a kiosk/files of its own."""
+    path = tmp_path / "wheels" / WHEEL_NAME
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("sunroom_kiosk/__init__.py", "")
+        for relative, text in files.items():
+            archive.writestr(f"sunroom_kiosk/files/{relative}", text)
+    return path
+
+
+SHIPPED = {
+    relative: (FILES / relative).read_text(encoding="utf-8")
+    for relative in (
+        "NetworkManager/zz-sunroom-kiosk-wifi.conf",
+        "udev/90-sunroom-kiosk-backlight.rules",
+        "modules-load/sunroom-kiosk-i2c.conf",
+        "avahi/sunroom.service",
+        "sudoers/sunroom-kiosk",
+        "sunroom-kiosk-root",
+        "packages/pi.txt",
+        "packages/linux.txt",
+    )
+}
+
+
+class System:
+    """Root's commands, written down and answered: which packages are in, what apt offers."""
+
+    def __init__(self, installed: set[str], offered: set[str]) -> None:
+        self.installed = installed
+        self.offered = offered
+        self.groups = {"pi", "adm"}
+        self.ran: list[list[str]] = []
+
+    def __call__(self, argv: list[str]) -> tuple[int, str]:
+        self.ran.append(argv)
+        name = argv[-1]
+        if argv[0] == "dpkg-query":
+            return 0, "install ok installed" if name in self.installed else "unknown"
+        if argv[0] == "apt-cache":
+            return (0, "") if name in self.offered else (100, "")
+        if "install" in argv:
+            self.installed |= set(argv[argv.index("-y") + 1 :])
+        if argv[0] == "id":
+            return 0, " ".join(sorted(self.groups))
+        if argv[0] == "usermod":
+            self.groups.add(argv[2])
+        return 0, ""
+
+    def index(self, word: str) -> int:
+        return next(i for i, argv in enumerate(self.ran) if word in argv)
+
+
+@pytest.fixture
+def system(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> System:
+    """The helper's root paths under the test's folder, GitHub's sums and root's commands
+    answered here, a Pi on Wayland dimming over DDC/CI."""
+    etc = tmp_path / "root"
+    for name, path in (
+        ("NM_DROPIN", "etc/NetworkManager/conf.d/zz-sunroom-kiosk-wifi.conf"),
+        ("BACKLIGHT_RULE", "etc/udev/rules.d/90-sunroom-kiosk-backlight.rules"),
+        ("I2C_MODULES", "etc/modules-load.d/sunroom-kiosk-i2c.conf"),
+        ("AVAHI_SERVICE", "etc/avahi/services/sunroom.service"),
+        ("SUDOERS_FILE", "etc/sudoers.d/sunroom-kiosk"),
+        ("SELF", "usr/local/sbin/sunroom-kiosk-root"),
+    ):
+        monkeypatch.setattr(root_helper, name, str(etc / path))
+    (etc / "etc" / "NetworkManager" / "conf.d").mkdir(parents=True)
+    monkeypatch.setenv("SUDO_USER", getpass.getuser())
+    monkeypatch.setattr(root_helper, "is_pi", lambda: True)
+
+    def settings(home: str) -> dict[str, str]:
+        return {"SUNROOM_SESSION": "wayland", "SUNROOM_BRIGHTNESS": "ddc"}
+
+    monkeypatch.setattr(root_helper, "screen_settings", settings)
+    answer = System(
+        installed={"curl", "ca-certificates", "jq", "qrencode", "python3"},
+        offered={"wlr-randr", "ddcutil"},
+    )
+    monkeypatch.setattr(root_helper, "run", answer)
+    return answer
+
+
+def sums_for(path: Path) -> dict[str, str]:
+    return {path.name: hashlib.sha256(path.read_bytes()).hexdigest()}
+
+
+def test_the_helper_says_its_version() -> None:
+    assert root_helper.VERSION == "@VERSION@"  # the installer stamps it, as apply-system does
+
+
+def test_apply_system_refuses_a_wheel_github_doesnt_list(
+    tmp_path: Path, system: System, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    built = wheel(tmp_path, SHIPPED)
+
+    def wrong(release: str) -> dict[str, str]:
+        return {WHEEL_NAME: "0" * 64}
+
+    monkeypatch.setattr(root_helper, "fetch_sums", wrong)
+    assert root_helper.apply_system(str(built)) == 2
+    assert system.ran == []
+    assert not Path(root_helper.SUDOERS_FILE).exists() and not Path(root_helper.NM_DROPIN).exists()
+
+    def right(release: str) -> dict[str, str]:
+        return sums_for(built)
+
+    monkeypatch.setattr(root_helper, "fetch_sums", right)
+    other = tmp_path / "elsewhere" / "sunroom_kiosk-1.0-py3-none-any.whl"  # not a release's name
+    other.parent.mkdir()
+    other.write_bytes(built.read_bytes())
+    assert root_helper.apply_system(str(other)) == 2
+
+
+def test_apply_system_puts_the_releases_system_part_in_place(
+    tmp_path: Path,
+    system: System,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    built = wheel(tmp_path, SHIPPED)
+    asked: list[str] = []
+
+    def sums(release: str) -> dict[str, str]:
+        asked.append(release)
+        return sums_for(built)
+
+    monkeypatch.setattr(root_helper, "fetch_sums", sums)
+    assert root_helper.apply_system(str(built)) == 0
+    assert asked == [RELEASE]  # the release's own sums, from GitHub, by the wheel's name
+    report = json.loads(capsys.readouterr().out)
+    assert report["changed"] == ["wifi", "i2c", "packages", "groups", "sudoers", "helper"]
+    # A desktop's package (wlr-randr) and a group (i2c) both count from the next sign-in.
+    assert report["failed"] == [] and report["needs_reboot"] is True
+    assert ["usermod", "-aG", "i2c", getpass.getuser()] in system.ran
+    wifi = Path(root_helper.NM_DROPIN).read_text(encoding="utf-8")
+    assert wifi.startswith(f"# Written by the Sunroom installer (kiosk/install.sh {RELEASE}).")
+    assert not Path(root_helper.BACKLIGHT_RULE).exists()  # this screen dims over DDC/CI
+    installs = [argv for argv in system.ran if "install" in argv]
+    assert installs and installs[0][-2:] == ["wlr-randr", "ddcutil"]  # wlopm isn't offered
+    assert "x11-xserver-utils" not in installs[0]  # Wayland's, not X11's
+    rule = Path(root_helper.SUDOERS_FILE)
+    assert f"{getpass.getuser()} ALL=(root) NOPASSWD:" in rule.read_text(encoding="utf-8")
+    assert oct(rule.stat().st_mode & 0o777) == "0o440"
+    helper = Path(root_helper.SELF).read_text(encoding="utf-8")
+    assert f'VERSION = "{RELEASE}"' in helper and helper.startswith("#!/usr/bin/python3\n# Written")
+    # Who may run the helper changes last, after the packages and the groups.
+    assert system.index("visudo") > system.index("install")
+    assert root_helper.apply_system(str(built)) == 0  # again: nothing left to change
+    assert json.loads(capsys.readouterr().out)["changed"] == []
+
+
+def test_the_packages_follow_the_desktop_and_the_brightness() -> None:
+    listed = "curl\nwayland:wlr-randr\nx11:unclutter\nddc:ddcutil\n# a note\nBad Name\n"
+    assert root_helper.packages(listed, "x11", "backlight") == [
+        ("curl", False),
+        ("unclutter", True),
+    ]
+    assert root_helper.packages(listed, "wayland", "ddc") == [
+        ("curl", False),
+        ("wlr-randr", True),
+        ("ddcutil", False),
+    ]

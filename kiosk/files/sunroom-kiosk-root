@@ -11,16 +11,34 @@ else; it checks everything it's given (docs/KIOSK.md, docs/M7.md T7):
   update-sunroom      /opt/sunroom/update.sh, the all-in-one Pi's own Sunroom
   remove-root-files   This Screen's Uninstall (ADR 0042, run by uninstall.sh --from-screen):
                       the files above that root owns, then the sudoers rule and this helper
+  version             the version the installer (or apply-system) wrote this helper from
+  apply-system WHEEL  an update's system part (ADR 0044): WHEEL must be Sunroom Screen's, and
+                      GitHub's SHA256SUMS for that release (fetched here, not given) must list
+                      its checksum; then only the wheel's kiosk/files are used: the Wi-Fi,
+                      backlight and i2c files this screen's settings say it has, an all-in-one
+                      Pi's avahi file, the packages the release lists that are missing, the
+                      user's groups, and last the sudoers rule (visudo first) and this helper.
+                      Prints what it did as JSON; fails only when the wheel didn't check out
 
 The system's Python, standard library only; root-owned in /usr/local/sbin.
 """
 
+import hashlib
+import io
 import json
 import os
+import pwd
+import re
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.request
+import zipfile
+
+# The release this helper was written from: the installer stamps it, and so does apply-system.
+VERSION = "@VERSION@"
 
 POLICY_FILES = {
     "/etc/chromium/policies/managed/sunroom-kiosk.json",
@@ -50,6 +68,32 @@ SCREEN_FILES = [
 SUDOERS_FILE = "/etc/sudoers.d/sunroom-kiosk"
 SELF = "/usr/local/sbin/sunroom-kiosk-root"
 MOST_BYTES = 64 * 1024
+NM_DROPIN, BACKLIGHT_RULE, I2C_MODULES = SCREEN_FILES
+AVAHI_SERVICE = "/etc/avahi/services/sunroom.service"
+PI_MODEL = "/proc/device-tree/model"
+RELEASES = "https://github.com/ScopeXL/sunroom/releases/download"
+WHEEL = re.compile(
+    r"^sunroom_kiosk-([0-9]+\.[0-9]+\.[0-9]+(?:[-+.][0-9A-Za-z.]+)?)-py3-none-any\.whl$"
+)
+MOST_WHEEL = 64 * 1024 * 1024
+FILES = "sunroom_kiosk/files/"
+PACKAGE = re.compile(r"^[a-z0-9][a-z0-9.+-]*$")
+SETTINGS = (
+    "SUNROOM_SESSION",
+    "SUNROOM_SCREEN_HELPER",
+    "SUNROOM_BRIGHTNESS",
+    "SUNROOM_BACKLIGHT",
+    "SUNROOM_MODE",
+)
+# apt-get as the installer runs it: no questions, and a wait for another install to finish.
+APT_GET = [
+    "env",
+    "DEBIAN_FRONTEND=noninteractive",
+    "apt-get",
+    "-q",
+    "-o",
+    "DPkg::Lock::Timeout=600",
+]
 
 
 def refuse(message):
@@ -107,6 +151,257 @@ def remove_root_files():
     return 0
 
 
+# ---------------------------------------------------------------------------- apply-system
+
+
+def run(argv):
+    """A system command (apt-get, udevadm, usermod, visudo…): its exit code and what it said."""
+    try:
+        done = subprocess.run(argv, capture_output=True, text=True, timeout=1800)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return 1, str(error)
+    return done.returncode, (done.stdout + done.stderr).strip()
+
+
+def fetch_sums(release):
+    """The release's SHA256SUMS from GitHub itself, over HTTPS with the system's certificates."""
+    with urllib.request.urlopen(f"{RELEASES}/v{release}/SHA256SUMS", timeout=60) as answer:
+        text = answer.read(MOST_BYTES).decode("utf-8", "replace")
+    sums = {}
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) == 2 and re.fullmatch(r"[0-9a-f]{64}", parts[0]):
+            sums[parts[1].lstrip("*")] = parts[0]
+    return sums
+
+
+def header(release):
+    return (
+        f"# Written by the Sunroom installer (kiosk/install.sh {release}). Running it again "
+        "replaces this file.\n"
+    )
+
+
+def render(text, values):
+    for name, value in values.items():
+        text = text.replace(f"@{name}@", value)
+    return text
+
+
+def stamped(text, release):
+    """The installer's stamp_file: the header after any #! line."""
+    if text.startswith("#!"):
+        first, _, rest = text.partition("\n")
+        return f"{first}\n{header(release)}{rest}"
+    return header(release) + text
+
+
+def install_file(path, text, mode):
+    """``text`` at ``path``, root's, unless it's there already. True when it changed."""
+    try:
+        with open(path, encoding="utf-8") as current:
+            if current.read() == text:
+                return False
+    except OSError:
+        pass
+    folder = os.path.dirname(path)
+    os.makedirs(folder, mode=0o755, exist_ok=True)
+    handle, tmp = tempfile.mkstemp(dir=folder, prefix=".sunroom-kiosk.")
+    with os.fdopen(handle, "w", encoding="utf-8") as out:
+        out.write(text)
+    os.chmod(tmp, mode)
+    os.replace(tmp, path)
+    return True
+
+
+def screen_settings(home):
+    """The few settings that say which of root's files this screen has (never what's in them)."""
+    found = {}
+    try:
+        with open(os.path.join(home, ".config", "sunroom-kiosk", "config"), encoding="utf-8") as f:
+            text = f.read(MOST_BYTES)
+    except OSError:
+        return found
+    for line in text.splitlines():
+        key, sep, raw = line.strip().partition("=")
+        if sep and key in SETTINGS:
+            try:
+                words = shlex.split(raw, comments=True)
+            except ValueError:
+                continue
+            found[key] = words[0] if words else ""
+    return found
+
+
+def is_pi():
+    try:
+        with open(PI_MODEL, encoding="utf-8", errors="replace") as f:
+            return "raspberry pi" in f.read().lower()
+    except OSError:
+        return False
+
+
+def wants(settings):
+    """How this screen sets its brightness: "backlight", "ddc" or "" (the installer's choice)."""
+    if settings.get("SUNROOM_SCREEN_HELPER", "yes") == "no":
+        return ""
+    method = settings.get("SUNROOM_BRIGHTNESS", "auto")
+    if method == "sysfs":
+        return "backlight"
+    if method == "ddc":
+        return "ddc"
+    if method == "auto":
+        return "backlight" if settings.get("SUNROOM_BACKLIGHT") else "ddc"
+    return ""
+
+
+def packages(listed, session, brightness):
+    """The package names a release lists for this screen: "wayland:" and "x11:" lines for that
+    desktop only, "ddc:" for a monitor dimmed over DDC/CI; names checked, nothing else taken."""
+    names = []
+    for line in listed.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        kind, _, name = line.rpartition(":")
+        if kind and kind != session and not (kind == "ddc" and brightness == "ddc"):
+            continue
+        if PACKAGE.fullmatch(name):
+            names.append((name, kind in ("wayland", "x11")))
+    return names
+
+
+def add_to_group(group, user):
+    """The user in ``group``, when it exists and they aren't yet. True when it changed."""
+    if run(["getent", "group", group])[0] != 0:
+        return False
+    code, said = run(["id", "-nG", user])
+    if code == 0 and group in said.split():
+        return False
+    return run(["usermod", "-aG", group, user])[0] == 0
+
+
+def apply_system(wheel):
+    name = os.path.basename(wheel)
+    matched = WHEEL.match(name)
+    if not matched or not os.path.isfile(wheel):
+        return refuse("That isn't a Sunroom Screen wheel.")
+    release = matched.group(1)
+    user = os.environ.get("SUDO_USER", "")
+    try:
+        account = pwd.getpwnam(user)
+    except KeyError:
+        return refuse("Run me with sudo, as the screen's user.")
+    # Read once and kept: the file can't be swapped between its check and its use.
+    with open(wheel, "rb") as f:
+        data = f.read(MOST_WHEEL + 1)
+    if len(data) > MOST_WHEEL:
+        return refuse("That wheel is too big.")
+    try:
+        sums = fetch_sums(release)
+    except (OSError, ValueError):
+        return refuse(f"Couldn't check Sunroom {release} with GitHub. Try again later.")
+    if sums.get(name) != hashlib.sha256(data).hexdigest():
+        return refuse(f"That wheel isn't the one Sunroom {release} lists. Nothing was changed.")
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            files = {
+                item[len(FILES):]: archive.read(item).decode("utf-8")
+                for item in archive.namelist()
+                if item.startswith(FILES) and not item.endswith("/")
+            }
+    except (zipfile.BadZipFile, UnicodeDecodeError):
+        return refuse("That wheel can't be opened.")
+
+    values = {"VERSION": release, "USER": user, "HOME": account.pw_dir}
+    settings = screen_settings(account.pw_dir)
+    session = settings.get("SUNROOM_SESSION") or "wayland"
+    brightness = wants(settings)
+    pi = is_pi()
+    changed, failed, reboot = [], [], False
+
+    def piece(name, path, relative, wanted=True, mode=0o644):
+        if not wanted or relative not in files:
+            return False
+        try:
+            if install_file(path, stamped(render(files[relative], values), release), mode):
+                changed.append(name)
+                return True
+        except OSError as error:
+            failed.append(f"{name}: {error}")
+        return False
+
+    rules = False
+    if pi:
+        has_nm = os.path.isdir(os.path.dirname(NM_DROPIN))
+        piece("wifi", NM_DROPIN, "NetworkManager/zz-sunroom-kiosk-wifi.conf", has_nm)
+        rule = "udev/90-sunroom-kiosk-backlight.rules"
+        rules = piece("backlight", BACKLIGHT_RULE, rule, brightness == "backlight")
+        piece("i2c", I2C_MODULES, "modules-load/sunroom-kiosk-i2c.conf", brightness == "ddc")
+    if os.path.isfile(AVAHI_SERVICE) and "avahi/sunroom.service" in files:
+        with open(AVAHI_SERVICE, encoding="utf-8", errors="replace") as f:
+            port = re.search(r"<port>(\d+)</port>", f.read())
+        found = {
+            "PORT": port.group(1) if port else "8080",
+            "VERSION": release,
+            "NOTE": header(release)[2:].rstrip("\n"),
+        }
+        text = render(files["avahi/sunroom.service"], found)
+        try:
+            if install_file(AVAHI_SERVICE, text, 0o644):
+                changed.append("avahi")
+        except OSError as error:
+            failed.append(f"avahi: {error}")
+
+    listed = files.get(f"packages/{'pi' if pi else 'linux'}.txt", "")
+    missing = [
+        (name, desktop)
+        for name, desktop in packages(listed, session, brightness)
+        if run(["dpkg-query", "-W", "-f=${Status}", name])[1] != "install ok installed"
+    ]
+    # A package this release of the system doesn't offer (wlopm, ddcutil on some) is skipped.
+    available = [pair for pair in missing if run(["apt-cache", "show", pair[0]])[0] == 0]
+    if available:
+        run([*APT_GET, "update"])
+        code, said = run([*APT_GET, "install", "-y", *[name for name, _ in available]])
+        if code == 0:
+            changed.append("packages")
+            reboot = reboot or any(desktop for _, desktop in available)
+        else:
+            failed.append(f"packages: {said[-300:]}")
+    if rules:
+        run(["udevadm", "control", "--reload"])
+        run(["udevadm", "trigger", "--action=add", "--subsystem-match=backlight"])
+    if brightness == "ddc" and "i2c" in changed:
+        run(["modprobe", "i2c-dev"])
+    joined = False
+    for group, method in (("video", "backlight"), ("i2c", "ddc")):
+        if pi and brightness == method and add_to_group(group, user):
+            joined = True
+    if joined:
+        changed.append("groups")
+        reboot = True  # a group counts from the next sign-in
+
+    # Last: who may run this helper, checked by visudo first, then the helper itself.
+    if "sudoers/sunroom-kiosk" in files:
+        rule = header(release) + render(files["sudoers/sunroom-kiosk"], values)
+        handle, tmp = tempfile.mkstemp(prefix=".sunroom-kiosk.")
+        with os.fdopen(handle, "w", encoding="utf-8") as out:
+            out.write(rule)
+        try:
+            if run(["visudo", "-cqf", tmp])[0] != 0:
+                failed.append("sudoers: visudo refused it")
+            elif install_file(SUDOERS_FILE, rule, 0o440):
+                changed.append("sudoers")
+        except OSError as error:
+            failed.append(f"sudoers: {error}")
+        finally:
+            os.remove(tmp)
+    piece("helper", SELF, "sunroom-kiosk-root", mode=0o755)
+    print(json.dumps({"changed": changed, "failed": failed, "needs_reboot": reboot}))
+    return 0
+
+
 def main(argv):
     if os.geteuid() != 0:
         return refuse("Run me with sudo.")
@@ -116,7 +411,15 @@ def main(argv):
         return update_sunroom()
     if argv == ["remove-root-files"]:
         return remove_root_files()
-    return refuse("Usage: sunroom-kiosk-root write-policy PATH | update-sunroom | remove-root-files")
+    if argv == ["version"]:
+        print(VERSION)
+        return 0
+    if argv[:1] == ["apply-system"] and len(argv) == 2:
+        return apply_system(argv[1])
+    return refuse(
+        "Usage: sunroom-kiosk-root write-policy PATH | update-sunroom | remove-root-files"
+        " | version | apply-system WHEEL"
+    )
 
 
 if __name__ == "__main__":

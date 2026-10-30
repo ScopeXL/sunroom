@@ -384,3 +384,12 @@ def test_from_an_update_the_report_is_kept_for_the_next_start(tmp_path: Path) ->
     setup_files.save_report(report, update_json)
     saved = json.loads(text(update_json))
     assert saved["latest"] == "9.9.9" and saved["setup"]["changed"] == report.changed
+
+
+def test_the_terminal_is_asked_for_only_when_the_helper_cant_put_roots_part_right() -> None:
+    line = "curl -fsSL … | bash"
+    assert setup_files.needs_terminal(None, ["helper"], line) == line  # from before 0.18.0
+    assert setup_files.needs_terminal("0.17.0", ["helper"], line) == line
+    assert setup_files.needs_terminal(setup_files.SYSTEM_PART_SINCE, ["wifi"], line) is None
+    assert setup_files.needs_terminal(None, [], line) is None  # nothing of root's differs
+    assert setup_files.needs_terminal(None, ["helper"], None) is None  # a Mac, Windows

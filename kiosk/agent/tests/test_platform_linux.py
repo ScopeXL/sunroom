@@ -11,8 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from sunroom_kiosk.platform.base import CommandResult, PlatformError
+from sunroom_kiosk.platform.base import CommandResult, PlatformError, SystemReport
 from sunroom_kiosk.platform.linux import (
+    INSTALL_COMMAND,
     ROOT_HELPER,
     LinuxPlatform,
     kde_output,
@@ -405,3 +406,43 @@ async def test_a_linux_screen_uninstalls_through_the_installers_uninstaller(
     platform.spawn = refuses
     with pytest.raises(PlatformError, match="couldn't start its uninstaller"):
         await platform.uninstall(sunroom=False, port=7800)
+
+
+async def test_the_root_helper_says_its_version_and_applies_an_updates_system_part(
+    tmp_path: Path,
+) -> None:
+    """ADR 0044: the helper checks the wheel against GitHub itself; its report is its last line."""
+    helper = tmp_path / ROOT_HELPER.lstrip("/")
+    helper.parent.mkdir(parents=True)
+    helper.write_text("#!/bin/sh\n")
+    report = {"changed": ["wifi", "packages"], "failed": [], "needs_reboot": True}
+    shell = Shell(
+        {
+            f"sudo -n {ROOT_HELPER} version": ok("0.18.0"),
+            f"sudo -n {ROOT_HELPER} apply-system": ok("apt said a lot\n" + json.dumps(report)),
+        }
+    )
+    platform = LinuxPlatform(shell, tmp_path)
+    assert await platform.root_helper_version() == "0.18.0"
+    wheel = tmp_path / "sunroom_kiosk-0.18.0-py3-none-any.whl"
+    assert await platform.apply_system(wheel) == SystemReport(
+        changed=["wifi", "packages"], failed=[], needs_reboot=True
+    )
+    assert shell.calls[-1][0] == ["sudo", "-n", ROOT_HELPER, "apply-system", str(wheel)]
+    assert platform.install_command() == INSTALL_COMMAND
+
+
+async def test_a_helper_from_before_0_18_0_says_no_version_and_none_applies_nothing(
+    tmp_path: Path,
+) -> None:
+    shell = Shell({f"sudo -n {ROOT_HELPER} version": CommandResult(2, "Usage: sunroom-kiosk-root")})
+    platform = LinuxPlatform(shell, tmp_path)
+    assert await platform.root_helper_version() is None  # no helper here at all
+    assert await platform.apply_system(tmp_path / "x.whl") is None
+    assert shell.calls == []
+    helper = tmp_path / ROOT_HELPER.lstrip("/")
+    helper.parent.mkdir(parents=True)
+    helper.write_text("#!/bin/sh\n")
+    assert await platform.root_helper_version() is None  # one that can't say
+    refused = Shell({f"sudo -n {ROOT_HELPER} apply-system": CommandResult(2, "isn't the one")})
+    assert await LinuxPlatform(refused, tmp_path).apply_system(tmp_path / "x.whl") is None

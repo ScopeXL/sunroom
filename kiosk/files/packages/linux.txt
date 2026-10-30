@@ -1,0 +1,3 @@
+# What another Linux computer's screen needs beyond its browser, which its installer offers when
+# there's none (ADR 0044): nothing yet. The same form as pi.txt; changing it bumps
+# SYSTEM_PART_SINCE (kiosk/agent setup_files.py).

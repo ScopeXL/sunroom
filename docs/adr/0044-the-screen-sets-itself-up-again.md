@@ -31,6 +31,8 @@
 | The settings file (T10) | `SUNROOM_CONFIG_VERSION` and `config.migrate`, ordered steps (none yet), run by setup: a key a step sets is written in place, one it removes is gone, every other line kept |
 | What's kept safe (T10) | Before the first change, the settings file, the install-state, `update.json` and `sunroom.json` are copied to `~/.local/state/sunroom-kiosk/backup/<version>/` (`%LOCALAPPDATA%\sunroom-kiosk\backup\` on Windows), once per version, the last three versions kept. The browser's profile and Sunroom's data are never touched |
 | Root's part (T10) | Never written by setup: `needs_root` names the root helper (on a Pi, or a computer that has one) and the Wi-Fi, backlight, i2c and avahi files the install-state says the installer wrote, when they differ |
+| Root's part, applied (T11) | **The root helper applies it, trusting nothing it's handed**: `sunroom-kiosk-root apply-system WHEEL` reads the release from the wheel's name, fetches that release's `SHA256SUMS` from GitHub itself (HTTPS, the system's certificates) and refuses a wheel it doesn't list; it reads the wheel once into memory (so the file can't be swapped after the check) and takes only known paths from its `kiosk/files`. In order: the Wi-Fi drop-in (a Pi with NetworkManager), the backlight rule or the i2c module file (as the screen's `SUNROOM_BRIGHTNESS` and `SUNROOM_BACKLIGHT` say), an all-in-one Pi's avahi file (its port kept), the packages `files/packages/<pi|linux>.txt` list for this desktop that are missing and offered (names checked against `^[a-z0-9][a-z0-9.+-]*$`), `udevadm` when a rule changed, the user's `video` or `i2c` group, and last the sudoers rule (`visudo -c` first) and the helper's next version. It prints `{changed, failed, needs_reboot}` (a desktop's package or a group counts from the next sign-in) and fails only when the wheel didn't check out. `version` prints the release it was written from. The browser's policy stays `write-policy`'s, `/opt/sunroom` `update.sh`'s |
+| A helper too old (T11) | A helper from before 0.18.0 has neither verb, so when root's part differs Sunroom Screen keeps the installer's one line for this platform (`needs_terminal`, from `platform.install_command()`) for This Screen to show; `SYSTEM_PART_SINCE` (`setup_files.py`) names the release whose root files last changed, and a session that changes one bumps it |
 
 ## Consequences
 
@@ -39,5 +41,10 @@
   `Agent.setup_report`; `config.set_values`, `STEPS`, `CONFIG_VERSION`, `migrate`, `migrated`;
   `local.program_command` and `program_environment`; the Windows registry's `user_value`;
   `uninstall.remove_run_value`. The release's check names `sunroom_kiosk/files/sunroom-kiosk-root`.
+- New in the root helper: `version`, `apply-system` (`fetch_sums`, `screen_settings`,
+  `packages`, `add_to_group`, `install_file`); `kiosk/files/packages/pi.txt` and `linux.txt`. In
+  Sunroom Screen: `platform.SystemReport`, `Platform.root_helper_version`, `apply_system` and
+  `install_command` (Linux's `INSTALL_COMMAND`), `setup_files.needs_terminal`,
+  `Agent.needs_terminal`.
 - `local.py`'s LaunchAgent uid comes from `platform.base.user_id`, which pyright on Windows
   understands (the kiosk CI job had been red on that since 0.15.0).

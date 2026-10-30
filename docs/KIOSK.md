@@ -104,7 +104,15 @@ found, its pairing, its Updates choice) and replaces only its own files. Its log
 - One root helper, `/usr/local/sbin/sunroom-kiosk-root`, which `/etc/sudoers.d/sunroom-kiosk`
   lets your user run without a password, and nothing else: it writes the browser's policy (on
   any Linux screen since ADR 0038), and on a Pi installs the Pi's own updates and runs
-  `/opt/sunroom/update.sh`. It checks what it's asked.
+  `/opt/sunroom/update.sh`. It checks what it's asked. Its verbs: `write-policy PATH`,
+  `update-sunroom`, `remove-root-files`, `version` and, since 0.18.0, `apply-system WHEEL`, an
+  update's system part (ADR 0044): it fetches that release's `SHA256SUMS` from GitHub itself,
+  refuses a wheel they don't list, and from the checked wheel alone puts in place the Wi-Fi,
+  backlight and i2c files this screen's settings say it has, an all-in-one Pi's avahi file, the
+  packages the release lists (`kiosk/files/packages/`) that are missing, your user's groups, and
+  last its own sudoers rule (checked by `visudo`) and its next version. A screen set up before
+  0.18.0 has a helper without it, so its first update asks for the install command once more,
+  in a terminal.
 - The browser's policy, `/etc/chromium/policies/managed/sunroom-kiosk.json` (Google Chrome's is
   under `/etc/opt/chrome`, Edge's under `/etc/opt/edge`): no sign-in, password, translation or
   default-browser prompts, and Sunroom's page may reach Sunroom Screen on this computer without a

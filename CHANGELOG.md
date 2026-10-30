@@ -13,6 +13,10 @@ Everything that changes in Sunroom, written in plain English. The format follows
   docs/LANGUAGES.md). Setup asks too, and the first page has a Choose a Language button.
 - Sunroom Screen keeps its own start-up entries and settings file in order every time it starts,
   from the version it runs, so a file that got broken heals itself.
+- On a Raspberry Pi or a Linux computer, an update now brings the system's part of the screen's
+  setup along too (the Wi-Fi and backlight settings, the packages it needs, and Sunroom Screen's
+  own helper). Screens set up before 0.18.0 need the install command once more, in a terminal,
+  to teach their helper this; the screen says so under Software.
 
 ### Changed
 

@@ -1,0 +1,14 @@
+# What a Raspberry Pi's screen needs (kiosk/install.sh's install_packages; ADR 0044), one name a
+# line. "wayland:" and "x11:" are for that desktop only, "ddc:" for a monitor dimmed over DDC/CI.
+# After an update the root helper installs any that's missing (apply-system), skipping one the
+# system doesn't offer. Changing this list bumps SYSTEM_PART_SINCE (kiosk/agent setup_files.py).
+curl
+ca-certificates
+jq
+qrencode
+python3
+wayland:wlr-randr
+wayland:wlopm
+x11:x11-xserver-utils
+x11:unclutter
+ddc:ddcutil

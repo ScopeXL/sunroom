@@ -137,6 +137,15 @@ class UnsupportedError(PlatformError):
 
 
 @dataclass(frozen=True)
+class SystemReport:
+    """What the root helper's ``apply-system`` did with an update's system part (ADR 0044)."""
+
+    changed: list[str]
+    failed: list[str]
+    needs_reboot: bool
+
+
+@dataclass(frozen=True)
 class NetworkStatus:
     kind: ScreenNetworkKind
     ssid: str | None = None
@@ -265,6 +274,24 @@ class Platform:
     async def update_sunroom(self) -> bool:
         """Update the Sunroom that runs on this machine (an all-in-one Pi)."""
         return False
+
+    # ------------------------------------------------------------------ the system's part
+
+    async def root_helper_version(self) -> str | None:
+        """The root helper's version (ADR 0044); None with no helper, or with one from before
+        0.18.0, which can't say."""
+        return None
+
+    async def apply_system(self, wheel: Path) -> SystemReport | None:
+        """An update's system part, from a wheel the root helper checks against the release's
+        checksums itself; None where there's none (a Mac and Windows have no system part), or
+        when it couldn't."""
+        return None
+
+    def install_command(self) -> str | None:
+        """The installer's one line for this computer, for a screen whose root helper can't
+        finish an update (This Screen shows it under Software); None with no system part."""
+        return None
 
     async def uninstall(self, *, sunroom: bool, port: int) -> None:
         """Start Sunroom Screen's uninstaller as a process of its own, which outlives the agent

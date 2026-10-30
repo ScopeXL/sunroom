@@ -22,7 +22,7 @@ from typing import Any, Protocol
 import httpx
 
 from sunroom_kiosk import config as settings_file
-from sunroom_kiosk import logs, policy, screen
+from sunroom_kiosk import logs, policy, screen, setup_files
 from sunroom_kiosk.browser import Browser, PageLook
 from sunroom_kiosk.config import Config
 from sunroom_kiosk.discovery import Discovery, Found, found_out, origin_of
@@ -124,6 +124,8 @@ class Agent:
         # where they aren't its own to write (a checkout, --fake).
         self.setup = setup
         self.setup_report: Report | None = None
+        # The installer's one line, when root's part can't be put right from here (ADR 0044).
+        self.needs_terminal: str | None = None
         self.reachable = False
         self.running_sunroom = False  # one run at a time (POST /run-sunroom)
         self.known = Known()
@@ -303,6 +305,10 @@ class Agent:
             self.config = settings_file.load(self.config_path)
         if report.needs_root:
             log.info("Root's part differs: %s.", ", ".join(report.needs_root))
+            helper = await self.platform.root_helper_version()
+            self.needs_terminal = setup_files.needs_terminal(
+                helper, report.needs_root, self.platform.install_command()
+            )
 
     def spawn(self, work: Awaitable[Any]) -> None:
         async def guarded() -> None:

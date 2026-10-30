@@ -38,6 +38,7 @@ from sunroom_kiosk import config as settings_file
 from sunroom_kiosk import local
 from sunroom_kiosk.files import files_dir, script
 from sunroom_kiosk.platform.base import user_id
+from sunroom_kiosk.updater import newer
 from sunroom_kiosk.version import version
 
 if TYPE_CHECKING:
@@ -48,6 +49,20 @@ SYSTEM_PART_SINCE = "0.18.0"
 rule, the Wi-Fi, backlight and i2c files, the avahi service; the packages lists). A session that
 changes one of them bumps this to the release it ships in: a screen whose root helper is older
 can't finish that release's update by itself, and says so on This Screen."""
+
+
+def needs_terminal(
+    helper_version: str | None, needs_root: list[str], install_command: str | None
+) -> str | None:
+    """The installer's one line, when root's part differs and this screen's root helper can't
+    put it right by itself: none, or one from before SYSTEM_PART_SINCE (it has no
+    ``apply-system``). This Screen shows it under Software (ADR 0044)."""
+    if install_command is None or not needs_root:
+        return None
+    if helper_version is not None and not newer(SYSTEM_PART_SINCE, helper_version):
+        return None
+    return install_command
+
 
 BLOCK_BEGIN = "# >>> sunroom-kiosk"
 BLOCK_END = "# <<< sunroom-kiosk <<<"

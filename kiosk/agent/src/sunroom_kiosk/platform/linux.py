@@ -29,6 +29,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 from collections.abc import Callable, Mapping
 from pathlib import Path
@@ -44,6 +45,7 @@ from sunroom_kiosk.platform.base import (
     PlatformError,
     Runner,
     Spawn,
+    SystemReport,
     WifiNetwork,
     local_ip,
     run_command,
@@ -56,6 +58,13 @@ from sunroom_kiosk.schemas import ScreenCapability, ScreenSession
 log = logs.get("platform")
 
 ROOT_HELPER = "/usr/local/sbin/sunroom-kiosk-root"
+# The installer's one line (README's Install): what a screen whose root helper is from before
+# 0.18.0 needs once more, in a terminal, to finish its updates by itself (ADR 0044).
+INSTALL_COMMAND = (
+    "curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash"
+)
+APPLY_SYSTEM_LIMIT_S = 1800.0  # packages may download for minutes
+VERSION_LINE = re.compile(r"\d+\.\d+\.\d+\S*")
 DESKTOP_WAIT_S = 2.0
 CLOCK_TRIES = 30  # 2 s apart: a minute
 # The agent's rotations (counter-clockwise: 90 puts the picture's top at the left) in each tool's
@@ -302,6 +311,44 @@ class LinuxPlatform(Platform):
         if not result.ok:
             log.info("The root helper's %s didn't work: %s", args[0], result.first_line())
         return result.ok
+
+    async def root_helper_version(self) -> str | None:
+        if not self._root_helper():
+            return None
+        result = await self.run(["sudo", "-n", ROOT_HELPER, "version"])
+        line = result.first_line()
+        return line if result.ok and VERSION_LINE.fullmatch(line) else None
+
+    async def apply_system(self, wheel: Path) -> SystemReport | None:
+        if not self._root_helper():
+            return None
+        result = await self.run(
+            ["sudo", "-n", ROOT_HELPER, "apply-system", str(wheel)], limit=APPLY_SYSTEM_LIMIT_S
+        )
+        if not result.ok:
+            log.info("The root helper didn't apply the system's part: %s", result.first_line())
+            return None
+        for line in reversed(result.output.splitlines()):  # its report is the last line
+            try:
+                said: object = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(said, dict):
+                answer = cast(dict[str, object], said)
+                changed, failed = answer.get("changed"), answer.get("failed")
+                return SystemReport(
+                    changed=[str(item) for item in cast(list[object], changed)]
+                    if isinstance(changed, list)
+                    else [],
+                    failed=[str(item) for item in cast(list[object], failed)]
+                    if isinstance(failed, list)
+                    else [],
+                    needs_reboot=answer.get("needs_reboot") is True,
+                )
+        return None
+
+    def install_command(self) -> str | None:
+        return INSTALL_COMMAND
 
     async def write_policy(self, kind: policy.BrowserKind, document: dict[str, Any]) -> bool:
         return await self._as_root(
