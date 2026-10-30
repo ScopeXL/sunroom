@@ -1,8 +1,10 @@
 /**
  * What a photo library says (UX §4 "Photo Libraries", ADR 0036): the sentence under What to Show,
- * which says plainly what the screensaver shows, and the line under a library's name.
+ * which says plainly what the screensaver shows, and the line under a library's name. The words
+ * are lang/en.json's (ADR 0043).
  */
 import { formatTime } from "../../lib/dates";
+import { t } from "../../lib/lang";
 
 interface Choice {
   id: string;
@@ -26,22 +28,17 @@ export function count(value: number): string {
   return value.toLocaleString("en-US");
 }
 
-/** "1 photo", "12,345 photos". */
-export function photosWord(value: number): string {
-  return value === 1 ? "1 photo" : `${count(value)} photos`;
-}
-
 /** "Mia", "Mia or Leo", "Mia, Leo or Sam". */
 function orList(names: readonly string[]): string {
   if (names.length <= 1) return names[0] ?? "";
-  return `${names.slice(0, -1).join(", ")} or ${names.at(-1) ?? ""}`;
+  return t("photos.picks.or", { names: names.slice(0, -1).join(", "), last: names.at(-1) ?? "" });
 }
 
 /** The picks' names from the choices; an id the library no longer has is "one that's gone". */
 function named(ids: readonly string[], from: readonly Choice[]): string {
   const names = ids.flatMap((id) => from.find((choice) => choice.id === id)?.name ?? []);
   const gone = ids.length - names.length;
-  if (gone) names.push(gone === 1 ? "one that's gone" : `${count(gone)} that are gone`);
+  if (gone) names.push(t("photos.picks.gone", { n: gone }));
   return orList(names);
 }
 
@@ -51,15 +48,22 @@ function named(ids: readonly string[], from: readonly Choice[]): string {
  * Beach 2026, or tagged Wall, newest first, up to 500." (any pick matches).
  */
 export function picksSentence(picks: Picks, choices: Choices | undefined, limit: number): string {
-  const upTo = `newest first, up to ${count(limit)}`;
   if (!picks.people.length && !picks.albums.length && !picks.tags.length) {
-    return `Showing every photo, ${upTo}. Pick people, albums or tags to narrow it.`;
+    return t("photos.picks.every", { limit });
   }
   const parts: string[] = [];
-  if (picks.people.length) parts.push(`of ${named(picks.people, choices?.people ?? [])}`);
-  if (picks.albums.length) parts.push(`in ${named(picks.albums, choices?.albums ?? [])}`);
-  if (picks.tags.length) parts.push(`tagged ${named(picks.tags, choices?.tags ?? [])}`);
-  return `Showing photos ${parts.join(", or ")}, ${upTo}.`;
+  if (picks.people.length) {
+    parts.push(t("photos.picks.people", { names: named(picks.people, choices?.people ?? []) }));
+  }
+  if (picks.albums.length) {
+    parts.push(t("photos.picks.albums", { names: named(picks.albums, choices?.albums ?? []) }));
+  }
+  if (picks.tags.length) {
+    parts.push(t("photos.picks.tags", { names: named(picks.tags, choices?.tags ?? []) }));
+  }
+  // "of Mia, or in Beach 2026, or tagged Wall": any of them matches.
+  const either = parts.reduce((all, part) => t("photos.picks.also", { picks: all, more: part }));
+  return t("photos.picks.showing", { picks: either, limit });
 }
 
 interface LibraryState {
@@ -76,22 +80,29 @@ interface LibraryState {
  * fix (drawn in red): "Needs its key again", the server's silence, a full disk.
  */
 export function libraryLine(library: LibraryState): { text: string; trouble: boolean } {
-  if (library.status === "needs_reconnect") return { text: "Needs its key again", trouble: true };
+  if (library.status === "needs_reconnect") {
+    return { text: t("photos.library.line.needs_key"), trouble: true };
+  }
   if (library.status === "error") {
-    return { text: library.last_error ?? "Hasn't answered", trouble: true };
+    return { text: library.last_error ?? t("photos.library.line.no_answer"), trouble: true };
   }
   if (library.pending > 0) {
-    const total = library.photo_count + library.pending;
     return {
-      text: `Bringing in photos… ${count(library.photo_count)} of ${count(total)}`,
+      text: t("photos.library.line.bringing", {
+        done: library.photo_count,
+        total: library.photo_count + library.pending,
+      }),
       trouble: false,
     };
   }
-  if (library.checking) return { text: "Checking…", trouble: false };
+  if (library.checking) return { text: t("photos.library.line.checking"), trouble: false };
   if (library.last_error) return { text: library.last_error, trouble: true };
-  if (!library.last_scan_at) return { text: "Not checked yet", trouble: false };
+  if (!library.last_scan_at) return { text: t("photos.not_checked"), trouble: false };
   return {
-    text: `Checked ${formatTime(new Date(library.last_scan_at))} · ${photosWord(library.photo_count)}`,
+    text: t("photos.library.line.checked", {
+      time: formatTime(new Date(library.last_scan_at)),
+      n: library.photo_count,
+    }),
     trouble: false,
   };
 }
@@ -101,7 +112,10 @@ export function connectedLine(
   library: { version: string | null; library_photos: number | null },
   kindName: string,
 ): string {
-  const version = library.version ? ` ${library.version.split(".").slice(0, 2).join(".")}` : "";
-  const photos = library.library_photos !== null ? ` · ${photosWord(library.library_photos)}` : "";
-  return `Connected · ${kindName}${version}${photos}`;
+  const server = library.version
+    ? `${kindName} ${library.version.split(".").slice(0, 2).join(".")}`
+    : kindName;
+  return library.library_photos !== null
+    ? t("photos.library.connected_count", { server, n: library.library_photos })
+    : t("photos.library.connected", { server });
 }

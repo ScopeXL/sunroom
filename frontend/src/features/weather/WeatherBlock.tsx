@@ -2,6 +2,7 @@ import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 import { formatTime, formatWallTime, shortWeekday, zonedParts } from "../../lib/dates";
+import { t, tRich, useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Sheet } from "../../ui/Sheet";
 import { useShell } from "../../ui/shell";
@@ -9,11 +10,15 @@ import type { RailPlace } from "../registry";
 import { useWeather, useWeatherDay, type Weather, type WeatherDay } from "./data";
 import { degrees, highLow, placeWithoutCountry, rainChance, sky } from "./sky";
 
+/** When an old forecast is from ("9:10 AM"), once it's over 3 hours old (PLAN §11.4). */
+function staleTime(weather: Weather): string | null {
+  return weather.stale && weather.fetched_at ? formatTime(new Date(weather.fetched_at)) : null;
+}
+
 /** "as of 9:10" once the forecast is over 3 hours old (PLAN §11.4). */
 function staleText(weather: Weather): string | null {
-  return weather.stale && weather.fetched_at
-    ? `as of ${formatTime(new Date(weather.fetched_at))}`
-    : null;
+  const time = staleTime(weather);
+  return time ? t("weather.as_of", { time }) : null;
 }
 
 /** The forecast's first line, the weather now: "Partly cloudy, 64° now. High 72°, low 55°.",
@@ -21,9 +26,14 @@ function staleText(weather: Weather): string | null {
 function nowLine(weather: Weather, day: WeatherDay | undefined): string | null {
   if (!weather.current) return null;
   const { words } = sky(weather.current.code, weather.current.is_day);
-  const stale = staleText(weather);
-  const now = `${words}, ${degrees(weather.current.temperature)} now${stale ? `, ${stale}` : ""}.`;
-  return day ? `${now} ${highLow(day.high, day.low)}.` : now;
+  const facts = { sky: t(words), temp: degrees(weather.current.temperature) };
+  const time = staleTime(weather);
+  const now = time
+    ? t("weather.forecast.now_stale", { ...facts, time })
+    : t("weather.forecast.now", facts);
+  return day
+    ? `${now} ${t("weather.forecast.high_low", { high: degrees(day.high), low: degrees(day.low) })}`
+    : now;
 }
 
 /**
@@ -35,6 +45,7 @@ function nowLine(weather: Weather, day: WeatherDay | undefined): string | null {
  * days ahead. Nothing shows until there's a forecast.
  */
 export function WeatherBlock({ place }: { place: RailPlace }) {
+  const t = useT();
   const { data } = useWeather();
   const today = zonedParts(useMinute()).day;
   const day = useWeatherDay(today);
@@ -42,14 +53,14 @@ export function WeatherBlock({ place }: { place: RailPlace }) {
   if (data?.status !== "ok" || !data.current) return null;
   const { icon: Icon, words } = sky(data.current.code, data.current.is_day);
   const stale = staleText(data);
-  const spoken = [
-    `${words}, ${degrees(data.current.temperature)}`,
+  const facts = [
+    t("weather.pill.now", { sky: t(words), temp: degrees(data.current.temperature) }),
     day ? highLow(day.high, day.low) : null,
     stale,
   ]
     .filter(Boolean)
     .join(". ");
-  const label = `The weather: ${spoken}. Open the forecast.`;
+  const label = t("weather.pill.aria", { facts });
   const show = () => {
     setOpen(true);
   };
@@ -131,6 +142,7 @@ function Forecast({
   open: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const text = display ? "text-d-body" : "text-body";
   const soft = display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft";
@@ -139,13 +151,13 @@ function Forecast({
   return (
     <Sheet
       open={open}
-      title={placeWithoutCountry(weather.location_label) ?? "The Weather"}
+      title={placeWithoutCountry(weather.location_label) ?? t("weather.forecast.title")}
       oneLineTitle
       onClose={onClose}
     >
       <div className="flex flex-col gap-6">
-        <section aria-label="Today" className="flex flex-col gap-3">
-          <h3 className={`${text} font-bold`}>Today</h3>
+        <section aria-label={t("weather.forecast.today.title")} className="flex flex-col gap-3">
+          <h3 className={`${text} font-bold`}>{t("weather.forecast.today.title")}</h3>
           {now ? <p className={soft}>{now}</p> : null}
           <ul className="grid grid-cols-4 gap-3 sm:grid-cols-6">
             {weather.hourly.slice(0, 12).map((hour) => {
@@ -154,12 +166,14 @@ function Forecast({
               return (
                 <li key={hour.time} className="flex flex-col items-center gap-1 text-center">
                   <span className={soft}>{formatWallTime(hour.time, { compact: true })}</span>
-                  <Icon aria-label={words} role="img" className="size-7" />
+                  <Icon aria-label={t(words)} role="img" className="size-7" />
                   <span className={`${text} font-semibold`}>{degrees(hour.temperature)}</span>
                   {rain ? (
                     <span className={soft}>
-                      {rain}
-                      <span className="sr-only"> chance of rain</span>
+                      {tRich("weather.forecast.rain", {
+                        percent: rain,
+                        sr: (chunk) => <span className="sr-only">{chunk}</span>,
+                      })}
                     </span>
                   ) : null}
                 </li>
@@ -167,8 +181,8 @@ function Forecast({
             })}
           </ul>
         </section>
-        <section aria-label="Forecast" className="flex flex-col gap-1">
-          <h3 className={`${text} font-bold`}>Forecast</h3>
+        <section aria-label={t("weather.forecast.days.title")} className="flex flex-col gap-1">
+          <h3 className={`${text} font-bold`}>{t("weather.forecast.days.title")}</h3>
           <ul className="flex flex-col divide-y divide-line">
             {weather.daily.map((day) => {
               const { icon: Icon, words } = sky(day.code);
@@ -179,12 +193,13 @@ function Forecast({
                   className={`flex items-center gap-4 ${display ? "min-h-16" : "min-h-12"}`}
                 >
                   <span className={`w-20 ${text} font-semibold`}>
-                    {day.date === today ? "Today" : shortWeekday(day.date)}
+                    {day.date === today ? t("weather.forecast.day.today") : shortWeekday(day.date)}
                   </span>
                   <Icon aria-hidden="true" className="size-7 shrink-0" />
                   <span className={`flex-1 ${soft}`}>
-                    {words}
-                    {rain ? `, ${rain} chance` : ""}
+                    {rain
+                      ? t("weather.forecast.day.rain", { sky: t(words), percent: rain })
+                      : t(words)}
                   </span>
                   <span className={`${text} font-semibold whitespace-nowrap`}>
                     {degrees(day.high)} <span className="text-ink-soft">{degrees(day.low)}</span>
@@ -194,7 +209,7 @@ function Forecast({
             })}
           </ul>
         </section>
-        <p className={soft}>Weather by Open-Meteo</p>
+        <p className={soft}>{t("weather.forecast.credit")}</p>
       </div>
     </Sheet>
   );
@@ -217,12 +232,13 @@ export function WeatherDayMark({ day }: { day: string }) {
 
 /** The weather beside the date on the screensaver: "☼ 64°". */
 export function WeatherSaverCorner() {
+  const t = useT();
   const { data } = useWeather();
   if (data?.status !== "ok" || !data.current) return null;
   const { icon: Icon, words } = sky(data.current.code, data.current.is_day);
   return (
     <span className="inline-flex items-center gap-2">
-      <Icon aria-label={words} role="img" className="size-10" strokeWidth={2} />
+      <Icon aria-label={t(words)} role="img" className="size-10" strokeWidth={2} />
       {degrees(data.current.temperature)}
     </span>
   );

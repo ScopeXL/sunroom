@@ -7,10 +7,11 @@ import {
   Plus,
   ShoppingBasket,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { addDays, shortDate, shortWeekday, dayNumber, weekOf, zonedParts } from "../../lib/dates";
 import { useMembers, useSettings, type Member } from "../../lib/household";
+import { tRich, useT } from "../../lib/lang";
 import { usePageTurn } from "../../lib/motion";
 import { useMinute } from "../../lib/time";
 import { HeaderLink } from "../../shell/HeaderLinks";
@@ -41,7 +42,14 @@ export type MealPanel =
   | { kind: "change"; entry: Entry }
   | null;
 
-const EMPTY = "Tonight's dinner shows here and on the Today panel. Add a dinner.";
+/** An empty spot's words, "Add dinner", with the day for a screen reader ("… on Sat, Oct 10"). */
+export function addSlotWords(slot: Slot, day: string): ReactNode {
+  return tRich("meals.week.add_slot", {
+    slot,
+    day: shortDate(day),
+    sr: (words) => <span className="sr-only">{words}</span>,
+  });
+}
 
 /** The week the room shows: this week, or `offset` weeks away. */
 export function useMealWeek(offset: number) {
@@ -58,6 +66,7 @@ export function MealsRoom({ path }: { path: string[] }) {
 }
 
 function MealsWeek() {
+  const t = useT();
   const [offset, setOffset] = useState(0);
   const pages = usePageTurn();
   const { today, days, start } = useMealWeek(offset);
@@ -73,16 +82,16 @@ function MealsWeek() {
     setPanel(null);
   };
   return (
-    <section aria-label="Meals" className="flex min-h-0 flex-1 flex-col">
+    <section aria-label={t("meals.room.title")} className="flex min-h-0 flex-1 flex-col">
       <RoomHeader
-        title="Meals"
+        title={t("meals.room.title")}
         controls={
           <>
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
                 icon
-                aria-label="Last week"
+                aria-label={t("meals.week.last.aria")}
                 onClick={() => {
                   pages.turn(-1);
                   setOffset(offset - 1);
@@ -98,12 +107,12 @@ function MealsWeek() {
                   setOffset(0);
                 }}
               >
-                This Week
+                {t("meals.week.this.action")}
               </Button>
               <Button
                 variant="secondary"
                 icon
-                aria-label="Next week"
+                aria-label={t("meals.week.next.aria")}
                 onClick={() => {
                   pages.turn(1);
                   setOffset(offset + 1);
@@ -121,11 +130,11 @@ function MealsWeek() {
                 }}
               >
                 <Copy aria-hidden="true" className="size-7" />
-                Copy Last Week
+                {t("meals.week.copy.action")}
               </Button>
               <HeaderLink to="/$room/$" params={{ room: "meals", _splat: "saved" }}>
                 <BookOpen aria-hidden="true" className="size-7" />
-                Saved Meals
+                {t("meals.saved.title")}
               </HeaderLink>
             </div>
           </>
@@ -134,15 +143,17 @@ function MealsWeek() {
       <div className="min-h-0 flex-1 overflow-y-auto" tabIndex={0}>
         {isSuccess && entries.length === 0 ? (
           <div className="px-6 pt-2">
-            <QuietLine>{EMPTY}</QuietLine>
+            <QuietLine>{t("meals.week.empty")}</QuietLine>
           </div>
         ) : null}
         <table {...pages.attrs} className="w-full table-fixed border-collapse">
-          <caption className="sr-only">Meals for the week of {shortDate(start)}</caption>
+          <caption className="sr-only">
+            {t("meals.week.caption", { day: shortDate(start) })}
+          </caption>
           <thead>
             <tr className="border-b border-line">
               <th scope="col" className="w-48">
-                <span className="sr-only">Day</span>
+                <span className="sr-only">{t("meals.week.day.aria")}</span>
               </th>
               {slots.map((slot) => (
                 <th
@@ -150,7 +161,7 @@ function MealsWeek() {
                   scope="col"
                   className="px-4 py-3 text-left text-d-secondary font-semibold text-ink-soft"
                 >
-                  {SLOT_WORDS[slot]}
+                  {t(SLOT_WORDS[slot])}
                 </th>
               ))}
             </tr>
@@ -168,7 +179,9 @@ function MealsWeek() {
                   >
                     {shortWeekday(day)} {dayNumber(day)}
                   </span>
-                  {day === today ? <span className="sr-only"> today</span> : null}
+                  {day === today ? (
+                    <span className="sr-only"> {t("meals.week.today.aria")}</span>
+                  ) : null}
                 </th>
                 {slots.map((slot) => {
                   const entry = at(day, slot);
@@ -191,8 +204,7 @@ function MealsWeek() {
                           className="press flex min-h-16 w-full items-center gap-2 rounded-chip-d border-2 border-dashed border-line px-4 text-d-body font-semibold text-ink-soft"
                         >
                           <Plus aria-hidden="true" className="size-6" />
-                          Add {SLOT_WORDS[slot].toLowerCase()}
-                          <span className="sr-only"> on {shortDate(day)}</span>
+                          {addSlotWords(slot, day)}
                         </button>
                       )}
                     </td>
@@ -260,6 +272,7 @@ export function MealSidePanel({
   onPanel: (panel: MealPanel) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: members = [] } = useMembers();
   const changes = useMealChanges();
@@ -275,9 +288,9 @@ export function MealSidePanel({
   const text = display ? "text-d-body" : "text-body";
   const title =
     panel?.kind === "add"
-      ? `Add ${SLOT_WORDS[panel.slot]}`
+      ? t("meals.panel.add.title", { slot: panel.slot })
       : panel?.kind === "change"
-        ? "Change"
+        ? t("meals.panel.change.title")
         : entry
           ? mealName(entry)
           : "";
@@ -290,7 +303,7 @@ export function MealSidePanel({
             onPanel({ kind: "change", entry });
           }}
         >
-          Change
+          {t("app.action.change")}
         </Button>
         <Button
           variant="secondary"
@@ -299,7 +312,7 @@ export function MealSidePanel({
           }}
         >
           <ArrowLeftRight aria-hidden="true" className={display ? "size-7" : "size-5"} />
-          Swap Days
+          {t("meals.panel.swap.action")}
         </Button>
         {listsOn && entry.ingredients.length ? (
           <Button
@@ -310,7 +323,7 @@ export function MealSidePanel({
             }}
           >
             <ShoppingBasket aria-hidden="true" className={display ? "size-7" : "size-5"} />
-            Add Ingredients to Groceries
+            {t("meals.panel.groceries.action")}
           </Button>
         ) : null}
         <Button
@@ -319,7 +332,7 @@ export function MealSidePanel({
             changes.remove.mutate({ entry }, { onSuccess: close });
           }}
         >
-          Remove
+          {t("app.action.remove")}
         </Button>
       </div>
     ) : null;
@@ -337,12 +350,12 @@ export function MealSidePanel({
       ) : entry ? (
         <div className="flex flex-col gap-4">
           <p className={`${text} font-semibold`}>
-            {`${SLOT_WORDS[entry.slot]} · ${shortDate(entry.day)}`}
+            {t("meals.panel.when", { slot: t(SLOT_WORDS[entry.slot]), day: shortDate(entry.day) })}
           </p>
           {cook ? (
             <p className={`flex items-center gap-2 ${text}`}>
               <Avatar member={cook} size="xs" />
-              {cook.name} cooks
+              {t("meals.cooks", { name: cook.name })}
             </p>
           ) : null}
           {entry.recipe_url ? (
@@ -352,7 +365,7 @@ export function MealSidePanel({
               rel="noreferrer noopener"
               className={`${text} font-semibold underline`}
             >
-              The recipe
+              {t("meals.panel.recipe")}
             </a>
           ) : null}
           {entry.note ? <p className={text}>{entry.note}</p> : null}
@@ -367,8 +380,8 @@ export function MealSidePanel({
           ) : null}
           {swapping ? (
             <div className="flex flex-col gap-3">
-              <p className={`${text} font-semibold`}>Swap with which day?</p>
-              <ChipRow label="Swap with">
+              <p className={`${text} font-semibold`}>{t("meals.panel.swap.ask")}</p>
+              <ChipRow label={t("meals.panel.swap.aria")}>
                 {days
                   .filter((day) => day !== entry.day)
                   .map((day) => (
@@ -389,7 +402,7 @@ export function MealSidePanel({
                   setSwapping(false);
                 }}
               >
-                Cancel
+                {t("app.action.cancel")}
               </Button>
             </div>
           ) : null}

@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { api, asMember, unwrap } from "../../api/client";
 import type { components } from "../../api/schema";
 import { usePlugins } from "../../lib/household";
+import { t, type Key } from "../../lib/lang";
 import { showToast } from "../../lib/toast";
 
 export type Week = components["schemas"]["MealWeekOut"];
@@ -19,11 +20,13 @@ export type SavedIn = components["schemas"]["SavedMealIn"];
 export type SavedPatch = components["schemas"]["SavedMealPatch"];
 export type Slot = Entry["slot"];
 
-export const SLOT_WORDS: Record<Slot, string> = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  dinner: "Dinner",
-  snack: "Snack",
+/** Each meal of the day's word, a key translated where it's shown (ADR 0043). A sentence that
+ * names a meal ("Add dinner") says it in its own message, with a select on the slot. */
+export const SLOT_WORDS: Record<Slot, Key> = {
+  breakfast: "meals.slot.breakfast",
+  lunch: "meals.slot.lunch",
+  dinner: "meals.slot.dinner",
+  snack: "meals.slot.snack",
 };
 
 export const mealKeys = {
@@ -97,7 +100,7 @@ export function useMealChanges() {
     void work()
       .then(() => refresh(queryClient))
       .catch(() => {
-        showToast("Couldn't undo that. It may have changed since.");
+        showToast(t("app.undo.error"));
       });
   };
 
@@ -114,21 +117,26 @@ export function useMealChanges() {
     onSuccess: async ({ entry, replaced }, { body, before }) => {
       await refresh(queryClient);
       const changed = Boolean(body.id);
-      showToast(changed ? `Saved ${entry.text}` : `Added ${entry.text}`, {
-        label: "Undo",
-        onAction: undoLater(async () => {
-          if (changed && before) {
-            unwrap(await api.PUT("/api/meals/entries", { body: fieldsOf(before) }));
-            return;
-          }
-          unwrap(
-            await api.DELETE("/api/meals/entries/{entry_id}", {
-              params: { path: { entry_id: entry.id } },
-            }),
-          );
-          if (replaced) await putBack(replaced);
-        }),
-      });
+      showToast(
+        changed
+          ? t("meals.entry.saved.toast", { name: entry.text })
+          : t("meals.entry.added.toast", { name: entry.text }),
+        {
+          label: t("app.action.undo"),
+          onAction: undoLater(async () => {
+            if (changed && before) {
+              unwrap(await api.PUT("/api/meals/entries", { body: fieldsOf(before) }));
+              return;
+            }
+            unwrap(
+              await api.DELETE("/api/meals/entries/{entry_id}", {
+                params: { path: { entry_id: entry.id } },
+              }),
+            );
+            if (replaced) await putBack(replaced);
+          }),
+        },
+      );
     },
   });
 
@@ -142,8 +150,8 @@ export function useMealChanges() {
     },
     onSuccess: async (_done, { entry }) => {
       await refresh(queryClient);
-      showToast(`Removed ${entry.text}`, {
-        label: "Undo",
+      showToast(t("meals.entry.removed.toast", { name: entry.text }), {
+        label: t("app.action.undo"),
         onAction: undoLater(() => putBack(entry)),
       });
     },
@@ -159,7 +167,7 @@ export function useMealChanges() {
     },
     onSuccess: async (_done, { entry }) => {
       await refresh(queryClient);
-      showToast(`Put back ${entry.text}`);
+      showToast(t("meals.entry.put_back.toast", { name: entry.text }));
     },
   });
 
@@ -174,17 +182,22 @@ export function useMealChanges() {
       ),
     onSuccess: async ({ moved, swapped }, { entry }) => {
       await refresh(queryClient);
-      showToast(swapped ? `Swapped ${moved.text} and ${swapped.text}` : `Moved ${moved.text}`, {
-        label: "Undo",
-        onAction: undoLater(async () => {
-          unwrap(
-            await api.POST("/api/meals/entries/{entry_id}/move", {
-              params: { path: { entry_id: entry.id } },
-              body: { day: entry.day, slot: entry.slot },
-            }),
-          );
-        }),
-      });
+      showToast(
+        swapped
+          ? t("meals.entry.swapped.toast", { name: moved.text, other: swapped.text })
+          : t("meals.entry.moved.toast", { name: moved.text }),
+        {
+          label: t("app.action.undo"),
+          onAction: undoLater(async () => {
+            unwrap(
+              await api.POST("/api/meals/entries/{entry_id}/move", {
+                params: { path: { entry_id: entry.id } },
+                body: { day: entry.day, slot: entry.slot },
+              }),
+            );
+          }),
+        },
+      );
     },
   });
 
@@ -194,11 +207,11 @@ export function useMealChanges() {
     onSuccess: async ({ ids, skipped }) => {
       await refresh(queryClient);
       if (!ids.length) {
-        showToast(skipped ? "Every day already has its meal." : "Last week had no meals to copy.");
+        showToast(skipped ? t("meals.week.copy_full.toast") : t("meals.week.copy_none.toast"));
         return;
       }
-      showToast(ids.length === 1 ? "Copied 1 meal" : `Copied ${String(ids.length)} meals`, {
-        label: "Undo",
+      showToast(t("meals.week.copied.toast", { n: ids.length }), {
+        label: t("app.action.undo"),
         onAction: undoLater(async () => {
           for (const id of ids) {
             unwrap(
@@ -217,7 +230,7 @@ export function useMealChanges() {
       unwrap(await api.POST("/api/meals/saved", { body, ...asMember(member) })),
     onSuccess: async (saved) => {
       await refresh(queryClient);
-      showToast(`Saved ${saved.text}`);
+      showToast(t("meals.saved.save.toast", { name: saved.text }));
     },
   });
 
@@ -231,7 +244,7 @@ export function useMealChanges() {
       ),
     onSuccess: async (saved) => {
       await refresh(queryClient);
-      showToast(`Saved ${saved.text}`);
+      showToast(t("meals.saved.save.toast", { name: saved.text }));
     },
   });
 
@@ -253,8 +266,8 @@ export function useMealChanges() {
     },
     onSuccess: async (_done, { saved }) => {
       await refresh(queryClient);
-      showToast(`Archived ${saved.text}`, {
-        label: "Undo",
+      showToast(t("meals.saved.archived.toast", { name: saved.text }), {
+        label: t("app.action.undo"),
         onAction: undoLater(() => restoreSaved(saved.id)),
       });
     },
@@ -266,7 +279,7 @@ export function useMealChanges() {
     },
     onSuccess: async (_done, { saved }) => {
       await refresh(queryClient);
-      showToast(`Put back ${saved.text}`);
+      showToast(t("meals.saved.put_back.toast", { name: saved.text }));
     },
   });
 
@@ -300,7 +313,12 @@ export function useAddToGroceries() {
       const lists = unwrap(await api.GET("/api/lists"));
       const groceries =
         lists.find((list) => list.kind === "grocery") ??
-        unwrap(await api.POST("/api/lists", { body: { name: "Groceries", kind: "grocery" } }));
+        unwrap(
+          await api.POST("/api/lists", {
+            // A new list's name: the family's own once it's made, so it's made in their language.
+            body: { name: t("meals.groceries.name"), kind: "grocery" },
+          }),
+        );
       const added = unwrap(
         await api.POST("/api/lists/{list_id}/items", {
           params: { path: { list_id: groceries.id } },
@@ -315,13 +333,11 @@ export function useAddToGroceries() {
       const count = added.items.length;
       showToast(
         count === 0
-          ? `It's all on ${list.name} already`
-          : count === 1
-            ? `Added 1 item to ${list.name}`
-            : `Added ${String(count)} items to ${list.name}`,
+          ? t("meals.groceries.already.toast", { list: list.name })
+          : t("meals.groceries.added.toast", { n: count, list: list.name }),
         count
           ? {
-              label: "Undo",
+              label: t("app.action.undo"),
               onAction: () => {
                 void (async () => {
                   for (const item of added.items) {
@@ -333,7 +349,7 @@ export function useAddToGroceries() {
                   }
                   await queryClient.invalidateQueries({ queryKey: ["lists"] });
                 })().catch(() => {
-                  showToast("Couldn't undo that. It may have changed since.");
+                  showToast(t("app.undo.error"));
                 });
               },
             }

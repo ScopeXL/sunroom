@@ -3,6 +3,7 @@ import { useState } from "react";
 import { errorMessage } from "../../api/client";
 import { addDays, zonedParts } from "../../lib/dates";
 import { useMembers, useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
@@ -42,6 +43,7 @@ export function CountdownEditor({
   startTitle?: string;
   onDone: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const today = zonedParts(useMinute()).day;
   const { data: members = [] } = useMembers();
@@ -107,23 +109,28 @@ export function CountdownEditor({
         save();
       }}
     >
-      <FormSection title="What and Who" quiet>
+      <FormSection title={t("countdowns.editor.what_who.title")} quiet>
         <TextField
-          label="What it counts down to"
+          label={t("countdowns.editor.what.label")}
           autoComplete="off"
           autoFocus={!countdown && !startTitle}
-          placeholder="Beach trip"
+          placeholder={t("countdowns.editor.what.placeholder")}
           maxLength={80}
           value={title}
           onChange={(event) => {
             setTitle(event.target.value);
           }}
         />
-        <Field label="Whose">
-          <WhoPicker label="Whose" members={members} value={who} onChange={setWho} />
+        <Field label={t("countdowns.editor.whose.label")}>
+          <WhoPicker
+            label={t("countdowns.editor.whose.label")}
+            members={members}
+            value={who}
+            onChange={setWho}
+          />
         </Field>
       </FormSection>
-      <FormSection title="When">
+      <FormSection title={t("countdowns.editor.when.title")}>
         {/* The month is open from the start: what's counted down to is rarely this week. */}
         <DayField
           value={day}
@@ -134,16 +141,16 @@ export function CountdownEditor({
           onChange={setDay}
         />
       </FormSection>
-      <FormSection title="Details">
-        <Field label="Emoji">
-          <ScrollRow label="Emoji">
+      <FormSection title={t("countdowns.editor.details.title")}>
+        <Field label={t("countdowns.editor.emoji.label")}>
+          <ScrollRow label={t("countdowns.editor.emoji.label")}>
             <Chip
               on={emoji === null}
               onClick={() => {
                 setEmoji(null);
               }}
             >
-              None
+              {t("countdowns.editor.emoji.none")}
             </Chip>
             {EMOJI.map((mark) => (
               <Chip
@@ -158,18 +165,20 @@ export function CountdownEditor({
             ))}
           </ScrollRow>
         </Field>
-        <Field label="Color">
+        <Field label={t("ui.color.label")}>
           <ColorDots
             value={color}
-            noneLabel={who.length ? "Their color" : "No color"}
+            noneLabel={
+              who.length ? t("countdowns.editor.color.theirs") : t("countdowns.editor.color.none")
+            }
             onChange={setColor}
           />
         </Field>
         <div className="flex flex-col divide-y divide-line">
-          <Switch label="Every year" checked={yearly} onChange={setYearly} />
+          <Switch label={t("countdowns.every_year")} checked={yearly} onChange={setYearly} />
           <Switch
-            label="Show it on paired screens"
-            hint="Off for a surprise: only signed-in devices show it."
+            label={t("countdowns.editor.on_wall.label")}
+            hint={t("countdowns.editor.on_wall.hint")}
             checked={onWall}
             onChange={setOnWall}
           />
@@ -182,7 +191,7 @@ export function CountdownEditor({
       ) : null}
       <PanelActions>
         <Button type="submit" block disabled={!ready} pending={pending}>
-          {countdown ? "Save Changes" : "Add Countdown"}
+          {countdown ? t("app.action.save_changes") : t("countdowns.add.action")}
         </Button>
       </PanelActions>
     </form>

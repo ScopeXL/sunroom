@@ -1,4 +1,5 @@
 import { usePlugins } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { Switch } from "../../ui/Switch";
 import { Group } from "../settings/parts";
 import { PluginSettingsForm, usePluginSettings } from "../settings/PluginSettingsForm";
@@ -17,6 +18,7 @@ function slotsIn(value: unknown): Slot[] {
  * so planning it again brings the chips back.
  */
 export function SettingsMeals() {
+  const t = useT();
   const { data: plugins = [] } = usePlugins();
   const plugin = plugins.find((p) => p.id === "meals");
   const save = usePluginSettings("meals");
@@ -33,7 +35,7 @@ export function SettingsMeals() {
       {slotsIn(values.slots).map((slot) => (
         <Switch
           key={slot}
-          label={`Show ${SLOT_WORDS[slot].toLowerCase()} on the calendar`}
+          label={t("meals.settings.show_slot.label", { slot })}
           checked={shown.includes(slot)}
           onChange={(on) => {
             const others = slotsIn(values.calendar_slots).filter((other) => other !== slot);

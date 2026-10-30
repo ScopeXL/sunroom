@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 
 import { api, asMember, unwrap } from "../../api/client";
 import type { components } from "../../api/schema";
+import { t } from "../../lib/lang";
 import { showToast } from "../../lib/toast";
 
 export type Upcoming = components["schemas"]["UpcomingOut"];
@@ -88,8 +89,8 @@ export function useCountdownChanges() {
       unwrap(await api.POST("/api/countdowns", { body, ...asMember(member) })),
     onSuccess: async (countdown) => {
       await refresh(queryClient);
-      showToast(`Added ${countdown.title}`, {
-        label: "Undo",
+      showToast(t("countdowns.added.toast", { name: countdown.title }), {
+        label: t("app.action.undo"),
         onAction: () => {
           remove.mutate({ countdown, quiet: true });
         },
@@ -107,7 +108,7 @@ export function useCountdownChanges() {
       ),
     onSuccess: async (countdown) => {
       await refresh(queryClient);
-      showToast(`Saved ${countdown.title}`);
+      showToast(t("countdowns.saved.toast", { name: countdown.title }));
     },
   });
 
@@ -122,11 +123,11 @@ export function useCountdownChanges() {
     onSuccess: async (_done, { countdown, quiet }) => {
       await refresh(queryClient);
       if (quiet) return;
-      showToast(`Removed ${countdown.title}`, {
-        label: "Undo",
+      showToast(t("countdowns.removed.toast", { name: countdown.title }), {
+        label: t("app.action.undo"),
         onAction: () => {
           void restoreNow(countdown.id).catch(() => {
-            showToast("Couldn't undo that. It may have changed since.");
+            showToast(t("app.undo.error"));
           });
         },
       });
@@ -138,7 +139,7 @@ export function useCountdownChanges() {
       await restoreNow(id);
     },
     onSuccess: (_done, { title }) => {
-      showToast(`Put back ${title}`);
+      showToast(t("countdowns.put_back.toast", { name: title }));
     },
   });
 

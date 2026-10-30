@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { zonedParts } from "../../lib/dates";
 import { useMembers } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Avatar } from "../../ui/Avatar";
 import { mealName, useWeek } from "./data";
@@ -19,13 +20,14 @@ function useTonight() {
 /** The Today panel's Tonight (UX §1: a glance element): tonight's dinner and who cooks, on one
  * line in portrait's band. A tap opens Meals. Nothing shows when there's no dinner planned. */
 export function TonightWall({ band = false }: { band?: boolean }) {
+  const t = useT();
   const { dinner, cook } = useTonight();
   const navigate = useNavigate();
   if (!dinner) return null;
   return (
     <section aria-labelledby="today-tonight" className="flex flex-col gap-2">
       <h2 id="today-tonight" className="text-d-body font-bold text-ink-soft">
-        Tonight
+        {t("meals.tonight.title")}
       </h2>
       <button
         type="button"
@@ -42,7 +44,9 @@ export function TonightWall({ band = false }: { band?: boolean }) {
             {mealName(dinner)}
           </span>
           {cook ? (
-            <span className="text-d-secondary font-semibold text-ink-soft">{cook.name} cooks</span>
+            <span className="text-d-secondary font-semibold text-ink-soft">
+              {t("meals.cooks", { name: cook.name })}
+            </span>
           ) : null}
         </span>
         {cook ? <Avatar member={cook} size="sm" /> : null}
@@ -53,13 +57,14 @@ export function TonightWall({ band = false }: { band?: boolean }) {
 
 /** Today on a phone: "Tonight · Tacos · Sam cooks". */
 export function TonightPhone() {
+  const t = useT();
   const { dinner, cook } = useTonight();
   const navigate = useNavigate();
   if (!dinner) return null;
   return (
     <section aria-labelledby="phone-tonight" className="flex flex-col gap-1">
       <h2 id="phone-tonight" className="text-row font-bold text-ink-soft">
-        Tonight
+        {t("meals.tonight.title")}
       </h2>
       <button
         type="button"
@@ -69,7 +74,11 @@ export function TonightPhone() {
         className="press-row flex min-h-12 items-center justify-between gap-3 rounded-chip px-1 text-left"
       >
         <span className="text-row font-bold">{mealName(dinner)}</span>
-        {cook ? <span className="text-secondary text-ink-soft">{cook.name} cooks</span> : null}
+        {cook ? (
+          <span className="text-secondary text-ink-soft">
+            {t("meals.cooks", { name: cook.name })}
+          </span>
+        ) : null}
       </button>
     </section>
   );

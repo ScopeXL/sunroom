@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { formatWallTime, shortDate } from "../../lib/dates";
 import { useMembers, type Member } from "../../lib/household";
+import { t, useT } from "../../lib/lang";
 import { RoomHeader } from "../../shell/roomHeader";
 import { Avatar } from "../../ui/Avatar";
 import { Button } from "../../ui/Button";
@@ -16,11 +17,12 @@ import { CountdownEditor } from "./CountdownEditor";
 import { useCountdownChanges, useCountdowns, useUpcoming, type Upcoming } from "./data";
 import { daysText, turningText } from "./words";
 
-const EMPTY = "Count down to birthdays, trips, the last day of school.";
-
+/** "Sat, Oct 10", or "Sat, Oct 10 · 3:00 PM" for a countdown with a time. */
 function whenText(item: Upcoming): string {
-  const time = item.time ? ` · ${formatWallTime(`${item.date}T${item.time}`)}` : "";
-  return `${shortDate(item.date)}${time}`;
+  const day = shortDate(item.date);
+  return item.time
+    ? t("countdowns.tile.day_time", { day, time: formatWallTime(`${item.date}T${item.time}`) })
+    : day;
 }
 
 /** One countdown's tile (UX §4 "Countdowns room"): the days at 72 px, the name, the day and
@@ -34,6 +36,7 @@ function Tile({
   members: Member[];
   onOpen: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const person = members.find((m) => m.id === item.member_id) ?? null;
   const color = item.color ?? person?.color ?? "everyone";
@@ -69,7 +72,7 @@ function Tile({
         <span
           className={display ? "text-d-secondary font-semibold" : "text-secondary font-semibold"}
         >
-          {person?.name ?? "Everyone"}
+          {person?.name ?? t("ui.who.everyone")}
         </span>
       </span>
     </button>
@@ -78,6 +81,7 @@ function Tile({
 
 /** What a tapped tile opens: a countdown's Change and Remove, or where a birthday comes from. */
 function Details({ item, onClose }: { item: Upcoming | null; onClose: () => void }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: countdowns = [] } = useCountdowns();
   const changes = useCountdownChanges();
@@ -91,7 +95,7 @@ function Details({ item, onClose }: { item: Upcoming | null; onClose: () => void
   return (
     <SidePanel
       open={item !== null}
-      title={changing ? "Change" : (item?.title ?? "")}
+      title={changing ? t("countdowns.details.change.title") : (item?.title ?? "")}
       onClose={close}
       footer={
         countdown && !changing ? (
@@ -102,7 +106,7 @@ function Details({ item, onClose }: { item: Upcoming | null; onClose: () => void
                 setChanging(true);
               }}
             >
-              Change
+              {t("app.action.change")}
             </Button>
             <Button
               variant="quiet-danger"
@@ -110,7 +114,7 @@ function Details({ item, onClose }: { item: Upcoming | null; onClose: () => void
                 changes.remove.mutate({ countdown }, { onSuccess: close });
               }}
             >
-              Remove
+              {t("app.action.remove")}
             </Button>
           </div>
         ) : null
@@ -122,13 +126,13 @@ function Details({ item, onClose }: { item: Upcoming | null; onClose: () => void
         <div className="flex flex-col gap-3">
           <p className={`${text} font-semibold`}>{`${daysText(item.days)} · ${whenText(item)}`}</p>
           {item.kind === "birthday" ? (
-            <p className={`${text} text-ink-soft`}>
-              Birthdays come from Family, in Settings. Change it there.
-            </p>
+            <p className={`${text} text-ink-soft`}>{t("countdowns.details.birthday")}</p>
           ) : null}
-          {countdown?.repeat_yearly ? <p className={`${text} text-ink-soft`}>Every year</p> : null}
+          {countdown?.repeat_yearly ? (
+            <p className={`${text} text-ink-soft`}>{t("countdowns.every_year")}</p>
+          ) : null}
           {countdown && !countdown.show_on_display ? (
-            <p className={`${text} text-ink-soft`}>Hidden from paired screens.</p>
+            <p className={`${text} text-ink-soft`}>{t("countdowns.details.hidden")}</p>
           ) : null}
         </div>
       ) : null}
@@ -137,6 +141,7 @@ function Details({ item, onClose }: { item: Upcoming | null; onClose: () => void
 }
 
 function Tiles({ onAdd }: { onAdd: () => void }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data, isSuccess } = useUpcoming();
   const { data: members = [] } = useMembers();
@@ -147,14 +152,16 @@ function Tiles({ onAdd }: { onAdd: () => void }) {
       {isSuccess && items.length === 0 ? (
         <EmptyState
           icon={Hourglass}
-          line="No countdowns yet"
-          note={EMPTY}
+          line={t("countdowns.empty")}
+          note={t("countdowns.empty_note")}
           // A phone's bottom bar already has Add Countdown.
-          action={display ? <Button onClick={onAdd}>Add Countdown</Button> : undefined}
+          action={
+            display ? <Button onClick={onAdd}>{t("countdowns.add.action")}</Button> : undefined
+          }
         />
       ) : (
         <ul
-          aria-label="Countdowns"
+          aria-label={t("countdowns.room.title")}
           className={`grid gap-6 ${
             display
               ? "grid-cols-[repeat(auto-fill,minmax(25rem,1fr))]"
@@ -186,11 +193,12 @@ function Tiles({ onAdd }: { onAdd: () => void }) {
 
 /** The Countdowns room on the wall screen (UX §4): tiles, soonest first. */
 export function CountdownsRoom() {
+  const t = useT();
   const [adding, setAdding] = useState(false);
   return (
-    <section aria-label="Countdowns" className="flex min-h-0 flex-1 flex-col">
+    <section aria-label={t("countdowns.room.title")} className="flex min-h-0 flex-1 flex-col">
       <RoomHeader
-        title="Countdowns"
+        title={t("countdowns.room.title")}
         controls={
           <Button
             variant="secondary"
@@ -200,7 +208,7 @@ export function CountdownsRoom() {
             }}
           >
             <Plus aria-hidden="true" className="size-7" />
-            Add Countdown
+            {t("countdowns.add.action")}
           </Button>
         }
       />
@@ -213,7 +221,7 @@ export function CountdownsRoom() {
       </div>
       <SidePanel
         open={adding}
-        title="Add Countdown"
+        title={t("countdowns.add.title")}
         onClose={() => {
           setAdding(false);
         }}
@@ -233,11 +241,12 @@ export function CountdownsRoom() {
 /** Countdowns on a phone (from More): the same tiles, and Add countdown. An event's "Add a
  * countdown" opens it at new/<day>/<title>, with those filled in. */
 export function CountdownsTab({ path }: { path: string[] }) {
+  const t = useT();
   const [verb, day, title] = path;
   const [adding, setAdding] = useState(verb === "new");
   return (
     <Screen
-      title="Countdowns"
+      title={t("countdowns.room.title")}
       back="/more"
       actions={
         <Button
@@ -246,7 +255,7 @@ export function CountdownsTab({ path }: { path: string[] }) {
             setAdding(true);
           }}
         >
-          Add Countdown
+          {t("countdowns.add.action")}
         </Button>
       }
     >
@@ -257,7 +266,7 @@ export function CountdownsTab({ path }: { path: string[] }) {
       />
       <Sheet
         open={adding}
-        title="Add Countdown"
+        title={t("countdowns.add.title")}
         onClose={() => {
           setAdding(false);
         }}

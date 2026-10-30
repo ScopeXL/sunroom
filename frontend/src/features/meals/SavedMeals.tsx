@@ -3,6 +3,7 @@ import { BookOpen, ChevronLeft, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { errorMessage } from "../../api/client";
+import { t, useT } from "../../lib/lang";
 import { HeaderBack } from "../../shell/HeaderLinks";
 import { RoomHeader } from "../../shell/roomHeader";
 import { Button } from "../../ui/Button";
@@ -19,8 +20,18 @@ import { useMealChanges, useSaved, type Saved } from "./data";
 // What a saved meal can wear: picked from a row, since the wall's keyboard has no emoji.
 const EMOJI = ["🌮", "🍕", "🍝", "🍗", "🐟", "🥗", "🍲", "🍔", "🥪", "🍳", "🥘", "🍜"];
 
-const madeText = (count: number) =>
-  count === 0 ? "Not made yet" : count === 1 ? "Made once" : `Made ${String(count)} times`;
+/** A saved meal's line: "Made 6 times · 3 ingredients · a recipe". */
+function mealLine(meal: Saved): string {
+  return [
+    t("meals.saved.made", { n: meal.use_count }),
+    meal.ingredients.length
+      ? t("meals.saved.ingredient_count", { n: meal.ingredients.length })
+      : null,
+    meal.recipe_url ? t("meals.saved.has_recipe") : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /**
  * Saved meals (UX §4 "Meals room"): the library, most made first: each with its name, "made 6
@@ -28,6 +39,7 @@ const madeText = (count: number) =>
  * it 7 days).
  */
 export function SavedMeals() {
+  const t = useT();
   const display = useShell() === "display";
   const { data: saved = [], isSuccess } = useSaved();
   const [editing, setEditing] = useState<Saved | "new" | null>(null);
@@ -36,8 +48,8 @@ export function SavedMeals() {
       {isSuccess && saved.length === 0 ? (
         <EmptyState
           icon={BookOpen}
-          line="No saved meals yet"
-          note="Save a meal once and add it in one tap next week."
+          line={t("meals.saved.empty")}
+          note={t("meals.saved.empty_note")}
           action={
             // A phone's bottom bar already has New Saved Meal.
             display ? (
@@ -46,7 +58,7 @@ export function SavedMeals() {
                   setEditing("new");
                 }}
               >
-                New Saved Meal
+                {t("meals.saved.new.action")}
               </Button>
             ) : undefined
           }
@@ -79,11 +91,7 @@ export function SavedMeals() {
                     display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft"
                   }
                 >
-                  {madeText(meal.use_count)}
-                  {meal.ingredients.length
-                    ? ` · ${meal.ingredients.length === 1 ? "1 ingredient" : `${String(meal.ingredients.length)} ingredients`}`
-                    : ""}
-                  {meal.recipe_url ? " · a recipe" : ""}
+                  {mealLine(meal)}
                 </span>
               </button>
             </li>
@@ -108,19 +116,19 @@ export function SavedMeals() {
       }}
     >
       <Plus aria-hidden="true" className={display ? "size-7" : "size-5"} />
-      New Saved Meal
+      {t("meals.saved.new.action")}
     </Button>
   );
   if (display) {
     // The wall: the title, the way back and New saved meal are in the header.
     return (
-      <section aria-label="Saved Meals" className="flex min-h-0 flex-1 flex-col">
+      <section aria-label={t("meals.saved.title")} className="flex min-h-0 flex-1 flex-col">
         <RoomHeader
-          title="Saved Meals"
+          title={t("meals.saved.title")}
           visibleTitle
           back={
             <HeaderBack to="/$room" params={{ room: "meals" }}>
-              Meals
+              {t("meals.room.title")}
             </HeaderBack>
           }
           controls={add}
@@ -138,13 +146,13 @@ export function SavedMeals() {
           <Link
             to="/$room"
             params={{ room: "meals" }}
-            aria-label="Back to Meals"
+            aria-label={t("meals.saved.back.aria")}
             className="press inline-flex size-11 items-center justify-center rounded-button border-2 border-line bg-surface"
           >
             <ChevronLeft aria-hidden="true" className="size-6" />
           </Link>
           <h1 id="saved-title" className="text-title font-bold">
-            Saved Meals
+            {t("meals.saved.title")}
           </h1>
         </div>
         {add}
@@ -164,14 +172,16 @@ function SavedPanel({
   open: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
   return (
-    <SidePanel open={open} title={meal ? meal.text : "New Saved Meal"} onClose={onClose}>
+    <SidePanel open={open} title={meal ? meal.text : t("meals.saved.new.title")} onClose={onClose}>
       {open ? <SavedForm key={meal?.id ?? "new"} meal={meal} onDone={onClose} /> : null}
     </SidePanel>
   );
 }
 
 function SavedForm({ meal, onDone }: { meal: Saved | null; onDone: () => void }) {
+  const t = useT();
   const display = useShell() === "display";
   const changes = useMealChanges();
   const [text, setText] = useState(meal?.text ?? "");
@@ -219,7 +229,7 @@ function SavedForm({ meal, onDone }: { meal: Saved | null; onDone: () => void })
       }}
     >
       <TextField
-        label="Name"
+        label={t("meals.saved.name.label")}
         autoComplete="off"
         maxLength={120}
         value={text}
@@ -228,15 +238,15 @@ function SavedForm({ meal, onDone }: { meal: Saved | null; onDone: () => void })
         }}
       />
       {/* A row to pick from, as a countdown's: the wall's keyboard has no emoji to type. */}
-      <Field label="Emoji">
-        <ScrollRow label="Emoji">
+      <Field label={t("meals.saved.emoji.label")}>
+        <ScrollRow label={t("meals.saved.emoji.label")}>
           <Chip
             on={emoji === ""}
             onClick={() => {
               setEmoji("");
             }}
           >
-            None
+            {t("meals.saved.emoji.none")}
           </Chip>
           {[...new Set([...(emoji ? [emoji] : []), ...EMOJI])].map((mark) => (
             <Chip
@@ -252,7 +262,7 @@ function SavedForm({ meal, onDone }: { meal: Saved | null; onDone: () => void })
         </ScrollRow>
       </Field>
       <TextField
-        label="Recipe link (optional)"
+        label={t("meals.saved.recipe.label")}
         autoComplete="off"
         maxLength={500}
         value={recipe}
@@ -261,8 +271,8 @@ function SavedForm({ meal, onDone }: { meal: Saved | null; onDone: () => void })
         }}
       />
       <TextField
-        label="Ingredients, with commas"
-        hint="They go on Groceries in one tap."
+        label={t("meals.saved.ingredients.label")}
+        hint={t("meals.saved.ingredients.hint")}
         autoComplete="off"
         value={ingredients}
         onChange={(event) => {
@@ -282,12 +292,12 @@ function SavedForm({ meal, onDone }: { meal: Saved | null; onDone: () => void })
             changes.archiveSaved.mutate({ saved: meal }, { onSuccess: onDone });
           }}
         >
-          Archive
+          {t("meals.saved.archive.action")}
         </Button>
       ) : null}
       <PanelActions>
         <Button type="submit" block disabled={!text.trim()} pending={pending}>
-          {meal ? "Save Changes" : "Save Meal"}
+          {meal ? t("app.action.save_changes") : t("meals.saved.save.action")}
         </Button>
       </PanelActions>
     </form>

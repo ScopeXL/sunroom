@@ -3,6 +3,7 @@ import { useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { errorMessage } from "../../api/client";
 import { useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useDebounced } from "../../lib/useDebounced";
 import { Button } from "../../ui/Button";
 import { useShell } from "../../ui/shell";
@@ -24,6 +25,7 @@ function PlaceSearch({
   onPicked: (place: Place) => void;
   focus?: boolean;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const [words, setWords] = useState("");
   const listId = useId();
@@ -41,17 +43,15 @@ function PlaceSearch({
   const status = error
     ? ""
     : places.length
-      ? places.length === 1
-        ? "1 place"
-        : `${String(places.length)} places`
+      ? t("weather.places.count", { n: places.length })
       : searching
-        ? "Searching…"
+        ? t("weather.places.searching")
         : typed.length === 0
           ? ""
           : // Open-Meteo matches two letters exactly and three or more loosely.
             typed.length < 3
-            ? "Keep typing…"
-            : "Nothing by that name. Try the nearest city.";
+            ? t("weather.places.keep_typing")
+            : t("weather.places.none");
 
   const rows = () => Array.from(list.current?.querySelectorAll<HTMLElement>("button") ?? []);
   const move = (event: KeyboardEvent<HTMLElement>, field: HTMLElement | null) => {
@@ -70,7 +70,7 @@ function PlaceSearch({
     <div className="flex flex-col gap-4">
       <TextField
         ref={field}
-        label="Your city"
+        label={t("weather.places.city.label")}
         value={words}
         maxLength={80}
         // The browser's own address suggestions would cover the list.
@@ -99,7 +99,7 @@ function PlaceSearch({
       <ul
         ref={list}
         id={listId}
-        aria-label="Places"
+        aria-label={t("weather.places.aria")}
         className={places.length ? "flex flex-col gap-2" : "hidden"}
         onKeyDown={(event) => {
           move(event, field.current);
@@ -137,15 +137,14 @@ function PlaceSearch({
 
 /** First run's "Where's home?" (PLAN §15 M4): for the weather and the sunset. */
 export function PlaceOnboarding({ onDone }: { onDone: () => void }) {
+  const t = useT();
   const display = useShell() === "display";
   return (
     <>
-      <p className={display ? "text-d-body" : "text-body"}>
-        Sunroom shows your weather and turns dark at sunset. Type your city, or one nearby.
-      </p>
+      <p className={display ? "text-d-body" : "text-body"}>{t("weather.onboarding.lead")}</p>
       <PlaceSearch onPicked={onDone} />
       <Button variant="quiet" block onClick={onDone}>
-        Later
+        {t("app.action.later")}
       </Button>
     </>
   );
@@ -153,19 +152,17 @@ export function PlaceOnboarding({ onDone }: { onDone: () => void }) {
 
 /** Settings → Household → Location (UX §4): the city, Change and Remove. */
 export function LocationSettings() {
+  const t = useT();
   const display = useShell() === "display";
   const { data: settings } = useSettings();
   const setPlace = useSetPlace();
   const [changing, setChanging] = useState(false);
   const label = settings?.location_label ?? null;
   return (
-    <Group
-      title="Location"
-      note="Used for the weather, and for sunrise and sunset. Only your city goes to Open-Meteo, when you search for it and for the forecast; nothing else leaves."
-    >
+    <Group title={t("weather.location.title")} note={t("weather.location.note")}>
       <div className={`flex flex-col gap-4 ${display ? "py-5" : "py-4"}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Text soft={!label}>{label ?? "Not set yet. Until it is, it gets dark at 7 PM."}</Text>
+          <Text soft={!label}>{label ?? t("weather.location.unset")}</Text>
           <div className="flex gap-3">
             {!changing ? (
               <Button
@@ -174,7 +171,7 @@ export function LocationSettings() {
                   setChanging(true);
                 }}
               >
-                {label ? "Change" : "Set the City"}
+                {label ? t("app.action.change") : t("weather.location.set.action")}
               </Button>
             ) : null}
             {label && !changing ? (
@@ -185,7 +182,7 @@ export function LocationSettings() {
                   setPlace.mutate(null);
                 }}
               >
-                Remove
+                {t("app.action.remove")}
               </Button>
             ) : null}
           </div>

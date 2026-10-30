@@ -8,6 +8,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { api, unwrap } from "../../api/client";
 import type { components } from "../../api/schema";
 import { qk } from "../../api/keys";
+import { t } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { showToast } from "../../lib/toast";
 
@@ -75,7 +76,11 @@ export function useSetPlace() {
         queryClient.invalidateQueries({ queryKey: qk.settings() }),
         queryClient.invalidateQueries({ queryKey: weatherKeys.now() }),
       ]);
-      showToast(place ? `Home is ${place.label}` : "Removed the place");
+      showToast(
+        place
+          ? t("weather.place.set.toast", { place: place.label })
+          : t("weather.place.removed.toast"),
+      );
     },
   });
 }

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Eye, EyeOff, Images, Play, Settings, X } fro
 import { useState } from "react";
 
 import { qk } from "../../api/keys";
+import { t, useT } from "../../lib/lang";
 import { askForPin } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
 import { RoomHeader } from "../../shell/roomHeader";
@@ -23,8 +24,8 @@ import {
 import { startSaver } from "./start";
 
 /** "124 photos". */
-export function photosCount(count: number): string {
-  return count === 1 ? "1 photo" : `${String(count)} photos`;
+function photosCount(count: number): string {
+  return t("photos.room.count", { n: count });
 }
 
 /**
@@ -35,6 +36,7 @@ export function photosCount(count: number): string {
  * but never removes them (phones do, with Undo). A photo library's says where it's from.
  */
 export function PhotosRoom() {
+  const t = useT();
   const navigate = useNavigate();
   const { data: session } = useQuery({ queryKey: qk.session(), queryFn: fetchSession });
   const kiosk = session?.device_kind === "kiosk";
@@ -47,14 +49,14 @@ export function PhotosRoom() {
   // A paired screen adds no photos itself (it has no files): a device does, from this code.
   const fromADevice = (
     <div className="flex items-center gap-6 rounded-panel border border-line bg-surface p-5 text-left">
-      <QrCode value={address} label="A code that opens Photos on a device" className="size-32" />
-      <p className="text-d-body">Add photos from a device: open Sunroom there, then Photos.</p>
+      <QrCode value={address} label={t("photos.room.qr.aria")} className="size-32" />
+      <p className="text-d-body">{t("photos.room.from_device")}</p>
     </div>
   );
   return (
-    <section aria-label="Photos" className="flex min-h-0 flex-1 flex-col">
+    <section aria-label={t("photos.room.title")} className="flex min-h-0 flex-1 flex-col">
       <RoomHeader
-        title="Photos"
+        title={t("photos.room.title")}
         controls={
           <div className="ml-auto flex flex-wrap gap-3">
             <Button
@@ -67,7 +69,7 @@ export function PhotosRoom() {
               }}
             >
               <Settings aria-hidden="true" className="size-7" />
-              Settings
+              {t("photos.room.settings.action")}
             </Button>
             <Button
               variant="secondary"
@@ -76,7 +78,7 @@ export function PhotosRoom() {
               }}
             >
               <Play aria-hidden="true" className="size-7" />
-              Start Screensaver
+              {t("photos.start.action")}
             </Button>
             {kiosk ? null : <AddPhotosButton />}
           </div>
@@ -86,8 +88,8 @@ export function PhotosRoom() {
         {library.isSuccess && photos.length === 0 ? (
           <EmptyState
             icon={Images}
-            line="No photos yet"
-            note="Photos added from any device show here and on the screensaver."
+            line={t("photos.empty")}
+            note={t("photos.empty_note")}
             // A paired screen has no file picker: its QR code stands where the button would.
             action={kiosk ? fromADevice : <AddPhotosButton />}
           />
@@ -101,14 +103,16 @@ export function PhotosRoom() {
               </p>
             ) : null}
             <ul
-              aria-label="Photos"
+              aria-label={t("photos.room.title")}
               className="grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] gap-3"
             >
               {photos.map((photo, index) => (
                 <li key={photo.id}>
                   <button
                     type="button"
-                    aria-label={photo.hidden ? "A photo, hidden from the screensaver" : "A photo"}
+                    aria-label={
+                      photo.hidden ? t("photos.photo.hidden.aria") : t("photos.photo.aria")
+                    }
                     onClick={() => {
                       setOpen(index);
                     }}
@@ -141,7 +145,7 @@ export function PhotosRoom() {
                 void library.fetchNextPage();
               }}
             >
-              Show More
+              {t("photos.more.action")}
             </Button>
           </div>
         ) : null}
@@ -177,6 +181,7 @@ function Viewer({
   onIndex: (index: number) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const { hide } = usePhotoChanges();
   const { data: libraries = [] } = useLibraries({ enabled: parent });
   const photo = photos[index];
@@ -189,7 +194,7 @@ function Viewer({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Photo"
+      aria-label={t("photos.photo.title")}
       className="fixed inset-0 z-[45] flex flex-col bg-wall"
     >
       <img src={photo.url} alt="" className="min-h-0 flex-1 object-contain" />
@@ -203,7 +208,7 @@ function Viewer({
             }}
           >
             <ChevronLeft aria-hidden="true" className="size-7" />
-            Previous
+            {t("app.action.previous")}
           </Button>
           <Button
             variant="secondary"
@@ -212,7 +217,7 @@ function Viewer({
               step(1);
             }}
           >
-            Next
+            {t("app.action.next")}
             <ChevronRight aria-hidden="true" className="size-7" />
           </Button>
         </div>
@@ -230,11 +235,11 @@ function Viewer({
             ) : (
               <EyeOff aria-hidden="true" className="size-7" />
             )}
-            {photo.hidden ? "Show on the Screensaver" : "Hide from Screensaver"}
+            {photo.hidden ? t("photos.show_on_saver.action") : t("photos.hide_from_saver.action")}
           </Button>
           <Button variant="secondary" onClick={onClose}>
             <X aria-hidden="true" className="size-7" />
-            Close
+            {t("app.action.close")}
           </Button>
         </div>
       </div>

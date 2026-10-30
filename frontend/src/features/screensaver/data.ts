@@ -15,6 +15,7 @@ import {
 
 import { api, errorMessage, unwrap } from "../../api/client";
 import type { components } from "../../api/schema";
+import { t } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { showToast } from "../../lib/toast";
 import { uploadPicture } from "../../lib/upload";
@@ -89,7 +90,7 @@ export function fromLibrary(
   if (!photo.source_key.startsWith(LIBRARY_KEY)) return null;
   const id = photo.source_key.slice(LIBRARY_KEY.length);
   const library = libraries.find((each) => each.id === id);
-  return library ? `From ${library.name}` : "From a photo library";
+  return library ? t("photos.from.library", { name: library.name }) : t("photos.from.unknown");
 }
 
 export function useLibraryKinds({ enabled = true }: { enabled?: boolean } = {}) {
@@ -136,8 +137,6 @@ async function refresh(queryClient: QueryClient): Promise<void> {
   ]);
 }
 
-const photosText = (count: number) => (count === 1 ? "1 photo" : `${String(count)} photos`);
-
 export function usePhotoChanges() {
   const queryClient = useQueryClient();
 
@@ -158,8 +157,8 @@ export function usePhotoChanges() {
     },
     onSuccess: async ({ added, failed }) => {
       await refresh(queryClient);
-      if (added) showToast(`Added ${photosText(added)}`);
-      if (failed) showToast(added ? `Some didn't make it. ${failed}` : failed);
+      if (added) showToast(t("photos.added.toast", { n: added }));
+      if (failed) showToast(added ? t("photos.upload.partly.toast", { why: failed }) : failed);
     },
   });
 
@@ -181,11 +180,11 @@ export function usePhotoChanges() {
     },
     onSuccess: async (id) => {
       await refresh(queryClient);
-      showToast("Removed the photo", {
-        label: "Undo",
+      showToast(t("photos.removed.toast"), {
+        label: t("app.action.undo"),
         onAction: () => {
           void restore(id).catch(() => {
-            showToast("Couldn't undo that. It may have changed since.");
+            showToast(t("app.undo.error"));
           });
         },
       });
@@ -203,8 +202,8 @@ export function usePhotoChanges() {
       ),
     onSuccess: async (photo) => {
       await refresh(queryClient);
-      showToast(photo.hidden ? "Hidden from the screensaver" : "Back on the screensaver", {
-        label: "Undo",
+      showToast(photo.hidden ? t("photos.hidden.toast") : t("photos.shown.toast"), {
+        label: t("app.action.undo"),
         onAction: () => {
           hide.mutate({ id: photo.id, hidden: !photo.hidden });
         },
@@ -219,7 +218,7 @@ export function usePhotoChanges() {
         unwrap(await api.POST("/api/kiosk/command", { body: { command: "screensaver" } }));
       }),
     onSuccess: () => {
-      showToast("Started the screensaver");
+      showToast(t("photos.started.toast"));
     },
   });
 
@@ -235,7 +234,9 @@ export function usePhotoChanges() {
     onSuccess: async (result) => {
       await refresh(queryClient);
       showToast(
-        result.imported ? `Added ${photosText(result.imported)}` : "Checked. Nothing new there.",
+        result.imported
+          ? t("photos.added.toast", { n: result.imported })
+          : t("photos.scan.nothing.toast"),
       );
     },
   });
@@ -252,7 +253,11 @@ export function usePhotoChanges() {
       ),
     onSuccess: async (source) => {
       await refresh(queryClient);
-      showToast(source.enabled ? `Turned on ${source.label}` : `Turned off ${source.label}`);
+      showToast(
+        source.enabled
+          ? t("photos.source.on.toast", { name: source.label })
+          : t("photos.source.off.toast", { name: source.label }),
+      );
     },
   });
 
@@ -293,7 +298,7 @@ export function usePhotoChanges() {
       ),
     onSuccess: async (library) => {
       await refresh(queryClient);
-      showToast(`Connected ${library.name} again`);
+      showToast(t("photos.library.reconnected.toast", { name: library.name }));
     },
   });
 
@@ -311,7 +316,7 @@ export function usePhotoChanges() {
     },
     onSuccess: async (library) => {
       await refresh(queryClient);
-      showToast(`Removed ${library.name}`);
+      showToast(t("photos.library.removed.toast", { name: library.name }));
     },
   });
 
@@ -327,7 +332,7 @@ export function usePhotoChanges() {
       ),
     onSuccess: async (library) => {
       await refresh(queryClient);
-      showToast(`Checking ${library.name}…`);
+      showToast(t("photos.library.checking.toast", { name: library.name }));
     },
   });
 

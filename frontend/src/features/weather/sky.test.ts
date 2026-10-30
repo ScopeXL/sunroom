@@ -1,22 +1,29 @@
 import { Cloud, CloudMoon, CloudRain, CloudSnow, Moon, Sun } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
+import { t } from "../../lib/lang";
 import { degrees, highLow, placeWithoutCountry, rainChance, sky } from "./sky";
+
+/** The sky as the family reads it: its icon and its words in English. */
+function said(code: number, isDay?: boolean) {
+  const { icon, words } = sky(code, isDay);
+  return { icon, words: t(words) };
+}
 
 describe("the weather's words", () => {
   it("names the sky from its WMO code, by day and by night", () => {
-    expect(sky(0)).toEqual({ icon: Sun, words: "Sunny" });
-    expect(sky(0, false)).toEqual({ icon: Moon, words: "Clear" });
-    expect(sky(2, false)).toEqual({ icon: CloudMoon, words: "Partly cloudy" });
-    expect(sky(3).words).toBe("Cloudy");
-    expect(sky(45).words).toBe("Fog");
-    expect(sky(53).words).toBe("Drizzle");
-    expect(sky(57).words).toBe("Freezing rain");
-    expect(sky(63)).toEqual({ icon: CloudRain, words: "Rain" });
-    expect(sky(81).words).toBe("Showers");
-    expect(sky(75)).toEqual({ icon: CloudSnow, words: "Snow" });
-    expect(sky(99).words).toBe("Thunderstorms");
-    expect(sky(42)).toEqual({ icon: Cloud, words: "Cloudy" });
+    expect(said(0)).toEqual({ icon: Sun, words: "Sunny" });
+    expect(said(0, false)).toEqual({ icon: Moon, words: "Clear" });
+    expect(said(2, false)).toEqual({ icon: CloudMoon, words: "Partly cloudy" });
+    expect(said(3).words).toBe("Cloudy");
+    expect(said(45).words).toBe("Fog");
+    expect(said(53).words).toBe("Drizzle");
+    expect(said(57).words).toBe("Freezing rain");
+    expect(said(63)).toEqual({ icon: CloudRain, words: "Rain" });
+    expect(said(81).words).toBe("Showers");
+    expect(said(75)).toEqual({ icon: CloudSnow, words: "Snow" });
+    expect(said(99).words).toBe("Thunderstorms");
+    expect(said(42)).toEqual({ icon: Cloud, words: "Cloudy" });
   });
 
   it("writes temperatures and rain plainly", () => {

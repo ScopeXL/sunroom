@@ -3,6 +3,7 @@ import { useState } from "react";
 import { errorMessage } from "../../api/client";
 import { shortDate, weekOf, zonedParts } from "../../lib/dates";
 import { useMembers, useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Button } from "../../ui/Button";
 import { Chip, ChipRow } from "../../ui/Chip";
@@ -34,8 +35,6 @@ export function AddMeal({ day, initialTitle, onDone }: AddEditorProps) {
   return <MealEditor startDay={day} startText={initialTitle ?? ""} onDone={onDone} />;
 }
 
-const itemsText = (count: number) => (count === 1 ? "1 item" : `${String(count)} items`);
-
 /**
  * A meal's fields (UX §4 "Meals room", ADR 0030). One box, "What's cooking": what's typed is
  * the meal's name and, at the same time, the search of the saved meals, which sit under the box
@@ -59,6 +58,7 @@ export function MealEditor({
   startText?: string;
   onDone: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const today = zonedParts(useMinute()).day;
   const { data: settings } = useSettings();
@@ -134,7 +134,7 @@ export function MealEditor({
     );
   };
 
-  const verb = entry ? "Save Changes" : `Add ${SLOT_WORDS[slot]}`;
+  const verb = entry ? t("app.action.save_changes") : t("meals.editor.add.action", { slot });
   return (
     <form
       className={`flex flex-col ${display ? "gap-8" : "gap-6"}`}
@@ -143,12 +143,12 @@ export function MealEditor({
         save();
       }}
     >
-      <FormSection title="What and Who" quiet>
+      <FormSection title={t("meals.editor.what_who.title")} quiet>
         <div className="flex flex-col gap-3">
           <TextField
-            label={entry ? "What" : "What’s cooking"}
+            label={entry ? t("meals.editor.what.label") : t("meals.editor.cooking.label")}
             autoComplete="off"
-            placeholder="Tacos"
+            placeholder={t("meals.editor.what.placeholder")}
             maxLength={120}
             value={text}
             onChange={(event) => {
@@ -156,7 +156,7 @@ export function MealEditor({
             }}
           />
           {entry ? null : chips.length ? (
-            <ScrollRow label="Saved meals">
+            <ScrollRow label={t("meals.editor.saved.aria")}>
               {chips.slice(0, 12).map((meal) => (
                 <Chip
                   key={meal.id}
@@ -170,23 +170,23 @@ export function MealEditor({
               ))}
             </ScrollRow>
           ) : name ? null : (
-            <p className={soft}>Meals you add are kept here for next time.</p>
+            <p className={soft}>{t("meals.editor.saved.empty")}</p>
           )}
         </div>
-        <Field label="Who cooks">
+        <Field label={t("meals.editor.cook.label")}>
           <WhoPicker
-            label="Who cooks"
-            everyoneLabel="Anyone"
+            label={t("meals.editor.cook.label")}
+            everyoneLabel={t("meals.editor.cook.anyone")}
             members={members}
             value={cook}
             onChange={setCook}
           />
         </Field>
       </FormSection>
-      <FormSection title="When">
+      <FormSection title={t("meals.editor.when.title")}>
         {decided ? (
           <ValueRow
-            label="Day"
+            label={t("meals.editor.day.label")}
             value={shortDate(day)}
             expanded={dayOpen}
             onToggle={() => {
@@ -213,14 +213,14 @@ export function MealEditor({
         )}
         {slots.length <= 1 ? null : decided ? (
           <ChoiceRow
-            label="Which meal"
-            choices={slots.map((option) => ({ value: option, label: SLOT_WORDS[option] }))}
+            label={t("meals.editor.slot.label")}
+            choices={slots.map((option) => ({ value: option, label: t(SLOT_WORDS[option]) }))}
             value={slot}
             onChange={setSlot}
           />
         ) : (
-          <Field label="Which meal">
-            <ChipRow label="Which meal">
+          <Field label={t("meals.editor.slot.label")}>
+            <ChipRow label={t("meals.editor.slot.label")}>
               {slots.map((option) => (
                 <Chip
                   key={option}
@@ -229,7 +229,7 @@ export function MealEditor({
                     setSlot(option);
                   }}
                 >
-                  {SLOT_WORDS[option]}
+                  {t(SLOT_WORDS[option])}
                 </Chip>
               ))}
             </ChipRow>
@@ -237,9 +237,9 @@ export function MealEditor({
         )}
       </FormSection>
       {linked && ingredients.length > 0 && listsOn && !entry ? (
-        <FormSection title="Details">
+        <FormSection title={t("meals.editor.details.title")}>
           <Switch
-            label={`Add ${itemsText(ingredients.length)} to Groceries`}
+            label={t("meals.editor.groceries.label", { n: ingredients.length })}
             hint={ingredients.join(", ")}
             checked={shop}
             onChange={setShop}

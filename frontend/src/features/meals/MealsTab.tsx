@@ -4,10 +4,11 @@ import { useState } from "react";
 
 import { addDays, shortDate, weekSpan } from "../../lib/dates";
 import { useMembers } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { Button } from "../../ui/Button";
 import { Screen } from "../../ui/Screen";
 import { SLOT_WORDS, mealName, useMealChanges, useWeek, type Slot } from "./data";
-import { MealSidePanel, useMealWeek, type MealPanel } from "./MealsRoom";
+import { MealSidePanel, addSlotWords, useMealWeek, type MealPanel } from "./MealsRoom";
 import { SavedMeals } from "./SavedMeals";
 
 /** Meals on a phone (UX §5 "Meals"): the week as a list of days with the meal and who cooks,
@@ -24,6 +25,7 @@ export function MealsTab({ path }: { path: string[] }) {
 }
 
 function MealsWeekPhone() {
+  const t = useT();
   const [offset, setOffset] = useState(0);
   const { today, days, start } = useMealWeek(offset);
   const { data: week } = useWeek(start);
@@ -33,12 +35,12 @@ function MealsWeekPhone() {
   const slots: Slot[] = week?.slots ?? ["dinner"];
   const entries = week?.entries ?? [];
   return (
-    <Screen title="Meals" back="/more">
+    <Screen title={t("meals.room.title")} back="/more">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <Button
             variant="quiet"
-            aria-label="Last week"
+            aria-label={t("meals.week.last.aria")}
             onClick={() => {
               setOffset(offset - 1);
             }}
@@ -48,7 +50,7 @@ function MealsWeekPhone() {
           <span className="text-row font-bold">{weekSpan(days)}</span>
           <Button
             variant="quiet"
-            aria-label="Next week"
+            aria-label={t("meals.week.next.aria")}
             onClick={() => {
               setOffset(offset + 1);
             }}
@@ -62,7 +64,7 @@ function MealsWeekPhone() {
           className="press inline-flex min-h-11 items-center gap-2 rounded-button border-2 border-line bg-surface px-3 text-body font-semibold"
         >
           <BookOpen aria-hidden="true" className="size-5" />
-          Saved Meals
+          {t("meals.saved.title")}
         </Link>
       </div>
       <ul className="flex flex-col divide-y divide-line rounded-chip border border-line bg-surface">
@@ -73,8 +75,7 @@ function MealsWeekPhone() {
             className={`flex flex-col gap-1 px-3 py-2 ${day === today ? "bg-lit" : ""}`}
           >
             <span className={`text-secondary ${day === today ? "font-bold" : "text-ink-soft"}`}>
-              {shortDate(day)}
-              {day === today ? " · today" : ""}
+              {day === today ? t("meals.week.today_line", { day: shortDate(day) }) : shortDate(day)}
             </span>
             {slots.map((slot) => {
               const entry = entries.find((e) => e.day === day && e.slot === slot);
@@ -89,8 +90,12 @@ function MealsWeekPhone() {
                   className="press-row flex min-h-11 items-center justify-between gap-3 rounded-chip px-1 text-left"
                 >
                   <span className="text-body font-semibold">
-                    {slots.length > 1 ? `${SLOT_WORDS[slot]}: ` : ""}
-                    {mealName(entry)}
+                    {slots.length > 1
+                      ? t("meals.week.slot_meal", {
+                          slot: t(SLOT_WORDS[slot]),
+                          meal: mealName(entry),
+                        })
+                      : mealName(entry)}
                   </span>
                   {cook ? <span className="text-secondary text-ink-soft">{cook.name}</span> : null}
                 </button>
@@ -104,8 +109,7 @@ function MealsWeekPhone() {
                   className="press-row flex min-h-11 items-center gap-2 rounded-chip px-1 text-left text-body font-semibold text-ink-soft"
                 >
                   <Plus aria-hidden="true" className="size-5" />
-                  Add {SLOT_WORDS[slot].toLowerCase()}
-                  <span className="sr-only"> on {shortDate(day)}</span>
+                  {addSlotWords(slot, day)}
                 </button>
               );
             })}
@@ -121,7 +125,7 @@ function MealsWeekPhone() {
             changes.copyWeek.mutate({ from: addDays(start, -7), to: start });
           }}
         >
-          Copy Last Week
+          {t("meals.week.copy.action")}
         </Button>
       </div>
       <MealSidePanel

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { errorMessage } from "../../api/client";
 import { isHomeAddress } from "../../lib/address";
 import { formatTime } from "../../lib/dates";
+import { useT } from "../../lib/lang";
 import { useSavedFlash } from "../../lib/savedFlash";
 import { useDebounced } from "../../lib/useDebounced";
 import { Button } from "../../ui/Button";
@@ -62,11 +63,15 @@ export function LibraryPanel({
   onOpen: (opening: LibraryOpening) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const { data: libraries = [] } = useLibraries({ enabled: opening !== null });
   const { data: kinds = [] } = useLibraryKinds({ enabled: opening !== null });
   const library =
     opening?.page === "library" ? libraries.find((each) => each.id === opening.id) : undefined;
-  const title = opening?.page === "library" ? (library?.name ?? "Photo Library") : "Add a Library";
+  const title =
+    opening?.page === "library"
+      ? (library?.name ?? t("photos.library.title"))
+      : t("photos.library.add.title");
   return (
     <SidePanel
       open={opening !== null}
@@ -101,6 +106,7 @@ function AddLibrary({
   kinds: LibraryKind[];
   onConnected: (library: PhotoLibrary) => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const { addLibrary } = usePhotoChanges();
   const [chosen, setChosen] = useState<string | null>(null);
@@ -123,9 +129,9 @@ function AddLibrary({
         );
       }}
     >
-      <Field label="Kind">
+      <Field label={t("photos.library.kind.label")}>
         {/* A row, so the next kind of library is a chip, not a redesign. */}
-        <ChipRow label="Kind">
+        <ChipRow label={t("photos.library.kind.label")}>
           {kinds.map((each) => (
             <Chip
               key={each.kind}
@@ -140,7 +146,7 @@ function AddLibrary({
         </ChipRow>
       </Field>
       <TextField
-        label="Address"
+        label={t("photos.library.address.label")}
         placeholder={kind?.placeholder}
         hint={kind?.address_hint ?? null}
         autoCapitalize="none"
@@ -152,7 +158,7 @@ function AddLibrary({
         }}
       />
       <TextField
-        label="API key"
+        label={t("photos.library.key.label")}
         type="password"
         layout="password"
         autoComplete="off"
@@ -164,14 +170,20 @@ function AddLibrary({
         error={addLibrary.isError ? errorMessage(addLibrary.error) : null}
       />
       <Switch
-        label="This server is on your home network"
-        hint={`For ${kind?.name ?? "a library"} at home (an address like 192.168…). A parent's tick lets Sunroom reach it.`}
+        label={t("photos.library.home.label")}
+        hint={
+          kind
+            ? t("photos.library.home.hint", { name: kind.name })
+            : t("photos.library.home.hint_any")
+        }
         checked={ticked}
         onChange={setHome}
       />
       <PanelActions>
         <Button type="submit" block pending={addLibrary.isPending} disabled={!ready}>
-          {addLibrary.isPending ? "Connecting…" : "Connect"}
+          {addLibrary.isPending
+            ? t("photos.library.connecting.action")
+            : t("photos.library.connect.action")}
         </Button>
       </PanelActions>
     </form>
@@ -188,6 +200,7 @@ function LibraryPage({
   kind: LibraryKind | undefined;
   onRemoved: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const text = display ? "text-d-body" : "text-body";
   const soft = display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft";
@@ -235,7 +248,7 @@ function LibraryPage({
             id={`${library.id}-show`}
             className={display ? "text-d-body font-bold" : "text-row font-bold"}
           >
-            What to Show
+            {t("photos.library.show.title")}
           </h3>
           <SavedMark show={saved} />
         </div>
@@ -251,8 +264,8 @@ function LibraryPage({
           }}
         />
         <Chips
-          label="Albums"
-          empty={`No albums in ${kindName} yet.`}
+          label={t("photos.library.albums.label")}
+          empty={t("photos.library.albums.empty", { name: kindName })}
           choices={choices?.albums ?? []}
           chosen={picks.albums}
           search
@@ -261,8 +274,8 @@ function LibraryPage({
           }}
         />
         <Chips
-          label="Tags"
-          empty={`No tags in ${kindName} yet.`}
+          label={t("photos.library.tags.label")}
+          empty={t("photos.library.tags.empty", { name: kindName })}
           choices={choices?.tags ?? []}
           chosen={picks.tags}
           onToggle={(id) => {
@@ -278,12 +291,12 @@ function LibraryPage({
             }}
           >
             <RefreshCw aria-hidden="true" className={display ? "size-6" : "size-5"} />
-            Refresh Choices
+            {t("photos.library.refresh.action")}
           </Button>
           {choices?.fetched_at ? (
-            <span
-              className={soft}
-            >{`Choices from ${formatTime(new Date(choices.fetched_at))}`}</span>
+            <span className={soft}>
+              {t("photos.library.choices_from", { time: formatTime(new Date(choices.fetched_at)) })}
+            </span>
           ) : null}
         </div>
         {changes.refreshChoices.isError ? (
@@ -292,9 +305,9 @@ function LibraryPage({
           </p>
         ) : null}
       </section>
-      <Field label="Keep up to" hint="The newest ones. More photos take more room on the server.">
+      <Field label={t("photos.library.limit.label")} hint={t("photos.library.limit.hint")}>
         <Segmented
-          label="Keep up to"
+          label={t("photos.library.limit.label")}
           value={String(library.limit)}
           options={LIMITS.map((limit) => ({ value: String(limit), label: count(limit) }))}
           onChange={(value) => {
@@ -303,8 +316,8 @@ function LibraryPage({
         />
       </Field>
       <Switch
-        label="Show on the screensaver"
-        hint="Off keeps the photos and shows none of them."
+        label={t("photos.library.enabled.label")}
+        hint={t("photos.library.enabled.hint")}
         checked={library.enabled}
         onChange={(enabled) => {
           save({ enabled });
@@ -319,7 +332,7 @@ function LibraryPage({
             changes.checkLibrary.mutate(library);
           }}
         >
-          Check Now
+          {t("photos.check_now.action")}
         </Button>
       </div>
       {changes.patchLibrary.isError || changes.checkLibrary.isError ? (
@@ -330,9 +343,11 @@ function LibraryPage({
       {asking ? (
         <div className="flex flex-col gap-3 rounded-button border-2 border-line p-4">
           <p className={`${text} font-semibold`}>
-            {`Remove ${library.name}? Its ${count(library.photo_count)} ${
-              library.photo_count === 1 ? "photo leaves" : "photos leave"
-            } the screensaver and this server. Nothing changes in ${kindName}.`}
+            {t("photos.library.remove.ask", {
+              name: library.name,
+              n: library.photo_count,
+              kind: kindName,
+            })}
           </p>
           <div className="flex flex-wrap gap-3">
             <Button
@@ -342,7 +357,7 @@ function LibraryPage({
                 changes.removeLibrary.mutate(library, { onSuccess: onRemoved });
               }}
             >
-              Remove {library.name}
+              {t("photos.library.remove.action", { name: library.name })}
             </Button>
             <Button
               variant="secondary"
@@ -350,7 +365,7 @@ function LibraryPage({
                 setAsking(false);
               }}
             >
-              Keep It
+              {t("photos.library.keep.action")}
             </Button>
           </div>
         </div>
@@ -362,7 +377,7 @@ function LibraryPage({
             setAsking(true);
           }}
         >
-          Remove Library
+          {t("photos.library.remove_library.action")}
         </Button>
       )}
     </div>
@@ -371,6 +386,7 @@ function LibraryPage({
 
 /** A library that needs its key again: the key (and, opened on request, a new address). */
 function ConnectAgain({ library, kind }: { library: PhotoLibrary; kind: LibraryKind | undefined }) {
+  const t = useT();
   const display = useShell() === "display";
   const { reconnectLibrary } = usePhotoChanges();
   const [key, setKey] = useState("");
@@ -391,7 +407,7 @@ function ConnectAgain({ library, kind }: { library: PhotoLibrary; kind: LibraryK
     >
       {moving ? (
         <TextField
-          label="Address"
+          label={t("photos.library.address.label")}
           placeholder={kind?.placeholder}
           autoCapitalize="none"
           autoComplete="off"
@@ -410,12 +426,12 @@ function ConnectAgain({ library, kind }: { library: PhotoLibrary; kind: LibraryK
               setMoving(true);
             }}
           >
-            Change Address
+            {t("photos.library.change_address.action")}
           </Chip>
         </div>
       )}
       <TextField
-        label="API key"
+        label={t("photos.library.key.label")}
         type="password"
         layout="password"
         autoComplete="off"
@@ -428,7 +444,7 @@ function ConnectAgain({ library, kind }: { library: PhotoLibrary; kind: LibraryK
       />
       <div>
         <Button type="submit" disabled={!key.trim()} pending={reconnectLibrary.isPending}>
-          Connect Again
+          {t("photos.library.connect_again.action")}
         </Button>
       </div>
     </form>
@@ -455,12 +471,17 @@ function Faces({
   chosen: readonly string[];
   onToggle: (id: string) => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const hint = display ? "text-d-caption text-ink-soft" : "text-caption text-ink-soft";
   return (
-    <Field label="People">
+    <Field label={t("photos.library.people.label")}>
       {people.length ? (
-        <div role="group" aria-label="People" className="flex flex-wrap gap-2">
+        <div
+          role="group"
+          aria-label={t("photos.library.people.label")}
+          className="flex flex-wrap gap-2"
+        >
           {people.map((person) => (
             <button
               key={person.id}
@@ -484,14 +505,10 @@ function Faces({
           ))}
         </div>
       ) : (
-        <p className={hint}>{`No people in ${kindName} yet.`}</p>
+        <p className={hint}>{t("photos.library.people.empty", { name: kindName })}</p>
       )}
       {unnamed ? (
-        <p className={hint}>
-          {unnamed === 1
-            ? "and 1 person without a name isn't listed"
-            : `and ${count(unnamed)} people without a name aren't listed`}
-        </p>
+        <p className={hint}>{t("photos.library.people.unnamed", { n: unnamed })}</p>
       ) : null}
     </Field>
   );
@@ -540,6 +557,7 @@ function Chips({
   search?: boolean;
   onToggle: (id: string) => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const [query, setQuery] = useState("");
   const typed = useDebounced(query, 200).trim().toLowerCase();
@@ -556,9 +574,9 @@ function Chips({
       {finding ? (
         <div className="relative">
           <TextField
-            label="Find an album"
+            label={t("photos.library.find_album.label")}
             hideLabel
-            placeholder="Find an album"
+            placeholder={t("photos.library.find_album.label")}
             autoComplete="off"
             value={query}
             onChange={(event) => {

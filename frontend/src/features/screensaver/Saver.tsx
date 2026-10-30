@@ -12,6 +12,7 @@ import {
 } from "../../lib/dates";
 import { backToNow, idleHolds } from "../../lib/displayState";
 import { useMembers, useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { swallowFollowingClick, whenIdle } from "../../lib/idle";
 import { useMinute } from "../../lib/time";
 import { kioskCommands } from "../../shell/kioskCommands";
@@ -98,6 +99,7 @@ function SaverScreen({
   home: "/display" | "/";
   onGone: () => void;
 }) {
+  const t = useT();
   const navigate = useNavigate();
   // Return to the calendar after: Never keeps the room the wall was in, even after half an hour
   // (ADR 0034); the board itself still comes back to now.
@@ -151,7 +153,7 @@ function SaverScreen({
     <div
       role="button"
       tabIndex={0}
-      aria-label="Photos are showing. Tap to go back."
+      aria-label={t("photos.saver.aria")}
       data-saver=""
       onPointerDown={(event) => {
         event.preventDefault();
@@ -188,6 +190,7 @@ function SaverScreen({
 
 /** The clock, the date and Up next, along the bottom (on a dark wash when over a photo). */
 function Band({ onPhoto }: { onPhoto: boolean }) {
+  const t = useT();
   const minute = useMinute();
   const now = wallNow(minute);
   const { day } = zonedParts(minute);
@@ -217,15 +220,18 @@ function Band({ onPhoto }: { onPhoto: boolean }) {
             <Corner key={index} />
           ))}
         </p>
-        {!onPhoto ? (
-          <p className={`text-d-body ${soft}`}>Add photos from a device to see them here.</p>
-        ) : null}
+        {!onPhoto ? <p className={`text-d-body ${soft}`}>{t("photos.saver.empty")}</p> : null}
       </div>
       {next ? (
         <div className="flex max-w-[40%] min-w-0 flex-col items-end gap-1 text-right">
-          <p className={`text-d-secondary font-semibold ${soft}`}>Up next</p>
+          <p className={`text-d-secondary font-semibold ${soft}`}>{t("photos.saver.up_next")}</p>
           <p className="text-d-glance font-bold">
-            {next.start_local ? formatWallTime(next.start_local) : "All day"} {next.title}
+            {next.start_local
+              ? t("photos.saver.next_at", {
+                  time: formatWallTime(next.start_local),
+                  title: next.title,
+                })
+              : t("photos.saver.next_all_day", { title: next.title })}
           </p>
           {people.length ? (
             <p className="text-d-body font-semibold">{people.map((p) => p.name).join(", ")}</p>

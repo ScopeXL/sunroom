@@ -6,6 +6,7 @@ import { zonedParts } from "../../lib/dates";
 import { updateDisplay } from "../../lib/displayState";
 import { useMembers, type Member } from "../../lib/household";
 import { lastActivity } from "../../lib/idle";
+import { useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Avatar } from "../../ui/Avatar";
 import { Button } from "../../ui/Button";
@@ -61,6 +62,7 @@ function useDayCelebration(items: Upcoming[], members: Member[], today: string) 
 /** The Today panel's Coming up (UX §3): the nearest three (one in portrait's band); on the day,
  * "Today: Mia's birthday!". */
 export function ComingUpWall({ band = false }: { band?: boolean }) {
+  const t = useT();
   const today = zonedParts(useMinute()).day;
   const { data } = useComingUp(band ? 1 : SHOWN);
   const { data: members = [] } = useMembers();
@@ -71,7 +73,7 @@ export function ComingUpWall({ band = false }: { band?: boolean }) {
   return (
     <section ref={anchor} aria-labelledby="today-coming-up" className="flex flex-col gap-2">
       <h2 id="today-coming-up" className="text-d-body font-bold text-ink-soft">
-        Coming Up
+        {t("countdowns.coming_up.title")}
       </h2>
       {items.map((item) => {
         const person = members.find((m) => m.id === item.member_id) ?? null;
@@ -106,6 +108,7 @@ export function ComingUpWall({ band = false }: { band?: boolean }) {
 
 /** Today on a phone: the same three. */
 export function ComingUpPhone() {
+  const t = useT();
   const { data } = useComingUp(SHOWN);
   const items = data?.items ?? [];
   const navigate = useNavigate();
@@ -113,7 +116,7 @@ export function ComingUpPhone() {
   return (
     <section aria-labelledby="phone-coming-up" className="flex flex-col gap-1">
       <h2 id="phone-coming-up" className="text-row font-bold text-ink-soft">
-        Coming Up
+        {t("countdowns.coming_up.title")}
       </h2>
       {items.map((item) => (
         <button
@@ -142,6 +145,7 @@ export function AddCountdownFromEvent({
   occurrence: Occurrence;
   onDone: () => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const navigate = useNavigate();
   const day = occurrence.start_date ?? occurrence.start_local?.slice(0, 10) ?? null;
@@ -166,7 +170,7 @@ export function AddCountdownFromEvent({
       }}
     >
       <CalendarPlus aria-hidden="true" className={display ? "size-7" : "size-5"} />
-      Add a Countdown
+      {t("countdowns.from_event.action")}
     </Button>
   );
 }

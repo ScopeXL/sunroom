@@ -1,5 +1,6 @@
 import { ImagePlus } from "lucide-react";
 
+import { useT } from "../../lib/lang";
 import { useShell } from "../../ui/shell";
 import { usePhotoChanges } from "./data";
 
@@ -10,6 +11,7 @@ import { usePhotoChanges } from "./data";
  * takes photos from any signed-in device and decodes HEIC itself.
  */
 export function AddPhotosButton({ block = false }: { block?: boolean }) {
+  const t = useT();
   const display = useShell() === "display";
   const { upload } = usePhotoChanges();
   return (
@@ -21,7 +23,7 @@ export function AddPhotosButton({ block = false }: { block?: boolean }) {
       } ${block ? "w-full" : ""}`}
     >
       <ImagePlus aria-hidden="true" className={display ? "size-7" : "size-5"} />
-      {upload.isPending ? "Adding…" : "Add Photos"}
+      {upload.isPending ? t("photos.adding.action") : t("photos.add.action")}
       <input
         type="file"
         accept="image/*"

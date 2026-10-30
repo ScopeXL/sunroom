@@ -1,11 +1,7 @@
 [
   "src/features/calendar/",
-  "src/features/countdowns/",
-  "src/features/meals/",
   "src/features/problems/",
-  "src/features/screensaver/",
   "src/features/settings/",
   "src/features/tips/",
-  "src/features/weather/",
   "src/screen/"
 ]

@@ -3,6 +3,7 @@ import { EyeOff, Images, Play } from "lucide-react";
 import { useState } from "react";
 
 import { qk } from "../../api/keys";
+import { useT } from "../../lib/lang";
 import { fetchSession } from "../../lib/session";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
@@ -17,7 +18,6 @@ import {
   usePhotoChanges,
   type LibraryPhoto,
 } from "./data";
-import { photosCount } from "./PhotosRoom";
 
 /**
  * Photos on a phone (UX §5 "More"): where photos are added, from the camera or the library,
@@ -26,6 +26,7 @@ import { photosCount } from "./PhotosRoom";
  * screen from here.
  */
 export function PhotosTab() {
+  const t = useT();
   const { data: session } = useQuery({ queryKey: qk.session(), queryFn: fetchSession });
   const { data: manifest } = useManifest();
   const library = useLibrary();
@@ -35,12 +36,10 @@ export function PhotosTab() {
   const { data: libraries = [] } = useLibraries({ enabled: session?.is_parent ?? false });
   const from = open ? fromLibrary(open, libraries) : null;
   return (
-    <Screen title="Photos" back="/more" actions={<AddPhotosButton block />}>
+    <Screen title={t("photos.room.title")} back="/more" actions={<AddPhotosButton block />}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-body text-ink-soft">
-          {library.isSuccess
-            ? `${photosCount(manifest?.photos.length ?? 0)} on the screensaver`
-            : ""}
+          {library.isSuccess ? t("photos.tab.on_saver", { n: manifest?.photos.length ?? 0 }) : ""}
         </p>
         {session?.is_parent ? (
           <Button
@@ -51,23 +50,19 @@ export function PhotosTab() {
             }}
           >
             <Play aria-hidden="true" className="size-5" />
-            Start Screensaver
+            {t("photos.start.action")}
           </Button>
         ) : null}
       </div>
       {library.isSuccess && photos.length === 0 ? (
-        <EmptyState
-          icon={Images}
-          line="No photos yet"
-          note="Photos added from any device show here and on the screensaver."
-        />
+        <EmptyState icon={Images} line={t("photos.empty")} note={t("photos.empty_note")} />
       ) : (
-        <ul aria-label="Photos" className="grid grid-cols-3 gap-2">
+        <ul aria-label={t("photos.room.title")} className="grid grid-cols-3 gap-2">
           {photos.map((photo) => (
             <li key={photo.id}>
               <button
                 type="button"
-                aria-label={photo.hidden ? "A photo, hidden from the screensaver" : "A photo"}
+                aria-label={photo.hidden ? t("photos.photo.hidden.aria") : t("photos.photo.aria")}
                 onClick={() => {
                   setOpen(photo);
                 }}
@@ -100,13 +95,13 @@ export function PhotosTab() {
               void library.fetchNextPage();
             }}
           >
-            Show More
+            {t("photos.more.action")}
           </Button>
         </div>
       ) : null}
       <Sheet
         open={open !== null}
-        title="Photo"
+        title={t("photos.photo.title")}
         onClose={() => {
           setOpen(null);
         }}
@@ -120,7 +115,9 @@ export function PhotosTab() {
                   setOpen(null);
                 }}
               >
-                {open.hidden ? "Show on the Screensaver" : "Hide from Screensaver"}
+                {open.hidden
+                  ? t("photos.show_on_saver.action")
+                  : t("photos.hide_from_saver.action")}
               </Button>
               {from ? null : (
                 <Button
@@ -130,7 +127,7 @@ export function PhotosTab() {
                     setOpen(null);
                   }}
                 >
-                  Remove
+                  {t("app.action.remove")}
                 </Button>
               )}
             </div>

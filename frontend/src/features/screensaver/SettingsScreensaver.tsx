@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { formatTime } from "../../lib/dates";
 import { usePlugins } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { Button } from "../../ui/Button";
 import { ListRow } from "../../ui/ListRow";
 import { useShell } from "../../ui/shell";
@@ -18,7 +19,6 @@ import {
   type PhotoSource,
 } from "./data";
 import { LibraryPanel, type LibraryOpening } from "./LibraryPanel";
-import { photosCount } from "./PhotosRoom";
 import { libraryLine } from "./words";
 
 /**
@@ -28,6 +28,7 @@ import { libraryLine } from "./words";
  * Library, which open one panel.
  */
 export function SettingsScreensaver() {
+  const t = useT();
   const { data: plugins = [] } = usePlugins();
   const plugin = plugins.find((p) => p.id === "screensaver");
   const { data: sources = [] } = useSources();
@@ -35,7 +36,7 @@ export function SettingsScreensaver() {
   return (
     <>
       {plugin ? (
-        <Group title="Screensaver">
+        <Group title={t("photos.settings.saver.title")}>
           <PluginSettingsForm
             pluginId="screensaver"
             spec={plugin.settings_spec}
@@ -60,14 +61,23 @@ export function SettingsScreensaver() {
 
 /** Photo Libraries: a row per library (how it's doing, how many photos), then Add a Library. */
 function LibrariesGroup({ onOpen }: { onOpen: (opening: LibraryOpening) => void }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: libraries = [] } = useLibraries();
   const { data: kinds = [] } = useLibraryKinds();
-  const names = kinds.map((kind) => kind.name).join(" and ") || "Immich";
+  // "Immich", "Immich and X": the kinds of library Sunroom can connect.
+  const names =
+    kinds
+      .map((kind) => kind.name)
+      .reduce<string>(
+        (all, name) =>
+          all ? t("photos.settings.libraries.and", { names: all, last: name }) : name,
+        "",
+      ) || "Immich";
   return (
     <Group
-      title="Photo Libraries"
-      note={`Sunroom can show photos kept on a photo server. ${names} works today.`}
+      title={t("photos.settings.libraries.title")}
+      note={t("photos.settings.libraries.note", { names })}
     >
       {libraries.map((library) => (
         <LibraryRow
@@ -80,7 +90,7 @@ function LibrariesGroup({ onOpen }: { onOpen: (opening: LibraryOpening) => void 
       ))}
       {libraries.length === 0 ? (
         <div className={display ? "py-5" : "py-4"}>
-          <Text>No library connected yet.</Text>
+          <Text>{t("photos.settings.libraries.empty")}</Text>
         </div>
       ) : null}
       <div className={display ? "py-5" : "py-4"}>
@@ -91,7 +101,7 @@ function LibrariesGroup({ onOpen }: { onOpen: (opening: LibraryOpening) => void 
           }}
         >
           <Plus aria-hidden="true" className={display ? "size-7" : "size-5"} />
-          Add a Library
+          {t("photos.library.add.action")}
         </Button>
       </div>
     </Group>
@@ -99,10 +109,11 @@ function LibrariesGroup({ onOpen }: { onOpen: (opening: LibraryOpening) => void 
 }
 
 function LibraryRow({ library, onOpen }: { library: PhotoLibrary; onOpen: () => void }) {
+  const t = useT();
   const line = libraryLine(library);
   return (
     <ListRow
-      label={`Edit ${library.name}`}
+      label={t("photos.library.edit.aria", { name: library.name })}
       title={library.name}
       subtitle={
         line.trouble ? (
@@ -119,26 +130,25 @@ function LibraryRow({ library, onOpen }: { library: PhotoLibrary; onOpen: () => 
 }
 
 function SourceGroup({ source }: { source: PhotoSource }) {
+  const t = useT();
   const display = useShell() === "display";
   const { scan, setSource } = usePhotoChanges();
   const checked = source.last_scan_at
-    ? `Checked at ${formatTime(new Date(source.last_scan_at))}`
-    : "Not checked yet";
+    ? t("photos.source.checked", { time: formatTime(new Date(source.last_scan_at)) })
+    : t("photos.not_checked");
   // Sunroom's own folder gets its name from here, a heading in Title Case (UX §2); a source
   // someone named keeps its name as they wrote it.
   const inbox = source.kind === "inbox";
   return (
     <Group
-      title={inbox ? "Photos Folder" : source.label}
-      note={
-        source.kind === "inbox"
-          ? "Photos put in the photos/inbox folder in Sunroom's data folder on the server are added every 5 minutes, then moved to inbox/imported."
-          : undefined
-      }
+      title={inbox ? t("photos.source.inbox.title") : source.label}
+      note={source.kind === "inbox" ? t("photos.source.inbox.note") : undefined}
     >
       <Switch
         label={
-          inbox ? "Bring in photos from the photos folder" : `Bring in photos from ${source.label}`
+          inbox
+            ? t("photos.source.inbox.label")
+            : t("photos.source.enabled.label", { name: source.label })
         }
         checked={source.enabled}
         onChange={(enabled) => {
@@ -149,7 +159,7 @@ function SourceGroup({ source }: { source: PhotoSource }) {
         className={`flex flex-wrap items-center justify-between gap-3 ${display ? "py-5" : "py-4"}`}
       >
         <div className="flex flex-col gap-1">
-          <Text>{`${photosCount(source.photo_count)} from here · ${checked}`}</Text>
+          <Text>{`${t("photos.source.count", { n: source.photo_count })} · ${checked}`}</Text>
           {source.last_error ? (
             <p
               role="status"
@@ -167,7 +177,7 @@ function SourceGroup({ source }: { source: PhotoSource }) {
             scan.mutate(source.id);
           }}
         >
-          Check Now
+          {t("photos.check_now.action")}
         </Button>
       </div>
     </Group>

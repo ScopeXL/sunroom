@@ -1,7 +1,8 @@
 /**
  * The weather in the family's words (UX §2): Open-Meteo sends WMO weather codes; the wall shows
- * an icon and a word or two. Temperatures are whole degrees in the household's units, written
- * "64°" (Settings → Features → Weather says which).
+ * an icon and a word or two, a key in lang/en.json (ADR 0043) said where it's shown. Temperatures
+ * are whole degrees in the household's units, written "64°" (Settings → Features → Weather says
+ * which).
  */
 import {
   Cloud,
@@ -17,29 +18,36 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { t, type Key } from "../../lib/lang";
+
 export interface Sky {
   icon: LucideIcon;
-  words: string;
+  /** The sky's words, a key: `t(sky.words)` says "Partly cloudy". */
+  words: Key;
 }
 
 export function sky(code: number, isDay = true): Sky {
-  if (code === 0) return isDay ? { icon: Sun, words: "Sunny" } : { icon: Moon, words: "Clear" };
+  if (code === 0) {
+    return isDay
+      ? { icon: Sun, words: "weather.sky.sunny" }
+      : { icon: Moon, words: "weather.sky.clear" };
+  }
   if (code === 1)
     return isDay
-      ? { icon: CloudSun, words: "Mostly sunny" }
-      : { icon: CloudMoon, words: "Mostly clear" };
-  if (code === 2) return { icon: isDay ? CloudSun : CloudMoon, words: "Partly cloudy" };
-  if (code === 3) return { icon: Cloud, words: "Cloudy" };
-  if (code === 45 || code === 48) return { icon: CloudFog, words: "Fog" };
+      ? { icon: CloudSun, words: "weather.sky.mostly_sunny" }
+      : { icon: CloudMoon, words: "weather.sky.mostly_clear" };
+  if (code === 2) return { icon: isDay ? CloudSun : CloudMoon, words: "weather.sky.partly_cloudy" };
+  if (code === 3) return { icon: Cloud, words: "weather.sky.cloudy" };
+  if (code === 45 || code === 48) return { icon: CloudFog, words: "weather.sky.fog" };
   if (code === 56 || code === 57 || code === 66 || code === 67)
-    return { icon: CloudRain, words: "Freezing rain" };
-  if (code >= 51 && code <= 55) return { icon: CloudDrizzle, words: "Drizzle" };
-  if (code >= 61 && code <= 65) return { icon: CloudRain, words: "Rain" };
-  if (code >= 80 && code <= 82) return { icon: CloudRain, words: "Showers" };
+    return { icon: CloudRain, words: "weather.sky.freezing_rain" };
+  if (code >= 51 && code <= 55) return { icon: CloudDrizzle, words: "weather.sky.drizzle" };
+  if (code >= 61 && code <= 65) return { icon: CloudRain, words: "weather.sky.rain" };
+  if (code >= 80 && code <= 82) return { icon: CloudRain, words: "weather.sky.showers" };
   if ((code >= 71 && code <= 77) || code === 85 || code === 86)
-    return { icon: CloudSnow, words: "Snow" };
-  if (code >= 95) return { icon: CloudLightning, words: "Thunderstorms" };
-  return { icon: Cloud, words: "Cloudy" };
+    return { icon: CloudSnow, words: "weather.sky.snow" };
+  if (code >= 95) return { icon: CloudLightning, words: "weather.sky.thunderstorms" };
+  return { icon: Cloud, words: "weather.sky.cloudy" };
 }
 
 export function degrees(value: number): string {
@@ -48,7 +56,7 @@ export function degrees(value: number): string {
 
 /** "High 70°, low 52°" for screen readers and the day's line. */
 export function highLow(high: number, low: number): string {
-  return `High ${degrees(high)}, low ${degrees(low)}`;
+  return t("weather.high_low", { high: degrees(high), low: degrees(low) });
 }
 
 /** A chance of rain worth saying: 30% and up ("70%"). */
