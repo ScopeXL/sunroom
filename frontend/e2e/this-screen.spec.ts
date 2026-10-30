@@ -3,7 +3,8 @@
  * opens /display?screen=7800, and its parent-only page talks to the agent on 127.0.0.1:7800.
  * Here the agent is pretend, answered by page.route with the CORS headers the real one sends.
  * The page and its sheets, Restart, Shut Down's question, Wi-Fi typed on the wall's keyboard,
- * Rotation, Update Now's progress, and no page at all without ?screen=. Synthetic data only.
+ * Rotation, Update Now's question, its steps and the agent's restart (ADR 0044), and no page at
+ * all without ?screen=. Synthetic data only.
  */
 import type { Page, Route } from "@playwright/test";
 
@@ -65,18 +66,55 @@ const NETWORKS = [
   },
 ];
 
+interface Step {
+  percent: number;
+  step: string;
+  key: string;
+}
+
 /** The pretend agent: what it was asked, and its state as those asks change it. */
 class FakeAgent {
   calls: string[] = [];
   bodies: Record<string, unknown> = {};
   current = state();
-  updating = false;
+  step: Step | null = null;
+  awayUntil = 0;
 
   async install(page: Page): Promise<void> {
     await page.route(`${AGENT}/api/screen**`, (route) => this.answer(route));
   }
 
+  /** An update's last step on the old version: it starts itself again, so nothing answers for
+   * `awayMs`, then it's back as `version`, saying how the update ended (ADR 0044). */
+  restartAs(version: string, awayMs: number): void {
+    this.awayUntil = Date.now() + awayMs;
+    this.step = null;
+    this.current = state({
+      version,
+      update: {
+        check: "nightly",
+        state: "up_to_date",
+        installed: version,
+        latest: version,
+        checked_at: null,
+        message: null,
+        last_result: {
+          version,
+          ok: true,
+          at: "2026-10-30T03:30:00+00:00",
+          message: `Updated to ${version}`,
+          message_key: "agent.update.updated",
+          message_params: { version },
+        },
+      },
+    });
+  }
+
   private async answer(route: Route): Promise<void> {
+    if (Date.now() < this.awayUntil) {
+      await route.abort(); // starting itself again: nothing listens on its port
+      return;
+    }
     const request = route.request();
     const path = new URL(request.url()).pathname;
     const method = request.method();
@@ -88,9 +126,7 @@ class FakeAgent {
       // A short reconnect, so each new connection carries what changed (the real stream is
       // one long connection).
       const frames = [`retry: 300\n\n`, `event: state\ndata: ${JSON.stringify(this.current)}\n\n`];
-      if (this.updating) {
-        frames.push(`event: update.progress\ndata: {"percent":40,"step":"Installing…"}\n\n`);
-      }
+      if (this.step) frames.push(`event: update.progress\ndata: ${JSON.stringify(this.step)}\n\n`);
       await route.fulfill({
         status: 200,
         headers: { ...CORS, "Content-Type": "text/event-stream" },
@@ -120,7 +156,15 @@ class FakeAgent {
       this.current = state({ display: { rotation, brightness_method: "ddc" } });
       return json(200, this.current);
     }
-    if (method === "POST" && path === "/api/screen/update") this.updating = true;
+    if (method === "POST" && path === "/api/screen/update") {
+      this.step = { percent: 40, step: "Installing…", key: "agent.update.step.installing" };
+      const update = this.current.update as Record<string, unknown>;
+      this.current = { ...this.current, update: { ...update, state: "installing" } };
+    }
+    if (method === "POST" && path === "/api/screen/update/seen") {
+      const update = this.current.update as Record<string, unknown>;
+      this.current = { ...this.current, update: { ...update, last_result: null } };
+    }
     if (method === "GET" && path === "/api/screen/about") {
       return json(200, {
         version: "0.13.0",
@@ -227,10 +271,23 @@ test("This Screen restarts, shuts down, joins Wi-Fi, turns and updates the scree
   );
   expect(agent.bodies["PUT /api/screen/display"]).toEqual({ rotation: 90 });
 
-  // Update Now: the toast, then the progress the agent streams.
+  // Update Now asks first, saying what it does (ADR 0044); then each step the agent streams.
   await page.getByRole("button", { name: "Update Now" }).click();
+  const updating = page.getByRole("dialog", { name: "Update This Screen?" });
+  await expect(updating).toContainText("Sunroom Screen updates to 0.14.0 and starts again.");
+  await check(page, "This Screen's Update This Screen? sheet");
+  await updating.getByRole("button", { name: "Update", exact: true }).click();
   await expect(toast(page, "Updating… this takes a few minutes")).toBeVisible();
-  await expect(page.getByText(/Updating…\s*40%/)).toBeVisible();
+  await expect(page.getByText(/Installing…\s*40%/)).toBeVisible();
+  // It starts itself again: the row says so while nothing answers, then the new version is
+  // back and says how the update ended, once.
+  agent.step = { percent: 85, step: "Starting again…", key: "agent.update.step.starting_again" };
+  await expect(page.getByText(/Starting again…/)).toBeVisible();
+  agent.restartAs("0.14.0", 2000);
+  await expect(toast(page, "Updated to 0.14.0")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Sunroom Screen 0.14.0 · up to date")).toBeVisible();
+  expect(agent.calls).toContain("POST /api/screen/update/seen");
+  await expect(page.getByRole("button", { name: "Reinstall…" })).toBeVisible();
 
   // Help: what the screen runs, for whoever helps the family.
   await page.getByRole("button", { name: "Help", exact: true }).click();

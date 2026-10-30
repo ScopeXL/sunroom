@@ -8,6 +8,7 @@ import {
   forgetScreenAgent,
   noteScreenAgent,
   openScreenPage,
+  screenProgress,
   sunroomName,
   uninstalling,
   type ScreenState,
@@ -124,6 +125,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   uninstalling.set(false);
+  screenProgress.set(null);
   vi.mocked(openScreenPage).mockClear();
   forgetScreenAgent();
   vi.unstubAllGlobals();
@@ -252,7 +254,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
     );
   });
 
-  it("offers an update that's ready, and says it's under way", async () => {
+  it("asks before an update, saying what it does, then says it's under way (ADR 0044)", async () => {
     draw(
       piState({
         update: {
@@ -267,14 +269,57 @@ describe("Settings → This Screen (ADR 0035)", () => {
       }),
     );
     expect(screen.getByText("0.14.0 is ready")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Reinstall…" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Update Now" }));
+    const asking = screen.getByRole("dialog", { name: "Update This Screen?" });
+    expect(asking.textContent).toContain(
+      "Sunroom Screen updates to 0.14.0 and starts again. It takes a few minutes, and this " +
+        "computer may restart. The pairing, the settings and your family's data stay.",
+    );
+    fireEvent.click(within(asking).getByRole("button", { name: "Cancel" }));
+    expect(calls).toEqual([]);
+    fireEvent.click(screen.getByRole("button", { name: "Update Now" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Update This Screen?" })).getByRole("button", {
+        name: "Update",
+      }),
+    );
     await waitFor(() => {
       expect(said()).toEqual(["Updating… this takes a few minutes"]);
     });
     expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(["POST /api/screen/update"]);
   });
 
-  it("updates the Sunroom on this screen too, when it runs here and is behind", async () => {
+  it("says each step of an update with its percent", () => {
+    draw(piState({ update: { ...piState().update, state: "installing" } }));
+    act(() => {
+      screenProgress.set({ percent: 70, step: "Setting up…", key: "agent.update.step.setting_up" });
+    });
+    // The percent is Digits: its own spans, so the row's whole text is read.
+    const row = screen.getByText(
+      (_, element) => element?.tagName === "P" && element.textContent.startsWith("Setting up…"),
+    );
+    expect(row.textContent).toMatch(/^Setting up…\s*70%/);
+  });
+
+  it("reinstalls the version it runs, after asking, for a screen that misbehaves", async () => {
+    draw();
+    fireEvent.click(screen.getByRole("button", { name: "Reinstall…" }));
+    const asking = screen.getByRole("dialog", { name: "Reinstall Sunroom Screen?" });
+    expect(asking.textContent).toContain(
+      "Puts Sunroom Screen 0.13.0 back the way the installer sets it up. The pairing, the " +
+        "settings and your family's data stay.",
+    );
+    fireEvent.click(within(asking).getByRole("button", { name: "Reinstall" }));
+    await waitFor(() => {
+      expect(said()).toEqual(["Reinstalling… this takes a few minutes"]);
+    });
+    expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual([
+      "POST /api/screen/reinstall",
+    ]);
+  });
+
+  it("says when Sunroom on this computer is behind; the update brings it along", () => {
     draw(
       piState({
         capabilities: ["restart", "shutdown", "update", "update_sunroom"],
@@ -284,11 +329,12 @@ describe("Settings → This Screen (ADR 0035)", () => {
           name: "The Sample Family",
           found: "local",
           reachable: true,
+          version: "0.13.0",
         },
         update: {
           check: "nightly",
-          state: "up_to_date",
-          installed: "0.14.0",
+          state: "available",
+          installed: "0.13.0",
           latest: "0.14.0",
           checked_at: null,
           message: null,
@@ -297,13 +343,22 @@ describe("Settings → This Screen (ADR 0035)", () => {
       }),
     );
     expect(screen.getByText("http://localhost:8080 · on this computer")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Update Sunroom Too" }));
-    await waitFor(() => {
-      expect(said()).toEqual(["Updating Sunroom… this takes a few minutes"]);
-    });
-    expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual([
-      "POST /api/screen/update-sunroom",
-    ]);
+    expect(
+      screen.getByText("Sunroom on this computer is 0.13.0; the update brings it to 0.14.0"),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Update Sunroom Too" })).toBeNull();
+  });
+
+  it("shows the install command when this screen's helper can't finish an update", () => {
+    const command =
+      "curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash";
+    draw(piState({ update: { ...piState().update, needs_terminal: command } }));
+    expect(
+      screen.getByText(
+        "To finish updates on this computer, run the install command once in a terminal:",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText(command).tagName).toBe("CODE");
   });
 
   it("turns a computer's picture too, where it can (ADR 0042)", () => {

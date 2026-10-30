@@ -131,6 +131,8 @@ class Agent:
         # An update's last steps at this start (finish_update): how it ended waits until they're
         # done, so the wall says Updated once, when it is.
         self.finishing = False
+        # --fake: the pretend agent starting itself again answers nothing until then (Guard).
+        self.away_until = 0.0
         self.reachable = False
         self.running_sunroom = False  # one run at a time (POST /run-sunroom)
         self.known = Known()
@@ -389,6 +391,17 @@ class Agent:
             and self.known.version is not None
             and newer(version(), self.known.version)
         )
+
+    def away_for(self) -> float:
+        """How long this agent still pretends to be away (``go_away``), in seconds."""
+        return max(0.0, self.away_until - time.monotonic())
+
+    async def go_away(self, seconds: float) -> None:
+        """``--fake``: as an update's restart looks to a page: the event streams end, nothing
+        answers for ``seconds`` (the Guard holds every request), then it's back."""
+        self.away_until = time.monotonic() + seconds
+        self.hub.close()
+        await asyncio.sleep(seconds)
 
     def spawn(self, work: Awaitable[Any]) -> None:
         async def guarded() -> None:

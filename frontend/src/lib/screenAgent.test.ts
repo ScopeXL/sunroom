@@ -125,6 +125,47 @@ describe("the wall's own Sunroom Screen agent (ADR 0035)", () => {
     stop();
   });
 
+  it("ends an update's steps when the new version is back, and says how it ended once", async () => {
+    noteScreenAgent("/display", "?screen=7800");
+    const asked: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((request: Request) => {
+        asked.push(`${request.method} ${request.url}`);
+        return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 202 }));
+      }),
+    );
+    const source = new EventTarget() as EventSource;
+    const stop = listen(source, new QueryClient());
+    const state = (update: object) => {
+      source.dispatchEvent(new MessageEvent("state", { data: JSON.stringify({ update }) }));
+    };
+    screenProgress.set({ percent: 85, step: "Starting again…" });
+    state({ state: "installing", last_result: null });
+    expect(screenProgress.get()?.percent).toBe(85); // still the old version, on its way
+    const updated = {
+      version: "0.14.0",
+      ok: true,
+      at: "2026-10-30T03:30:00+00:00",
+      message: "English",
+      message_key: "agent.update.updated",
+      message_params: { version: "0.14.0" },
+    };
+    state({ state: "up_to_date", last_result: updated });
+    expect(screenProgress.get()).toBeNull();
+    state({ state: "up_to_date", last_result: updated }); // the agent hasn't heard yet: once
+    expect(toasts.get().map((shown) => shown.message)).toEqual(["Updated to 0.14.0"]);
+    await vi.waitFor(() => {
+      expect(asked).toEqual(["POST http://127.0.0.1:7800/api/screen/update/seen"]);
+    });
+    // The new version's own last steps aren't ended by its state.
+    screenProgress.set({ percent: 90, step: "Finishing the setup…" });
+    state({ state: "up_to_date", last_result: null });
+    expect(screenProgress.get()?.percent).toBe(90);
+    screenProgress.set(null);
+    stop();
+  });
+
   it("says the agent's toasts by their keys, and its English for a key it doesn't know", () => {
     const source = new EventTarget() as EventSource;
     const stop = listen(source, new QueryClient());

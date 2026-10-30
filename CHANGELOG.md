@@ -17,13 +17,16 @@ Everything that changes in Sunroom, written in plain English. The format follows
   setup along too (the Wi-Fi and backlight settings, the packages it needs, and Sunroom Screen's
   own helper). Screens set up before 0.18.0 need the install command once more, in a terminal,
   to teach their helper this; the screen says so under Software.
+- Reinstall… under Software puts Sunroom Screen back the way the installer sets it up, for a
+  screen that misbehaves; the pairing and the settings stay.
 
 ### Changed
 
 - Update Now, and the overnight update, now bring everything on that computer to the new version:
   Sunroom Screen, the way it starts, and Sunroom itself when it runs there. The screen says what
   it's doing step by step, restarts the computer only when it must, and says Updated when it's
-  back. If the new version doesn't start, the one before comes back.
+  back. If the new version doesn't start, the one before comes back. Update Now asks first, and
+  the Update Sunroom Too button is gone: the update brings Sunroom along.
 - Holidays are named in the household's language when Sunroom has them in it for that country,
   so a family whose Sunroom speaks English sees another country's holidays in English (Spain's
   "Año Nuevo" becomes "New Year's Day"). They change at the next sync. The town search in

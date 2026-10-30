@@ -59,7 +59,7 @@ def make_agent(
             "config_path": config_path,
             "platform": platform,
             "browser": browser,
-            "updater": FakeUpdater(step_s=0),
+            "updater": FakeUpdater(step_s=0, away_s=0),
             "hub": hub,
             "discovery": discovery,
             "http": sunrooms.client,

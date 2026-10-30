@@ -36,3 +36,9 @@ export function agent() {
   if (!client) throw new Refusal(noAnswer());
   return client;
 }
+
+/** Reinstall…: Sunroom Screen at the version it runs, set up again the way the installer does
+ * (ADR 0044); its steps and how it ended arrive like an update's. */
+export async function reinstall(): Promise<void> {
+  answer(await agent().POST("/api/screen/reinstall"));
+}

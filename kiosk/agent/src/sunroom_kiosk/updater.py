@@ -580,22 +580,39 @@ class NoUpdates:
 
 
 class FakeUpdater:
-    """``--fake``: a newer version is out; installing it takes a few seconds of progress and
-    then this screen says it runs it."""
+    """``--fake``: a newer version is out; installing it runs the real steps, then the pretend
+    agent answers nothing for ``away_s`` (as one starting itself again), and comes back as the
+    new version, saying Updated once."""
 
-    def __init__(self, latest: str = "9.9.9", step_s: float = 0.4) -> None:
+    def __init__(self, latest: str = "9.9.9", step_s: float = 0.4, away_s: float = 2.0) -> None:
         self.latest = latest
         self.step_s = step_s
+        self.away_s = away_s
         self.current = UpdateStatus(state="unknown", installed=version())
+        self.result: dict[str, Any] | None = None
 
     def reset(self) -> None:
         self.current = UpdateStatus(state="unknown", installed=version())
+        self.result = None
 
     def status(self, check: str) -> dict[str, Any]:
-        return {**self.current.out(check), "last_result": None}
+        result = None
+        if self.result is not None:
+            release = cast(str, self.result["version"])
+            key = "agent.update.reinstalled" if self.result["again"] else "agent.update.updated"
+            message = said(key, version=release)
+            result = {
+                "version": release,
+                "ok": True,
+                "at": self.result["at"],
+                "message": message.message,
+                "message_key": message.key,
+                "message_params": message.params,
+            }
+        return {**self.current.out(check), "last_result": result}
 
     def seen(self) -> None:
-        return None
+        self.result = None
 
     def setup_said(self) -> dict[str, Any]:
         return {}
@@ -610,7 +627,7 @@ class FakeUpdater:
         return None
 
     async def reinstall(self, agent: Agent) -> None:
-        await self.install(agent)
+        await self._install(agent, again=True)
 
     async def check_now(self) -> UpdateStatus:
         state: UpdateState = "available" if self.current.installed != self.latest else "up_to_date"
@@ -618,20 +635,27 @@ class FakeUpdater:
         return self.current
 
     async def install(self, agent: Agent) -> None:
+        await self._install(agent, again=False)
+
+    async def _install(self, agent: Agent, *, again: bool) -> None:
+        release = self.current.installed if again else self.latest
         self.current = replace(self.current, state="installing")
         agent.publish_state()
         steps = (
             (10, "agent.update.step.downloading"),
-            (45, "agent.update.step.checking"),
-            (80, "agent.update.step.installing"),
-            (100, "agent.update.step.done"),
+            (30, "agent.update.step.checking"),
+            (50, "agent.update.step.installing"),
+            (70, "agent.update.step.setting_up"),
+            (85, "agent.update.step.starting_again"),
         )
         for percent, step in steps:
             await asyncio.sleep(self.step_s)
             agent.hub.publish("update.progress", progress_out(percent, step))
+        await agent.go_away(self.away_s)  # the pretend restart
         self.current = UpdateStatus(
-            state="up_to_date", installed=self.latest, latest=self.latest, checked_at=now_iso()
+            state="up_to_date", installed=release, latest=self.latest, checked_at=now_iso()
         )
+        self.result = {"version": release, "at": now_iso(), "again": again}
         agent.publish_state()
 
     async def run(self, agent: Agent) -> None:

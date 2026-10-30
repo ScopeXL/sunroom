@@ -15,6 +15,7 @@ Who may call it:
 
 from __future__ import annotations
 
+import asyncio
 import secrets
 import socket
 from collections.abc import AsyncGenerator, Awaitable
@@ -120,6 +121,9 @@ class Guard:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        away = self.agent.away_for()
+        if away > 0:  # --fake's pretend restart: no answer until it's back
+            await asyncio.sleep(away)
         headers = Headers(scope=scope)
         if headers.get("host", "").lower() not in self._hosts():
             await _respond(send, envelope(421, "unknown_host", said("agent.api.unknown_host")))

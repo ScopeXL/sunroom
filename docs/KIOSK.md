@@ -360,9 +360,9 @@ with **Try Again**.
   address; the QR codes on Set Up Sunroom and on setup's last page have it. Sunroom Screen
   announces it on the network, so other screens find it too. On a Mac or Windows the first start
   may ask whether Sunroom may accept connections: choose Allow, or your devices can't reach it.
-- **Updates:** it stays at Sunroom Screen's version: when Sunroom Screen updates itself, Sunroom
-  follows. This Screen's **Update Sunroom Too** installs the newest; a version that doesn't
-  answer within five minutes is put back.
+- **Updates:** it stays at Sunroom Screen's version: when Sunroom Screen updates itself (Update
+  Now, or overnight), Sunroom follows, and This Screen says under Software when it's behind; a
+  version that doesn't answer within five minutes is put back.
 - **The household password, lost:** `DATA_DIR=~/.local/share/sunroom ~/.local/bin/sunroom
   reset-password` (the data folder above for a Mac or Windows).
 - **Removing it:** This Screen's **Uninstall Sunroom Screen…** takes Sunroom and its data too
@@ -408,8 +408,10 @@ screen instead.
   Screen 0.17.0 is back." A screen whose root helper is from before 0.18.0 says under Software
   to run the install command once more in a terminal. `sunroom-kiosk update` in a terminal says
   whether there's a new version; `sunroom-kiosk setup --check` says what differs from this
-  version's setup. On an all-in-one Pi, This Screen's **Update Sunroom Too** updates Sunroom
-  itself, as `update.sh` does.
+  version's setup. On an all-in-one Pi, the update brings Sunroom itself along too, as
+  `update.sh` does. **Reinstall…** under Software (without an update to offer) runs the
+  installed version's setup again, whole, for a screen that misbehaves; the pairing and the
+  settings stay.
 - **Update Sunroom on the Pi:** `sudo /opt/sunroom/update.sh` (or `sudo /opt/sunroom/update.sh
   0.2.0` for exactly that version, which is also how to go back). Your family's data stays.
 - **The screen's log:** `journalctl --user -u sunroom-kiosk`; **what it says about itself:**

@@ -32,6 +32,11 @@ export type ScreenScan = components["schemas"]["ScreenScanOut"];
 export type ScreenClient = Client<paths>;
 
 const POLL_MS = 30_000;
+/** While an update's steps are on: the agent goes away to start itself again, and the page
+ * asks often until it's back. */
+const AWAY_POLL_MS = 2_000;
+/** An update's steps from here on are the new version's own, after its restart (ADR 0044). */
+const FINISHING = 90;
 
 let port: number | null = null;
 let noted = false;
@@ -153,6 +158,31 @@ export interface AgentStep {
 /** An update's progress, from the agent's event stream (`update.progress`). */
 export const screenProgress = createStore<AgentStep | null>(null);
 
+/** How updates ended that this page has said (each once, whatever page shows it next). */
+const saidResults = new Set<string>();
+
+/**
+ * What a state from the agent means for an update under way: its steps end once the agent is
+ * back and not installing (the new version, after its restart), unless that version's own last
+ * steps are on; and how the update ended (`last_result`) is said once, as a toast, and marked
+ * seen, so the agent stops saying it (ADR 0044).
+ */
+export function followUpdate(state: ScreenState): void {
+  const step = screenProgress.get();
+  if (step !== null && step.percent < FINISHING && state.update.state !== "installing") {
+    screenProgress.set(null);
+  }
+  const result = state.update.last_result;
+  if (!result) return;
+  const id = `${result.version}@${result.at ?? ""}`;
+  if (saidResults.has(id)) return;
+  saidResults.add(id);
+  showToast(tSaid(result.message, result.message_key, result.message_params));
+  screenClient()
+    ?.POST("/api/screen/update/seen")
+    .catch(() => undefined);
+}
+
 /** Sunroom starting on this computer (`run.progress`, ADR 0038): a run that stopped says why. */
 export const runProgress = createStore<AgentStep | null>(null);
 
@@ -162,7 +192,18 @@ export async function fetchScreenState(): Promise<ScreenState> {
   if (!agent) throw new Error("No screen agent here.");
   const { data, error } = await agent.GET("/api/screen");
   if (error !== undefined) throw new Error("The screen didn't answer.");
+  followUpdate(data);
   return data;
+}
+
+function useScreenAgentQuery() {
+  return useQuery({
+    queryKey: qk.screen.state(),
+    queryFn: fetchScreenState,
+    enabled: screenAgentPresent(),
+    refetchInterval: () => (screenProgress.get() === null ? POLL_MS : AWAY_POLL_MS),
+    retry: 1,
+  });
 }
 
 /** The agent's state, polled every 30 s (and kept current by `useScreenAgentEvents`); `null`
@@ -170,15 +211,15 @@ export async function fetchScreenState(): Promise<ScreenState> {
  * through a moment without one (the agent restarts itself to finish an update). */
 export function useScreenAgent(): ScreenState | null {
   const present = screenAgentPresent();
-  const { data, isError } = useQuery({
-    queryKey: qk.screen.state(),
-    queryFn: fetchScreenState,
-    enabled: present,
-    refetchInterval: POLL_MS,
-    retry: 1,
-  });
+  const { data, isError } = useScreenAgentQuery();
   if (!present || (isError && data === undefined)) return null;
   return data ?? null;
+}
+
+/** Whether the agent stopped answering after it had: starting itself again, mid-update. */
+export function useScreenAgentAway(): boolean {
+  const { data, isError } = useScreenAgentQuery();
+  return isError && data !== undefined;
 }
 
 /** Follow the agent's event stream (mounted once, by the display shell). */
@@ -201,6 +242,7 @@ export function listen(source: EventSource, queryClient: QueryClient): () => voi
   const handlers: Record<string, (data: unknown) => void> = {
     state: (data) => {
       queryClient.setQueryData(qk.screen.state(), data);
+      if ((data as Partial<ScreenState>).update) followUpdate(data as ScreenState);
     },
     "update.progress": (data) => {
       const progress = data as AgentStep;

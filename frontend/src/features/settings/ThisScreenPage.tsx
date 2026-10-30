@@ -3,12 +3,13 @@ import { Lock, Wifi, WifiHigh, WifiLow } from "lucide-react";
 import { useState } from "react";
 
 import { qk } from "../../api/keys";
-import { t, tRich, useT, type Key } from "../../lib/lang";
+import { t, tRich, tSaid, useT, type Key } from "../../lib/lang";
 import {
   openScreenPage,
   screenProgress,
   sunroomName,
   useScreenAgent,
+  useScreenAgentAway,
   type ScreenCapability,
   type ScreenState,
   type ScreenWifi,
@@ -16,11 +17,12 @@ import {
 import { useStore } from "../../lib/store";
 import { showToast } from "../../lib/toast";
 import { Button } from "../../ui/Button";
+import { useShell } from "../../ui/shell";
 import { Digits } from "../../ui/Digits";
 import { Segmented } from "../../ui/Segmented";
 import { Sheet } from "../../ui/Sheet";
 import { TextField } from "../../ui/TextField";
-import { agent, answer, refusal } from "./agentCalls";
+import { agent, answer, refusal, reinstall } from "./agentCalls";
 import { Group, Row, Text } from "./parts";
 import { UninstallSheet } from "./UninstallSheet";
 
@@ -46,15 +48,15 @@ const FOUND_WORDS: Readonly<Record<"discovered" | "typed" | "local", Key>> = {
   local: "settings.this_screen.address.here",
 };
 
+type Action = "restart" | "shutdown" | "quit" | "update";
+
 /** What a tap on each action says while the screen does it. */
-const DOING: Readonly<Record<"restart" | "shutdown" | "quit" | "update" | "update-sunroom", Key>> =
-  {
-    restart: "settings.this_screen.restart.toast",
-    shutdown: "settings.this_screen.shutdown.toast",
-    quit: "settings.this_screen.quit.toast",
-    update: "settings.this_screen.update.toast",
-    "update-sunroom": "settings.this_screen.update_sunroom.toast",
-  };
+const DOING: Readonly<Record<Action, Key>> = {
+  restart: "settings.this_screen.restart.toast",
+  shutdown: "settings.this_screen.shutdown.toast",
+  quit: "settings.this_screen.quit.toast",
+  update: "settings.this_screen.update.toast",
+};
 
 /** Change Address leaves for Where Is Your Sunroom? once its toast has shown. */
 const LEAVE_AFTER_MS = 1500;
@@ -90,21 +92,34 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
   const state = useScreenAgent();
   const queryClient = useQueryClient();
   const progress = useStore(screenProgress);
+  const away = useScreenAgentAway();
   const [wifiOpen, setWifiOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [asking, setAsking] = useState<"shutdown" | "address" | "uninstall" | null>(null);
+  const [asking, setAsking] = useState<
+    "shutdown" | "address" | "uninstall" | "update" | "reinstall" | null
+  >(null);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: qk.screen.state() });
   };
   const act = useMutation({
-    mutationFn: async (action: "restart" | "shutdown" | "quit" | "update" | "update-sunroom") => {
+    mutationFn: async (action: Action) => {
       answer(await agent().POST(`/api/screen/${action}`));
       return action;
     },
     onSuccess: (action) => {
       setAsking(null);
       showToast(t(DOING[action]));
+    },
+    onError: (error) => {
+      showToast(refusal(error));
+    },
+  });
+  const again = useMutation({
+    mutationFn: reinstall,
+    onSuccess: () => {
+      setAsking(null);
+      showToast(t("settings.this_screen.reinstall.toast"));
     },
     onError: (error) => {
       showToast(refusal(error));
@@ -158,6 +173,24 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
   const update = state.update;
   const installing = update.state === "installing" || progress !== null;
   const name = sunroomName(state.sunroom?.name);
+  const percent = <Digits value={`${String(progress?.percent ?? 0)}%`} />;
+  // Mid-update the agent goes away to start itself again; the row says so until it's back.
+  const doing =
+    away && progress !== null
+      ? t("settings.this_screen.software.starting_again")
+      : progress !== null
+        ? tRich("settings.this_screen.software.step", {
+            step: tSaid(progress.step, progress.key),
+            percent,
+          })
+        : tRich("settings.this_screen.software.updating", { percent });
+  const behind =
+    update.sunroom_outdated && state.sunroom?.version
+      ? t("settings.this_screen.software.sunroom_behind", {
+          sunroom: state.sunroom.version,
+          version: update.latest ?? update.installed,
+        })
+      : null;
 
   return (
     <>
@@ -198,14 +231,17 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
             {t("settings.this_screen.address.change.action")}
           </Button>
         </Row>
-        {/* The hint is Sunroom Screen's own sentence. */}
-        <Row label={t("settings.this_screen.software.label")} hint={update.message ?? undefined}>
+        {/* The hint is Sunroom Screen's own sentence, in the page's language when it knows it. */}
+        <Row
+          label={t("settings.this_screen.software.label")}
+          hint={
+            update.message
+              ? tSaid(update.message, update.message_key, update.message_params)
+              : (behind ?? undefined)
+          }
+        >
           {installing ? (
-            <Text>
-              {tRich("settings.this_screen.software.updating", {
-                percent: <Digits value={`${String(progress?.percent ?? 0)}%`} />,
-              })}
-            </Text>
+            <Text>{doing}</Text>
           ) : (
             <Text>
               {update.state === "available" && update.latest
@@ -217,26 +253,27 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
           )}
           {can("update") && update.state === "available" && !installing ? (
             <Button
-              pending={act.isPending && act.variables === "update"}
               onClick={() => {
-                act.mutate("update");
+                setAsking("update");
               }}
             >
               {t("settings.this_screen.update.action")}
             </Button>
           ) : null}
-          {can("update_sunroom") && update.sunroom_outdated ? (
+          {/* For a screen that misbehaves: the version it runs, set up again (ADR 0044). An
+              update does the same on its way, so it's offered only without one. */}
+          {can("update") && update.state !== "available" && !installing ? (
             <Button
-              variant="secondary"
-              pending={act.isPending && act.variables === "update-sunroom"}
+              variant="quiet"
               onClick={() => {
-                act.mutate("update-sunroom");
+                setAsking("reinstall");
               }}
             >
-              {t("settings.this_screen.update_sunroom.action")}
+              {t("settings.this_screen.reinstall.open.action")}
             </Button>
           ) : null}
         </Row>
+        {update.needs_terminal ? <InstallCommand command={update.needs_terminal} /> : null}
         {can("update") ? (
           <Row label={t("settings.this_screen.updates.label")}>
             <Segmented
@@ -340,6 +377,50 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
       />
 
       <Sheet
+        open={asking === "update"}
+        title={t("settings.this_screen.update.title")}
+        onClose={() => {
+          setAsking(null);
+        }}
+      >
+        <Confirm
+          tone="primary"
+          text={t("settings.this_screen.update.body", {
+            version: update.latest ?? update.installed,
+          })}
+          act={t("settings.this_screen.update.confirm.action")}
+          keep={t("app.action.cancel")}
+          pending={act.isPending}
+          onAct={() => {
+            act.mutate("update");
+          }}
+          onKeep={() => {
+            setAsking(null);
+          }}
+        />
+      </Sheet>
+      <Sheet
+        open={asking === "reinstall"}
+        title={t("settings.this_screen.reinstall.title")}
+        onClose={() => {
+          setAsking(null);
+        }}
+      >
+        <Confirm
+          tone="primary"
+          text={t("settings.this_screen.reinstall.body", { version: update.installed })}
+          act={t("settings.this_screen.reinstall.action")}
+          keep={t("app.action.cancel")}
+          pending={again.isPending}
+          onAct={() => {
+            again.mutate();
+          }}
+          onKeep={() => {
+            setAsking(null);
+          }}
+        />
+      </Sheet>
+      <Sheet
         open={asking === "shutdown"}
         title={t("settings.this_screen.shutdown.title")}
         onClose={() => {
@@ -395,6 +476,28 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
   );
 }
 
+/**
+ * The installer's one line, for a screen whose root helper is too old to finish an update by
+ * itself (ADR 0044): to be typed in a terminal on that computer, so it's read from across the
+ * room, with nothing to tap.
+ */
+function InstallCommand({ command }: { command: string }) {
+  const t = useT();
+  const display = useShell() === "display";
+  return (
+    <div className={`flex flex-col gap-3 ${display ? "pb-5" : "pb-4"}`}>
+      <Text soft>{t("settings.this_screen.software.needs_terminal.hint")}</Text>
+      <code
+        className={`block rounded-xl border-2 border-line bg-wall px-4 py-3 font-mono break-all select-all ${
+          display ? "text-d-body" : "text-body"
+        }`}
+      >
+        {command}
+      </code>
+    </div>
+  );
+}
+
 function Confirm({
   text,
   act,
@@ -402,6 +505,7 @@ function Confirm({
   pending,
   onAct,
   onKeep,
+  tone = "danger",
 }: {
   text: string;
   act: string;
@@ -409,12 +513,14 @@ function Confirm({
   pending: boolean;
   onAct: () => void;
   onKeep: () => void;
+  /** What the action is: one that stops something, or one that carries on as asked. */
+  tone?: "danger" | "primary";
 }) {
   return (
     <div className="flex flex-col gap-5 pb-2">
       <p className="text-d-body">{text}</p>
       <div className="flex flex-wrap gap-3">
-        <Button variant="danger" pending={pending} onClick={onAct}>
+        <Button variant={tone} pending={pending} onClick={onAct}>
           {act}
         </Button>
         <Button variant="secondary" onClick={onKeep}>

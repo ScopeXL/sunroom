@@ -405,30 +405,65 @@ async def test_a_scan_streams_what_it_finds(
 # ---------------------------------------------------------------------------- updates, about
 
 
+async def update_when(
+    client: httpx.AsyncClient, ready: Callable[[dict[str, Any]], bool]
+) -> dict[str, Any]:
+    """The agent's update status, asked until ``ready`` (a pretend update runs on its own)."""
+    update: dict[str, Any] = {}
+    for _ in range(50):
+        update = (await client.get("/api/screen")).json()["update"]
+        if ready(update):
+            break
+        await asyncio.sleep(0.01)
+    return update
+
+
 async def test_update_now_streams_its_progress(client: httpx.AsyncClient, agent: Agent) -> None:
     checked = (await client.get("/api/screen/update")).json()
     assert checked["state"] == "available" and checked["latest"] == "9.9.9"
     progress: list[dict[str, Any]] = []
 
     async def listen() -> None:
-        async for chunk in agent.hub.stream():
+        async for chunk in agent.hub.stream():  # ends when the pretend agent goes away
             if chunk.startswith(b"event: update.progress"):
                 progress.append(json.loads(chunk.split(b"data: ", 1)[1]))
-                if progress[-1]["percent"] == 100:
-                    return
 
     listener = asyncio.create_task(listen())
     await asyncio.sleep(0)
     assert (await client.post("/api/screen/update", headers=CHANGE)).status_code == 202
     await asyncio.wait_for(listener, 5)
-    assert [p["percent"] for p in progress] == [10, 45, 80, 100]
-    assert (await client.get("/api/screen")).json()["update"]["installed"] == "9.9.9"
+    assert [(p["percent"], p["key"]) for p in progress] == [
+        (10, "agent.update.step.downloading"),
+        (30, "agent.update.step.checking"),
+        (50, "agent.update.step.installing"),
+        (70, "agent.update.step.setting_up"),
+        (85, "agent.update.step.starting_again"),
+    ]
+    update = await update_when(client, lambda update: update["installed"] == "9.9.9")
+    assert update["installed"] == "9.9.9"  # back as the new version, saying so once
+    assert update["last_result"]["message"] == "Updated to 9.9.9"
+    await client.post("/api/screen/update/seen", headers=CHANGE)
+    assert (await client.get("/api/screen")).json()["update"]["last_result"] is None
+
+
+async def test_the_pretend_agent_answers_nothing_while_it_starts_again(
+    client: httpx.AsyncClient, agent: Agent
+) -> None:
+    started = asyncio.get_running_loop().time()
+    going = asyncio.create_task(agent.go_away(0.2))
+    await asyncio.sleep(0)
+    assert (await client.get("/api/screen")).status_code == 200  # held until it's back
+    assert asyncio.get_running_loop().time() - started >= 0.15
+    await going
 
 
 async def test_reinstall_starts_and_says_how_it_ended_once(
     client: httpx.AsyncClient, agent: Agent
 ) -> None:
     assert (await client.post("/api/screen/reinstall", headers=CHANGE)).status_code == 202
+    update = await update_when(client, lambda update: update["last_result"] is not None)
+    message = str(update["last_result"]["message"])  # the pretend reinstall, back as it was
+    assert message.startswith("Reinstalled Sunroom Screen ")
     assert (await client.post("/api/screen/update/seen", headers=CHANGE)).status_code == 202
     assert (await client.get("/api/screen")).json()["update"]["last_result"] is None
 

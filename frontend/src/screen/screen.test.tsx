@@ -15,6 +15,7 @@ import { CantReachPage } from "./pages/CantReachPage";
 import { FindPage } from "./pages/FindPage";
 import { HerePage } from "./pages/HerePage";
 import { OpeningPage } from "./pages/OpeningPage";
+import { ScreenSettingsPage } from "./pages/ScreenSettingsPage";
 import { needsWifi, WelcomePage } from "./pages/WelcomePage";
 import { afterWifi, go, route } from "./route";
 
@@ -393,6 +394,23 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
     cleanup();
     draw(<CantReachPage state={chosen(true)} />);
     expect(openSunroom).toHaveBeenCalledWith(`${SUNROOM}/display?dimmer=page&screen=7800`);
+  });
+
+  it("offers This Screen's update and Reinstall… on its own Settings page too (ADR 0044)", () => {
+    const ready = state({
+      update: { ...state().update, state: "available", latest: "0.14.0" },
+    });
+    draw(<ScreenSettingsPage state={ready} />, (client) => {
+      client.setQueryData(qk.screen.state(), ready);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Update Now" }));
+    expect(screen.getByRole("dialog", { name: "Update This Screen?" })).toBeTruthy();
+    cleanup();
+    draw(<ScreenSettingsPage state={state()} />, (client) => {
+      client.setQueryData(qk.screen.state(), state());
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reinstall…" }));
+    expect(screen.getByRole("dialog", { name: "Reinstall Sunroom Screen?" })).toBeTruthy();
   });
 
   it("goes between its pages with the browser's history", () => {
