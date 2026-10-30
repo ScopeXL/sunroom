@@ -1,6 +1,8 @@
 import { Calendar, Copy, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { useT } from "../../lib/lang";
+
 /*
  * Drawings for the account steps on a phone (docs/UX.md §6 "Connect an Apple calendar",
  * "Connect Google"): a browser window, quiet lines for what doesn't matter, and the one thing to
@@ -9,8 +11,13 @@ import type { ReactNode } from "react";
  * - Decorative: the step's text says it all, so every drawing is aria-hidden.
  * - Colors come only from token classes, so both themes work; there is no inline style.
  * - One 320 × 152 box, drawn 1:1 at its widest (20rem), so its words are 14 to 17 px there.
- *   Lexend's widths were measured to fit each word in its box.
+ *   Lexend's widths were measured to fit each English word in its box; the words are the pages'
+ *   own (`sync.drawing.*` in lang/), so a translation is checked against its box too.
  */
+
+/** What the steps show or say to type, the same in every language. */
+const PASSWORD_SHAPE = "xxxx-xxxx-xxxx-xxxx";
+const SERVICE_ACCOUNT = "sunroom";
 
 const WIDTH = 320;
 const HEIGHT = 152;
@@ -186,6 +193,7 @@ function Plus({ x, y }: { x: number; y: number }) {
 
 /** Apple, step 1: appleid.apple.com, the two boxes, and Sign in. */
 export function AppleSignInArt() {
+  const t = useT();
   return (
     <Window address="appleid.apple.com">
       <Card x={84} y={46} width={152} height={26} />
@@ -196,21 +204,22 @@ export function AppleSignInArt() {
           <circle key={dot} cx={98 + dot * 11} cy="91" r="2.75" />
         ))}
       </g>
-      <Target x={112} y={112} width={96} label="Sign in" />
+      <Target x={112} y={112} width={96} label={t("sync.drawing.apple.sign_in")} />
     </Window>
   );
 }
 
 /** Apple, step 2: under Sign-In and Security, App-Specific Passwords and its plus, then the name. */
 export function AppleNewPasswordArt() {
+  const t = useT();
   return (
     <Window>
       <text x="18" y={baseline(49, 15)} fontSize="15" fontWeight="600" className="fill-ink">
-        Sign-In and Security
+        {t("sync.drawing.apple.security")}
       </text>
       <rect x="16" y="68" width="288" height="34" rx="10" className="fill-surface" />
       <text x="30" y={baseline(85, 15)} fontSize="15" fontWeight="500" className="fill-ink">
-        App-Specific Passwords
+        {t("sync.drawing.apple.passwords")}
       </text>
       <circle cx="283" cy="85" r="12" className="fill-sun" />
       <Plus x={283} y={85} />
@@ -225,13 +234,14 @@ export function AppleNewPasswordArt() {
       />
       <Line x={18} y={119} width={112} />
       <Line x={18} y={133} width={80} />
-      <Field x={176} y={115} width={128} text="Sunroom" wide={66} />
+      <Field x={176} y={115} width={128} text={t("app.sunroom")} wide={66} />
     </Window>
   );
 }
 
 /** Apple, step 3: the new password, and Copy. */
 export function AppleCopyPasswordArt() {
+  const t = useT();
   return (
     <Window>
       <Card x={36} y={46} width={248} height={96} />
@@ -244,9 +254,9 @@ export function AppleCopyPasswordArt() {
         textAnchor="middle"
         className="fill-ink"
       >
-        xxxx-xxxx-xxxx-xxxx
+        {PASSWORD_SHAPE}
       </text>
-      <Target x={124} y={104} width={72} label="Copy" />
+      <Target x={124} y={104} width={72} label={t("sync.drawing.apple.copy")} />
     </Window>
   );
 }
@@ -257,6 +267,7 @@ const DAY_W = 172 / 7;
 
 /** Google's secret address, step 1: the calendar, the gear, and Settings in its menu. */
 export function GoogleSettingsArt() {
+  const t = useT();
   /** Where day `n` (0 to 6) starts. */
   const day = (n: number) => WEEK_X + n * DAY_W;
   return (
@@ -277,7 +288,7 @@ export function GoogleSettingsArt() {
         <rect x={day(5) + 3} y="104" width={DAY_W - 6} height="20" rx="3" />
       </g>
       <Card x={200} y={66} width={104} height={76} />
-      <Target x={208} y={74} width={88} label="Settings" pill={false} />
+      <Target x={208} y={74} width={88} label={t("sync.drawing.google.settings")} pill={false} />
       <Line x={214} y={116} width={64} />
       <Line x={214} y={128} width={48} />
     </Window>
@@ -286,10 +297,11 @@ export function GoogleSettingsArt() {
 
 /** Google's secret address, step 2: Settings for my calendars, the calendar, Integrate calendar. */
 export function GoogleIntegrateArt() {
+  const t = useT();
   return (
     <Window>
       <text x="18" y={baseline(49, 15)} fontSize="15" fontWeight="600" className="fill-ink">
-        Settings for my calendars
+        {t("sync.drawing.google.my_calendars")}
       </text>
       <rect
         x="16"
@@ -303,7 +315,7 @@ export function GoogleIntegrateArt() {
       <circle cx="30" cy="76" r="5" className="fill-ink-soft" />
       <Line x={42} y={73} width={84} />
       <Line x={42} y={97} width={100} />
-      <Target x={34} y={108} width={164} label="Integrate calendar" pill={false} />
+      <Target x={34} y={108} width={164} label={t("sync.drawing.google.integrate")} pill={false} />
       <Card x={226} y={46} width={78} height={96} />
       <Line x={236} y={58} width={50} />
       <Line x={236} y={72} width={36} />
@@ -316,6 +328,7 @@ export function GoogleIntegrateArt() {
 
 /** Google's secret address, step 3: the public address (not this one), then the secret one. */
 export function GoogleSecretAddressArt() {
+  const t = useT();
   return (
     <Window>
       <Line x={18} y={46} width={150} />
@@ -330,7 +343,7 @@ export function GoogleSecretAddressArt() {
       />
       <Line x={28} y={66} width={140} />
       <text x="18" y={baseline(100, 15)} fontSize="15" fontWeight="600" className="fill-ink">
-        Secret address in iCal format
+        {t("sync.drawing.google.secret_address")}
       </text>
       <rect
         x="16"
@@ -351,13 +364,14 @@ export function GoogleSecretAddressArt() {
 
 /** The helper, step 1: console.cloud.google.com, the project's name, and Create. */
 export function HelperProjectArt() {
+  const t = useT();
   return (
     <Window address="console.cloud.google.com">
       <text x="18" y={baseline(52, 14)} fontSize="14" className="fill-ink-soft">
-        Project name
+        {t("sync.drawing.helper.project_name")}
       </text>
-      <Field x={16} y={62} width={180} text="Sunroom" wide={66} />
-      <Target x={216} y={63} width={80} label="Create" />
+      <Field x={16} y={62} width={180} text={t("app.sunroom")} wide={66} />
+      <Target x={216} y={63} width={80} label={t("sync.drawing.helper.create")} />
       <Line x={18} y={106} width={200} />
       <Line x={18} y={120} width={150} />
       <Line x={18} y={134} width={176} />
@@ -367,10 +381,11 @@ export function HelperProjectArt() {
 
 /** The helper, step 2: APIs & Services, the Google Calendar API, and Enable. */
 export function HelperCalendarApiArt() {
+  const t = useT();
   return (
     <Window>
       <text x="18" y={baseline(52, 14)} fontSize="14" fontWeight="500" className="fill-ink-soft">
-        APIs & Services
+        {t("sync.drawing.helper.apis")}
       </text>
       <Card x={16} y={62} width={288} height={80} />
       <rect
@@ -384,47 +399,49 @@ export function HelperCalendarApiArt() {
       />
       <Calendar x={34} y={80} size={20} className="text-ink-soft" />
       <text x="72" y={baseline(80, 15)} fontSize="15" fontWeight="600" className="fill-ink">
-        Google Calendar API
+        {t("sync.drawing.helper.calendar_api")}
       </text>
       <Line x={72} y={93} width={140} />
-      <Target x={72} y={106} width={76} label="Enable" />
+      <Target x={72} y={106} width={76} label={t("sync.drawing.helper.enable")} />
     </Window>
   );
 }
 
 /** The helper, step 3: IAM & Admin, Service accounts, Create, and the name. */
 export function HelperServiceAccountArt() {
+  const t = useT();
   return (
     <Window>
       <text x="18" y={baseline(52, 14)} fontSize="14" fontWeight="500" className="fill-ink-soft">
-        IAM & Admin
+        {t("sync.drawing.helper.iam")}
       </text>
       <Line x={28} y={67} width={84} />
       <rect x="16" y="78" width="156" height="28" rx="8" className="fill-line" />
       <text x="28" y={baseline(92, 15)} fontSize="15" fontWeight="600" className="fill-ink">
-        Service accounts
+        {t("sync.drawing.helper.service_accounts")}
       </text>
       <Line x={28} y={117} width={96} />
       <Line x={28} y={131} width={72} />
       <Target x={192} y={62} width={92}>
         <Plus x={210} y={75} />
         <text x="222" y={baseline(75, 15)} fontSize="15" fontWeight="600" className="fill-on-sun">
-          Create
+          {t("sync.drawing.helper.create")}
         </text>
       </Target>
-      <Field x={192} y={104} width={112} text="sunroom" wide={64} />
+      <Field x={192} y={104} width={112} text={SERVICE_ACCOUNT} wide={64} />
     </Window>
   );
 }
 
 /** The helper, step 4: the Keys tab, Add key, JSON, and the file that downloads. */
 export function HelperKeyArt() {
+  const t = useT();
   return (
     <Window>
       <Line x={18} y={47} width={44} />
       <Line x={78} y={47} width={60} />
       <text x="154" y={baseline(49, 15)} fontSize="15" fontWeight="600" className="fill-ink">
-        Keys
+        {t("sync.drawing.helper.keys")}
       </text>
       <path d="M1.5 64.75H318.5" className="stroke-line" strokeWidth="1.5" />
       <rect x="152" y="62" width="40" height="3" rx="1.5" className="fill-ink" />
@@ -438,7 +455,7 @@ export function HelperKeyArt() {
         strokeWidth="1.5"
       />
       <text x="28" y={baseline(88, 15)} fontSize="15" fontWeight="600" className="fill-ink">
-        Add key
+        {t("sync.drawing.helper.add_key")}
       </text>
       <path
         d="M97 85.75l4.5 4.5 4.5-4.5"

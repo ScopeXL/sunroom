@@ -5,11 +5,13 @@ import { useState, type ReactNode } from "react";
 import { api, errorMessage, unwrap } from "../../api/client";
 import { copyText } from "../../lib/copy";
 import { useMembers, type Member } from "../../lib/household";
+import { pageLocale, tRich, useT, type Key } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { showToast } from "../../lib/toast";
 import { Avatar } from "../../ui/Avatar";
 import { Button } from "../../ui/Button";
 import { Chip, ChipRow } from "../../ui/Chip";
+import { lengthWords } from "../../ui/LengthField";
 import { QrCode } from "../../ui/QrCode";
 import { Select } from "../../ui/Select";
 import { Sheet } from "../../ui/Sheet";
@@ -43,18 +45,22 @@ type Step =
   | "holidays"
   | "pick";
 
-const TITLES: Record<Step, string> = {
-  choose: "Add an Account",
-  google: "Google",
-  "google-address": "Google: The Secret Address",
-  "google-helper": "Google: Share with a Helper",
-  "google-signin": "Sign in with Google",
-  apple: "Apple",
-  server: "A Calendar Server",
-  address: "Another Calendar",
-  holidays: "Holidays",
-  pick: "Pick Calendars",
+const TITLES: Record<Step, Key> = {
+  choose: "sync.add.title",
+  google: "sync.add.google.title",
+  "google-address": "sync.add.google_address.title",
+  "google-helper": "sync.add.google_helper.title",
+  "google-signin": "sync.add.google_signin.title",
+  apple: "sync.add.apple.title",
+  server: "sync.add.server.title",
+  address: "sync.add.address.title",
+  holidays: "sync.add.holidays.title",
+  pick: "sync.add.pick.title",
 };
+
+/** Examples of an address in an empty field: addresses, not words. */
+const ADDRESS_EXAMPLE = "https://…/calendar.ics";
+const SERVER_EXAMPLE = "https://cloud.example.com";
 
 /** The words' sizes: the wall screen's (read from across the room), or a phone's. */
 function useText(): { body: string; secondary: string } {
@@ -94,6 +100,7 @@ export function AddAccountSheet({
   /** An account Google's sign-in just added: the sheet opens on its calendars. */
   returned?: Account | null;
 }) {
+  const t = useT();
   const [chosen, setStep] = useState<Step>("choose");
   const [connected, setAccount] = useState<Account | null>(null);
   const step = returned ? "pick" : chosen;
@@ -108,37 +115,26 @@ export function AddAccountSheet({
     setStep("pick");
   };
   return (
-    <Sheet open={open} title={TITLES[step]} onClose={close} step={step}>
+    <Sheet open={open} title={t(TITLES[step])} onClose={close} step={step}>
       {step === "choose" ? (
         <div className="flex flex-col gap-6">
           <Choices
             options={[
               // Apple first: the owner's order (ADR 0032).
+              { step: "apple", label: "sync.add.apple.label", line: "sync.add.apple.hint" },
+              { step: "google", label: "sync.add.google.label", line: "sync.add.google.hint" },
               {
-                step: "apple",
-                label: "Apple",
-                line: "Your iPhone's and Mac's calendars, both ways.",
+                step: "holidays",
+                label: "sync.add.holidays.label",
+                line: "sync.add.holidays.hint",
               },
-              { step: "google", label: "Google", line: "Google Calendar, three ways to connect." },
-              { step: "holidays", label: "Holidays", line: "Public holidays, no address needed." },
-              {
-                step: "address",
-                label: "Another calendar",
-                line: "Any calendar address (.ics): school, team, Outlook.",
-              },
-              {
-                step: "server",
-                label: "A calendar server",
-                line: "Nextcloud, Fastmail and others, with a user name and password.",
-              },
+              { step: "address", label: "sync.add.address.label", line: "sync.add.address.hint" },
+              { step: "server", label: "sync.add.server.label", line: "sync.add.server.hint" },
             ]}
             onPick={setStep}
           />
           {kiosk ? (
-            <DeviceShortcut
-              lead="Or add it from a device"
-              line="Scan this with a parent's phone."
-            />
+            <DeviceShortcut lead={t("sync.add.device.label")} line={t("sync.add.device.hint")} />
           ) : null}
         </div>
       ) : step === "google" ? (
@@ -146,19 +142,19 @@ export function AddAccountSheet({
           options={[
             {
               step: "google-address",
-              label: "Paste the secret address",
-              line: "Easiest. Shows events only; you can't add from Sunroom. Google updates it slowly (sometimes hours).",
+              label: "sync.add.google_address.label",
+              line: "sync.add.google_address.hint",
             },
             {
               step: "google-helper",
-              label: "Share with a Sunroom helper",
-              line: "About 10 minutes, once. Lets you add and change events from Sunroom.",
+              label: "sync.add.google_helper.label",
+              line: "sync.add.google_helper.hint",
               device: kiosk,
             },
             {
               step: "google-signin",
-              label: "Sign in with Google",
-              line: "Needs Sunroom at an https:// address on the internet and your own Google app keys, which it asks for here.",
+              label: "sync.add.google_signin.label",
+              line: "sync.add.google_signin.hint",
               device: kiosk,
             },
           ]}
@@ -176,13 +172,13 @@ export function AddAccountSheet({
         <ServerFlow kiosk={kiosk} onConnected={picked} />
       ) : step === "google-helper" ? (
         kiosk ? (
-          <FromDevice why="It needs a key file from Google, and this screen can't open files." />
+          <FromDevice why={t("sync.add.google_helper.device")} />
         ) : (
           <HelperFlow onFound={picked} />
         )
       ) : step === "google-signin" ? (
         kiosk ? (
-          <FromDevice why="Google's sign-in page doesn't work on this screen." />
+          <FromDevice why={t("sync.add.google_signin.device")} />
         ) : (
           <SignInFlow />
         )
@@ -198,9 +194,10 @@ function Choices({
   onPick,
 }: {
   /** `device`: on a paired screen, a way that needs a signed-in device, marked "From a device". */
-  options: { step: Step; label: string; line: string; device?: boolean }[];
+  options: { step: Step; label: Key; line: Key; device?: boolean }[];
   onPick: (step: Step) => void;
 }) {
+  const t = useT();
   const text = useText();
   return (
     <ul className="flex flex-col gap-3">
@@ -213,12 +210,12 @@ function Choices({
             }}
             className="press-row flex min-h-16 w-full flex-col items-start justify-center rounded-button border-2 border-line bg-surface px-4 py-3 text-left"
           >
-            <span className={`${text.body} font-semibold`}>{option.label}</span>
-            <span className={`${text.secondary} text-ink-soft`}>{option.line}</span>
+            <span className={`${text.body} font-semibold`}>{t(option.label)}</span>
+            <span className={`${text.secondary} text-ink-soft`}>{t(option.line)}</span>
             {option.device ? (
               <span className={`${text.secondary} mt-1 flex items-center gap-2 font-semibold`}>
                 <Smartphone aria-hidden="true" className="size-6" />
-                From a device
+                {t("sync.add.from_device")}
               </span>
             ) : null}
           </button>
@@ -243,16 +240,13 @@ export function DeviceShortcut({
   line?: string;
   add?: boolean;
 }) {
+  const t = useT();
   const text = useText();
   return (
     <div className="flex items-center gap-5 rounded-panel border border-line bg-wall p-4">
       <QrCode
         value={deviceAddress(add)}
-        label={
-          add
-            ? "A code that opens Add an Account on a device"
-            : "A code that opens Calendars & Accounts on a device"
-        }
+        label={add ? t("sync.device.add.aria") : t("sync.device.calendars.aria")}
         className="size-32 shrink-0"
       />
       <div className="flex flex-col gap-1">
@@ -265,16 +259,14 @@ export function DeviceShortcut({
 
 /** A way a paired screen can't do itself (ADR 0028): a code that opens it on a device. */
 function FromDevice({ why }: { why: string }) {
+  const t = useT();
   const text = useText();
   return (
     <div className="flex flex-col items-center gap-5 text-center">
-      <p className={`${text.body} font-semibold`}>Do this from a device</p>
+      <p className={`${text.body} font-semibold`}>{t("sync.device.lead")}</p>
       <p className={text.body}>{why}</p>
-      <QrCode value={deviceAddress()} label="A code that opens Add an Account on a device" />
-      <p className={`${text.secondary} text-ink-soft`}>
-        Scan this with a parent's phone, or open Settings → Calendars & Accounts on a signed-in
-        device.
-      </p>
+      <QrCode value={deviceAddress()} label={t("sync.device.add.aria")} />
+      <p className={`${text.secondary} text-ink-soft`}>{t("sync.device.scan")}</p>
     </div>
   );
 }
@@ -299,11 +291,12 @@ function Who({
   value: string | null;
   onChange: (id: string | null) => void;
 }) {
+  const t = useT();
   const text = useText();
   return (
     <div className="flex flex-col gap-2">
-      <p className={`${text.body} font-semibold`}>Whose calendar</p>
-      <ChipRow label="Whose calendar">
+      <p className={`${text.body} font-semibold`}>{t("sync.who.label")}</p>
+      <ChipRow label={t("sync.who.label")}>
         <Chip
           on={value === null}
           onClick={() => {
@@ -311,7 +304,7 @@ function Who({
           }}
         >
           <Avatar member={null} size="xs" />
-          Everyone
+          {t("sync.who.everyone")}
         </Chip>
         {members.map((member) => (
           <Chip
@@ -330,12 +323,8 @@ function Who({
   );
 }
 
-const INTERVALS = [
-  { minutes: 15, label: "15 min" },
-  { minutes: 30, label: "30 min" },
-  { minutes: 60, label: "1 hour" },
-  { minutes: 360, label: "6 hours" },
-];
+/** How often a calendar address is checked, in minutes; each chip says it as a length does. */
+const INTERVALS = [15, 30, 60, 360];
 
 /** Paste a calendar address (on the wall screen, type it): Google's secret address, or any
  * .ics link. */
@@ -348,6 +337,7 @@ function AddressFlow({
   kiosk?: boolean;
   onDone: () => void;
 }) {
+  const t = useT();
   const text = useText();
   const { data: members = [] } = useMembers();
   const { addIcs } = useSyncChanges();
@@ -377,33 +367,28 @@ function AddressFlow({
       {google ? (
         <Steps>
           <li>
-            On a computer, open Google Calendar's settings.
+            {t("sync.address.google.settings")}
             <GoogleSettingsArt />
           </li>
           <li>
-            Under “Settings for my calendars”, pick the calendar, then Integrate calendar.
+            {t("sync.address.google.integrate")}
             <GoogleIntegrateArt />
           </li>
           <li>
-            {kiosk
-              ? "Type the address under “Secret address in iCal format” here."
-              : "Copy “Secret address in iCal format” and paste it here."}
+            {kiosk ? t("sync.address.google.type") : t("sync.address.google.copy")}
             <GoogleSecretAddressArt />
           </li>
         </Steps>
       ) : (
-        <p className={text.body}>
-          {kiosk ? "Type" : "Paste"} the calendar's address. School and team sites, Outlook's
-          “Publish calendar” and Apple's public calendars all give one.
-        </p>
+        <p className={text.body}>{kiosk ? t("sync.address.type") : t("sync.address.paste")}</p>
       )}
       <TextField
-        label="Calendar address"
+        label={t("sync.address.url.label")}
         type="url"
         inputMode="url"
         autoCapitalize="none"
         autoComplete="off"
-        placeholder="https://…/calendar.ics"
+        placeholder={ADDRESS_EXAMPLE}
         value={url}
         onChange={(event) => {
           setUrl(event.target.value);
@@ -411,72 +396,85 @@ function AddressFlow({
         error={addIcs.isError ? errorMessage(addIcs.error) : null}
       />
       <TextField
-        label="Name (optional)"
+        label={t("sync.address.name.label")}
         autoComplete="off"
         maxLength={80}
         value={name}
-        placeholder={google ? "Family" : "School"}
+        placeholder={google ? t("sync.address.name.family") : t("sync.address.name.school")}
         onChange={(event) => {
           setName(event.target.value);
         }}
       />
       <Who members={members} value={owner} onChange={setOwner} />
       <div className="flex flex-col gap-2">
-        <p className={`${text.body} font-semibold`}>Check for changes every</p>
-        <ChipRow label="Check for changes every">
-          {INTERVALS.map((option) => (
+        <p className={`${text.body} font-semibold`}>{t("sync.address.interval.label")}</p>
+        <ChipRow label={t("sync.address.interval.label")}>
+          {INTERVALS.map((every) => (
             <Chip
-              key={option.minutes}
-              on={minutes === option.minutes}
+              key={every}
+              on={minutes === every}
               onClick={() => {
-                setMinutes(option.minutes);
+                setMinutes(every);
               }}
             >
-              {option.label}
+              {lengthWords(every)}
             </Chip>
           ))}
         </ChipRow>
       </div>
       {google ? null : (
         <Switch
-          label="This server is on your home network"
-          hint="Only for a server at home: a parent's tick lets Sunroom reach a home address."
+          label={t("sync.home.label")}
+          hint={t("sync.home.hint")}
           checked={home}
           onChange={setHome}
         />
       )}
       <Button type="submit" block pending={addIcs.isPending} disabled={!url.trim()}>
-        Add Calendar
+        {t("sync.address.add.action")}
       </Button>
     </form>
   );
 }
 
+/** A country's name in the page's language ("United States"), or its code if `Intl` lacks it. */
 function regionName(code: string): string {
   try {
-    return new Intl.DisplayNames(undefined, { type: "region" }).of(code) ?? code;
+    return new Intl.DisplayNames([pageLocale()], { type: "region" }).of(code) ?? code;
   } catch {
     return code;
   }
 }
 
+/**
+ * The country to start on. The browser's own tag says where the family is (en-GB: the United
+ * Kingdom, es-MX: Mexico), which the page's language can't (es-ES for every Spanish household),
+ * so it comes first; the page's locale only when the browser's says nothing Intl can read.
+ */
+function guessCountry(): string {
+  for (const tag of [navigator.language, pageLocale()]) {
+    try {
+      const region = new Intl.Locale(tag).maximize().region;
+      if (region) return region;
+    } catch {
+      // Not a tag Intl knows: the next one.
+    }
+  }
+  return "US";
+}
+
 function HolidaysFlow({ onDone }: { onDone: () => void }) {
+  const t = useT();
   const text = useText();
   const { data: places = [] } = useHolidayPlaces();
   const { data: members = [] } = useMembers();
   const { addHolidays } = useSyncChanges();
-  const guess = (() => {
-    try {
-      return new Intl.Locale(navigator.language).maximize().region ?? "US";
-    } catch {
-      return "US";
-    }
-  })();
-  const [country, setCountry] = useState(guess);
+  const [country, setCountry] = useState(guessCountry);
   const [region, setRegion] = useState("");
   const [owner, setOwner] = useState<string | null>(null);
+  const locale = pageLocale();
   const sorted = [...places].sort((a, b) =>
-    regionName(a.country).localeCompare(regionName(b.country)),
+    regionName(a.country).localeCompare(regionName(b.country), locale),
   );
   const regions = places.find((place) => place.country === country)?.subdivisions ?? [];
   return (
@@ -491,7 +489,7 @@ function HolidaysFlow({ onDone }: { onDone: () => void }) {
       }}
     >
       <label className="flex flex-col gap-2">
-        <span className={`${text.body} font-semibold`}>Country</span>
+        <span className={`${text.body} font-semibold`}>{t("sync.holidays.country.label")}</span>
         <Select
           value={country}
           onChange={(event) => {
@@ -508,14 +506,14 @@ function HolidaysFlow({ onDone }: { onDone: () => void }) {
       </label>
       {regions.length ? (
         <label className="flex flex-col gap-2">
-          <span className={`${text.body} font-semibold`}>State or region (optional)</span>
+          <span className={`${text.body} font-semibold`}>{t("sync.holidays.region.label")}</span>
           <Select
             value={region}
             onChange={(event) => {
               setRegion(event.target.value);
             }}
           >
-            <option value="">The whole country</option>
+            <option value="">{t("sync.holidays.region.all")}</option>
             {regions.map((code) => (
               <option key={code} value={code}>
                 {code}
@@ -531,7 +529,7 @@ function HolidaysFlow({ onDone }: { onDone: () => void }) {
         </p>
       ) : null}
       <Button type="submit" block pending={addHolidays.isPending}>
-        Add Holidays
+        {t("sync.holidays.add.action")}
       </Button>
     </form>
   );
@@ -551,6 +549,7 @@ function ServerFlow({
   kiosk?: boolean;
   onConnected: (account: Account) => void;
 }) {
+  const t = useT();
   const text = useText();
   const { addCaldav } = useSyncChanges();
   const [server, setServer] = useState("");
@@ -580,52 +579,45 @@ function ServerFlow({
         <>
           <Steps>
             <li>
-              {kiosk ? (
-                <>
-                  On another device, open <span className="font-semibold">appleid.apple.com</span>{" "}
-                  and sign in.
-                </>
-              ) : (
-                <>
-                  Open{" "}
-                  <a
-                    href="https://appleid.apple.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold underline"
-                  >
-                    appleid.apple.com
-                  </a>{" "}
-                  and sign in.
-                </>
-              )}
+              {kiosk
+                ? tRich("sync.apple.step.sign_in_elsewhere", {
+                    address: "appleid.apple.com",
+                    b: (words) => <span className="font-semibold">{words}</span>,
+                  })
+                : tRich("sync.apple.step.sign_in", {
+                    address: "appleid.apple.com",
+                    link: (words) => (
+                      <a
+                        href="https://appleid.apple.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-semibold underline"
+                      >
+                        {words}
+                      </a>
+                    ),
+                  })}
               <AppleSignInArt />
             </li>
             <li>
-              Under Sign-In and Security, tap App-Specific Passwords, then the plus, and name it
-              Sunroom.
+              {t("sync.apple.step.new_password")}
               <AppleNewPasswordArt />
             </li>
             <li>
-              {kiosk
-                ? "Type the password it shows (xxxx-xxxx-xxxx-xxxx) below."
-                : "Copy the password it shows (xxxx-xxxx-xxxx-xxxx) and paste it below."}
+              {kiosk ? t("sync.apple.step.type_password") : t("sync.apple.step.copy_password")}
               <AppleCopyPasswordArt />
             </li>
           </Steps>
-          <p className={`${text.secondary} text-ink-soft`}>
-            Two-factor authentication has to be on for your Apple Account. Your Apple Account's own
-            doesn't work here.
-          </p>
+          <p className={`${text.secondary} text-ink-soft`}>{t("sync.apple.note")}</p>
         </>
       ) : (
         <TextField
-          label="Server address"
+          label={t("sync.server.address.label")}
           type="url"
           inputMode="url"
           autoCapitalize="none"
           autoComplete="off"
-          placeholder="https://cloud.example.com"
+          placeholder={SERVER_EXAMPLE}
           value={server}
           onChange={(event) => {
             setServer(event.target.value);
@@ -633,7 +625,7 @@ function ServerFlow({
         />
       )}
       <TextField
-        label={apple ? "Apple Account email" : "User name"}
+        label={apple ? t("sync.apple.email.label") : t("sync.server.user.label")}
         type={apple ? "email" : "text"}
         autoCapitalize="none"
         autoComplete="username"
@@ -643,7 +635,7 @@ function ServerFlow({
         }}
       />
       <TextField
-        label={apple ? "App-specific password" : "Password"}
+        label={apple ? t("sync.apple.password.label") : t("sync.server.password.label")}
         type="password"
         layout="password"
         autoComplete="off"
@@ -655,14 +647,16 @@ function ServerFlow({
       />
       {apple ? null : (
         <Switch
-          label="This server is on your home network"
-          hint="Only for a server at home: a parent's tick lets Sunroom reach a home address."
+          label={t("sync.home.label")}
+          hint={t("sync.home.hint")}
           checked={home}
           onChange={setHome}
         />
       )}
       <Button type="submit" block pending={addCaldav.isPending} disabled={!ready}>
-        {addCaldav.isPending ? "Connecting…" : "Connect"}
+        {addCaldav.isPending
+          ? t("sync.account.connecting.action")
+          : t("sync.account.connect.action")}
       </Button>
     </form>
   );
@@ -670,6 +664,7 @@ function ServerFlow({
 
 /** Google's helper (a service account the family makes once, never called that here). */
 function HelperFlow({ onFound }: { onFound: (account: Account) => void }) {
+  const t = useT();
   const text = useText();
   const display = useShell() === "display";
   const [account, setAccount] = useState<Account | null>(null);
@@ -702,33 +697,34 @@ function HelperFlow({ onFound }: { onFound: (account: Account) => void }) {
   if (!account) {
     return (
       <div className="flex flex-col gap-5">
-        <p className={text.body}>
-          You'll make a helper account at Google and share your calendar with it.
-        </p>
+        <p className={text.body}>{t("sync.helper.intro")}</p>
         <Steps>
           <li>
-            Open{" "}
-            <a
-              href="https://console.cloud.google.com"
-              target="_blank"
-              rel="noreferrer"
-              className="font-semibold underline"
-            >
-              console.cloud.google.com
-            </a>{" "}
-            and make a project named Sunroom.
+            {tRich("sync.helper.step.project", {
+              address: "console.cloud.google.com",
+              link: (words) => (
+                <a
+                  href="https://console.cloud.google.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold underline"
+                >
+                  {words}
+                </a>
+              ),
+            })}
             <HelperProjectArt />
           </li>
           <li>
-            In APIs & Services, enable the Google Calendar API.
+            {t("sync.helper.step.api")}
             <HelperCalendarApiArt />
           </li>
           <li>
-            In IAM & Admin → Service accounts, create one named sunroom.
+            {t("sync.helper.step.service_account")}
             <HelperServiceAccountArt />
           </li>
           <li>
-            Open it, then Keys → Add key → JSON. A file downloads.
+            {t("sync.helper.step.key")}
             <HelperKeyArt />
           </li>
         </Steps>
@@ -738,7 +734,7 @@ function HelperFlow({ onFound }: { onFound: (account: Account) => void }) {
             display ? "min-h-tap rounded-button-d px-7" : "min-h-11 rounded-button px-5"
           } ${text.body}`}
         >
-          Upload the Key File
+          {t("sync.helper.upload.action")}
           <input
             type="file"
             accept="application/json,.json"
@@ -757,7 +753,7 @@ function HelperFlow({ onFound }: { onFound: (account: Account) => void }) {
           </p>
         ) : null}
         {upload.isPending ? (
-          <p className={`${text.secondary} text-ink-soft`}>Checking the key…</p>
+          <p className={`${text.secondary} text-ink-soft`}>{t("sync.helper.checking")}</p>
         ) : null}
       </div>
     );
@@ -771,7 +767,7 @@ function HelperFlow({ onFound }: { onFound: (account: Account) => void }) {
       }}
     >
       <div className="flex flex-col gap-2">
-        <p className={`${text.body} font-semibold`}>Your helper's address:</p>
+        <p className={`${text.body} font-semibold`}>{t("sync.helper.address.label")}</p>
         <p className={`rounded-button bg-wall px-3 py-2 ${text.secondary} break-all select-all`}>
           {account.helper_email}
         </p>
@@ -781,25 +777,20 @@ function HelperFlow({ onFound }: { onFound: (account: Account) => void }) {
             onClick={() => {
               void copyText(account.helper_email ?? "").then((copied) => {
                 showToast(
-                  copied
-                    ? "Copied the helper's address"
-                    : "Couldn't copy here. Hold the address to copy it.",
+                  copied ? t("sync.helper.copied.toast") : t("sync.helper.copy_failed.toast"),
                 );
               });
             }}
           >
-            Copy
+            {t("app.action.copy")}
           </Button>
         </div>
       </div>
-      <p className={text.body}>
-        In Google Calendar's settings, pick the calendar, go to Share with specific people, paste
-        the helper's address, choose Make changes to events, and Send.
-      </p>
+      <p className={text.body}>{t("sync.helper.share")}</p>
       <TextField
-        label="The calendar's ID"
+        label={t("sync.helper.calendar_id.label")}
         autoCapitalize="none"
-        hint="Your Gmail address for your main calendar; another calendar's ID is under Integrate calendar."
+        hint={t("sync.helper.calendar_id.hint")}
         autoComplete="off"
         value={calendarId}
         onChange={(event) => {
@@ -808,7 +799,7 @@ function HelperFlow({ onFound }: { onFound: (account: Account) => void }) {
         error={find.isError ? errorMessage(find.error) : null}
       />
       <Button type="submit" block pending={find.isPending} disabled={!calendarId.trim()}>
-        Find Calendar
+        {t("sync.helper.find.action")}
       </Button>
     </form>
   );
@@ -817,6 +808,7 @@ function HelperFlow({ onFound }: { onFound: (account: Account) => void }) {
 /** Sign in with Google: only where Google allows the way back (https, or this computer itself,
  * as the server's check: google_accounts.sign_in_allowed). */
 function SignInFlow() {
+  const t = useT();
   const text = useText();
   const keys = useGoogleKeys();
   const secure = (() => {
@@ -841,35 +833,25 @@ function SignInFlow() {
     },
   });
   if (!secure) {
-    return (
-      <p className={text.body}>
-        Google only signs in to apps at an https:// address. Use Share with a Sunroom helper
-        instead, or set up an https address for Sunroom first (docs/REMOTE-ACCESS.md).
-      </p>
-    );
+    return <p className={text.body}>{t("sync.signin.insecure")}</p>;
   }
   return (
     <div className="flex flex-col gap-5">
       <Steps>
-        <li>In Google Cloud, make an OAuth client of type Web application.</li>
+        <li>{t("sync.signin.step.client")}</li>
         <li>
-          Add this redirect address to it: {window.location.origin}
-          /api/calendar-sync/google/callback
+          {t("sync.signin.step.redirect", {
+            address: `${window.location.origin}/api/calendar-sync/google/callback`,
+          })}
         </li>
-        <li>
-          Set the consent screen to External and publish it. If it stays in Testing, Google signs
-          Sunroom out every 7 days.
-        </li>
-        <li>Paste the client ID and secret below.</li>
+        <li>{t("sync.signin.step.consent")}</li>
+        <li>{t("sync.signin.step.paste")}</li>
       </Steps>
       {/* The keys live here, the one step that uses them (ADR 0030). */}
-      <GoogleKeys firstSave="Save Keys and Continue" />
+      <GoogleKeys firstSave={t("sync.keys.save_continue.action")} />
       {keys.ready ? (
         <>
-          <p className={`${text.secondary} text-ink-soft`}>
-            Google may say the app isn't verified: tap Advanced, then Go to Sunroom. It's your own
-            app.
-          </p>
+          <p className={`${text.secondary} text-ink-soft`}>{t("sync.signin.unverified")}</p>
           {start.isError ? (
             <p role="alert" className={`${text.body} font-semibold text-alert`}>
               {errorMessage(start.error)}
@@ -882,7 +864,7 @@ function SignInFlow() {
               start.mutate();
             }}
           >
-            Sign in with Google
+            {t("sync.signin.action")}
           </Button>
         </>
       ) : null}
@@ -892,6 +874,7 @@ function SignInFlow() {
 
 /** After connecting: which calendars go on the board, and whose each is. */
 function PickCalendars({ account, onDone }: { account: Account; onDone: () => void }) {
+  const t = useT();
   const text = useText();
   const { data: members = [] } = useMembers();
   const { map } = useSyncChanges();
@@ -912,20 +895,14 @@ function PickCalendars({ account, onDone }: { account: Account; onDone: () => vo
           body: { mapped: true, owner_member_id: choices[calendar.id]?.owner ?? null },
         });
       }
-      showToast(
-        `Connected ${sourceName(account)} · ${String(chosen.length)} ${chosen.length === 1 ? "calendar" : "calendars"}`,
-      );
+      showToast(t("sync.pick.connected.toast", { source: sourceName(account), n: chosen.length }));
       onDone();
     } finally {
       setSaving(false);
     }
   };
   if (account.calendars.length === 0) {
-    return (
-      <p className={text.body}>
-        No calendars there yet. Sharing can take a minute; try again from Calendars & Accounts.
-      </p>
-    );
+    return <p className={text.body}>{t("sync.pick.empty")}</p>;
   }
   return (
     <div className="flex flex-col gap-5">
@@ -935,21 +912,21 @@ function PickCalendars({ account, onDone }: { account: Account; onDone: () => vo
           <div key={calendar.id} className="flex flex-col gap-2 border-b border-line pb-4">
             <Switch
               label={calendar.name}
-              hint={calendar.read_only ? "Shows events only" : undefined}
+              hint={calendar.read_only ? t("sync.calendar.read_only") : undefined}
               checked={choice.on}
               onChange={(on) => {
                 setChoices({ ...choices, [calendar.id]: { ...choice, on } });
               }}
             />
             {choice.on ? (
-              <ChipRow label={`Whose is ${calendar.name}`}>
+              <ChipRow label={t("sync.calendar.whose.aria", { name: calendar.name })}>
                 <Chip
                   on={choice.owner === null}
                   onClick={() => {
                     setChoices({ ...choices, [calendar.id]: { ...choice, owner: null } });
                   }}
                 >
-                  Everyone
+                  {t("sync.who.everyone")}
                 </Chip>
                 {members.map((member) => (
                   <Chip
@@ -974,7 +951,7 @@ function PickCalendars({ account, onDone }: { account: Account; onDone: () => vo
         </p>
       ) : null}
       <Button block pending={saving} onClick={() => void done()}>
-        Done
+        {t("app.action.done")}
       </Button>
     </div>
   );

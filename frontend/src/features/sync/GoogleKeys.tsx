@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { ApiError, errorMessage } from "../../api/client";
 import { usePlugins } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { showToast } from "../../lib/toast";
 import { Button } from "../../ui/Button";
 import { useShell } from "../../ui/shell";
@@ -12,6 +13,8 @@ import { usePluginSettings } from "../settings/PluginSettingsForm";
  * out. */
 export const GOOGLE_GROUP = "Sign in with Google";
 const MASK = "***";
+/** A saved secret in its field: dots, the same in every language. */
+const DOTS = "••••••••";
 
 /** Whether Google's app keys are saved: the ID as it is, the secret only ever as a mask. */
 export function useGoogleKeys(): { savedId: string; hasSecret: boolean; ready: boolean } {
@@ -34,14 +37,16 @@ export function useGoogleKeys(): { savedId: string; hasSecret: boolean; ready: b
  * key shouldn't save itself.
  */
 export function GoogleKeys({
-  firstSave = "Save Keys",
+  firstSave: given,
   removable = true,
 }: {
-  /** What the button says while there are no keys yet. */
+  /** What the button says while there are no keys yet: Save Keys, unless it's said otherwise. */
   firstSave?: string;
   /** Offer Remove keys. Not beside an account that signs in with them. */
   removable?: boolean;
 }) {
+  const t = useT();
+  const firstSave = given ?? t("sync.keys.save.action");
   const display = useShell() === "display";
   const { savedId, hasSecret, ready } = useGoogleKeys();
   const save = usePluginSettings("calendar_sync");
@@ -52,7 +57,7 @@ export function GoogleKeys({
       <KeysForm
         savedId={savedId}
         hasSecret={hasSecret}
-        submit={ready ? "Save Keys" : firstSave}
+        submit={ready ? t("sync.keys.save.action") : firstSave}
         primary={!ready}
         onDone={() => {
           setChanging(false);
@@ -69,7 +74,7 @@ export function GoogleKeys({
   }
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-      <p className={`${body} font-semibold`}>Keys saved</p>
+      <p className={`${body} font-semibold`}>{t("sync.keys.saved.label")}</p>
       <div className="flex flex-wrap gap-3">
         <Button
           variant="secondary"
@@ -77,7 +82,7 @@ export function GoogleKeys({
             setChanging(true);
           }}
         >
-          Change Keys
+          {t("sync.keys.change.action")}
         </Button>
         {removable ? (
           <Button
@@ -89,13 +94,13 @@ export function GoogleKeys({
                 { google_client_id: "", google_client_secret: "" },
                 {
                   onSuccess: () => {
-                    showToast("Removed Google's keys");
+                    showToast(t("sync.keys.removed.toast"));
                   },
                 },
               );
             }}
           >
-            Remove Keys
+            {t("sync.keys.remove.action")}
           </Button>
         ) : null}
       </div>
@@ -119,6 +124,7 @@ function KeysForm({
   onDone: () => void;
   onCancel: (() => void) | undefined;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const save = usePluginSettings("calendar_sync");
   const [id, setId] = useState(savedId);
@@ -138,7 +144,7 @@ function KeysForm({
           { google_client_id: id.trim(), google_client_secret: secret || MASK },
           {
             onSuccess: () => {
-              showToast("Keys saved");
+              showToast(t("sync.keys.saved.toast"));
               onDone();
             },
           },
@@ -146,7 +152,7 @@ function KeysForm({
       }}
     >
       <TextField
-        label="Google app's client ID"
+        label={t("sync.keys.id.label")}
         value={id}
         maxLength={200}
         autoComplete="off"
@@ -156,14 +162,14 @@ function KeysForm({
         }}
       />
       <TextField
-        label="Google app's client secret"
+        label={t("sync.keys.secret.label")}
         type="password"
         layout="password"
         value={secret}
         maxLength={200}
         autoComplete="off"
-        hint={hasSecret ? "Saved. Type a new one to replace it." : "Only for Sign in with Google."}
-        placeholder={hasSecret ? "••••••••" : undefined}
+        hint={hasSecret ? t("sync.keys.secret.saved.hint") : t("sync.keys.secret.hint")}
+        placeholder={hasSecret ? DOTS : undefined}
         onChange={(event) => {
           setSecret(event.target.value);
         }}
@@ -185,7 +191,7 @@ function KeysForm({
         </Button>
         {onCancel ? (
           <Button variant="quiet" block onClick={onCancel}>
-            Cancel
+            {t("app.action.cancel")}
           </Button>
         ) : null}
       </div>

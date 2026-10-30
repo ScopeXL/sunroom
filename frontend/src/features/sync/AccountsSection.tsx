@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { qk } from "../../api/keys";
+import { useT, type Key } from "../../lib/lang";
 import { fetchSession } from "../../lib/session";
 import { showToast } from "../../lib/toast";
 import { Button } from "../../ui/Button";
@@ -14,11 +15,11 @@ import { statusLine, useAccounts, type Account } from "./data";
 type GoogleOutcome = "connected" | "denied" | "expired" | "failed";
 
 /** What the app says when Google's sign-in sends the browser back (google_accounts.callback). */
-const GOOGLE_WORDS: Record<GoogleOutcome, string> = {
-  connected: "Connected Google",
-  denied: "Google didn't finish signing in. Try again.",
-  expired: "That sign-in took too long. Try again.",
-  failed: "Google said no. Try again, or use the secret address.",
+const GOOGLE_WORDS: Record<GoogleOutcome, Key> = {
+  connected: "sync.signin.connected.toast",
+  denied: "sync.signin.denied.toast",
+  expired: "sync.signin.expired.toast",
+  failed: "sync.signin.failed.toast",
 };
 
 function isOutcome(value: string): value is GoogleOutcome {
@@ -46,6 +47,7 @@ function googleReturn(): { outcome: GoogleOutcome; account: string | null } | nu
  * and opens a new account's calendars.
  */
 export function AccountsSection() {
+  const t = useT();
   const display = useShell() === "display";
   const { data: session } = useQuery({ queryKey: qk.session(), queryFn: fetchSession });
   const kiosk = session?.device_kind === "kiosk";
@@ -69,15 +71,15 @@ export function AccountsSection() {
     url.searchParams.delete("google");
     url.searchParams.delete("account");
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
-    showToast(GOOGLE_WORDS[landing.outcome]);
-  }, [landing]);
+    showToast(t(GOOGLE_WORDS[landing.outcome]));
+  }, [landing, t]);
   const title = display ? "text-d-title font-bold" : "text-row font-bold";
   // As Settings' other groups: the page's title is the h2 on the wall, the h1 on a phone.
   const Heading = display ? "h3" : "h2";
   return (
     <section className={display ? "mb-10" : "mb-8"} aria-labelledby="accounts-title">
       <Heading id="accounts-title" className={`${title} ${display ? "mb-3" : "mb-2"}`}>
-        Accounts
+        {t("sync.accounts.title")}
       </Heading>
       {accounts.length === 0 ? (
         <p
@@ -85,7 +87,7 @@ export function AccountsSection() {
             display ? "mb-4 text-d-secondary text-ink-soft" : "mb-3 text-secondary text-ink-soft"
           }
         >
-          Bring in calendars you already use: Apple, Google, or any calendar address.
+          {t("sync.accounts.empty")}
         </p>
       ) : (
         <div
@@ -111,7 +113,7 @@ export function AccountsSection() {
             setAdding(true);
           }}
         >
-          Add an Account
+          {t("sync.accounts.add.action")}
         </Button>
       </div>
       <AccountSheet
@@ -137,11 +139,12 @@ export function AccountsSection() {
 /** An account's row: its name, where it comes from, how it's doing, and how many of its
  * calendars are on the board. */
 function AccountRow({ account, onOpen }: { account: Account; onOpen: () => void }) {
+  const t = useT();
   const synced = account.calendars.filter((calendar) => calendar.mapped).length;
   const trouble = account.status === "needs_reconnect" || account.status === "error";
   return (
     <ListRow
-      label={`Edit ${account.label}`}
+      label={t("sync.accounts.edit.aria", { name: account.label })}
       title={account.label}
       subtitle={
         <>
@@ -151,7 +154,7 @@ function AccountRow({ account, onOpen }: { account: Account; onOpen: () => void 
           </span>
         </>
       }
-      value={`${String(synced)} ${synced === 1 ? "calendar" : "calendars"}`}
+      value={t("sync.accounts.calendars", { n: synced })}
       onClick={onOpen}
     />
   );

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { useMembers, type Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { Avatar } from "../../ui/Avatar";
 import { Button } from "../../ui/Button";
@@ -24,6 +25,9 @@ type View =
   | { kind: "calendar"; id: string }
   | { kind: "reconnect" }
   | { kind: "remove" };
+
+/** The color picker's radio group: a name for the form, never shown. */
+const COLOR_GROUP = "synced-calendar-color";
 
 function useText() {
   const display = useShell() === "display";
@@ -78,6 +82,7 @@ export function AccountSheet({
   kiosk: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
   const [view, setView] = useState<View>({ kind: "account" });
   // The calendars that sync first, then by name: ordered as the sheet opens and kept while it's
   // open, so a row never moves under the finger that just switched it (ADR 0032).
@@ -99,14 +104,14 @@ export function AccountSheet({
     setView({ kind: "account" });
   };
   const title = !account
-    ? "Edit"
+    ? t("sync.account.title")
     : calendar
-      ? `Edit ${calendar.name}`
+      ? t("sync.account.edit.title", { name: calendar.name })
       : view.kind === "remove"
-        ? `Remove ${account.label}?`
+        ? t("sync.remove.title", { name: account.label })
         : view.kind === "reconnect"
-          ? `Connect ${sourceName(account)} Again`
-          : `Edit ${account.label}`;
+          ? t("sync.reconnect.title", { source: sourceName(account) })
+          : t("sync.account.edit.title", { name: account.label });
   return (
     <Sheet
       open={account !== null}
@@ -160,6 +165,7 @@ function AccountPage({
   kiosk: boolean;
   onView: (view: View) => void;
 }) {
+  const t = useT();
   const text = useText();
   const changes = useSyncChanges();
   const broken = account.status === "needs_reconnect";
@@ -208,7 +214,7 @@ function AccountPage({
                 changes.syncNow.mutate(account);
               }}
             >
-              Refresh Now
+              {t("sync.account.refresh.action")}
             </Button>
           </div>
         ) : !google ? (
@@ -218,16 +224,13 @@ function AccountPage({
                 onView({ kind: "reconnect" });
               }}
             >
-              Connect Again
+              {t("sync.account.reconnect.action")}
             </Button>
           </div>
         ) : account.helper_email ? (
-          <p className={text.body}>
-            Its helper's key stopped working. Remove this account, then add it again with a new key
-            file.
-          </p>
+          <p className={text.body}>{t("sync.account.helper_broken")}</p>
         ) : kiosk ? (
-          <DeviceShortcut lead="Sign in again from a device:" add={false} />
+          <DeviceShortcut lead={t("sync.account.sign_in_device.label")} add={false} />
         ) : (
           <div className="flex">
             <Button
@@ -236,7 +239,7 @@ function AccountPage({
                 signIn.mutate();
               }}
             >
-              Sign In Again
+              {t("sync.account.sign_in.action")}
             </Button>
           </div>
         )}
@@ -249,14 +252,14 @@ function AccountPage({
       {/* An account that signed in with Google's own page: its app keys can be changed here,
           without starting the account over (ADR 0030). */}
       {google && !account.helper_email ? (
-        <Section title="Google App Keys">
+        <Section title={t("sync.account.keys.title")}>
           <div className={text.display ? "py-4" : "py-3"}>
             <GoogleKeys removable={false} />
           </div>
         </Section>
       ) : null}
       {account.calendars.length > 0 ? (
-        <Section title="Sync">
+        <Section title={t("sync.account.sync.title")}>
           {calendars.map((calendar) => (
             <SyncRow
               key={calendar.id}
@@ -272,7 +275,11 @@ function AccountPage({
       ) : null}
       {screens.length > 0 && synced.length > 0 ? (
         <Section
-          title={screens.length === 1 ? `Show on ${screens[0] ?? ""}` : "Show on the Screens"}
+          title={
+            screens.length === 1
+              ? t("sync.account.show_on.title", { screen: screens[0] ?? "" })
+              : t("sync.account.show_on_screens.title")
+          }
         >
           {synced.map((calendar) => (
             <Switch
@@ -297,7 +304,7 @@ function AccountPage({
           onView({ kind: "remove" });
         }}
       >
-        Remove Account
+        {t("sync.account.remove.action")}
       </Button>
     </div>
   );
@@ -316,19 +323,24 @@ function SyncRow({
   members: Member[];
   onEdit: () => void;
 }) {
+  const t = useT();
   const text = useText();
   const changes = useSyncChanges();
   const owner = members.find((member) => member.id === calendar.owner_member_id) ?? null;
   const notes = [
-    calendar.mapped ? (owner ? `${owner.name}'s` : "Everyone's") : null,
-    calendar.read_only ? "Shows events only" : null,
+    calendar.mapped
+      ? owner
+        ? t("sync.calendar.owner", { name: owner.name })
+        : t("sync.calendar.everyones")
+      : null,
+    calendar.read_only ? t("sync.calendar.read_only") : null,
     calendar.last_error,
   ].filter(Boolean);
   return (
     <div className="flex items-center gap-3">
       {calendar.mapped ? (
         <ListRow
-          label={`Edit ${calendar.name}`}
+          label={t("sync.calendar.edit.aria", { name: calendar.name })}
           leading={
             owner ? (
               <Avatar member={owner} size="sm" />
@@ -364,7 +376,7 @@ function SyncRow({
         <input
           type="checkbox"
           role="switch"
-          aria-label={`Sync ${calendar.name}`}
+          aria-label={t("sync.calendar.sync.aria", { name: calendar.name })}
           checked={calendar.mapped}
           onChange={(event) => {
             const mapped = event.target.checked;
@@ -396,6 +408,7 @@ function CalendarPage({
   members: Member[];
   onBack: () => void;
 }) {
+  const t = useT();
   const text = useText();
   const label = useFieldLabel();
   const changes = useSyncChanges();
@@ -406,8 +419,8 @@ function CalendarPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <p className={label}>Whose</p>
-        <ChipRow label={`Whose is ${calendar.name}`}>
+        <p className={label}>{t("sync.calendar.whose.label")}</p>
+        <ChipRow label={t("sync.calendar.whose.aria", { name: calendar.name })}>
           <Chip
             on={owner === null}
             onClick={() => {
@@ -415,7 +428,7 @@ function CalendarPage({
             }}
           >
             <Avatar member={null} size="xs" />
-            Everyone
+            {t("sync.who.everyone")}
           </Chip>
           {members.map((member) => (
             <Chip
@@ -433,7 +446,7 @@ function CalendarPage({
       </div>
       {owner === null ? (
         <ColorPicker
-          name="synced-calendar-color"
+          name={COLOR_GROUP}
           value={calendar.color}
           used={usedBy(members)}
           onChange={(color) => {
@@ -441,7 +454,7 @@ function CalendarPage({
           }}
         />
       ) : (
-        <p className={text.soft}>{`Its events show in ${owner.name}'s color.`}</p>
+        <p className={text.soft}>{t("sync.calendar.owner_color", { name: owner.name })}</p>
       )}
       {changes.map.isError ? (
         <p role="alert" className={`${text.body} font-semibold text-alert`}>
@@ -449,7 +462,7 @@ function CalendarPage({
         </p>
       ) : null}
       <Button variant="secondary" block onClick={onBack}>
-        {`Back to ${account.label}`}
+        {t("sync.account.back.action", { name: account.label })}
       </Button>
     </div>
   );
@@ -464,14 +477,15 @@ function RemovePage({
   onKeep: () => void;
   onRemoved: () => void;
 }) {
+  const t = useT();
   const text = useText();
   const changes = useSyncChanges();
   return (
     <div className="flex flex-col gap-4">
       <p className={text.body}>
         {account.provider === "holidays"
-          ? "Its days leave the board. You can add Holidays again whenever you like."
-          : `Its calendars leave the board, and Sunroom forgets how to reach it. Events stay on ${sourceName(account)} itself.`}
+          ? t("sync.remove.holidays")
+          : t("sync.remove.account", { source: sourceName(account) })}
       </p>
       {changes.disconnect.isError ? (
         <p role="alert" className={`${text.body} font-semibold text-alert`}>
@@ -486,10 +500,10 @@ function RemovePage({
             changes.disconnect.mutate(account, { onSuccess: onRemoved });
           }}
         >
-          {`Remove ${account.label}`}
+          {t("sync.remove.confirm.action", { name: account.label })}
         </Button>
         <Button variant="secondary" onClick={onKeep}>
-          Keep It
+          {t("sync.remove.keep.action")}
         </Button>
       </div>
     </div>
@@ -507,6 +521,7 @@ function ReconnectPage({
   kiosk: boolean;
   onBack: () => void;
 }) {
+  const t = useT();
   const text = useText();
   const changes = useSyncChanges();
   const [value, setValue] = useState("");
@@ -525,15 +540,17 @@ function ReconnectPage({
     >
       <p className={text.body}>
         {feed
-          ? `${kiosk ? "Type" : "Paste"} the calendar's new address.`
+          ? kiosk
+            ? t("sync.reconnect.address.type")
+            : t("sync.reconnect.address.paste")
           : sourceName(account) === "Apple"
             ? kiosk
-              ? "Make a new app-specific password at appleid.apple.com on another device, then type it here."
-              : "Make a new app-specific password at appleid.apple.com and paste it here."
-            : "Type the account's password again."}
+              ? t("sync.reconnect.apple.type", { address: "appleid.apple.com" })
+              : t("sync.reconnect.apple.paste", { address: "appleid.apple.com" })
+            : t("sync.reconnect.password")}
       </p>
       <TextField
-        label={feed ? "Calendar address" : "Password"}
+        label={feed ? t("sync.address.url.label") : t("sync.server.password.label")}
         type={feed ? "url" : "password"}
         layout={feed ? "text" : "password"}
         autoCapitalize="none"
@@ -545,10 +562,10 @@ function ReconnectPage({
         }}
       />
       <Button type="submit" block pending={changes.reconnect.isPending} disabled={!value.trim()}>
-        Connect
+        {t("sync.account.connect.action")}
       </Button>
       <Button variant="secondary" block onClick={onBack}>
-        {`Back to ${account.label}`}
+        {t("sync.account.back.action", { name: account.label })}
       </Button>
     </form>
   );

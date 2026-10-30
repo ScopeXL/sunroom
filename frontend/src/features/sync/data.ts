@@ -9,6 +9,7 @@ import { api, unwrap } from "../../api/client";
 import type { components } from "../../api/schema";
 import { qk } from "../../api/keys";
 import { formatTime } from "../../lib/dates";
+import { t } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { showToast } from "../../lib/toast";
 
@@ -40,9 +41,10 @@ export function useHolidayPlaces({ enabled = true } = {}) {
   });
 }
 
-/** What a person calls where a calendar comes from: "Apple", "Google", "School". */
+/** What a person calls where a calendar comes from: "Apple", "Google", "School". Apple and
+ * Google are names in every language; Holidays is a word. */
 export function sourceName(account: Account): string {
-  if (account.provider === "holidays") return "Holidays";
+  if (account.provider === "holidays") return t("sync.source.holidays");
   if (account.provider === "google") return "Google";
   const address = account.address ?? "";
   if (address.includes("icloud.com")) return "Apple"; // iCloud, which the family knows as Apple
@@ -52,15 +54,15 @@ export function sourceName(account: Account): string {
 
 /** "Updated 9:10 AM", "Syncing…", or the quiet error (UX §8: never an error wall). */
 export function statusLine(account: Account): string {
-  if (account.syncing) return "Syncing…";
-  if (account.status === "paused") return "Paused";
+  if (account.syncing) return t("sync.status.syncing");
+  if (account.status === "paused") return t("sync.status.paused");
   if (account.status === "needs_reconnect" || account.status === "error") {
-    return account.last_error ?? `${sourceName(account)} hasn't answered.`;
+    return account.last_error ?? t("sync.status.no_answer", { source: sourceName(account) });
   }
   const slow = account.provider === "ics" && sourceName(account) === "Google";
-  if (!account.last_success_at) return "Not synced yet";
-  const updated = `Updated ${formatTime(new Date(account.last_success_at))}`;
-  return slow ? `${updated} · Google updates this slowly` : updated;
+  if (!account.last_success_at) return t("sync.status.never");
+  const time = formatTime(new Date(account.last_success_at));
+  return slow ? t("sync.status.updated_slow", { time }) : t("sync.status.updated", { time });
 }
 
 export function useSyncChanges() {
@@ -78,7 +80,7 @@ export function useSyncChanges() {
       asParent(async () => unwrap(await api.POST("/api/calendar-sync/accounts/ics", { body }))),
     onSuccess: async (account) => {
       await refresh();
-      showToast(`Added ${account.label}`);
+      showToast(t("sync.address.added.toast", { name: account.label }));
     },
   });
 
@@ -89,7 +91,7 @@ export function useSyncChanges() {
       ),
     onSuccess: async () => {
       await refresh();
-      showToast("Added Holidays");
+      showToast(t("sync.holidays.added.toast"));
     },
   });
 
@@ -152,7 +154,7 @@ export function useSyncChanges() {
       ),
     onSuccess: async (account) => {
       await refresh();
-      showToast(`Connected ${sourceName(account)} again`);
+      showToast(t("sync.reconnect.done.toast", { source: sourceName(account) }));
     },
   });
 
@@ -169,7 +171,7 @@ export function useSyncChanges() {
     },
     onSuccess: async (account) => {
       await refresh();
-      showToast(`Removed ${account.label}`);
+      showToast(t("sync.remove.done.toast", { name: account.label }));
     },
   });
 
