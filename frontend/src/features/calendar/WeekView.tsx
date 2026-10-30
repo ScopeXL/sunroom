@@ -13,6 +13,7 @@ import { useRef, useState, type ComponentType } from "react";
 import { dayNumber, formatWallTime, shortWeekday } from "../../lib/dates";
 import type { WeekLayout } from "../../lib/displayState";
 import type { Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useChangeCount } from "../../lib/motion";
 import { useDayHeaders } from "../usePluginModules";
 import { Draggable, MoreButton } from "./Draggable";
@@ -183,6 +184,7 @@ function DayColumn({
   /** The plugins' marks for the day's header (its weather). */
   marks: ComponentType<{ day: string }>[];
 }) {
+  const t = useT();
   const { setNodeRef, isOver } = useDroppable({ id: day });
   const isToday = day === today;
   const timed = column?.timed ?? [];
@@ -250,7 +252,7 @@ function DayColumn({
         ) : (
           <span>{dayNumber(day)}</span>
         )}
-        {isToday ? <span className="sr-only">today</span> : null}
+        {isToday ? <span className="sr-only">{t("calendar.board.today")}</span> : null}
         {marks.map((Mark, index) => (
           <Mark key={index} day={day} />
         ))}
@@ -291,6 +293,7 @@ function DayColumn({
 /** "now 9:41" and a 2 px amber line (UX §4), under the last finished chip. When that changes
  * (what was on has ended), the line drops into its new place (UX §9 "Now lines"). */
 function NowLine({ now, slot }: { now: string; slot: number }) {
+  const t = useT();
   const drops = useChangeCount(slot);
   return (
     <div
@@ -301,7 +304,7 @@ function NowLine({ now, slot }: { now: string; slot: number }) {
       }`}
     >
       <span className="now-label font-semibold whitespace-nowrap text-sun-ink">
-        now {formatWallTime(now).replace(/ [AP]M$/, "")}
+        {t("calendar.board.now", { time: formatWallTime(now).replace(/ [AP]M$/, "") })}
       </span>
       <span className="now-glow h-0.5 w-full rounded-full bg-sun-ink portrait:h-auto portrait:w-0.5 portrait:self-stretch" />
     </div>

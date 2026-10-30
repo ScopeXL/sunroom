@@ -9,6 +9,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { api, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { shortWeekday } from "../../lib/dates";
+import { t } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { showToast } from "../../lib/toast";
 import { useCalendarOverlays } from "../usePluginModules";
@@ -147,10 +148,10 @@ export function useEventChanges() {
 
   const announce = (message: string, eventId: string, change: Change) => {
     showToast(message, {
-      label: "Undo",
+      label: t("app.action.undo"),
       onAction: () => {
         void undo(eventId, change).catch(() => {
-          showToast("Couldn't undo that. It may have changed since.");
+          showToast(t("calendar.change.undo_failed.toast"));
         });
       },
     });
@@ -161,7 +162,13 @@ export function useEventChanges() {
       unwrap(await api.POST("/api/calendar/events", { body })),
     onSuccess: async (change) => {
       await refresh(queryClient);
-      if (change.event) announce(`Added ${change.event.title}`, change.event.id, change);
+      if (change.event) {
+        announce(
+          t("calendar.change.added.toast", { title: change.event.title }),
+          change.event.id,
+          change,
+        );
+      }
     },
   });
 
@@ -194,7 +201,7 @@ export function useEventChanges() {
       ),
     onSuccess: async (change, { target }) => {
       await refresh(queryClient);
-      announce("Changes saved", target.eventId, change);
+      announce(t("calendar.change.saved.toast"), target.eventId, change);
     },
   });
 
@@ -228,7 +235,7 @@ export function useEventChanges() {
     },
     onSuccess: async ({ change, title }, { target }) => {
       await refresh(queryClient);
-      announce(`Removed ${title}`, target.eventId, change);
+      announce(t("calendar.change.removed.toast", { title }), target.eventId, change);
     },
   });
 
@@ -251,7 +258,11 @@ export function useEventChanges() {
       ),
     onSuccess: async (change, { target, toDate, title }) => {
       await refresh(queryClient);
-      announce(`Moved ${title} to ${shortWeekday(toDate)}`, target.eventId, change);
+      announce(
+        t("calendar.change.moved.toast", { title, day: shortWeekday(toDate) }),
+        target.eventId,
+        change,
+      );
     },
   });
 
@@ -264,7 +275,7 @@ export function useEventChanges() {
       ),
     onSuccess: async (change, event) => {
       await refresh(queryClient);
-      announce(`Put back ${event.title}`, event.id, change);
+      announce(t("calendar.change.restored.toast", { title: event.title }), event.id, change);
     },
   });
 

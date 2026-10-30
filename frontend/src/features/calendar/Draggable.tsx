@@ -1,6 +1,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import type { CSSProperties, ReactNode } from "react";
 
+import { useT } from "../../lib/lang";
 import type { DayEntry } from "./layout";
 import type { Occurrence } from "./types";
 
@@ -65,6 +66,7 @@ export function MoreButton({
   day: string;
   onMore: (day: string) => void;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
@@ -74,7 +76,7 @@ export function MoreButton({
       // In portrait's rows it's only as wide as its words, so another chip fits on its line.
       className="press min-h-tap w-full rounded-chip-d px-3 text-left text-d-secondary font-semibold whitespace-nowrap text-ink-soft portrait:w-auto portrait:px-5"
     >
-      {`+${String(count)} more`}
+      {t("dates.more", { n: count })}
     </button>
   );
 }

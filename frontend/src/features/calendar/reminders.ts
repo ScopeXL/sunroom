@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react";
 
 import { addDays, formatWallTime, wallNow, zonedParts } from "../../lib/dates";
 import { useSettings } from "../../lib/household";
+import { t } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { showToast } from "../../lib/toast";
 import { useOccurrences } from "./data";
@@ -68,6 +69,7 @@ export function remindersOf(
   const due: Due[] = [];
   for (const occurrence of occurrences) {
     if (occurrence.status === "cancelled") continue;
+    const { title } = occurrence;
     for (const minutes of effectiveReminders(occurrence, defaultMinutes)) {
       const key = `${occurrence.key}@${String(minutes)}`;
       if (occurrence.all_day) {
@@ -77,7 +79,10 @@ export function remindersOf(
           key,
           occurrence: occurrence.key,
           at: `${addDays(occurrence.start_date, -days)}T${ALL_DAY_AT}`,
-          message: days === 0 ? `Today: ${occurrence.title}` : `Tomorrow: ${occurrence.title}`,
+          message: t(
+            days === 0 ? "calendar.reminder.today.toast" : "calendar.reminder.tomorrow.toast",
+            { title },
+          ),
         });
         continue;
       }
@@ -85,10 +90,13 @@ export function remindersOf(
       const at = minus(occurrence.start_local, minutes);
       const message =
         minutes >= DAY
-          ? `${occurrence.title} is tomorrow at ${formatWallTime(occurrence.start_local)}`
+          ? t("calendar.reminder.tomorrow_at.toast", {
+              title,
+              time: formatWallTime(occurrence.start_local),
+            })
           : minutes >= 60
-            ? `${occurrence.title} starts in ${minutes === 60 ? "1 hour" : `${String(minutes / 60)} hours`}`
-            : `${occurrence.title} starts in ${String(minutes)} min`;
+            ? t("calendar.reminder.hours.toast", { title, n: minutes / 60 })
+            : t("calendar.reminder.minutes.toast", { title, n: minutes });
       due.push({ key, occurrence: occurrence.key, at, message });
     }
   }

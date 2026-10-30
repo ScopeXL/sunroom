@@ -4,6 +4,7 @@ import { errorMessage } from "../../api/client";
 import { addDays, householdZone, longMonthDay, weekdayOf } from "../../lib/dates";
 import { serverNow } from "../../lib/clock";
 import { useMembers, useSettings } from "../../lib/household";
+import { t, useT } from "../../lib/lang";
 import { Button } from "../../ui/Button";
 import { Chip, ChipRow } from "../../ui/Chip";
 import { ColorDots } from "../../ui/ColorDots";
@@ -167,7 +168,9 @@ export function draftFromEvent(
     repeat: parsed?.repeat ?? null,
     repeatEnd: parsed?.end ?? {},
     kept:
-      event.rrule && !parsed ? { rrule: event.rrule, text: event.repeat_text ?? "As it is" } : null,
+      event.rrule && !parsed
+        ? { rrule: event.rrule, text: event.repeat_text ?? t("calendar.repeat.as_it_is") }
+        : null,
     calendarId: event.calendar_id,
     color: own.color ?? null,
     location: own.location,
@@ -213,6 +216,7 @@ export function EventEditor({
   /** The draft's day as it changes, so the board can light it; null when the editor closes. */
   onDay?: (day: string | null) => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const { data: settings } = useSettings();
   const { data: members = [] } = useMembers();
@@ -299,15 +303,17 @@ export function EventEditor({
         if (draft.title.trim()) onSave(draft);
       }}
     >
-      <FormSection title="What and Who" quiet>
+      <FormSection title={t("calendar.editor.what.title")} quiet>
         <TextField
-          label={editing ? "Title" : "What, when, who"}
+          label={
+            editing ? t("calendar.editor.event_title.label") : t("calendar.editor.quick.label")
+          }
           hint={
             editing
               ? null
               : took
-                ? `Saved as "${draft.title.trim()}"`
-                : "For example: Dentist Thu 2:30pm Mia"
+                ? t("calendar.editor.quick.saved_as", { title: draft.title.trim() })
+                : t("calendar.editor.quick.hint")
           }
           value={text}
           maxLength={200}
@@ -318,9 +324,9 @@ export function EventEditor({
             setText(event.target.value);
           }}
         />
-        <Field label="Who">
+        <Field label={t("calendar.editor.who.label")}>
           <WhoPicker
-            label="Who"
+            label={t("calendar.editor.who.label")}
             members={members}
             value={draft.memberIds}
             multiple
@@ -331,7 +337,7 @@ export function EventEditor({
           />
         </Field>
       </FormSection>
-      <FormSection title="When">
+      <FormSection title={t("calendar.editor.when.title")}>
         <DayField
           value={draft.day}
           today={today}
@@ -342,8 +348,8 @@ export function EventEditor({
           }}
         />
         {draft.allDay ? (
-          <Field label="Last day">
-            <ChipRow label="Last day">
+          <Field label={t("calendar.editor.last_day.label")}>
+            <ChipRow label={t("calendar.editor.last_day.label")}>
               <Chip
                 on={!longer}
                 onClick={() => {
@@ -351,7 +357,7 @@ export function EventEditor({
                   set({ lastDay: null });
                 }}
               >
-                Same day
+                {t("calendar.editor.last_day.same")}
               </Chip>
               <Chip
                 opener
@@ -360,12 +366,14 @@ export function EventEditor({
                   setSpan(!span);
                 }}
               >
-                {longer && draft.lastDay ? `Until ${longMonthDay(draft.lastDay)}` : "Another day"}
+                {longer && draft.lastDay
+                  ? t("calendar.editor.last_day.until", { date: longMonthDay(draft.lastDay) })
+                  : t("calendar.editor.last_day.another")}
               </Chip>
             </ChipRow>
             {span ? (
               <MonthGrid
-                label="Last day, by month"
+                label={t("calendar.editor.last_day.month.aria")}
                 value={draft.lastDay ?? draft.day}
                 today={today}
                 weekStartsOn={weekStartsOn}
@@ -378,9 +386,9 @@ export function EventEditor({
           </Field>
         ) : null}
         <TimeField
-          label="Time"
+          label={t("calendar.editor.time.label")}
           value={draft.allDay ? null : draft.start}
-          none={{ label: "All day" }}
+          none={{ label: t("calendar.editor.all_day") }}
           onChange={(time) => {
             set(time === null ? { allDay: true } : { allDay: false, start: time });
           }}
@@ -403,10 +411,10 @@ export function EventEditor({
           onChange={set}
         />
       </FormSection>
-      <FormSection title="Details">
+      <FormSection title={t("calendar.editor.details.title")}>
         {writable.length > 1 ? (
           <ChoiceRow
-            label="Calendar"
+            label={t("calendar.editor.calendar.label")}
             choices={writable.map((c) => ({ value: c.id, label: calendarChoiceLabel(c) }))}
             value={draft.calendarId ?? ""}
             onChange={(calendarId) => {
@@ -414,10 +422,10 @@ export function EventEditor({
             }}
           />
         ) : null}
-        <Field label="Color">
+        <Field label={t("calendar.editor.color.label")}>
           <ColorDots
             value={draft.color}
-            noneLabel="The person's color"
+            noneLabel={t("calendar.editor.color.person")}
             onChange={(color) => {
               set({ color });
             }}
@@ -431,13 +439,13 @@ export function EventEditor({
               setMore(!more);
             }}
           >
-            More…
+            {t("calendar.editor.more")}
           </Chip>
         </div>
         {more ? (
           <>
             <TextField
-              label="Where"
+              label={t("calendar.editor.where.label")}
               value={draft.location}
               maxLength={300}
               autoComplete="off"
@@ -446,7 +454,7 @@ export function EventEditor({
               }}
             />
             <TextField
-              label="Notes"
+              label={t("calendar.editor.notes.label")}
               value={draft.notes}
               maxLength={5000}
               autoComplete="off"
@@ -455,8 +463,8 @@ export function EventEditor({
               }}
             />
             <ChoiceRow
-              label="Remind"
-              hint="A reminder shows on paired screens."
+              label={t("calendar.editor.remind.label")}
+              hint={t("calendar.editor.remind.hint")}
               choices={reminderChoices(defaultReminder, draft.reminders)}
               value={reminderValue(draft.reminders, draft.remindersOff, defaultReminder)}
               onChange={(value) => {
@@ -470,7 +478,7 @@ export function EventEditor({
       </FormSection>
       <PanelActions>
         <Button type="submit" block pending={pending} disabled={!draft.title.trim()}>
-          {editing ? "Save Changes" : "Add Event"}
+          {editing ? t("calendar.editor.action.save") : t("calendar.editor.action.add")}
         </Button>
       </PanelActions>
     </form>

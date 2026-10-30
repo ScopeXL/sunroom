@@ -1,5 +1,6 @@
 import { addDays, formatWallTime, shortWeekday } from "../../lib/dates";
 import type { Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { Avatar } from "../../ui/Avatar";
 import { byDay, isOn, isPast } from "./layout";
 import { coreOverlayOf } from "./overlays";
@@ -26,6 +27,7 @@ export function TodayView({
   members: Member[];
   onOpen: (occurrence: Occurrence) => void;
 }) {
+  const t = useT();
   const days = Array.from({ length: 7 }, (_, n) => addDays(today, n));
   const columns = byDay(occurrences, days);
   const column = columns.get(today);
@@ -34,7 +36,7 @@ export function TodayView({
     <div className="flex min-h-0 flex-1 flex-col border-t border-line">
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-5" tabIndex={0}>
         {loading ? null : items.length === 0 ? (
-          <p className="text-d-glance font-bold text-ink-soft">Nothing today.</p>
+          <p className="text-d-glance font-bold text-ink-soft">{t("calendar.today.empty")}</p>
         ) : (
           items.map((occurrence) => {
             const people = members.filter((m) => occurrence.member_ids.includes(m.id));
@@ -57,7 +59,7 @@ export function TodayView({
               >
                 <span className="w-40 shrink-0 text-d-title font-bold">
                   {occurrence.all_day || !occurrence.start_local
-                    ? "All day"
+                    ? t("calendar.today.all_day")
                     : formatWallTime(occurrence.start_local)}
                 </span>
                 {Mark ? (
@@ -76,7 +78,10 @@ export function TodayView({
           })
         )}
       </div>
-      <ul aria-label="The coming days" className="grid grid-cols-6 border-t border-line">
+      <ul
+        aria-label={t("calendar.today.days.aria")}
+        className="grid grid-cols-6 border-t border-line"
+      >
         {days.slice(1).map((day) => {
           // Events only: a day's dinner or countdown isn't one.
           const count = [
@@ -87,7 +92,7 @@ export function TodayView({
             <li key={day} className="flex flex-col gap-1 border-r border-line px-4 py-3">
               <span className="text-d-body font-semibold">{shortWeekday(day)}</span>
               <span className={`text-d-secondary text-ink-soft ${loading ? "invisible" : ""}`}>
-                {count === 0 ? "Nothing yet" : count === 1 ? "1 event" : `${String(count)} events`}
+                {t("calendar.today.count", { n: count })}
               </span>
             </li>
           );

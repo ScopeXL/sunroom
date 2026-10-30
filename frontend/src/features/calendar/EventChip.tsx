@@ -4,20 +4,28 @@ import type { CSSProperties } from "react";
 import { useArrived } from "../../lib/arrivals";
 import { formatWallRange, formatWallTime, longMonthDay, longWeekday } from "../../lib/dates";
 import type { Member } from "../../lib/household";
+import { t } from "../../lib/lang";
 import { Avatar } from "../../ui/Avatar";
 import { useShell } from "../../ui/shell";
 import { isOn, isPast } from "./layout";
 import { coreOverlayOf, useOverlayOf } from "./overlays";
 import type { Occurrence, PersonColor } from "./types";
 
+/** "4:00 to 5:00 PM": a range as a screen reader says it, the dash in words. */
+function spokenRange(range: string): string {
+  const dash = range.indexOf("–");
+  if (dash === -1) return range;
+  return t("calendar.chip.range.aria", { start: range.slice(0, dash), end: range.slice(dash + 1) });
+}
+
 /** "Soccer practice, 4:00 to 5:00 PM, Mia, Thursday October 9" (UX §10). */
 export function occurrenceLabel(occurrence: Occurrence, people: Member[], day?: string): string {
   const when = occurrence.all_day
-    ? "all day"
+    ? t("calendar.board.all_day")
     : occurrence.start_local && occurrence.end_local
-      ? formatWallRange(occurrence.start_local, occurrence.end_local).replace("–", " to ")
+      ? spokenRange(formatWallRange(occurrence.start_local, occurrence.end_local))
       : "";
-  const who = people.length ? people.map((p) => p.name).join(", ") : "Everyone";
+  const who = people.length ? people.map((p) => p.name).join(", ") : t("calendar.everyone");
   const onDay = day ?? occurrence.start_date ?? occurrence.start_local?.slice(0, 10) ?? "";
   const date = onDay ? `${longWeekday(onDay)} ${longMonthDay(onDay)}` : "";
   return [occurrence.title, when, who, date].filter(Boolean).join(", ");

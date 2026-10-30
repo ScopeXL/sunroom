@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { addDays } from "../../lib/dates";
+import { useT } from "../../lib/lang";
 import { useReveal } from "../../lib/reveal";
 import { Chip } from "../../ui/Chip";
 import { useFieldLabel } from "../../ui/Field";
@@ -14,8 +15,8 @@ import type { KeptRule } from "./EventEditor";
 import {
   customToRepeat,
   describeRepeat,
-  monthDateWords,
-  monthWeekdayWords,
+  monthDateChoice,
+  monthWeekdayChoice,
   repeatPresets,
   repeatToCustom,
   sameRepeat,
@@ -48,7 +49,7 @@ const DEFAULT_UNTIL_DAYS = 90;
  * another choice is made.
  */
 export function RepeatField({
-  label = "Repeats",
+  label: given,
   day,
   today,
   value,
@@ -58,6 +59,7 @@ export function RepeatField({
   presetKeys,
   onChange,
 }: {
+  /** Repeats, unless it's said otherwise. */
   label?: string;
   /** The day it starts on: the presets and the month choices are worded from it. */
   day: string;
@@ -71,6 +73,8 @@ export function RepeatField({
   presetKeys?: readonly string[];
   onChange: (change: RepeatChange) => void;
 }) {
+  const t = useT();
+  const label = given ?? t("calendar.repeat.label");
   const display = useShell() === "display";
   const presets = repeatPresets(day).filter(
     (preset) => !presetKeys || presetKeys.includes(preset.key),
@@ -93,13 +97,14 @@ export function RepeatField({
   };
   const heading = useFieldLabel();
   const body = display ? "text-d-body font-semibold" : "text-body font-semibold";
-  const many = custom.interval > 1;
+  const n = custom.interval;
   const keptWords = kept ? `${kept.text.charAt(0).toLowerCase()}${kept.text.slice(1)}` : "";
   const summary = value
     ? describeRepeat(value, day, repeatEnd, weekStartsOn)
     : kept
       ? kept.text
-      : "Doesn't repeat";
+      : t("calendar.repeat.none");
+  const count = repeatEnd.count ?? DEFAULT_COUNT;
   return (
     <ValueRow
       label={label}
@@ -112,9 +117,9 @@ export function RepeatField({
       <ChoiceList
         label={label}
         choices={[
-          ...(kept ? [{ value: KEPT, label: `As it is: ${keptWords}` }] : []),
+          ...(kept ? [{ value: KEPT, label: t("calendar.repeat.kept", { rule: keptWords }) }] : []),
           ...presets.map((candidate) => ({ value: candidate.key, label: candidate.label })),
-          { value: CUSTOM, label: "Custom…" },
+          { value: CUSTOM, label: t("calendar.repeat.custom") },
         ]}
         value={kept ? KEPT : isCustom ? CUSTOM : preset?.key}
         onChange={(key) => {
@@ -137,22 +142,22 @@ export function RepeatField({
           className={`flex flex-col gap-4 border-t-2 border-line pt-4 ${display ? "px-4" : "px-3"}`}
         >
           <div className="flex flex-wrap items-center gap-3">
-            <span className={body}>Every</span>
+            <span className={body}>{t("calendar.repeat.every.label")}</span>
             <Stepper
-              label="Every"
+              label={t("calendar.repeat.every.label")}
               value={custom.interval}
               onChange={(interval) => {
                 setCustom({ interval });
               }}
             />
             <Segmented
-              label="Every what"
+              label={t("calendar.repeat.every.unit.aria")}
               value={custom.freq}
               options={[
-                { value: "daily", label: many ? "Days" : "Day" },
-                { value: "weekly", label: many ? "Weeks" : "Week" },
-                { value: "monthly", label: many ? "Months" : "Month" },
-                { value: "yearly", label: many ? "Years" : "Year" },
+                { value: "daily", label: t("calendar.repeat.unit.daily", { n }) },
+                { value: "weekly", label: t("calendar.repeat.unit.weekly", { n }) },
+                { value: "monthly", label: t("calendar.repeat.unit.monthly", { n }) },
+                { value: "yearly", label: t("calendar.repeat.unit.yearly", { n }) },
               ]}
               onChange={(freq) => {
                 setCustom({ freq });
@@ -161,9 +166,9 @@ export function RepeatField({
           </div>
           {custom.freq === "weekly" ? (
             <div className="flex flex-col gap-2">
-              <span className={heading}>On</span>
+              <span className={heading}>{t("calendar.repeat.on.label")}</span>
               <WeekdayPicker
-                label="On"
+                label={t("calendar.repeat.on.label")}
                 weekStartsOn={weekStartsOn}
                 value={custom.weekdays}
                 onChange={(weekdays) => {
@@ -174,11 +179,11 @@ export function RepeatField({
           ) : null}
           {custom.freq === "monthly" ? (
             <Segmented
-              label="On which day of the month"
+              label={t("calendar.repeat.month_by.aria")}
               value={custom.monthlyBy}
               options={[
-                { value: "date", label: `On ${monthDateWords(day)}` },
-                { value: "weekday", label: `On ${monthWeekdayWords(day)}` },
+                { value: "date", label: monthDateChoice(day) },
+                { value: "weekday", label: monthWeekdayChoice(day) },
               ]}
               onChange={(monthlyBy) => {
                 setCustom({ monthlyBy });
@@ -191,20 +196,14 @@ export function RepeatField({
         <div
           className={`flex flex-col gap-2 border-t-2 border-line pt-4 ${display ? "px-4" : "px-3"}`}
         >
-          <p className={heading}>Ends</p>
+          <p className={heading}>{t("calendar.repeat.ends.label")}</p>
           <Segmented<EndKind>
-            label="Ends"
+            label={t("calendar.repeat.ends.label")}
             value={endKind}
             options={[
-              { value: "never", label: "Never" },
-              { value: "until", label: "On a date" },
-              {
-                value: "count",
-                label: `After ${String(repeatEnd.count ?? DEFAULT_COUNT)} times`.replace(
-                  "After 1 times",
-                  "After 1 time",
-                ),
-              },
+              { value: "never", label: t("calendar.repeat.ends.never") },
+              { value: "until", label: t("calendar.repeat.ends.on_date") },
+              { value: "count", label: t("calendar.repeat.ends.after", { n: count }) },
             ]}
             onChange={(kind) => {
               set(
@@ -219,7 +218,7 @@ export function RepeatField({
           />
           {endKind === "until" ? (
             <MonthGrid
-              label="The last day"
+              label={t("calendar.repeat.ends.last_day.aria")}
               value={repeatEnd.until ?? null}
               today={today}
               weekStartsOn={weekStartsOn}
@@ -232,13 +231,13 @@ export function RepeatField({
           {endKind === "count" ? (
             <div className="flex items-center gap-3">
               <Stepper
-                label="Times"
-                value={repeatEnd.count ?? DEFAULT_COUNT}
-                onChange={(count) => {
-                  set(value, { count });
+                label={t("calendar.repeat.ends.times.aria")}
+                value={count}
+                onChange={(times) => {
+                  set(value, { count: times });
                 }}
               />
-              <span className={body}>{repeatEnd.count === 1 ? "time" : "times"}</span>
+              <span className={body}>{t("calendar.repeat.ends.times.label", { n: count })}</span>
             </div>
           ) : null}
         </div>
@@ -249,7 +248,7 @@ export function RepeatField({
             setOpen(false);
           }}
         >
-          Done
+          {t("app.action.done")}
         </Chip>
       </div>
     </ValueRow>

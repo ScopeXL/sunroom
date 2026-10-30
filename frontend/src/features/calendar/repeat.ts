@@ -8,6 +8,9 @@
  * Days are ISO dates; weekdays count 0 Monday … 6 Sunday, like the household's week_starts_on.
  * Monthly-by-date and yearly rules name no day of their own (they follow the start day), so the
  * server can still move them to another day.
+ *
+ * The words are `calendar.repeat.*` in lang/, each sentence whole: the interval and the count are
+ * plurals, the date an ordinal, the weekday's place in its month a select.
  */
 import {
   monthDay,
@@ -17,6 +20,7 @@ import {
   weekdayShort,
   zonedParts,
 } from "../../lib/dates";
+import { t } from "../../lib/lang";
 
 export type Repeat =
   | { freq: "daily"; interval: number }
@@ -37,6 +41,7 @@ export interface RepeatPreset {
 }
 
 const CODES = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
+// A weekday's place in its month, as the messages' select names it (not words the family reads).
 const NTH = ["first", "second", "third", "fourth"];
 const WORKWEEK = [0, 1, 2, 3, 4];
 const MAX_COUNT = 1000;
@@ -80,13 +85,10 @@ function cleanWeekdays(weekdays: readonly number[], startDay: string): number[] 
 /** "Mon", "Mon and Wed", "Mon, Wed and Fri". */
 function listed(words: readonly string[]): string {
   if (words.length < 2) return words.join("");
-  return `${words.slice(0, -1).join(", ")} and ${pick(words, words.length - 1)}`;
-}
-
-/** "1st", "2nd", "9th", "12th", "22nd". */
-function ordinal(n: number): string {
-  const teen = n % 100 >= 11 && n % 100 <= 13;
-  return `${String(n)}${teen ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
+  return t("calendar.repeat.day_list", {
+    list: words.slice(0, -1).join(", "),
+    last: pick(words, words.length - 1),
+  });
 }
 
 /**
@@ -270,22 +272,43 @@ export function sameRepeat(a: Repeat | null, b: Repeat | null): boolean {
   return true;
 }
 
-/** "until Dec 31", or "until Jan 15, 2027" in another year than the start day's. */
-function untilWords(until: string, startDay: string): string {
+/** "Dec 31", or "Jan 15, 2027" in another year than the start day's: the day a repeat ends. */
+function untilDate(until: string, startDay: string): string {
   const sameYear = until.slice(0, 4) === startDay.slice(0, 4);
-  return `until ${monthDay(until)}${sameYear ? "" : `, ${until.slice(0, 4)}`}`;
+  return `${monthDay(until)}${sameYear ? "" : `, ${until.slice(0, 4)}`}`;
 }
 
-/** "the 9th": the start day's date, for a monthly repeat. */
+/** The start day's place among its weekdays in its month, as the messages' select says it:
+ * "second", or "last". */
+function nthOf(startDay: string): string {
+  const position = weekdayPosition(startDay);
+  return position === -1 ? "last" : pick(NTH, position - 1);
+}
+
+/** "the 9th": the start day's date, for a monthly repeat's sentence. */
 export function monthDateWords(startDay: string): string {
-  return `the ${ordinal(parts(startDay).date)}`;
+  return t("calendar.repeat.month_date", { date: parts(startDay).date });
 }
 
 /** "the second Thursday", or "the last Thursday": the start day's place in its month. */
 export function monthWeekdayWords(startDay: string): string {
-  const position = weekdayPosition(startDay);
-  const nth = position === -1 ? "last" : pick(NTH, position - 1);
-  return `the ${nth} ${weekdayLong(weekdayOf(startDay))}`;
+  return t("calendar.repeat.month_weekday", {
+    nth: nthOf(startDay),
+    weekday: weekdayLong(weekdayOf(startDay)),
+  });
+}
+
+/** The Custom form's two month choices, each a whole sentence: "On the 9th". */
+export function monthDateChoice(startDay: string): string {
+  return t("calendar.repeat.month_by.date", { date: parts(startDay).date });
+}
+
+/** "On the second Thursday", "On the last Thursday". */
+export function monthWeekdayChoice(startDay: string): string {
+  return t("calendar.repeat.month_by.weekday", {
+    nth: nthOf(startDay),
+    weekday: weekdayLong(weekdayOf(startDay)),
+  });
 }
 
 /** Weekdays in the household's order: "Sun and Mon" where the week starts on Sunday. */
@@ -299,35 +322,39 @@ export function describeRepeat(
   end?: RepeatEnd,
   weekStartsOn = 0,
 ): string {
-  const interval = cleanInterval(repeat.interval);
-  const every = (unit: string): string =>
-    interval === 1 ? `Every ${unit}` : `Every ${String(interval)} ${unit}s`;
+  const n = cleanInterval(repeat.interval);
   let text: string;
   switch (repeat.freq) {
     case "daily":
-      text = every("day");
+      text = t("calendar.repeat.daily", { n });
       break;
     case "weekly": {
       const days = cleanWeekdays(repeat.weekdays, startDay);
       text =
-        interval === 1 && days.join() === WORKWEEK.join()
-          ? "Every weekday"
-          : `${every("week")} on ${listed(inWeekOrder(days, weekStartsOn).map(weekdayShort))}`;
+        n === 1 && days.join() === WORKWEEK.join()
+          ? t("calendar.repeat.every_weekday")
+          : t("calendar.repeat.weekly", {
+              n,
+              days: listed(inWeekOrder(days, weekStartsOn).map(weekdayShort)),
+            });
       break;
     }
     case "monthly":
-      text = `${every("month")} on ${
-        repeat.by === "date" ? monthDateWords(startDay) : monthWeekdayWords(startDay)
-      }`;
+      text = t("calendar.repeat.monthly", {
+        n,
+        day: repeat.by === "date" ? monthDateWords(startDay) : monthWeekdayWords(startDay),
+      });
       break;
     case "yearly":
-      text = `${every("year")} on ${monthDay(startDay)}`;
+      text = t("calendar.repeat.yearly", { n, date: monthDay(startDay) });
       break;
   }
-  if (end?.until) return `${text}, ${untilWords(end.until, startDay)}`;
+  if (end?.until) {
+    return t("calendar.repeat.until", { rule: text, date: untilDate(end.until, startDay) });
+  }
   if (end?.count !== undefined) {
     const count = Math.min(MAX_COUNT, Math.max(1, Math.trunc(end.count)));
-    return `${text}, ${count === 1 ? "once" : `${String(count)} times`}`;
+    return t("calendar.repeat.count", { rule: text, n: count });
   }
   return text;
 }
@@ -386,7 +413,7 @@ export function repeatPresets(startDay: string): RepeatPreset[] {
     ["yearly", { freq: "yearly", interval: 1 }],
   ];
   return [
-    { key: "none", label: "Doesn't repeat", repeat: null },
+    { key: "none", label: t("calendar.repeat.none"), repeat: null },
     ...repeats.map(([key, repeat]) => ({ key, label: describeRepeat(repeat, startDay), repeat })),
   ];
 }

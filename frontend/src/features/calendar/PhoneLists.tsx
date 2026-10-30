@@ -11,6 +11,7 @@ import {
   type MonthGrid,
 } from "../../lib/dates";
 import type { Member } from "../../lib/household";
+import { t, useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { arrivalKey, occurrenceLabel, PeopleEdge, peopleOf } from "./EventChip";
 import { coreOverlayOf, useOverlayOf } from "./overlays";
@@ -20,9 +21,18 @@ import type { Occurrence } from "./types";
 const DOTS = 4;
 
 function dayTitle(day: string, today: string): string {
-  if (day === today) return `${shortDate(day)} · today`;
-  if (day === addDays(today, 1)) return `${shortDate(day)} · tomorrow`;
+  if (day === today) return t("calendar.phone.day.today", { date: shortDate(day) });
+  if (day === addDays(today, 1)) return t("calendar.phone.day.tomorrow", { date: shortDate(day) });
   return shortDate(day);
+}
+
+/** A day cell's name: "Thu, Oct 8, today, 2 events". */
+function dayCellLabel(day: string, today: string, count: number): string {
+  return t("calendar.phone.day.aria", {
+    date: shortDate(day),
+    today: day === today ? "yes" : "no",
+    n: count,
+  });
 }
 
 /** One event in a phone list (UX §5): time, title and people, the place underneath. */
@@ -43,6 +53,7 @@ export function PhoneRow({
   when?: string;
   onOpen: () => void;
 }) {
+  const t = useT();
   const people = peopleOf(occurrence, members);
   const overlay = useOverlayOf(occurrence);
   const arrived = useArrived(arrivalKey(occurrence));
@@ -53,7 +64,7 @@ export function PhoneRow({
   const time =
     when ??
     (occurrence.all_day || !occurrence.start_local
-      ? "all day"
+      ? t("calendar.board.all_day")
       : formatWallTime(occurrence.start_local));
   return (
     <button
@@ -105,12 +116,13 @@ export function PhoneRow({
 
 /** "─── now 9:41 AM ───" between what's over and what's to come. */
 function NowLine() {
+  const t = useT();
   const now = useMinute();
   return (
     <div aria-hidden="true" className="flex items-center gap-2 py-1">
       <span className="h-0.5 flex-1 rounded-full bg-sun-ink" />
       <span className="text-secondary font-semibold text-sun-ink">
-        now {formatWallTime(wallNow(now))}
+        {t("calendar.board.now", { time: formatWallTime(wallNow(now)) })}
       </span>
       <span className="h-0.5 flex-1 rounded-full bg-sun-ink" />
     </div>
@@ -142,6 +154,7 @@ export function DayGroups({
   keepEmpty?: boolean;
   onOpen: (occurrence: Occurrence) => void;
 }) {
+  const t = useT();
   const filter = new Set(people);
   const columns = byDay(
     occurrences.filter((o) => shownFor(o, filter)),
@@ -187,7 +200,9 @@ export function DayGroups({
                 </li>
               ) : null}
               {!items.length ? (
-                <li className="px-2 py-2 text-secondary text-ink-soft">Nothing planned</li>
+                <li className="px-2 py-2 text-secondary text-ink-soft">
+                  {t("calendar.phone.day.empty")}
+                </li>
               ) : null}
             </ul>
           </section>
@@ -197,25 +212,25 @@ export function DayGroups({
   );
 }
 
+/** An event's dot color: its own, its one person's, or the neutral one ("everyone"). */
+function dotColor(occurrence: Occurrence, members: Member[]): string {
+  const people = peopleOf(occurrence, members);
+  return occurrence.color ?? (people.length === 1 ? people[0]?.color : null) ?? "everyone";
+}
+
 /** Up to four person-colored dots for a day's events. */
 function Dots({ items, members }: { items: Occurrence[]; members: Member[] }) {
   return (
     <span aria-hidden="true" className="flex h-2 items-center gap-0.5">
-      {items.slice(0, DOTS).map((occurrence) => {
-        const people = peopleOf(occurrence, members);
-        const color =
-          occurrence.color ?? (people.length === 1 ? people[0]?.color : null) ?? "everyone";
-        return (
-          <span key={occurrence.key} data-person={color} className="size-1.5 rounded-full bg-p" />
-        );
-      })}
+      {items.slice(0, DOTS).map((occurrence) => (
+        <span
+          key={occurrence.key}
+          data-person={dotColor(occurrence, members)}
+          className="size-1.5 rounded-full bg-p"
+        />
+      ))}
     </span>
   );
-}
-
-function countWords(count: number): string {
-  if (count === 0) return "nothing on";
-  return count === 1 ? "1 event" : `${String(count)} events`;
 }
 
 /** The Week strip (UX §5): seven 44 px day cells with person-colored dots; one is chosen. */
@@ -236,13 +251,19 @@ export function WeekStrip({
   people: readonly string[];
   onSelect: (day: string) => void;
 }) {
+  const t = useT();
   const filter = new Set(people);
   const columns = byDay(
     occurrences.filter((o) => shownFor(o, filter)),
     days,
   );
   return (
-    <div role="group" aria-label="Days" data-segmented="" className="grid grid-cols-7 gap-1">
+    <div
+      role="group"
+      aria-label={t("calendar.phone.days.aria")}
+      data-segmented=""
+      className="grid grid-cols-7 gap-1"
+    >
       {days.map((day) => {
         const column = columns.get(day);
         const items = [...(column?.allDay ?? []), ...(column?.timed ?? [])].map(
@@ -254,7 +275,7 @@ export function WeekStrip({
             key={day}
             type="button"
             aria-pressed={day === selected}
-            aria-label={`${shortDate(day)}${isToday ? ", today" : ""}, ${countWords(items.length)}`}
+            aria-label={dayCellLabel(day, today, items.length)}
             onClick={() => {
               onSelect(day);
             }}
@@ -294,6 +315,7 @@ export function PhoneMonth({
   people: readonly string[];
   onSelect: (day: string) => void;
 }) {
+  const t = useT();
   const filter = new Set(people);
   const columns = byDay(
     occurrences.filter((o) => shownFor(o, filter)),
@@ -309,7 +331,12 @@ export function PhoneMonth({
           </span>
         ))}
       </div>
-      <div role="group" aria-label="Days" data-segmented="" className="grid grid-cols-7 gap-1">
+      <div
+        role="group"
+        aria-label={t("calendar.phone.days.aria")}
+        data-segmented=""
+        className="grid grid-cols-7 gap-1"
+      >
         {grid.days.map((day) => {
           const column = columns.get(day);
           const items = [...(column?.allDay ?? []), ...(column?.timed ?? [])].map(
@@ -321,7 +348,7 @@ export function PhoneMonth({
               key={day}
               type="button"
               aria-pressed={day === selected}
-              aria-label={`${shortDate(day)}${isToday ? ", today" : ""}, ${countWords(items.length)}`}
+              aria-label={dayCellLabel(day, today, items.length)}
               onClick={() => {
                 onSelect(day);
               }}
@@ -368,6 +395,7 @@ export function Agenda({
   dimPast: boolean;
   onOpen: (occurrence: Occurrence) => void;
 }) {
+  const t = useT();
   const [earlier, setEarlier] = useState(false);
   const past = days.filter((day) => day < today);
   const coming = days.filter((day) => day >= today);
@@ -383,7 +411,7 @@ export function Agenda({
             }}
             className="press-row flex min-h-11 items-center rounded-chip px-2 text-left text-secondary font-semibold text-ink-soft"
           >
-            {earlier ? "Hide earlier days" : "Earlier"}
+            {earlier ? t("calendar.phone.earlier.hide") : t("calendar.phone.earlier.show")}
           </button>
           {earlier ? (
             <DayGroups

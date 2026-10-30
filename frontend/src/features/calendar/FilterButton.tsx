@@ -1,6 +1,7 @@
 import { ListFilter } from "lucide-react";
 
 import type { Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { Avatar } from "../../ui/Avatar";
 import { Menu, MenuCheck, MenuGroup, MenuRadio } from "../../ui/Menu";
 
@@ -25,26 +26,31 @@ export function FilterButton({
   people: string[];
   onPeople: (people: string[]) => void;
 }) {
+  const t = useT();
   if (members.length < 2) return null;
   // In the household's order, whatever order they were tapped in.
   const chosen = members.filter((member) => people.includes(member.id));
   const names = chosen.map((member) => member.name).join(", ");
   return (
     <Menu
-      label="Filter"
+      label={t("calendar.filter.action")}
       trigger={(props) => (
         // Not ui/Button: its padding is fixed, and this is a square until it has something to say.
         <button
           type="button"
           {...props}
-          aria-label={chosen.length ? `Filter: ${names}` : "Filter"}
+          aria-label={
+            chosen.length
+              ? t("calendar.filter.chosen.aria", { names })
+              : t("calendar.filter.action")
+          }
           data-filtered={chosen.length ? "" : undefined}
           className={`press inline-flex h-tap min-w-tap shrink-0 items-center justify-center gap-2 rounded-button-d border-2 bg-surface text-d-body font-semibold active:bg-wall @min-[112rem]/header:px-5 ${
             chosen.length ? "border-ink px-3" : "border-line"
           }`}
         >
           <ListFilter aria-hidden="true" className="size-8 shrink-0" />
-          <span className="hidden @min-[112rem]/header:inline">Filter</span>
+          <span className="hidden @min-[112rem]/header:inline">{t("calendar.filter.action")}</span>
           {chosen.length ? (
             <span aria-hidden="true" className="flex items-center -space-x-2">
               {chosen.slice(0, SHOWN).map((member) => (
@@ -58,7 +64,7 @@ export function FilterButton({
         </button>
       )}
     >
-      <MenuGroup label="People">
+      <MenuGroup label={t("calendar.filter.people.label")}>
         <MenuRadio
           check
           checked={chosen.length === 0}
@@ -67,7 +73,7 @@ export function FilterButton({
           }}
         >
           <Avatar member={null} size="sm" />
-          Everyone
+          {t("calendar.everyone")}
         </MenuRadio>
         {members.map((member) => (
           <MenuCheck

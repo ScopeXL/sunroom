@@ -1,5 +1,6 @@
 import { formatWallTime } from "../../lib/dates";
 import type { Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useChangeCount } from "../../lib/motion";
 import { useShell } from "../../ui/shell";
 import { DayCaption } from "./DayCaption";
@@ -39,6 +40,7 @@ export function DayView({
   onOpen: (occurrence: Occurrence) => void;
   onAdd: (hour: number) => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const soft = display ? "text-d-secondary" : "text-secondary";
   const hours = display ? "grid-cols-[6rem_1fr]" : "grid-cols-[4.5rem_1fr]";
@@ -102,7 +104,9 @@ export function DayView({
       {display ? <DayCaption day={day} today={isToday} /> : null}
       {allDay.length ? (
         <div className={`grid ${hours} items-start gap-4`}>
-          <span className={`pt-4 ${soft} font-semibold text-ink-soft`}>all day</span>
+          <span className={`pt-4 ${soft} font-semibold text-ink-soft`}>
+            {t("calendar.board.all_day")}
+          </span>
           <div className="flex flex-col gap-2">{allDay.map(chip)}</div>
         </div>
       ) : null}
@@ -118,7 +122,7 @@ export function DayView({
               <span />
               <div className="flex items-center gap-3">
                 <span className="now-label font-semibold whitespace-nowrap text-sun-ink">
-                  now {formatWallTime(now).replace(/ [AP]M$/, "")}
+                  {t("calendar.board.now", { time: formatWallTime(now).replace(/ [AP]M$/, "") })}
                 </span>
                 <span className="now-glow h-0.5 flex-1 rounded-full bg-sun-ink" />
               </div>
@@ -129,10 +133,10 @@ export function DayView({
           const from = row.from === dayStart ? null : row.from;
           const startHour = from ? hourOf(from) + (from.slice(14, 16) === "00" ? 0 : 1) : 8;
           const label = row.until
-            ? `free until ${formatWallTime(row.until)}`
+            ? t("calendar.day.free_until", { time: formatWallTime(row.until) })
             : groups.length
-              ? "Tap a time to add"
-              : "Nothing planned yet. Tap a time to add.";
+              ? t("calendar.day.add.hint")
+              : t("calendar.day.empty");
           return (
             <div key={`free-${String(index)}`} className={`grid ${hours} items-center gap-4`}>
               <span />
@@ -170,7 +174,7 @@ export function DayView({
                 <span
                   className={`flex min-h-14 items-center px-3 ${soft} font-semibold text-ink-soft`}
                 >
-                  {`+${String(hidden)} more`}
+                  {t("dates.more", { n: hidden })}
                 </span>
               ) : null}
             </div>

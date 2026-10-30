@@ -1,4 +1,5 @@
 import type { Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { Avatar } from "../../ui/Avatar";
 import { usePersonColumns } from "../usePluginModules";
 import { DayCaption } from "./DayCaption";
@@ -32,6 +33,7 @@ export function PeopleView({
   dimPast: boolean;
   onOpen: (occurrence: Occurrence) => void;
 }) {
+  const t = useT();
   const extras = usePersonColumns();
   const column = byDay(occurrences, [day]).get(day);
   const items = [...(column?.allDay ?? []), ...(column?.timed ?? [])].map((e) => e.occurrence);
@@ -52,13 +54,15 @@ export function PeopleView({
         {columns.map(({ key, member, items }) => (
           <section
             key={key}
-            aria-label={member ? member.name : "Everyone"}
+            aria-label={member ? member.name : t("calendar.everyone")}
             className="flex min-h-0 shrink-0 snap-start flex-col gap-3 overflow-y-auto border-r border-line px-3 py-4"
             style={{ width: `${String(100 / Math.min(columns.length, COLUMNS))}%` }}
           >
             <header className="flex flex-col items-center gap-2 pb-2">
               <Avatar member={member} size="xl" />
-              <h2 className="text-d-title font-bold">{member ? member.name : "Everyone"}</h2>
+              <h2 className="text-d-title font-bold">
+                {member ? member.name : t("calendar.everyone")}
+              </h2>
             </header>
             {items.length ? (
               items.map((occurrence) => (
@@ -83,7 +87,7 @@ export function PeopleView({
                 data-person={member?.color ?? "everyone"}
                 className="self-center rounded-full bg-p-tint px-5 py-2 text-d-secondary font-semibold text-ink"
               >
-                Free day
+                {t("calendar.people.empty")}
               </p>
             )}
             {extras.map((Extra, index) => (

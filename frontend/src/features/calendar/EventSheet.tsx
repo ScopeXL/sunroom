@@ -5,6 +5,7 @@ import { qk } from "../../api/keys";
 import { addDays, formatWallRange, shortDate, zonedParts } from "../../lib/dates";
 import type { BoardPanel } from "../../lib/displayState";
 import { useMembers, useSettings } from "../../lib/household";
+import { t, useT } from "../../lib/lang";
 import { askForPin } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
 import { useMinute } from "../../lib/time";
@@ -37,7 +38,7 @@ export function whenText(occurrence: Occurrence): string {
   if (occurrence.all_day && occurrence.start_date && occurrence.end_date) {
     const last = addDays(occurrence.end_date, -1);
     return last === occurrence.start_date
-      ? `${shortDate(occurrence.start_date)} · all day`
+      ? t("calendar.sheet.when.all_day", { date: shortDate(occurrence.start_date) })
       : `${shortDate(occurrence.start_date)} – ${shortDate(last)}`;
   }
   if (occurrence.start_local && occurrence.end_local) {
@@ -54,20 +55,24 @@ export function whenText(occurrence: Occurrence): string {
 /** A birthday's sheet says where it comes from (ADR 0028): "From Mia's birthday in Settings →
  * Family." */
 export function birthdaySource(name: string | undefined): string {
-  return name ? `From ${name}'s birthday in Settings → Family.` : "From Settings → Family.";
+  return name
+    ? t("calendar.sheet.birthday.from", { name })
+    : t("calendar.sheet.birthday.from_settings");
 }
 
-/** Where a synced event comes from, and where to change it (UX §4 "Event sheet"). */
+/** Where a synced event comes from, and where to change it (UX §4 "Event sheet"). The account's
+ * name is the server's (`source_label`): the sentences around it are the page's. */
 export function sourceLine(calendar: CalendarInfo, readOnly: boolean): string | null {
   const source = calendar.source_label;
   if (calendar.kind !== "sync" || !source) return null;
   if (!readOnly) return `${source} · ${calendar.name}`;
-  if (source === "Holidays") return "From Holidays.";
-  if (source === "a calendar address")
-    return `From a calendar address · ${calendar.name}. It shows events only.`;
-  const app =
-    source === "Apple" ? "the Calendar app" : source === "Google" ? "Google Calendar" : source;
-  return `From ${source} · ${calendar.name}. Change it in ${app}.`;
+  if (source === "Holidays") return t("calendar.sheet.source.holidays");
+  if (source === "a calendar address") {
+    return t("calendar.sheet.source.address", { calendar: calendar.name });
+  }
+  // Where it changes: Apple's and Google's own apps, by name; any other account, itself.
+  const app = source === "Apple" ? "apple" : source === "Google" ? "google" : "other";
+  return t("calendar.sheet.source.change_there", { source, calendar: calendar.name, app });
 }
 
 /**
@@ -84,6 +89,7 @@ export function EventSheet({
   onClose: () => void;
   onChange: (eventId: string, recurrenceId: string | null) => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const occurrence = useCachedOccurrence(panel?.key ?? null);
   const { data: event } = useEvent(panel?.eventId ?? null);
@@ -154,7 +160,7 @@ export function EventSheet({
       : [];
   const actions = readOnly ? (
     <div className="flex flex-col gap-3">
-      <p className={soft}>{source ?? "This calendar comes from an account. Change it there."}</p>
+      <p className={soft}>{source ?? t("calendar.sheet.source.account")}</p>
       {extras.length ? <div className="flex flex-wrap gap-3">{extras}</div> : null}
     </div>
   ) : moving ? null : (
@@ -163,14 +169,12 @@ export function EventSheet({
         variant="secondary"
         onClick={() => {
           void (async () => {
-            if (guarded && !(await askForPin("Changing events on this screen asks for the PIN."))) {
-              return;
-            }
+            if (guarded && !(await askForPin(t("calendar.sheet.pin.hint")))) return;
             if (panel?.eventId) onChange(panel.eventId, panel.recurrenceId);
           })();
         }}
       >
-        Change
+        {t("app.action.change")}
       </Button>
       <Button
         variant="secondary"
@@ -178,7 +182,7 @@ export function EventSheet({
           setMoving(true);
         }}
       >
-        Move
+        {t("calendar.event.action.move")}
       </Button>
       <Button
         variant="quiet-danger"
@@ -187,7 +191,7 @@ export function EventSheet({
           else remove("all");
         }}
       >
-        Remove
+        {t("app.action.remove")}
       </Button>
       {extras}
     </div>
@@ -199,7 +203,7 @@ export function EventSheet({
         <div className="flex flex-col gap-4">
           {occurrence ? <p className={`${text} font-semibold`}>{whenText(occurrence)}</p> : null}
           {event?.repeat_text ? <p className={soft}>{event.repeat_text}</p> : null}
-          {occurrence?.is_override ? <p className={soft}>Changed from the usual time</p> : null}
+          {occurrence?.is_override ? <p className={soft}>{t("calendar.sheet.override")}</p> : null}
           <div className="flex flex-wrap items-center gap-3">
             {people.length ? (
               people.map((member) => (
@@ -211,7 +215,7 @@ export function EventSheet({
             ) : (
               <span className={`flex items-center gap-2 ${text}`}>
                 <Avatar member={null} size="sm" />
-                Everyone
+                {t("calendar.everyone")}
               </span>
             )}
           </div>
@@ -219,7 +223,9 @@ export function EventSheet({
             <p className={text}>{occurrence?.location ?? event?.location}</p>
           ) : null}
           {calendar && !readOnly ? <p className={soft}>{source ?? calendar.name}</p> : null}
-          {pending ? <p className={`${soft} font-semibold`}>Not synced yet</p> : null}
+          {pending ? (
+            <p className={`${soft} font-semibold`}>{t("calendar.sheet.pending")}</p>
+          ) : null}
           {notes ? <p className={`${text} whitespace-pre-wrap`}>{notes}</p> : null}
           {moving ? (
             <MovePicker
@@ -268,10 +274,11 @@ function MovePicker({
   onPick: (day: string) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-3 border-t border-line pt-4">
       <DayField
-        label="Move to"
+        label={t("calendar.sheet.move.label")}
         value={null}
         today={today}
         weekStartsOn={weekStartsOn}
@@ -280,7 +287,7 @@ function MovePicker({
       />
       <div>
         <Button variant="quiet" onClick={onCancel}>
-          Don't Move
+          {t("calendar.event.action.dont_move")}
         </Button>
       </div>
     </div>

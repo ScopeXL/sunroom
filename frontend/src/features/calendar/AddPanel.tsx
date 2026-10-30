@@ -133,10 +133,15 @@ export function AddPanel({
       { onSuccess: onClose },
     );
   };
-  const title = editing ? "Change" : "Add";
+  const title = editing ? t("calendar.panel.change.title") : t("calendar.panel.add.title");
   // An occurrence's own row that won't load leaves the editor on the series' words, never blank.
   const ready =
     !editing || (event !== undefined && (!changedAlone || at !== undefined || ownRow.isError));
+  // Every kind of thing Add makes: an event, then what the plugins that are on add.
+  const kinds = [
+    { value: "event", label: t("calendar.add.label"), icon: CalendarDays },
+    ...types.map((type) => ({ value: type.key, label: t(type.label), icon: type.icon })),
+  ];
   return (
     <>
       <SidePanel open={panel !== null} title={title} onClose={onClose} scrollKey={chosen}>
@@ -144,16 +149,9 @@ export function AddPanel({
           <div className="mb-8">
             <Segmented
               stacked
-              label="What to add"
+              label={t("calendar.panel.kind.aria")}
               value={chosen}
-              options={[
-                { value: "event", label: "Event", icon: CalendarDays },
-                ...types.map((type) => ({
-                  value: type.key,
-                  label: t(type.label),
-                  icon: type.icon,
-                })),
-              ]}
+              options={kinds}
               onChange={(type) => {
                 onType?.(type);
               }}

@@ -7,6 +7,7 @@ import {
   type MonthGrid,
 } from "../../lib/dates";
 import type { Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { arrivalKey, PeopleEdge } from "./EventChip";
 import { byDay, shownFor } from "./layout";
 import { coreOverlayOf, useOverlayOf } from "./overlays";
@@ -36,6 +37,7 @@ export function MonthView({
   people: string[];
   onDay: (day: string) => void;
 }) {
+  const t = useT();
   const columns = byDay(occurrences, grid.days);
   const filter = new Set(people);
   const month = grid.first.slice(0, 7);
@@ -71,9 +73,13 @@ export function MonthView({
                 onClick={() => {
                   onDay(day);
                 }}
-                aria-label={`${shortWeekday(day)} ${dayNumber(day)}${isToday ? ", today" : ""}${
-                  entries.length ? `: ${titles}` : ""
-                }`}
+                aria-label={t("calendar.month.day.aria", {
+                  weekday: shortWeekday(day),
+                  day: dayNumber(day),
+                  today: isToday ? "yes" : "no",
+                  events: entries.length ? "yes" : "no",
+                  titles,
+                })}
                 className={`press-row flex min-h-0 min-w-0 flex-col items-stretch gap-1 overflow-hidden border-r border-b border-line p-1.5 text-left ${
                   isToday ? "bg-lit" : thisWeek ? "bg-surface/50" : ""
                 }`}
@@ -94,7 +100,7 @@ export function MonthView({
                 ))}
                 {entries.length > SHOWN ? (
                   <span className="px-1 text-d-caption font-semibold text-ink-soft">
-                    {`+${String(entries.length - SHOWN)} more`}
+                    {t("dates.more", { n: entries.length - SHOWN })}
                   </span>
                 ) : null}
               </button>

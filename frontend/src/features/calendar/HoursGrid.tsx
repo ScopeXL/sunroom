@@ -14,6 +14,7 @@ import { useArrived } from "../../lib/arrivals";
 import { dayNumber, formatWallTime, longWeekday, shortWeekday } from "../../lib/dates";
 import { resting } from "../../lib/displayState";
 import type { Member } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useStore } from "../../lib/store";
 import { Leaves } from "../../ui/Leaves";
 import { Draggable, MoreButton } from "./Draggable";
@@ -93,6 +94,7 @@ interface Measure {
  * another day.
  */
 export function HoursGrid(props: HoursGridProps) {
+  const t = useT();
   const { days, today, now, onZoom } = props;
   const scroller = useRef<HTMLDivElement>(null);
   const corner = useRef<HTMLDivElement>(null);
@@ -199,7 +201,7 @@ export function HoursGrid(props: HoursGridProps) {
               ref={corner}
               className="sticky top-0 z-20 flex items-end bg-wall px-3 pb-3 text-d-secondary font-semibold text-ink-soft"
             >
-              all day
+              {t("calendar.board.all_day")}
             </div>
             <div aria-hidden="true" className="relative">
               {pph > 0
@@ -262,6 +264,7 @@ function HoursColumn({
   rem: number;
   width: number;
 }) {
+  const t = useT();
   const { setNodeRef, isOver } = useDroppable({ id: day });
   const filter = new Set(people);
   const allDay = column?.allDay ?? [];
@@ -320,7 +323,7 @@ function HoursColumn({
           ) : (
             <span>{dayNumber(day)}</span>
           )}
-          {isToday ? <span className="sr-only">today</span> : null}
+          {isToday ? <span className="sr-only">{t("calendar.board.today")}</span> : null}
           {marks.map((Mark, index) => (
             <Mark key={index} day={day} />
           ))}
@@ -383,7 +386,10 @@ function HoursColumn({
                       height: `${String(item.height)}px`,
                       ...laneStyle(item.lane, item.lanes),
                     }}
-                    aria-label={`${String(item.hidden.length)} more on ${longWeekday(day)}`}
+                    aria-label={t("calendar.hours.more.aria", {
+                      n: item.hidden.length,
+                      day: longWeekday(day),
+                    })}
                   >
                     {`+${String(item.hidden.length)}`}
                   </button>
@@ -515,6 +521,7 @@ function HoursChip({
 /** Today's now line (UX §9): it glides a minute's worth each minute, and with Reduce Motion
  * steps instead. Remounted on a zoom or resize, so it never glides across a change of scale. */
 function NowMinute({ y, now }: { y: number; now: string }) {
+  const t = useT();
   return (
     <div
       aria-hidden="true"
@@ -527,7 +534,7 @@ function NowMinute({ y, now }: { y: number; now: string }) {
           y < 32 ? "top-1.5" : "bottom-1.5"
         }`}
       >
-        now {formatWallTime(now).replace(/ [AP]M$/, "")}
+        {t("calendar.board.now", { time: formatWallTime(now).replace(/ [AP]M$/, "") })}
       </span>
     </div>
   );

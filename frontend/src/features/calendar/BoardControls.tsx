@@ -1,15 +1,16 @@
-import { ChevronLeft, ChevronRight, Clock3, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock3, List, type LucideIcon } from "lucide-react";
 
 import type { BoardView, WeekLayout } from "../../lib/displayState";
 import type { Member } from "../../lib/household";
+import { useT, type Key } from "../../lib/lang";
 import { Button } from "../../ui/Button";
-import { IconSegmented, type IconSegmentOption } from "../../ui/Segmented";
+import { IconSegmented } from "../../ui/Segmented";
 import { FilterButton } from "./FilterButton";
 import { ViewSwitch } from "./ViewSwitch";
 
-const LAYOUTS: IconSegmentOption<WeekLayout>[] = [
-  { value: "agenda", label: "Agenda", icon: List },
-  { value: "hours", label: "Hours", icon: Clock3 },
+const LAYOUTS: readonly { value: WeekLayout; label: Key; icon: LucideIcon }[] = [
+  { value: "agenda", label: "calendar.layout.agenda.aria", icon: List },
+  { value: "hours", label: "calendar.layout.hours.aria", icon: Clock3 },
 ];
 
 /**
@@ -49,6 +50,7 @@ export function BoardControls({
   people: string[];
   onPeople: (people: string[]) => void;
 }) {
+  const t = useT();
   // The arrows say what they step: People pages a day, as Day does.
   const span = view === "month" ? "month" : view === "day" || view === "people" ? "day" : "week";
   return (
@@ -58,7 +60,7 @@ export function BoardControls({
           <Button
             variant="secondary"
             icon
-            aria-label={`Previous ${span}`}
+            aria-label={t("calendar.board.previous.aria", { span })}
             onClick={() => {
               onPage(-1);
             }}
@@ -71,7 +73,7 @@ export function BoardControls({
           <Button
             variant="secondary"
             icon
-            aria-label={`Next ${span}`}
+            aria-label={t("calendar.board.next.aria", { span })}
             onClick={() => {
               onPage(1);
             }}
@@ -81,7 +83,12 @@ export function BoardControls({
         </div>
       ) : null}
       {view === "week" || view === "rolling" ? (
-        <IconSegmented label="Week layout" value={layout} onChange={onLayout} options={LAYOUTS} />
+        <IconSegmented
+          label={t("calendar.layout.aria")}
+          value={layout}
+          onChange={onLayout}
+          options={LAYOUTS.map((option) => ({ ...option, label: t(option.label) }))}
+        />
       ) : null}
       <div className="ml-auto flex items-center gap-4">
         {view !== "people" && view !== "today" ? (

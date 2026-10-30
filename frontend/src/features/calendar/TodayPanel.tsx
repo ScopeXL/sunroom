@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { addDays, formatWallTime, wallNow, zonedParts } from "../../lib/dates";
 import { updateDisplay } from "../../lib/displayState";
 import { useMembers, type Member } from "../../lib/household";
+import { t, useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
 import { Avatar } from "../../ui/Avatar";
 import { useTodayBlocks } from "../usePluginModules";
@@ -34,7 +35,7 @@ function useOpenEvent(home: "/display" | "/") {
 
 const startText = (occurrence: Occurrence) =>
   occurrence.all_day || !occurrence.start_local
-    ? "All day"
+    ? t("calendar.today.all_day")
     : formatWallTime(occurrence.start_local);
 
 /**
@@ -50,6 +51,7 @@ export function TodayPanel({
   /** Portrait's band across the top: the blocks flow into three columns (UX §3). */
   band?: boolean;
 }) {
+  const t = useT();
   const open = useOpenEvent(home);
   const blocks = useTodayBlocks();
   const minute = useMinute();
@@ -71,7 +73,7 @@ export function TodayPanel({
 
   return (
     <aside
-      aria-label="Today"
+      aria-label={t("calendar.today.panel.aria")}
       className={
         band
           ? "grid min-h-0 flex-1 grid-cols-3 gap-x-10 overflow-hidden px-6 pt-3 pb-4"
@@ -82,14 +84,18 @@ export function TodayPanel({
           through the other two. On the side panel both are simply one column. */}
       <div className={band ? "flex min-h-0 flex-col gap-5 overflow-hidden" : "contents"}>
         {parts.now.length || parts.allDay.length ? (
-          <Section id="today-now" title="Now">
+          <Section id="today-now" title={t("calendar.today.now.title")}>
             {parts.now.map((occurrence) => (
               <Line
                 onOpen={open}
                 key={occurrence.key}
                 occurrence={occurrence}
                 members={members}
-                when={occurrence.end_local ? `until ${formatWallTime(occurrence.end_local)}` : ""}
+                when={
+                  occurrence.end_local
+                    ? t("calendar.today.until", { time: formatWallTime(occurrence.end_local) })
+                    : ""
+                }
                 glance
               />
             ))}
@@ -99,13 +105,13 @@ export function TodayPanel({
                 onOpen={open}
                 occurrence={occurrence}
                 members={members}
-                when="All day"
+                when={t("calendar.today.all_day")}
               />
             ))}
           </Section>
         ) : null}
         {parts.upNext ? (
-          <Section id="today-up-next" title="Up Next">
+          <Section id="today-up-next" title={t("calendar.today.up_next.title")}>
             <Line
               onOpen={open}
               occurrence={parts.upNext}
@@ -117,7 +123,7 @@ export function TodayPanel({
           </Section>
         ) : null}
         {parts.later.length ? (
-          <Section id="today-later" title="Later Today">
+          <Section id="today-later" title={t("calendar.today.later.title")}>
             {parts.later.map((occurrence) => (
               <Line
                 onOpen={open}
@@ -137,17 +143,20 @@ export function TodayPanel({
                 onNow ? "text-d-body font-semibold text-ink-soft" : "text-d-glance font-bold"
               }
             >
-              {hadToday ? "Nothing else today." : "Nothing today."}
+              {hadToday ? t("calendar.today.nothing_else") : t("calendar.today.empty")}
             </p>
             {!showTomorrow && firstTomorrow ? (
               <p className="text-d-secondary text-ink-soft">
-                Tomorrow · {startText(firstTomorrow)} {firstTomorrow.title}
+                {t("calendar.today.tomorrow_first", {
+                  time: startText(firstTomorrow),
+                  title: firstTomorrow.title,
+                })}
               </p>
             ) : null}
           </div>
         ) : null}
         {showTomorrow ? (
-          <Section id="today-tomorrow" title="Tomorrow">
+          <Section id="today-tomorrow" title={t("calendar.today.tomorrow.title")}>
             {tomorrows.map((occurrence) => (
               <Line
                 onOpen={open}
@@ -203,8 +212,9 @@ function Line({
   glance?: boolean;
   detail?: boolean;
 }) {
+  const t = useT();
   const people = peopleOf(occurrence, members);
-  const who = people.length ? people.map((p) => p.name).join(", ") : "Everyone";
+  const who = people.length ? people.map((p) => p.name).join(", ") : t("calendar.everyone");
   const extra = detail ? [who, occurrence.location].filter(Boolean).join(" · ") : "";
   return (
     <button

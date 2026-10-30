@@ -14,6 +14,7 @@ import {
 import { Arrivals, useArrivals } from "../../lib/arrivals";
 import { displayState, updateDisplay, type BoardView } from "../../lib/displayState";
 import { useMembers, useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { usePageTurn } from "../../lib/motion";
 import { useStore } from "../../lib/store";
 import { useMinute } from "../../lib/time";
@@ -46,6 +47,7 @@ function homeView(setting: string | undefined): BoardView {
  * display's shared state, so the idle machine can put it back to this week (lib/displayState).
  */
 export function CalendarRoom() {
+  const t = useT();
   const state = useStore(displayState);
   const { data: settings } = useSettings();
   const { data: members = [] } = useMembers();
@@ -146,8 +148,8 @@ export function CalendarRoom() {
   // The room's name, for a screen reader (the header draws none: the day heads carry the dates,
   // and the Month and Day views say theirs), and what the middle button goes back to.
   const weekHeader = {
-    title: state.weekOffset === 0 ? "This Week" : weekSpan(week),
-    homeLabel: "This Week",
+    title: state.weekOffset === 0 ? t("calendar.board.this_week.title") : weekSpan(week),
+    homeLabel: t("calendar.board.action.this_week"),
     atHome: state.weekOffset === 0,
     home: () => {
       pages.turn(-state.weekOffset);
@@ -160,13 +162,13 @@ export function CalendarRoom() {
     rolling: weekHeader,
     day: {
       title: shortDate(focusDay),
-      homeLabel: "Today",
+      homeLabel: t("calendar.board.action.today"),
       atHome: focusDay === today,
       home: backToToday,
     },
     month: {
       title: monthYear(month.first),
-      homeLabel: "This Month",
+      homeLabel: t("calendar.board.action.this_month"),
       atHome: state.monthOffset === 0,
       home: () => {
         pages.turn(-state.monthOffset);
@@ -175,15 +177,15 @@ export function CalendarRoom() {
     },
     // The day is written over the columns (DayCaption); "People" names the room.
     people: {
-      title: "People",
-      homeLabel: "Today",
+      title: t("calendar.view.people.title"),
+      homeLabel: t("calendar.board.action.today"),
       atHome: focusDay === today,
       home: backToToday,
     },
     // Always today and the six days after: nothing to page, so no arrows (BoardControls).
     today: {
-      title: "Today",
-      homeLabel: "Today",
+      title: t("calendar.view.today.title"),
+      homeLabel: t("calendar.board.action.today"),
       atHome: true,
       home: () => undefined,
     },
@@ -193,7 +195,7 @@ export function CalendarRoom() {
 
   useRoomHeader({
     title: header.title,
-    notice: dragging ? "Drop on a day" : null,
+    notice: dragging ? t("calendar.board.drop.hint") : null,
     controls: (
       <BoardControls
         view={view}
@@ -221,7 +223,9 @@ export function CalendarRoom() {
 
   return (
     <section
-      aria-label={view === "week" || view === "rolling" ? "This Week" : header.title}
+      aria-label={
+        view === "week" || view === "rolling" ? t("calendar.board.this_week.title") : header.title
+      }
       className="@container flex min-h-0 flex-1 flex-col"
     >
       <Arrivals value={arrived}>

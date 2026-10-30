@@ -10,45 +10,56 @@ import {
 } from "lucide-react";
 
 import type { BoardView } from "../../lib/displayState";
+import { useT, type Key } from "../../lib/lang";
 import { Menu, MenuRadio } from "../../ui/Menu";
 import { VIEW_ART } from "./viewArt";
 
 interface ViewChoice {
   value: BoardView;
-  label: string;
+  label: Key;
   /** One line on what it shows, under its name in the menu. */
-  line: string;
+  line: Key;
   icon: LucideIcon;
 }
 
-/** The board's views, in the menu's order (ADR 0042). */
+/** The board's views, in the menu's order (ADR 0042), with their words' keys. */
 export const VIEWS: readonly ViewChoice[] = [
   {
     value: "week",
-    label: "Week",
-    line: "The calendar week, a column for each day.",
+    label: "calendar.view.week.title",
+    line: "calendar.view.week.hint",
     icon: CalendarRange,
   },
   {
     value: "rolling",
-    label: "Rolling Week",
-    line: "Yesterday, today and the five days after.",
+    label: "calendar.view.rolling.title",
+    line: "calendar.view.rolling.hint",
     icon: CalendarSync,
   },
-  { value: "day", label: "Day", line: "One day, hour by hour.", icon: Calendar1 },
+  {
+    value: "day",
+    label: "calendar.view.day.title",
+    line: "calendar.view.day.hint",
+    icon: Calendar1,
+  },
   {
     value: "month",
-    label: "Month",
-    line: "The whole month. Tap a day to open it.",
+    label: "calendar.view.month.title",
+    line: "calendar.view.month.hint",
     icon: CalendarDays,
   },
   {
     value: "people",
-    label: "People",
-    line: "A column for each person, one day at a time.",
+    label: "calendar.view.people.title",
+    line: "calendar.view.people.hint",
     icon: Users,
   },
-  { value: "today", label: "Today", line: "Today at a glance, then the days ahead.", icon: Sun },
+  {
+    value: "today",
+    label: "calendar.view.today.title",
+    line: "calendar.view.today.hint",
+    icon: Sun,
+  },
 ];
 
 /**
@@ -65,22 +76,24 @@ export function ViewSwitch({
   view: BoardView;
   onView: (view: BoardView) => void;
 }) {
+  const t = useT();
   const current = VIEWS.find((option) => option.value === view) ?? VIEWS[0];
   const CurrentIcon = current?.icon ?? CalendarRange;
+  const name = current ? t(current.label) : "";
   return (
     <Menu
-      label="View"
+      label={t("calendar.view.menu.aria")}
       className="min-w-[30rem]"
       trigger={(props) => (
         // Not ui/Button: its padding is fixed, and this matches Filter's shape beside it.
         <button
           type="button"
           {...props}
-          aria-label={`View: ${current?.label ?? ""}`}
+          aria-label={t("calendar.view.button.aria", { view: name })}
           className="press inline-flex h-tap shrink-0 items-center gap-2 rounded-button-d border-2 border-line bg-surface px-5 text-d-body font-semibold active:bg-wall"
         >
           <CurrentIcon aria-hidden="true" className="size-8 shrink-0" />
-          {current?.label}
+          {name}
           <ChevronDown aria-hidden="true" className="size-7 shrink-0 text-ink-soft" />
         </button>
       )}
@@ -92,12 +105,12 @@ export function ViewSwitch({
             key={value}
             checked={value === view}
             drawing={<Art />}
-            detail={line}
+            detail={t(line)}
             onChoose={() => {
               onView(value);
             }}
           >
-            {label}
+            {t(label)}
           </MenuRadio>
         );
       })}

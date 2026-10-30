@@ -1,5 +1,6 @@
 import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 
+import { useT } from "../../lib/lang";
 import { Button } from "../../ui/Button";
 import { zoomIn, zoomOut } from "./hours";
 
@@ -21,19 +22,20 @@ export function ZoomControl({
   max: number;
   onZoom: (zoom: number) => void;
 }) {
+  const t = useT();
   const fitted = zoom <= 1;
   return (
     // Three buttons, not a choice: one control to the tap-target check, like a segmented.
     <div
       role="group"
-      aria-label="Zoom"
+      aria-label={t("calendar.zoom.aria")}
       data-segmented=""
       className="absolute right-6 bottom-4 z-30 flex gap-2 rounded-panel border-2 border-line bg-surface p-2"
     >
       <Button
         variant="secondary"
         icon
-        aria-label="Fit the day"
+        aria-label={t("calendar.zoom.fit.aria")}
         disabled={fitted}
         onClick={() => {
           onZoom(1);
@@ -44,7 +46,7 @@ export function ZoomControl({
       <Button
         variant="secondary"
         icon
-        aria-label="Zoom out"
+        aria-label={t("calendar.zoom.out.aria")}
         disabled={fitted}
         onClick={() => {
           onZoom(zoomOut(zoom));
@@ -55,7 +57,7 @@ export function ZoomControl({
       <Button
         variant="secondary"
         icon
-        aria-label="Zoom in"
+        aria-label={t("calendar.zoom.in.aria")}
         disabled={zoom >= max}
         onClick={() => {
           onZoom(zoomIn(zoom, max));
