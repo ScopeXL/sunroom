@@ -211,10 +211,14 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
     });
     expect(screen.queryByText(/choose Allow/)).toBeNull();
     act(() => {
+      // As the agent sends it since ADR 0043: the step's key, and the message's.
       runProgress.set({
         percent: 100,
         step: "Stopped",
+        key: "agent.local.step.stopped",
         message: "Sunroom didn't start. Restart this screen, then try again.",
+        message_key: "agent.local.didnt_start_screen",
+        message_params: {},
       });
     });
     expect(screen.getByRole("alert").textContent).toBe(

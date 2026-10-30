@@ -22,6 +22,7 @@ from typing import Any, Protocol
 
 from sunroom_kiosk.policy import BrowserKind
 from sunroom_kiosk.schemas import ScreenCapability, ScreenNetworkKind, ScreenPlatform, ScreenSession
+from sunroom_kiosk.words import SaidError
 
 COMMAND_TIMEOUT_S = 20.0
 # Windows: the agent runs without a console (sunroom-kioskw), so a console program it starts
@@ -127,13 +128,16 @@ def uninstaller_command(script: Path, *, sunroom: bool) -> list[str]:
     return [*argv, "--purge-local"] if sunroom else argv
 
 
-class PlatformError(Exception):
-    """A device action that didn't work. The message is for the family: plain words, no codes."""
+class PlatformError(SaidError):
+    """A device action that didn't work, said for the family: a key from lang/en.json and its
+    values (``str(error)`` is the English), plain words, no codes."""
 
 
 class UnsupportedError(PlatformError):
-    def __init__(self, what: str = "That") -> None:
-        super().__init__(f"{what} isn't something this screen can do.")
+    """What this machine can't do: ``agent.unsupported.restart`` and the like."""
+
+    def __init__(self, key: str = "agent.unsupported.that") -> None:
+        super().__init__(key)
 
 
 @dataclass(frozen=True)
@@ -163,6 +167,7 @@ class WifiNetwork:
     saved: bool
 
 
+# A long action's progress: its percent, and its step's key (``agent.local.step.downloading``).
 type Progress = Callable[[int, str], Awaitable[None]]
 
 
@@ -221,10 +226,10 @@ class Platform:
     # ------------------------------------------------------------------ the machine
 
     async def restart(self) -> None:
-        raise UnsupportedError("Restarting")
+        raise UnsupportedError("agent.unsupported.restart")
 
     async def shutdown(self) -> None:
-        raise UnsupportedError("Shutting down")
+        raise UnsupportedError("agent.unsupported.shutdown")
 
     # ------------------------------------------------------------------ the network
 
@@ -233,19 +238,19 @@ class Platform:
         return NetworkStatus(kind="wired" if ip else "none", ip=ip)
 
     async def wifi_networks(self) -> list[WifiNetwork]:
-        raise UnsupportedError("Wi-Fi")
+        raise UnsupportedError("agent.unsupported.wifi")
 
     async def wifi_join(self, ssid: str, password: str) -> None:
-        raise UnsupportedError("Wi-Fi")
+        raise UnsupportedError("agent.unsupported.wifi")
 
     async def wifi_forget(self, network_id: str) -> None:
-        raise UnsupportedError("Wi-Fi")
+        raise UnsupportedError("agent.unsupported.wifi")
 
     # ------------------------------------------------------------------ the screen
 
     async def rotate(self, rotation: int, output: str) -> None:
         """Turn the picture on the screen connected at ``output`` (HDMI-A-1), and touch with it."""
-        raise UnsupportedError("Turning the picture")
+        raise UnsupportedError("agent.unsupported.rotate")
 
     # ------------------------------------------------------------------ before the browser
 
@@ -297,12 +302,12 @@ class Platform:
         """Start Sunroom Screen's uninstaller as a process of its own, which outlives the agent
         (This Screen's Uninstall, ADR 0042); ``sunroom`` takes Sunroom run here and the family's
         data with it. The agent quits right after."""
-        raise UnsupportedError("Uninstalling Sunroom Screen")
+        raise UnsupportedError("agent.unsupported.uninstall")
 
     async def run_sunroom(self, progress: Progress) -> str:
         """Start Sunroom on this machine; returns its address. Only the pretend machine does it
         itself (``--fake``): a real one runs Sunroom as a program, through local.py."""
-        raise UnsupportedError("Running Sunroom here")
+        raise UnsupportedError("agent.unsupported.run_sunroom")
 
     def environment(self) -> dict[str, str]:
         """What the browser is started with: this process's environment."""

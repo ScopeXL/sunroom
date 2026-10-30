@@ -26,6 +26,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from sunroom_kiosk import logs
+from sunroom_kiosk.words import SaidError
 
 log = logs.get("discovery")
 
@@ -38,10 +39,6 @@ MOST_HOSTS = 1024
 BROWSE_S = 5.0
 USER_AGENT = "sunroom-kiosk"
 
-NOT_SUNROOM = "That address isn't a Sunroom. Check it and try again."
-UNREACHABLE = "Can't reach that address from here."
-NOT_AN_ADDRESS = "That isn't an address. It looks like https://calendar.example.com."
-
 
 @dataclass(frozen=True)
 class Found:
@@ -52,10 +49,11 @@ class Found:
     setup_complete: bool | None
     older: bool = False  # no /api/discover: a Sunroom before 0.13.0
     advertised: str | None = None  # the server's own idea of its address (SUNROOM_ADVERTISED_URL)
+    language: str | None = None  # the household's, once it's set up (ADR 0043)
 
 
-class CheckFailedError(Exception):
-    """The address isn't a Sunroom, or can't be reached; the message says which, plainly."""
+class CheckFailedError(SaidError):
+    """The address isn't a Sunroom, or can't be reached; what it says says which, plainly."""
 
 
 def candidates(text: str) -> list[str]:
@@ -104,6 +102,7 @@ def _found_from(url: str, body: Any) -> Found | None:
         version=text("version"),
         setup_complete=complete if isinstance(complete, bool) else None,
         advertised=advertised.rstrip("/") if advertised else None,
+        language=text("language"),
     )
 
 
@@ -145,7 +144,7 @@ async def check(client: httpx.AsyncClient, typed: str) -> Found:
     """What someone typed, checked: the Sunroom there, or CheckFailedError saying why not."""
     tries = candidates(typed)
     if not tries:
-        raise CheckFailedError(NOT_AN_ADDRESS)
+        raise CheckFailedError("agent.find.not_an_address")
     unreachable = False
     for url in tries:
         try:
@@ -156,8 +155,8 @@ async def check(client: httpx.AsyncClient, typed: str) -> Found:
         if found is not None:
             return found
         # Something answered, and it isn't a Sunroom: no point trying the other scheme.
-        raise CheckFailedError(NOT_SUNROOM)
-    raise CheckFailedError(UNREACHABLE if unreachable else NOT_SUNROOM)
+        raise CheckFailedError("agent.find.not_sunroom")
+    raise CheckFailedError("agent.find.unreachable" if unreachable else "agent.find.not_sunroom")
 
 
 def subnets(addresses: Iterable[tuple[str, int]]) -> list[ipaddress.IPv4Network]:

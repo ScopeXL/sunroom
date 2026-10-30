@@ -135,6 +135,17 @@
       },
       "ScreenCheckOut": {
         "properties": {
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
           "message": {
             "anyOf": [
               {
@@ -149,6 +160,13 @@
           "ok": {
             "title": "Ok",
             "type": "boolean"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
           },
           "sunroom": {
             "anyOf": [
@@ -191,9 +209,27 @@
             "title": "Code",
             "type": "string"
           },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
           }
         },
         "required": [
@@ -534,6 +570,17 @@
             ],
             "title": "Id"
           },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
           "name": {
             "anyOf": [
               {
@@ -634,6 +681,24 @@
               }
             ],
             "title": "Message"
+          },
+          "message_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Key"
+          },
+          "message_params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Message Params",
+            "type": "object"
           },
           "state": {
             "$ref": "#/components/schemas/ScreenUpdateState"

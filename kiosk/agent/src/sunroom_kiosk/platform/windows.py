@@ -121,7 +121,7 @@ if sys.platform == "win32":
 def system_registry() -> Registry:
     if sys.platform == "win32":
         return _WindowsRegistry()
-    raise PlatformError("The registry is Windows' own.")
+    raise PlatformError("agent.windows.registry_only")
 
 
 def windows_build() -> int:
@@ -245,7 +245,7 @@ if sys.platform == "win32":
 def system_display() -> Display:
     if sys.platform == "win32":
         return _WindowsDisplay()
-    raise PlatformError("The display settings are Windows' own.")
+    raise PlatformError("agent.windows.display_only")
 
 
 def wifi_from_netsh(text: str) -> tuple[str, int] | None:
@@ -314,18 +314,18 @@ class WindowsPlatform(Platform):
 
     # ------------------------------------------------------------------ the machine
 
-    async def _must(self, argv: list[str], what: str) -> CommandResult:
+    async def _must(self, argv: list[str], key: str) -> CommandResult:
         result = await self.run(argv)
         if not result.ok:
             log.info("%s didn't work: %s", " ".join(argv[:2]), result.first_line())
-            raise PlatformError(f"{what} didn't work. Try again in a moment.")
+            raise PlatformError(key)
         return result
 
     async def restart(self) -> None:
-        await self._must(["shutdown", "/r", "/t", "5"], "Restarting")
+        await self._must(["shutdown", "/r", "/t", "5"], "agent.failed.restart")
 
     async def shutdown(self) -> None:
-        await self._must(["shutdown", "/s", "/t", "5"], "Shutting down")
+        await self._must(["shutdown", "/s", "/t", "5"], "agent.failed.shutdown")
 
     # ------------------------------------------------------------------ the screen
 
@@ -337,10 +337,10 @@ class WindowsPlatform(Platform):
             answer = await asyncio.to_thread(display.apply, turned(now, rotation))
         except (OSError, PlatformError) as error:
             log.info("The display settings didn't answer: %s", error)
-            raise PlatformError("The picture didn't turn. Try again in a moment.") from error
+            raise PlatformError("agent.rotate.failed") from error
         if answer != DISP_CHANGE_SUCCESSFUL:
             log.info("ChangeDisplaySettingsExW answered %d.", answer)
-            raise PlatformError("The picture didn't turn. Try again in a moment.")
+            raise PlatformError("agent.rotate.failed")
 
     async def uninstall(self, *, sunroom: bool, port: int) -> None:
         script = self.temp / "sunroom-kiosk-uninstall.py"
@@ -348,15 +348,13 @@ class WindowsPlatform(Platform):
             await asyncio.to_thread(shutil.copyfile, uninstall_step.__file__, script)
         except OSError as error:
             log.info("The uninstaller couldn't be copied out: %s", error)
-            raise PlatformError(
-                "Sunroom Screen couldn't start its uninstaller. Try again."
-            ) from error
+            raise PlatformError("agent.uninstall.didnt_start") from error
         agent = Path.home() / ".local" / "bin" / "sunroom-kiosk.exe"
         argv = [base_python(), str(script), "--agent", str(agent), "--port", str(port)]
         if sunroom:
             argv.append("--sunroom")
         if not await self.spawn(argv, unit=UNINSTALL_UNIT):
-            raise PlatformError("Sunroom Screen couldn't start its uninstaller. Try again.")
+            raise PlatformError("agent.uninstall.didnt_start")
 
     # ------------------------------------------------------------------ the network
 
@@ -389,12 +387,12 @@ class WindowsPlatform(Platform):
             ):
                 registry.set_value(key, name, value_kind, data)
         except OSError as error:
-            raise PlatformError("The browser's settings couldn't be saved.") from error
+            raise PlatformError("agent.policy.couldnt_save") from error
         return True
 
     async def remove_policy(self, kind: policy.BrowserKind) -> bool:
         try:
             self._clear(self.registry(), kind)
         except OSError as error:
-            raise PlatformError("The browser's settings couldn't be changed.") from error
+            raise PlatformError("agent.policy.couldnt_change") from error
         return True

@@ -69,6 +69,18 @@ export function isKey(value: string): value is Key {
   return Object.hasOwn(english, value);
 }
 
+/**
+ * What the server or Sunroom Screen said, in the page's language: its key when this page knows
+ * it, else the English it sent (a page older than the server, after an update). ADR 0043.
+ */
+export function tSaid(
+  english: string,
+  key?: string | null,
+  params?: Record<string, string> | null,
+): string {
+  return key && isKey(key) ? t(key, params ?? undefined) : english;
+}
+
 /** The languages a family can pick, by their own names. */
 export function completeLanguages(): { value: LanguageCode; label: string }[] {
   return (Object.keys(LANGUAGES) as LanguageCode[])

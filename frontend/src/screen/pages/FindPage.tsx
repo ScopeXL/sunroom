@@ -3,37 +3,22 @@ import { Check, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { qk } from "../../api/keys";
-import {
-  screenClient,
-  sunroomName,
-  type ScreenFound,
-  type ScreenState,
-} from "../../lib/screenAgent";
+import { t, useT } from "../../lib/lang";
+import { sunroomName, type ScreenFound, type ScreenState } from "../../lib/screenAgent";
 import { Button } from "../../ui/Button";
 import { TextField } from "../../ui/TextField";
+import { agent, said, saying } from "../calls";
 import { go } from "../route";
-
-const NO_ANSWER = "This screen didn’t answer. Try again in a moment.";
-
-function agent() {
-  const client = screenClient();
-  if (!client) throw new Error(NO_ANSWER);
-  return client;
-}
-
-/** The agent's plain sentence for a refusal, or that it didn't answer. */
-function said(error: unknown): string {
-  const message = (error as { error?: { message?: string } } | undefined)?.error?.message;
-  return message ?? NO_ANSWER;
-}
 
 /** "The Sample Family's Sunroom", or "A Sunroom" for one older than /api/discover. */
 function title(found: ScreenFound): string {
-  return found.older ? "A Sunroom" : sunroomName(found.name);
+  return found.older ? t("screen.find.older") : sunroomName(found.name);
 }
 
 function detail(found: ScreenFound): string {
-  return found.version ? `${found.url} · version ${found.version}` : found.url;
+  return found.version
+    ? t("screen.find.detail", { url: found.url, version: found.version })
+    : found.url;
 }
 
 function Card({ heading, children }: { heading: string; children: ReactNode }) {
@@ -65,6 +50,7 @@ function useChoose() {
 }
 
 function OnYourNetwork() {
+  const t = useT();
   const queryClient = useQueryClient();
   const choose = useChoose();
   // The results arrive on the event stream as they're found; while a scan runs the list is also
@@ -99,10 +85,10 @@ function OnYourNetwork() {
   const scanning = look.isPending || (scan?.scanning ?? false);
   const found = scan?.found ?? [];
   return (
-    <Card heading="On Your Network">
+    <Card heading={t("screen.find.network.title")}>
       {found.length === 0 ? (
         <p className="text-d-body text-ink-soft" role="status">
-          {scanning ? "Looking…" : "No Sunroom answered on this network."}
+          {scanning ? t("screen.find.network.looking") : t("screen.find.network.none")}
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -117,7 +103,7 @@ function OnYourNetwork() {
                     choose.mutate({ url: sunroom.url, found: "discovered" });
                   }}
                 >
-                  Use This Sunroom
+                  {t("screen.find.use.action")}
                 </Button>
               </div>
             </li>
@@ -125,7 +111,7 @@ function OnYourNetwork() {
           {scanning ? (
             <li className="text-d-secondary text-ink-soft">
               {/* The status inside the item: a list holds list items only (axe). */}
-              <span role="status">Still looking…</span>
+              <span role="status">{t("screen.find.network.still_looking")}</span>
             </li>
           ) : null}
         </ul>
@@ -143,7 +129,7 @@ function OnYourNetwork() {
               look.mutate();
             }}
           >
-            Look Again
+            {t("screen.find.network.again.action")}
           </Button>
         </div>
       )}
@@ -158,23 +144,24 @@ function unfinished(address: string): boolean {
 
 /** Check Address's face: at rest, while the agent looks, and what it found (ADR 0042). */
 function CheckFace({ state }: { state: "rest" | "checking" | "found" | "not-found" }) {
+  const t = useT();
   switch (state) {
     case "rest":
-      return "Check Address";
+      return t("screen.find.check.action");
     case "checking":
-      return "Checking…";
+      return t("screen.find.check.checking");
     case "found":
       return (
         <>
           <Check aria-hidden="true" className="size-7" strokeWidth={3} />
-          Found
+          {t("screen.find.check.found")}
         </>
       );
     case "not-found":
       return (
         <>
           <X aria-hidden="true" className="size-7" strokeWidth={3} />
-          Not Found
+          {t("screen.find.check.not_found")}
         </>
       );
   }
@@ -186,6 +173,7 @@ function CheckFace({ state }: { state: "rest" | "checking" | "found" | "not-foun
  * check went, and Use This Sunroom rises into the same row once a Sunroom answered.
  */
 function SomewhereElse() {
+  const t = useT();
   const [typed, setTyped] = useState("");
   // The last address asked about, so leaving the field again with it unchanged asks nothing.
   const [asked, setAsked] = useState<string | null>(null);
@@ -216,7 +204,7 @@ function SomewhereElse() {
         ? "not-found"
         : "rest";
   return (
-    <Card heading="Somewhere Else">
+    <Card heading={t("screen.find.elsewhere.title")}>
       <form
         className="flex flex-col gap-4"
         onSubmit={(event) => {
@@ -225,8 +213,8 @@ function SomewhereElse() {
         }}
       >
         <TextField
-          label="Sunroom address"
-          hint="The one you open on your other devices, like http://192.168.1.20:8080 or https://calendar.example.com"
+          label={t("screen.find.address.label")}
+          hint={t("screen.find.address.hint")}
           autoCapitalize="none"
           autoComplete="off"
           value={typed}
@@ -256,7 +244,7 @@ function SomewhereElse() {
                 choose.mutate({ url: found.url, found: "typed" });
               }}
             >
-              Use This Sunroom
+              {t("screen.find.use.action")}
             </Button>
           ) : null}
         </div>
@@ -265,9 +253,11 @@ function SomewhereElse() {
         <p role="status" className="text-d-body font-semibold">
           {found
             ? found.older
-              ? `That’s a Sunroom, version ${found.version ?? "unknown"}.`
-              : `That’s ${sunroomName(found.name)}.`
-            : (result.message ?? NO_ANSWER)}
+              ? found.version
+                ? t("screen.find.found.older", { version: found.version })
+                : t("screen.find.found.older_unknown")
+              : t("screen.find.found.named", { name: sunroomName(found.name) })
+            : saying(result)}
         </p>
       ) : null}
       {check.isError ? (
@@ -287,6 +277,7 @@ function SomewhereElse() {
 /** Where Is Your Sunroom? On the network, or at an address someone was given (Connect to a
  * Sunroom, on Welcome; running it here is Welcome's other way, ADR 0038). */
 export function FindPage({ state }: { state: ScreenState }) {
+  const t = useT();
   const chosen = state.sunroom !== null;
   useEffect(() => {
     // Chosen here, or in another of this screen's pages meanwhile: open it.
@@ -294,7 +285,7 @@ export function FindPage({ state }: { state: ScreenState }) {
   }, [chosen]);
   return (
     <div className="flex w-full max-w-[110rem] flex-col gap-8">
-      <h1 className="text-d-glance font-bold">Where Is Your Sunroom?</h1>
+      <h1 className="text-d-glance font-bold">{t("screen.find.title")}</h1>
       <div className="grid gap-6 portrait:grid-cols-1 landscape:grid-cols-2">
         <OnYourNetwork />
         <SomewhereElse />
@@ -306,7 +297,7 @@ export function FindPage({ state }: { state: ScreenState }) {
             go("/");
           }}
         >
-          Back
+          {t("app.action.back")}
         </Button>
       </div>
     </div>

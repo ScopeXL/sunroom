@@ -3,6 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { zonedParts } from "../lib/dates";
 import { watchActivity } from "../lib/idle";
 import { watchKeyboardFields } from "../lib/keyboard";
+import { useFollowLanguage, useT } from "../lib/lang";
 import { MotionProvider } from "../lib/motion";
 import { watchPointer } from "../lib/pointer";
 import { useScreenAgent, useScreenAgentEvents, type ScreenState } from "../lib/screenAgent";
@@ -92,15 +93,19 @@ function Page({ path, state }: { path: ScreenPath; state: ScreenState }) {
 }
 
 export function ScreenApp() {
+  const t = useT();
   useScreenAgentEvents();
   const state = useScreenAgent();
+  // The household's language, once this screen's Sunroom has said it (ADR 0043); before that
+  // the browser's, as the page started.
+  useFollowLanguage(state?.sunroom?.language);
   const path = useStore(route);
   return (
     <ScreenFrame>
       {state ? (
         <Page path={path} state={state} />
       ) : (
-        <p className="text-d-body text-ink-soft">Starting this screen…</p>
+        <p className="text-d-body text-ink-soft">{t("screen.starting")}</p>
       )}
     </ScreenFrame>
   );

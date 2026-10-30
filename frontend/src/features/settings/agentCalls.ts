@@ -2,7 +2,7 @@
  * This Screen's calls to Sunroom Screen, the agent beside the wall's browser (ADR 0035): its
  * answer, or what it said when it refused, in its own plain sentence.
  */
-import { t } from "../../lib/lang";
+import { t, tSaid } from "../../lib/lang";
 import { screenClient } from "../../lib/screenAgent";
 
 /** What a call that never reached the agent says, in the page's language as it is now. */
@@ -10,7 +10,8 @@ function noAnswer(): string {
   return t("settings.this_screen.no_answer.error");
 }
 
-/** A refusal from the agent: its message is the agent's own plain sentence. */
+/** A refusal from the agent: its own plain sentence, in the page's language when the page knows
+ * its key (ADR 0043). */
 export class Refusal extends Error {}
 
 export function refusal(error: unknown): string {
@@ -20,8 +21,12 @@ export function refusal(error: unknown): string {
 /** The agent's answer, or a Refusal with what it said (its error envelope). */
 export function answer<T>(result: { data?: T; error?: unknown }): T {
   if (result.error !== undefined) {
-    const said = (result.error as { error?: { message?: string } }).error?.message;
-    throw new Refusal(said ?? noAnswer());
+    const said = (
+      result.error as {
+        error?: { message?: string; key?: string | null; params?: Record<string, string> };
+      }
+    ).error;
+    throw new Refusal(said?.message ? tSaid(said.message, said.key, said.params) : noAnswer());
   }
   return result.data as T;
 }

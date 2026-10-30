@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { qk } from "../api/keys";
+import { toasts } from "./toast";
 import {
   createScreenClient,
   forgetScreenAgent,
@@ -17,6 +18,7 @@ import {
 afterEach(() => {
   forgetScreenAgent();
   vi.unstubAllGlobals();
+  toasts.set([]);
 });
 
 describe("the wall's own Sunroom Screen agent (ADR 0035)", () => {
@@ -120,6 +122,23 @@ describe("the wall's own Sunroom Screen agent (ADR 0035)", () => {
       new MessageEvent("update.progress", { data: JSON.stringify({ percent: 100, step: "Done" }) }),
     );
     expect(screenProgress.get()).toBeNull();
+    stop();
+  });
+
+  it("says the agent's toasts by their keys, and its English for a key it doesn't know", () => {
+    const source = new EventTarget() as EventSource;
+    const stop = listen(source, new QueryClient());
+    const toast = (said: object) => {
+      source.dispatchEvent(new MessageEvent("toast", { data: JSON.stringify(said) }));
+    };
+    toast({ message: "English", key: "agent.wifi.out_of_range", params: { ssid: "HomeNet" } });
+    toast({ message: "A sentence from a newer agent.", key: "agent.not.here.yet", params: {} });
+    toast({ message: "From an agent before 0.18.0." });
+    expect(toasts.get().map((shown) => shown.message)).toEqual([
+      "HomeNet is out of range. Move closer, or try another network.",
+      "A sentence from a newer agent.",
+      "From an agent before 0.18.0.",
+    ]);
     stop();
   });
 });

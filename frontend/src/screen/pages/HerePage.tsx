@@ -1,25 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
-import { runProgress, screenClient, type ScreenState } from "../../lib/screenAgent";
+import { tSaid, useT } from "../../lib/lang";
+import { runProgress, type ScreenState } from "../../lib/screenAgent";
 import { useStore } from "../../lib/store";
 import { Button } from "../../ui/Button";
 import { Digits } from "../../ui/Digits";
+import { agent, said } from "../calls";
 import { go } from "../route";
-
-const NO_ANSWER = "This screen didn’t answer. Try again in a moment.";
-
-function agent() {
-  const client = screenClient();
-  if (!client) throw new Error(NO_ANSWER);
-  return client;
-}
-
-/** The agent's plain sentence for a refusal, or that it didn't answer. */
-function said(error: unknown): string {
-  const message = (error as { error?: { message?: string } } | undefined)?.error?.message;
-  return message ?? NO_ANSWER;
-}
 
 /**
  * Setting Up Sunroom: Sunroom on this computer (ADR 0038), from the tap on Welcome until it
@@ -27,6 +15,7 @@ function said(error: unknown): string {
  * already going is joined, and one that stopped says why, with Try Again.
  */
 export function HerePage({ state }: { state: ScreenState }) {
+  const t = useT();
   const progress = useStore(runProgress);
   const chosen = state.sunroom !== null;
   const run = useMutation({
@@ -47,34 +36,32 @@ export function HerePage({ state }: { state: ScreenState }) {
     // Running here, or chosen meanwhile: open it.
     if (chosen) go("/opening", true);
   }, [chosen]);
-  const stopped = progress?.step === "Stopped";
-  const problem = run.isError ? run.error.message : stopped ? progress.message : null;
+  const stopped = progress?.key === "agent.local.step.stopped";
+  const problem = run.isError
+    ? run.error.message
+    : stopped && progress.message
+      ? tSaid(progress.message, progress.message_key, progress.message_params)
+      : null;
   const asks = state.platform === "macos" || state.platform === "windows";
   return (
     <div className="flex w-full max-w-3xl flex-col gap-6 text-left">
-      <h1 className="text-d-glance font-bold">Setting Up Sunroom</h1>
-      <p className="text-d-body">
-        Sunroom is being set up on this computer. It takes a few minutes, and this screen opens it
-        when it’s ready.
-      </p>
+      <h1 className="text-d-glance font-bold">{t("screen.here.title")}</h1>
+      <p className="text-d-body">{t("screen.here.lead")}</p>
       {problem ? null : (
         <p className="text-d-body font-semibold" role="status">
           {progress === null ? (
-            "Getting ready…"
+            t("screen.here.getting_ready")
           ) : progress.step.endsWith("…") ? (
             <>
-              {progress.step} <Digits value={`${String(progress.percent)}%`} />
+              {tSaid(progress.step, progress.key)} <Digits value={`${String(progress.percent)}%`} />
             </>
           ) : (
-            progress.step
+            tSaid(progress.step, progress.key)
           )}
         </p>
       )}
       {asks && !problem ? (
-        <p className="text-d-body text-ink-soft">
-          If this computer asks whether Sunroom may accept connections, choose Allow, so your
-          family’s devices can reach it.
-        </p>
+        <p className="text-d-body text-ink-soft">{t("screen.here.allow_hint")}</p>
       ) : null}
       {problem ? (
         <p role="alert" className="text-d-body font-semibold text-alert">
@@ -89,7 +76,7 @@ export function HerePage({ state }: { state: ScreenState }) {
               run.mutate();
             }}
           >
-            Try Again
+            {t("app.action.try_again")}
           </Button>
         ) : null}
         <Button
@@ -98,7 +85,7 @@ export function HerePage({ state }: { state: ScreenState }) {
             go("/");
           }}
         >
-          Back
+          {t("app.action.back")}
         </Button>
       </div>
     </div>

@@ -42,8 +42,9 @@ from sunroom_kiosk.schemas import (
     ScreenUpdateOut,
 )
 from sunroom_kiosk.setup_files import Report
-from sunroom_kiosk.updater import UpdaterLike, newer
+from sunroom_kiosk.updater import UpdaterLike, newer, progress_out
 from sunroom_kiosk.version import version
+from sunroom_kiosk.words import Said, said
 
 log = logs.get("agent")
 
@@ -83,6 +84,7 @@ class Known:
 
     name: str | None = None
     version: str | None = None
+    language: str | None = None  # the household's (ADR 0043): the screen's pages speak it
     asked_at: float = 0.0
 
 
@@ -184,6 +186,7 @@ class Agent:
                 found=self.config.found or "typed",
                 reachable=self.reachable,
                 version=self.known.version,
+                language=self.known.language,
             )
         status = {**self.updater.status(self.update_check()), "sunroom_outdated": self._outdated()}
         return ScreenStateOut(
@@ -253,8 +256,12 @@ class Agent:
     def publish_state(self) -> None:
         self.hub.publish("state", self.snapshot())
 
-    def toast(self, message: str) -> None:
-        self.hub.publish("toast", {"message": message})
+    def toast(self, key: str, **params: object) -> None:
+        """A toast on the wall: its key and values, and its English for an older page."""
+        self.tell(said(key, **params))
+
+    def tell(self, what: Said) -> None:
+        self.hub.publish("toast", what.out())
 
     def save(self, config: Config) -> None:
         self.config = config
@@ -375,7 +382,12 @@ class Agent:
             found = await self.discovery.check(url)
         except Exception:
             return
-        self.known = Known(name=found.name, version=found.version, asked_at=time.monotonic())
+        self.known = Known(
+            name=found.name,
+            version=found.version,
+            language=found.language,
+            asked_at=time.monotonic(),
+        )
         if found.id and self.config.sunroom_id is None:
             self.save(replace(self.config, sunroom_id=found.id))
 
@@ -499,8 +511,8 @@ class Agent:
         a time, and a run that stops says why in its last progress, which the page shows with Try
         Again."""
 
-        async def progress(percent: int, step: str, message: str | None = None) -> None:
-            self.hub.publish("run.progress", {"percent": percent, "step": step, "message": message})
+        async def progress(percent: int, step: str, message: Said | None = None) -> None:
+            self.hub.publish("run.progress", progress_out(percent, step, message))
 
         self.running_sunroom = True
         try:
@@ -510,21 +522,21 @@ class Agent:
                 else:
                     url = await self.platform.run_sunroom(progress)
             except PlatformError as error:
-                await progress(100, "Stopped", str(error))
+                await progress(100, "agent.local.step.stopped", error.said)
                 return
             # Its first start migrates an empty database: up to five minutes, as the installer
             # waits.
-            await progress(92, "Starting Sunroom…")
+            await progress(92, "agent.local.step.starting")
             for _ in range(RUN_SUNROOM_TRIES):
                 if await self.healthy(url):
                     break
                 await asyncio.sleep(RUN_SUNROOM_PAUSE_S)
             else:
                 await progress(
-                    100, "Stopped", "Sunroom didn't start. Restart this screen, then try again."
+                    100, "agent.local.step.stopped", said("agent.local.didnt_start_screen")
                 )
                 return
-            await progress(100, "Sunroom is running.")
+            await progress(100, "agent.local.step.running")
             if self.local is not None:
                 await self.local.keep_awake()
                 await self.local.announce()
@@ -547,7 +559,12 @@ class Agent:
             "discovered" if how == "discovered" else "local" if how == "local" else "typed"
         )
         self.save(self.config.with_sunroom(found.url, found.id, how_found))
-        self.known = Known(name=found.name, version=found.version, asked_at=time.monotonic())
+        self.known = Known(
+            name=found.name,
+            version=found.version,
+            language=found.language,
+            asked_at=time.monotonic(),
+        )
         self.reachable = await self.healthy(found.url)
         await self.apply_policy()
         if self.screen is not None:
@@ -556,7 +573,7 @@ class Agent:
                 self.screen.start()
         self.publish_state()
         if moved:
-            self.toast("Found Sunroom at its new address.")
+            self.toast("agent.toast.found_again")
         log.info("This screen shows the Sunroom at %s now.", found.url)
 
     async def forget(self) -> None:
@@ -611,7 +628,7 @@ class Agent:
                 await action()
             except PlatformError as error:
                 log.info("%s", error)
-                self.toast(str(error))
+                self.tell(error.said)
 
         self.spawn(go())
 
@@ -626,9 +643,9 @@ class Agent:
             updated = await self.platform.update_sunroom()
         if updated:
             await self.ask_sunroom()
-            self.toast("Sunroom is up to date.")
+            self.toast("agent.toast.sunroom_up_to_date")
         else:
-            self.toast("Sunroom didn't update. Try again in a while.")
+            self.toast("agent.toast.sunroom_didnt_update")
         self.publish_state()
 
     async def rotate(self, rotation: int) -> None:

@@ -38,7 +38,11 @@ Address = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, 
 
 class ScreenErrorBody(BaseModel):
     code: str
-    message: str
+    message: str  # English
+    # What it says, for the page to say in the household's language (ADR 0043): a key from
+    # lang/en.json (agent.*) and its values.
+    key: str | None = None
+    params: dict[str, str] = Field(default_factory=dict[str, str])
 
 
 class ScreenErrorOut(BaseModel):
@@ -56,6 +60,9 @@ class ScreenSunroomOut(BaseModel):
     found: ScreenFoundHow
     reachable: bool  # its /api/health answered the last time the agent asked
     version: str | None = None  # what the Sunroom said it runs, when it said
+    # The household's language, when the Sunroom said (GET /api/discover): the screen's own
+    # pages speak it (ADR 0043).
+    language: str | None = None
 
 
 class ScreenNetworkOut(BaseModel):
@@ -71,7 +78,9 @@ class ScreenUpdateOut(BaseModel):
     installed: str
     latest: str | None
     checked_at: str | None  # ISO time of the last check
-    message: str | None  # a failure, in plain words
+    message: str | None  # a failure, in plain words (English)
+    message_key: str | None = None  # its key in lang/en.json, and its values (ADR 0043)
+    message_params: dict[str, str] = Field(default_factory=dict[str, str])
     # An all-in-one Pi: the Sunroom running on this screen is older than the newest release, and
     # this screen can update it (Update Sunroom Too).
     sunroom_outdated: bool = False
@@ -140,7 +149,9 @@ class ScreenCheckIn(BaseModel):
 class ScreenCheckOut(BaseModel):
     ok: bool
     sunroom: ScreenFoundOut | None
-    message: str | None  # why not, in plain words
+    message: str | None  # why not, in plain words (English)
+    key: str | None = None  # its key in lang/en.json, and its values (ADR 0043)
+    params: dict[str, str] = Field(default_factory=dict[str, str])
 
 
 class ScreenSaveIn(BaseModel):
@@ -190,5 +201,8 @@ class ScreenProgressOut(BaseModel):
     """``update.progress`` and ``run.progress`` on the event stream."""
 
     percent: int
-    step: str
+    step: str  # English
+    key: str | None = None  # the step's key in lang/en.json (ADR 0043)
     message: str | None = None  # why a run stopped, in the family's words (run.progress only)
+    message_key: str | None = None
+    message_params: dict[str, str] = Field(default_factory=dict[str, str])

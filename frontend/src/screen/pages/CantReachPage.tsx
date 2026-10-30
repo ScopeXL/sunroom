@@ -1,24 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-import { screenClient, sunroomName, type ScreenState } from "../../lib/screenAgent";
+import { useT } from "../../lib/lang";
+import { sunroomName, type ScreenState } from "../../lib/screenAgent";
 import { showToast } from "../../lib/toast";
 import { Button } from "../../ui/Button";
 import { Sheet } from "../../ui/Sheet";
+import { agent, noAnswer, said, saying } from "../calls";
 import { go, openSunroom } from "../route";
-
-const NO_ANSWER = "This screen didn’t answer. Try again in a moment.";
-
-function agent() {
-  const client = screenClient();
-  if (!client) throw new Error(NO_ANSWER);
-  return client;
-}
-
-function said(error: unknown): string {
-  const message = (error as { error?: { message?: string } } | undefined)?.error?.message;
-  return message ?? NO_ANSWER;
-}
 
 /**
  * Can't Reach The Sample Family's Sunroom: the agent shows it when the browser has shown no
@@ -26,6 +15,7 @@ function said(error: unknown): string {
  * every 10 seconds); meanwhile everything that might help is one tap away.
  */
 export function CantReachPage({ state }: { state: ScreenState }) {
+  const t = useT();
   const sunroom = state.sunroom;
   const name = sunroomName(sunroom?.name);
   const back = sunroom?.reachable === true ? state.open_url : null;
@@ -36,12 +26,12 @@ export function CantReachPage({ state }: { state: ScreenState }) {
   }, [sunroom, back]);
   const tryAgain = useMutation({
     mutationFn: async () => {
-      if (!sunroom) throw new Error(NO_ANSWER);
+      if (!sunroom) throw new Error(noAnswer());
       const { data, error } = await agent().POST("/api/screen/sunroom/check", {
         body: { url: sunroom.url },
       });
       if (error !== undefined) throw new Error(said(error));
-      if (!data.ok) throw new Error(data.message ?? NO_ANSWER);
+      if (!data.ok) throw new Error(saying(data));
     },
     onSuccess: () => {
       if (state.open_url) openSunroom(state.open_url);
@@ -53,7 +43,7 @@ export function CantReachPage({ state }: { state: ScreenState }) {
       if (error !== undefined) throw new Error(said(error));
     },
     onSuccess: () => {
-      showToast("Restarting…");
+      showToast(t("screen.cant_reach.restarting.toast"));
     },
     onError: (error) => {
       showToast(error.message);
@@ -73,9 +63,9 @@ export function CantReachPage({ state }: { state: ScreenState }) {
     state.capabilities.includes(capability);
   return (
     <div className="flex w-full max-w-4xl flex-col items-center gap-8">
-      <h1 className="text-d-glance font-bold">{`Can’t Reach ${name}`}</h1>
+      <h1 className="text-d-glance font-bold">{t("screen.cant_reach.title", { name })}</h1>
       <p className="text-d-body text-ink-soft" role="status">
-        Trying again every 10 seconds…
+        {t("screen.cant_reach.trying")}
       </p>
       {tryAgain.isError ? (
         <p role="alert" className="text-d-body font-semibold text-alert">
@@ -89,7 +79,7 @@ export function CantReachPage({ state }: { state: ScreenState }) {
             tryAgain.mutate();
           }}
         >
-          Try Again
+          {t("app.action.try_again")}
         </Button>
         {can("wifi") ? (
           <Button
@@ -98,7 +88,7 @@ export function CantReachPage({ state }: { state: ScreenState }) {
               go("/wifi");
             }}
           >
-            Wi-Fi
+            {t("screen.cant_reach.wifi.action")}
           </Button>
         ) : null}
         <Button
@@ -107,7 +97,7 @@ export function CantReachPage({ state }: { state: ScreenState }) {
             setAsking(true);
           }}
         >
-          Change Address
+          {t("screen.cant_reach.change.action")}
         </Button>
         {can("restart") ? (
           <Button
@@ -117,21 +107,19 @@ export function CantReachPage({ state }: { state: ScreenState }) {
               restart.mutate();
             }}
           >
-            Restart
+            {t("screen.cant_reach.restart.action")}
           </Button>
         ) : null}
       </div>
       <Sheet
         open={asking}
-        title="Use a Different Sunroom?"
+        title={t("screen.cant_reach.change.title")}
         onClose={() => {
           setAsking(false);
         }}
       >
         <div className="flex flex-col gap-5 pb-2 text-left">
-          <p className="text-d-body">
-            {`This screen leaves ${name} and looks for another. Its pairing is kept.`}
-          </p>
+          <p className="text-d-body">{t("screen.cant_reach.change.body", { name })}</p>
           <div className="flex flex-wrap gap-3">
             <Button
               variant="danger"
@@ -140,7 +128,7 @@ export function CantReachPage({ state }: { state: ScreenState }) {
                 forget.mutate();
               }}
             >
-              Change Address
+              {t("screen.cant_reach.change.action")}
             </Button>
             <Button
               variant="secondary"
@@ -148,7 +136,7 @@ export function CantReachPage({ state }: { state: ScreenState }) {
                 setAsking(false);
               }}
             >
-              Cancel
+              {t("app.action.cancel")}
             </Button>
           </div>
         </div>

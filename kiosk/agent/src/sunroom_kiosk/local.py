@@ -80,11 +80,6 @@ ES_CONTINUOUS = 0x80000000
 ES_SYSTEM_REQUIRED = 0x00000001
 BOOTSTRAP_TRIES = 3
 
-DIDNT_DOWNLOAD = (
-    "Sunroom didn't download. Check this computer's internet connection, then try again."
-)
-DIDNT_INSTALL = "Sunroom didn't install. Check this computer's internet connection, then try again."
-
 
 def server_wheel(release: str) -> str:
     return f"sunroom-{release}-py3-none-any.whl"
@@ -243,7 +238,7 @@ class SystemdService:
         await self._systemctl("daemon-reload")
         await self._systemctl("enable", UNIT)
         if not await self._systemctl("restart", UNIT):
-            raise PlatformError("Sunroom didn't start. Restart this computer, then try again.")
+            raise PlatformError("agent.local.didnt_start")
         # Kept running after sign-out and from the computer's start; a desktop that doesn't
         # allow it still runs Sunroom while someone is signed in.
         linger = await self.run(["loginctl", "enable-linger"])
@@ -309,7 +304,7 @@ class LaunchdService:
             log.info("launchctl bootstrap didn't work: %s", result.first_line())
             if attempt + 1 < BOOTSTRAP_TRIES:
                 await asyncio.sleep(1)
-        raise PlatformError("Sunroom didn't start. Restart this Mac, then try again.")
+        raise PlatformError("agent.local.didnt_start_mac")
 
     async def restart(self) -> None:
         await self.run(["launchctl", "kickstart", "-k", f"{self.domain}/{LABEL}"])
@@ -368,7 +363,7 @@ class WindowsService:
                 self.places.pid.parent.mkdir(parents=True, exist_ok=True)
                 self.places.pid.write_text(str(process.pid), encoding="utf-8")
                 return
-        raise PlatformError("Sunroom didn't start. Restart this computer, then try again.")
+        raise PlatformError("agent.local.didnt_start")
 
     async def restart(self) -> None:
         await self.stop()
@@ -486,10 +481,7 @@ class LocalSunroom:
         for port in PORTS:
             if self.free(port):
                 return port
-        raise PlatformError(
-            "Every port from 8080 to 8099 is in use on this computer. Close a program that uses "
-            "one, then try again."
-        )
+        raise PlatformError("agent.local.ports_busy")
 
     async def advertised(self, port: int) -> str:
         """The address devices open: a name the computer surely answers to, else its IP."""
@@ -520,21 +512,17 @@ class LocalSunroom:
             async with self.http() as client:
                 answer = await client.get(f"{DOWNLOAD}/v{release}/SHA256SUMS")
                 if answer.status_code == 404:
-                    raise PlatformError(
-                        "This version of Sunroom isn't published yet. Try again in a while."
-                    )
+                    raise PlatformError("agent.local.not_published")
                 answer.raise_for_status()
                 sums = sums_from(answer.text)
                 if server_wheel(release) not in sums:
-                    raise PlatformError(
-                        "This version of Sunroom isn't published yet. Try again in a while."
-                    )
+                    raise PlatformError("agent.local.not_published")
                 await self._download(client, release, server_wheel(release), sums, progress)
                 if constraints_name(release) in sums:
                     await self._download(client, release, constraints_name(release), sums, None)
         except httpx.HTTPError as error:
             log.info("Sunroom %s didn't download: %s.", release, type(error).__name__)
-            raise PlatformError(DIDNT_DOWNLOAD) from error
+            raise PlatformError("agent.local.didnt_download") from error
         return wheel, constraints if constraints.is_file() else None
 
     async def _download(
@@ -560,12 +548,9 @@ class LocalSunroom:
                     percent = 5 + 50 * received // total
                     if percent != said:
                         said = percent
-                        await progress(percent, "Downloading Sunroom…")
+                        await progress(percent, "agent.local.step.downloading")
         if digest.hexdigest() != sums[name]:
-            raise PlatformError(
-                "The download of Sunroom didn't match its checksum, so it wasn't installed. "
-                "Try again."
-            )
+            raise PlatformError("agent.local.bad_checksum")
         await asyncio.to_thread(self._keep, name, b"".join(chunks))
 
     def _keep(self, name: str, data: bytes) -> None:
@@ -589,7 +574,7 @@ class LocalSunroom:
         result = await self.run(argv, limit=INSTALL_LIMIT_S)
         if not result.ok:
             log.info("uv didn't install Sunroom: %s", result.first_line())
-            raise PlatformError(DIDNT_INSTALL)
+            raise PlatformError("agent.local.didnt_install")
 
     # ------------------------------------------------------------------ running it
 
@@ -597,18 +582,18 @@ class LocalSunroom:
         """Set Sunroom up on this computer and start it; its address here. The agent then waits
         for it to answer and shows it (state.run_sunroom)."""
         if not self.supported():
-            raise UnsupportedError("Running Sunroom here")
+            raise UnsupportedError("agent.unsupported.run_sunroom")
         release = self.release
-        await progress(5, "Downloading Sunroom…")
+        await progress(5, "agent.local.step.downloading")
         wheel, constraints = await self.fetch(release, progress)
-        await progress(60, "Installing Sunroom…")
+        await progress(60, "agent.local.step.installing")
         if self.system == "win32":
             await self.service.stop()  # Windows locks a running program's files
         await self.install(wheel, constraints)
         port = self._port()
         address = await self.advertised(port)
         self._remember(port=port, advertised=address, release=release)
-        await progress(88, "Starting Sunroom…")
+        await progress(88, "agent.local.step.starting")
         await self.service.install(self.command(), self.environment(port, address))
         log.info("Sunroom %s runs on this computer, on port %d.", release, port)
         return f"http://localhost:{port}"

@@ -36,6 +36,7 @@ from sunroom_kiosk.platform.base import (
     PlatformError,
     Runner,
     Spawn,
+    UnsupportedError,
     local_ip,
     run_command,
     spawn_detached,
@@ -141,31 +142,33 @@ class MacPlatform(Platform):
 
     # ------------------------------------------------------------------ the machine
 
-    async def _must(self, argv: list[str], what: str) -> CommandResult:
+    async def _must(self, argv: list[str], key: str) -> CommandResult:
         result = await self.run(argv)
         if not result.ok:
             log.info("%s didn't work: %s", " ".join(argv[:2]), result.first_line())
-            raise PlatformError(f"{what} didn't work. Try again in a moment.")
+            raise PlatformError(key)
         return result
 
     async def restart(self) -> None:
         await self._must(
-            ["osascript", "-e", 'tell application "System Events" to restart'], "Restarting"
+            ["osascript", "-e", 'tell application "System Events" to restart'],
+            "agent.failed.restart",
         )
 
     async def shutdown(self) -> None:
         await self._must(
-            ["osascript", "-e", 'tell application "System Events" to shut down'], "Shutting down"
+            ["osascript", "-e", 'tell application "System Events" to shut down'],
+            "agent.failed.shutdown",
         )
 
     async def uninstall(self, *, sunroom: bool, port: int) -> None:
         """uninstall.sh in a session of its own: launchd's stop of Sunroom Screen's job takes
         its process group, not this."""
         if not self.uninstaller.is_file():
-            raise PlatformError("Uninstalling Sunroom Screen isn't something this screen can do.")
+            raise UnsupportedError("agent.unsupported.uninstall")
         argv = uninstaller_command(self.uninstaller, sunroom=sunroom)
         if not await self.spawn(argv, unit=UNINSTALL_UNIT):
-            raise PlatformError("Sunroom Screen couldn't start its uninstaller. Try again.")
+            raise PlatformError("agent.uninstall.didnt_start")
 
     # ------------------------------------------------------------------ the network
 
@@ -192,7 +195,7 @@ class MacPlatform(Platform):
         for key in sorted(policy.own_keys(kind) - wanted.keys()):
             await self.run(["defaults", "delete", domain, key])  # not there: nothing to do
         for argv in policy.mac_commands(kind, wanted):
-            await self._must(argv, "Saving the browser's settings")
+            await self._must(argv, "agent.failed.save_policy")
         return True
 
     async def remove_policy(self, kind: policy.BrowserKind) -> bool:

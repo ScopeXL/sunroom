@@ -193,7 +193,7 @@ async def test_the_release_is_downloaded_and_checked(tmp_path: Path) -> None:
     wheel, constraints = await here.fetch(RELEASE, progress)
     assert wheel.read_bytes() == WHEEL
     assert constraints is not None and constraints.read_bytes() == CONSTRAINTS
-    assert said[-1] == (55, "Downloading Sunroom…")
+    assert said[-1] == (55, "agent.local.step.downloading")
 
 
 async def test_a_download_that_doesnt_match_isnt_kept(tmp_path: Path) -> None:
@@ -389,10 +389,10 @@ async def test_a_run_here_installs_starts_and_remembers_it(tmp_path: Path) -> No
     assert 'Environment="SUNROOM_ADVERTISED_URL=http://kitchen.local:8080"' in unit
     assert any(line.startswith("/home/ana/.local/bin/uv tool install") for line in shell.lines())
     assert [step for _, step in said] == [
-        "Downloading Sunroom…",
-        *["Downloading Sunroom…"] * (len(said) - 3),
-        "Installing Sunroom…",
-        "Starting Sunroom…",
+        "agent.local.step.downloading",
+        *["agent.local.step.downloading"] * (len(said) - 3),
+        "agent.local.step.installing",
+        "agent.local.step.starting",
     ]
 
 
@@ -498,7 +498,7 @@ class FakeLocal:
     async def run_here(self, progress: Callable[[int, str], Any]) -> str:
         self.ran = True
         self.installed_now = True
-        await progress(60, "Installing Sunroom…")
+        await progress(60, "agent.local.step.installing")
         return self.url
 
     async def keep_awake(self) -> None:

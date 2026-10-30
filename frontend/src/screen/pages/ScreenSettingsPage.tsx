@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { ThisScreenPage } from "../../features/settings/ThisScreenPage";
 import { whenIdle } from "../../lib/idle";
+import { useT } from "../../lib/lang";
 import type { ScreenState } from "../../lib/screenAgent";
 import { Button } from "../../ui/Button";
 import { go, openSunroom } from "../route";
@@ -15,6 +16,7 @@ export const SETTINGS_IDLE_MS = 2 * 60_000;
  * quiet minutes when Sunroom answers.
  */
 export function ScreenSettingsPage({ state }: { state: ScreenState }) {
+  const t = useT();
   const back = state.sunroom?.reachable === true ? state.open_url : null;
   useEffect(() => {
     if (!back) return;
@@ -24,7 +26,7 @@ export function ScreenSettingsPage({ state }: { state: ScreenState }) {
   }, [back]);
   return (
     <div className="flex w-full max-w-5xl flex-col gap-8 text-left">
-      <h1 className="text-d-glance font-bold">This Screen</h1>
+      <h1 className="text-d-glance font-bold">{t("settings.this_screen.title")}</h1>
       <ThisScreenPage
         onForgot={() => {
           go("/find");
@@ -38,7 +40,7 @@ export function ScreenSettingsPage({ state }: { state: ScreenState }) {
               else go("/cant-reach");
             }}
           >
-            Back to Sunroom
+            {t("screen.settings.back.action")}
           </Button>
         ) : (
           <Button
@@ -46,7 +48,7 @@ export function ScreenSettingsPage({ state }: { state: ScreenState }) {
               go("/find");
             }}
           >
-            Find Your Sunroom
+            {t("screen.settings.find.action")}
           </Button>
         )}
       </div>

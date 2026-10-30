@@ -72,7 +72,12 @@ async def test_a_change_needs_the_header(client: httpx.AsyncClient, platform: Fa
     refused = await client.post("/api/screen/restart")
     assert refused.status_code == 403
     assert refused.json() == {
-        "error": {"code": "header", "message": "A change needs the X-Sunroom-Screen header."}
+        "error": {
+            "code": "header",
+            "message": "A change needs the X-Sunroom-Screen header.",
+            "key": "agent.api.header",  # the page says it in the household's language
+            "params": {},
+        }
     }
     assert (await client.post("/api/screen/restart", headers=CHANGE)).status_code == 202
 
@@ -294,6 +299,8 @@ async def test_an_address_is_checked_in_plain_words(
         "ok": False,
         "sunroom": None,
         "message": "That address isn't a Sunroom. Check it and try again.",
+        "key": "agent.find.not_sunroom",
+        "params": {},
     }
     nowhere = (
         await client.post(
@@ -333,6 +340,7 @@ async def test_saving_a_sunroom_restarts_nothing_and_says_so_at_once(
         "found": "discovered",
         "reachable": True,
         "version": "0.13.0",
+        "language": None,  # this pretend Sunroom doesn't say (one before 0.18.0)
     }
     assert body["open_url"] == f"{SUNROOM}/display?dimmer=page&screen={PORT}"
     kept = settings_file.load(config_path)

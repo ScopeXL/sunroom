@@ -49,6 +49,8 @@ artifacts = ["src/sunroom_kiosk/static/**"]
 "../uninstall.sh" = "sunroom_kiosk/files/uninstall.sh"
 "../labwc-rule.py" = "sunroom_kiosk/files/labwc-rule.py"
 "../update.sh" = "sunroom_kiosk/files/update.sh"
+# The words (ADR 0043): the agent's English and the screen's pages' languages.
+"../../lang" = "sunroom_kiosk/lang"
 
 [tool.ruff]
 line-length = 100

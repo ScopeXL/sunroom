@@ -7,12 +7,14 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 import en from "../../../lang/en.json";
-import unswept from "../../scripts/unswept.json";
+import unsweptList from "../../scripts/unswept.json";
 
 const sources = import.meta.glob<string>(
   ["../**/*.{ts,tsx}", "!../**/*.test.{ts,tsx}", "!../api/schema.d.ts"],
   { query: "?raw", import: "default", eager: true },
 );
+
+const unswept: readonly string[] = unsweptList;
 
 /** A source swept into lang/ (ADR 0043): out of scripts/unswept.json's ratchet. */
 function swept(path: string): boolean {

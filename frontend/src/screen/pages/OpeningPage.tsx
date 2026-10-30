@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { useT } from "../../lib/lang";
 import { sunroomName, type ScreenState } from "../../lib/screenAgent";
 import { Button } from "../../ui/Button";
 import { SunMark } from "../../ui/SunMark";
@@ -10,6 +11,7 @@ export const OPENING_GIVES_UP_MS = 2 * 60_000;
 
 /** Opening The Sample Family's Sunroom…: the sun breathing until Sunroom answers. */
 export function OpeningPage({ state }: { state: ScreenState }) {
+  const t = useT();
   const sunroom = state.sunroom;
   const ready = sunroom?.reachable === true ? state.open_url : null;
   useEffect(() => {
@@ -32,7 +34,7 @@ export function OpeningPage({ state }: { state: ScreenState }) {
     <>
       <SunMark className="sun-breathe size-40" decorative />
       <h1 className="text-d-glance font-bold" aria-live="polite">
-        {`Opening ${sunroomName(sunroom?.name)}…`}
+        {t("screen.opening.title", { name: sunroomName(sunroom?.name) })}
       </h1>
       <Button
         variant="quiet"
@@ -40,7 +42,7 @@ export function OpeningPage({ state }: { state: ScreenState }) {
           go("/settings");
         }}
       >
-        This Screen
+        {t("settings.this_screen.title")}
       </Button>
     </>
   );

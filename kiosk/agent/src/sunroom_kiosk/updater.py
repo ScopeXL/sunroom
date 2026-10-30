@@ -42,6 +42,7 @@ from sunroom_kiosk import logs
 from sunroom_kiosk.apply import Paths
 from sunroom_kiosk.platform.base import spawn_detached
 from sunroom_kiosk.version import version
+from sunroom_kiosk.words import Said, SaidError, said, t_en
 
 if TYPE_CHECKING:
     from sunroom_kiosk.state import Agent
@@ -57,8 +58,6 @@ _VERSION = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 
 type UpdateState = Literal["unknown", "up_to_date", "available", "installing", "failed"]
 
-DIDNT_START = "The update didn't start; the previous version is back."
-
 
 @dataclass(frozen=True)
 class UpdateStatus:
@@ -66,11 +65,16 @@ class UpdateStatus:
     installed: str
     latest: str | None = None
     checked_at: str | None = None
-    message: str | None = None
+    message: Said | None = None  # a failure, said for the family
 
     def out(self, check: str) -> dict[str, Any]:
-        """As the API's ScreenUpdateOut."""
-        return {"check": check, **asdict(self)}
+        """As the API's ScreenUpdateOut: the message's English, key and values."""
+        fields = asdict(self)
+        said = self.message
+        fields["message"] = said.message if said else None
+        fields["message_key"] = said.key if said else None
+        fields["message_params"] = said.params if said else {}
+        return {"check": check, **fields}
 
 
 class UpdaterLike(Protocol):
@@ -78,6 +82,18 @@ class UpdaterLike(Protocol):
     async def check_now(self) -> UpdateStatus: ...
     async def install(self, agent: Agent) -> None: ...
     async def run(self, agent: Agent) -> None: ...
+
+
+def progress_out(percent: int, step: str, message: Said | None = None) -> dict[str, Any]:
+    """A progress event (ScreenProgressOut): the step's English and key, and a message's."""
+    return {
+        "percent": percent,
+        "step": t_en(step),
+        "key": step,
+        "message": message.message if message else None,
+        "message_key": message.key if message else None,
+        "message_params": message.params if message else {},
+    }
 
 
 def now_iso() -> str:
@@ -205,7 +221,7 @@ class Updater:
             state = "unknown"
         message = None
         if isinstance(failed, str) and failed == latest and newer(latest, self.installed):
-            state, message = "failed", DIDNT_START
+            state, message = "failed", said("agent.update.didnt_start")
         checked = fields.get("checked_at")
         return replace(
             fresh,
@@ -256,7 +272,7 @@ class Updater:
             self.current = replace(
                 self.current,
                 checked_at=now_iso(),
-                message="GitHub didn't answer. This screen asks again tomorrow.",
+                message=said("agent.update.github_silent"),
             )
             return self.current
         state: UpdateState = "available" if ready else "up_to_date"
@@ -267,7 +283,7 @@ class Updater:
             installed=self.installed,
             latest=latest,
             checked_at=now_iso(),
-            message=DIDNT_START if state == "failed" else None,
+            message=said("agent.update.didnt_start") if state == "failed" else None,
         )
         self._remember(latest=latest, checked_at=self.current.checked_at)
         return self.current
@@ -282,37 +298,37 @@ class Updater:
 
     async def _install(self, agent: Agent) -> None:
         async def say(percent: int, step: str) -> None:
-            agent.hub.publish("update.progress", {"percent": percent, "step": step})
+            agent.hub.publish("update.progress", progress_out(percent, step))
 
         if self.current.state not in ("available", "failed") or self.current.latest is None:
             await self.check_now()
         release = self.current.latest
         if release is None or not newer(release, self.installed):
-            agent.toast("This screen is up to date.")
+            agent.toast("agent.update.up_to_date")
             agent.publish_state()
             return
         self.current = replace(self.current, state="installing", message=None)
         agent.publish_state()
-        await say(10, "Downloading…")
+        await say(10, "agent.update.step.downloading")
         try:
             wheel = await self.download(release)
         except UpdateError as error:
             log.info("The update to %s stopped: %s", release, error)
-            self.current = replace(self.current, state="available", message=str(error))
+            self.current = replace(self.current, state="available", message=error.said)
             agent.publish_state()
-            await say(100, "Stopped")
+            await say(100, "agent.update.step.stopped")
             return
-        await say(60, "Installing…")
+        await say(60, "agent.update.step.installing")
         previous = self.paths.wheels / wheel_name(self.installed)
         kept = previous if await asyncio.to_thread(previous.exists) else None
         argv = await asyncio.to_thread(self.apply_command, wheel, kept)
         log.info("Installing Sunroom Screen %s; it starts again in a moment.", release)
         if not await self.spawn(argv):
             self.current = replace(
-                self.current, state="available", message="The update couldn't start. Try again."
+                self.current, state="available", message=said("agent.update.couldnt_start")
             )
             agent.publish_state()
-            await say(100, "Stopped")
+            await say(100, "agent.update.step.stopped")
 
     def apply_command(self, wheel: Path, previous: Path | None) -> list[str]:
         """How the apply step starts: this package's own command, or on Windows a copy of
@@ -335,14 +351,14 @@ class Updater:
             async with self.http() as client:
                 expected = (await self._sums(client, release)).get(name)
                 if expected is None:
-                    raise UpdateError("This version's files aren't published yet. Try again later.")
+                    raise UpdateError("agent.update.not_published")
                 response = await client.get(f"{DOWNLOAD}/v{release}/{name}")
                 response.raise_for_status()
                 data = response.content
         except httpx.HTTPError as error:
-            raise UpdateError("The download didn't finish. Try again in a while.") from error
+            raise UpdateError("agent.update.download_failed") from error
         if hashlib.sha256(data).hexdigest() != expected:
-            raise UpdateError("The download didn't match its checksum, so it wasn't installed.")
+            raise UpdateError("agent.update.bad_checksum")
         return await asyncio.to_thread(self._keep, name, data)
 
     def _keep(self, name: str, data: bytes) -> Path:
@@ -387,8 +403,8 @@ class Updater:
             await self.install(agent)
 
 
-class UpdateError(Exception):
-    """Why an update stopped, in plain words."""
+class UpdateError(SaidError):
+    """Why an update stopped, in plain words: a key and its values."""
 
 
 # ---------------------------------------------------------------------- stand-ins
@@ -407,7 +423,7 @@ class NoUpdates:
         return self.current
 
     async def install(self, agent: Agent) -> None:
-        agent.toast("There's nothing to update from here.")
+        agent.toast("agent.update.nothing_here")
 
     async def run(self, agent: Agent) -> None:
         await asyncio.Event().wait()
@@ -436,10 +452,15 @@ class FakeUpdater:
     async def install(self, agent: Agent) -> None:
         self.current = replace(self.current, state="installing")
         agent.publish_state()
-        steps = ((10, "Downloading…"), (45, "Checking it…"), (80, "Installing…"), (100, "Done"))
+        steps = (
+            (10, "agent.update.step.downloading"),
+            (45, "agent.update.step.checking"),
+            (80, "agent.update.step.installing"),
+            (100, "agent.update.step.done"),
+        )
         for percent, step in steps:
             await asyncio.sleep(self.step_s)
-            agent.hub.publish("update.progress", {"percent": percent, "step": step})
+            agent.hub.publish("update.progress", progress_out(percent, step))
         self.current = UpdateStatus(
             state="up_to_date", installed=self.latest, latest=self.latest, checked_at=now_iso()
         )

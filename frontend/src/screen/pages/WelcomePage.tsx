@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 
+import { useT } from "../../lib/lang";
 import type { ScreenState } from "../../lib/screenAgent";
 import { Brand } from "../../ui/Brand";
 import { Button } from "../../ui/Button";
@@ -20,6 +21,7 @@ type Way = "/here" | "/find";
  * chooses one (this computer from the start, where it can run Sunroom), and Continue goes that way.
  */
 export function WelcomePage({ state }: { state: ScreenState }) {
+  const t = useT();
   const chosen = state.sunroom !== null;
   const here = state.capabilities.includes("run_sunroom");
   const offline = needsWifi(state);
@@ -42,7 +44,7 @@ export function WelcomePage({ state }: { state: ScreenState }) {
     <div className="flex w-full max-w-[110rem] flex-col items-center gap-8">
       <Brand size="entry" heading />
       <p id={question} className="text-d-glance font-semibold">
-        Where will your family’s Sunroom run?
+        {t("screen.welcome.question")}
       </p>
       <ChoiceGroup
         labelledBy={question}
@@ -53,33 +55,26 @@ export function WelcomePage({ state }: { state: ScreenState }) {
         className={`grid w-full gap-6 portrait:grid-cols-1 ${here ? "landscape:grid-cols-2" : ""}`}
       >
         {here ? (
-          <Choice value="/here" heading="On This Computer" lead="Run Sunroom right here.">
-            <span className="block text-d-body">
-              This computer keeps your family’s calendar, lists and photos, and every device opens
-              Sunroom from it. Nothing else to set up.
-            </span>
-            <span className="block text-d-body text-ink-soft">
-              Choose this if your family is new to Sunroom. Keep this computer on and connected to
-              your home network.
-            </span>
+          <Choice
+            value="/here"
+            heading={t("screen.welcome.here.title")}
+            lead={t("screen.welcome.here.lead")}
+          >
+            <span className="block text-d-body">{t("screen.welcome.here.body")}</span>
+            <span className="block text-d-body text-ink-soft">{t("screen.welcome.here.hint")}</span>
           </Choice>
         ) : null}
         <Choice
           value="/find"
-          heading="Connect to a Sunroom"
-          lead="Your family already runs Sunroom somewhere else."
+          heading={t("screen.welcome.find.title")}
+          lead={t("screen.welcome.find.lead")}
         >
-          <span className="block text-d-body">
-            On a home server, a NAS, another computer or at a web address. This screen finds it on
-            your network, or you type its address.
-          </span>
-          <span className="block text-d-body text-ink-soft">
-            Choose this if someone already set Sunroom up.
-          </span>
+          <span className="block text-d-body">{t("screen.welcome.find.body")}</span>
+          <span className="block text-d-body text-ink-soft">{t("screen.welcome.find.hint")}</span>
         </Choice>
       </ChoiceGroup>
       <Button onClick={onward} className="min-w-72">
-        Continue
+        {t("app.action.continue")}
       </Button>
     </div>
   );

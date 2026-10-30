@@ -46,6 +46,7 @@ from sunroom_kiosk.platform.base import (
     Runner,
     Spawn,
     SystemReport,
+    UnsupportedError,
     WifiNetwork,
     local_ip,
     run_command,
@@ -196,14 +197,14 @@ def touch_screens(listing: str) -> list[str]:
     return ids
 
 
-def join_problem(ssid: str, result: CommandResult) -> str:
+def join_problem(ssid: str, result: CommandResult) -> PlatformError:
     """What nmcli's refusal means, in the family's words."""
     text = result.output.lower()
     if "secrets were required" in text or "psk" in text or "password" in text:
-        return f"That password didn't work for {ssid}. Check it and try again."
+        return PlatformError("agent.wifi.wrong_password", ssid=ssid)
     if "no network with ssid" in text or "not found" in text:
-        return f"{ssid} is out of range. Move closer, or try another network."
-    return f"Couldn't join {ssid}. Try again in a moment."
+        return PlatformError("agent.wifi.out_of_range", ssid=ssid)
+    return PlatformError("agent.wifi.couldnt_join", ssid=ssid)
 
 
 class LinuxPlatform(Platform):
@@ -295,10 +296,10 @@ class LinuxPlatform(Platform):
     async def uninstall(self, *, sunroom: bool, port: int) -> None:
         """uninstall.sh in a unit of its own (stopping the agent's unit mustn't stop it)."""
         if not self.can_uninstall():
-            raise PlatformError("Uninstalling Sunroom Screen isn't something this screen can do.")
+            raise UnsupportedError("agent.unsupported.uninstall")
         argv = uninstaller_command(self.uninstaller, sunroom=sunroom)
         if not await self.spawn(argv, unit=UNINSTALL_UNIT):
-            raise PlatformError("Sunroom Screen couldn't start its uninstaller. Try again.")
+            raise PlatformError("agent.uninstall.didnt_start")
 
     # ------------------------------------------------------------------ root's part
 
@@ -359,18 +360,18 @@ class LinuxPlatform(Platform):
 
     # ------------------------------------------------------------------ the machine
 
-    async def _must(self, argv: list[str], what: str, stdin: str | None = None) -> CommandResult:
+    async def _must(self, argv: list[str], key: str, stdin: str | None = None) -> CommandResult:
         result = await self.run(argv, stdin=stdin)
         if not result.ok:
             log.info("%s didn't work: %s", " ".join(argv[:3]), result.first_line())
-            raise PlatformError(f"{what} didn't work. Try again in a moment.")
+            raise PlatformError(key)
         return result
 
     async def restart(self) -> None:
-        await self._must(["systemctl", "reboot"], "Restarting")
+        await self._must(["systemctl", "reboot"], "agent.failed.restart")
 
     async def shutdown(self) -> None:
-        await self._must(["systemctl", "poweroff"], "Shutting down")
+        await self._must(["systemctl", "poweroff"], "agent.failed.shutdown")
 
     # ------------------------------------------------------------------ the screen
 
@@ -395,10 +396,10 @@ class LinuxPlatform(Platform):
         """Turn the picture now (touch follows on X11; a Pi's labwc rule follows it there)."""
         tool = self.rotation_tool()
         if tool is None:
-            raise PlatformError("Turning the picture isn't something this screen can do.")
+            raise UnsupportedError("agent.unsupported.rotate")
         name = await self._output(tool, output)
         if name is None:
-            raise PlatformError("No screen was found to turn.")
+            raise PlatformError("agent.rotate.no_screen")
         if tool == "xrandr":
             argv = ["xrandr", "--output", name, "--rotate", X11_TURNS[rotation]]
         elif tool == "wlr-randr":
@@ -409,7 +410,7 @@ class LinuxPlatform(Platform):
         result = await self.run(argv)
         if not result.ok:
             log.info("%s didn't work: %s", " ".join(argv), result.first_line())
-            raise PlatformError("The picture didn't turn. Try again in a moment.")
+            raise PlatformError("agent.rotate.failed")
         if tool == "xrandr" and self.which("xinput") is not None:
             for device in touch_screens((await self.run(["xinput", "list", "--long"])).output):
                 await self.run(["xinput", "map-to-output", device, name])
@@ -467,7 +468,7 @@ class LinuxPlatform(Platform):
             limit=30.0,
         )
         if not result.ok:
-            raise PlatformError("This screen's Wi-Fi didn't answer. Try again in a moment.")
+            raise PlatformError("agent.wifi.no_answer")
         return wifi_from(result.output, await self._saved())
 
     async def wifi_networks(self) -> list[WifiNetwork]:
@@ -499,7 +500,7 @@ class LinuxPlatform(Platform):
                 ]
             )
             if not added.ok:
-                raise PlatformError(join_problem(ssid, added))
+                raise join_problem(ssid, added)
             result = await self.run(
                 ["nmcli", "connection", "up", "id", ssid, "passwd-file", "/dev/stdin"],
                 stdin=f"802-11-wireless-security.psk:{password}\n",
@@ -508,10 +509,10 @@ class LinuxPlatform(Platform):
             if not result.ok:
                 await self.run(["nmcli", "connection", "delete", "id", ssid])
         if not result.ok:
-            raise PlatformError(join_problem(ssid, result))
+            raise join_problem(ssid, result)
 
     async def wifi_forget(self, network_id: str) -> None:
-        await self._must(["nmcli", "connection", "delete", "id", network_id], "Forgetting it")
+        await self._must(["nmcli", "connection", "delete", "id", network_id], "agent.failed.forget")
 
     # ------------------------------------------------------------------ before the browser
 

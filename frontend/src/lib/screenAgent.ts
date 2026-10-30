@@ -19,7 +19,7 @@ import { useEffect } from "react";
 
 import { qk } from "../api/keys";
 import type { components, paths } from "../api/screen-schema";
-import { t } from "./lang";
+import { t, tSaid } from "./lang";
 import { createStore } from "./store";
 import { showToast } from "./toast";
 
@@ -138,15 +138,23 @@ export function screenReloadUrl(dimmer: string): string | null {
  */
 export const uninstalling = createStore(false);
 
-/** An update's progress, from the agent's event stream (`update.progress`). */
-export const screenProgress = createStore<{ percent: number; step: string } | null>(null);
-
-/** Sunroom starting on this computer (`run.progress`, ADR 0038): a run that stopped says why. */
-export const runProgress = createStore<{
+/** A step of a long action on the agent's event stream: its English and its key (ADR 0043),
+ * said where it's shown (`tSaid`), so it follows a change of language. */
+export interface AgentStep {
   percent: number;
   step: string;
+  key?: string | null;
+  /** Why a run stopped (`run.progress`), and its key and values. */
   message?: string | null;
-} | null>(null);
+  message_key?: string | null;
+  message_params?: Record<string, string>;
+}
+
+/** An update's progress, from the agent's event stream (`update.progress`). */
+export const screenProgress = createStore<AgentStep | null>(null);
+
+/** Sunroom starting on this computer (`run.progress`, ADR 0038): a run that stopped says why. */
+export const runProgress = createStore<AgentStep | null>(null);
 
 /** The agent's state; throws when there is no agent here or it doesn't answer. */
 export async function fetchScreenState(): Promise<ScreenState> {
@@ -195,11 +203,11 @@ export function listen(source: EventSource, queryClient: QueryClient): () => voi
       queryClient.setQueryData(qk.screen.state(), data);
     },
     "update.progress": (data) => {
-      const progress = data as { percent: number; step: string };
+      const progress = data as AgentStep;
       screenProgress.set(progress.percent >= 100 ? null : progress);
     },
     "run.progress": (data) => {
-      runProgress.set(data as { percent: number; step: string; message?: string | null });
+      runProgress.set(data as AgentStep);
     },
     "discovery.started": () => {
       queryClient.setQueryData<ScreenScan>(qk.screen.sunrooms(), { scanning: true, found: [] });
@@ -218,8 +226,10 @@ export function listen(source: EventSource, queryClient: QueryClient): () => voi
       }));
     },
     toast: (data) => {
-      const message = (data as { message?: unknown }).message;
-      if (typeof message === "string" && message) showToast(message);
+      const said = data as { message?: unknown; key?: string; params?: Record<string, string> };
+      if (typeof said.message === "string" && said.message) {
+        showToast(tSaid(said.message, said.key, said.params));
+      }
     },
   };
   const listeners = Object.entries(handlers).map(([name, handle]) => {

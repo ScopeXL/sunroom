@@ -54,6 +54,7 @@ from sunroom_kiosk.schemas import (
     ScreenWifiOut,
 )
 from sunroom_kiosk.state import Agent
+from sunroom_kiosk.words import Said, SaidError, said
 
 log = logs.get("api")
 
@@ -69,16 +70,19 @@ ERRORS: dict[int | str, dict[str, Any]] = {
 }
 
 
-class AppError(Exception):
-    def __init__(self, status: int, code: str, message: str) -> None:
-        super().__init__(message)
+class AppError(SaidError):
+    """A refusal: its HTTP status, its code, and what it says (a key and its values)."""
+
+    def __init__(self, status: int, code: str, key: str, **params: object) -> None:
+        super().__init__(key, **params)
         self.status = status
         self.code = code
-        self.message = message
 
 
-def envelope(status: int, code: str, message: str) -> JSONResponse:
-    return JSONResponse({"error": {"code": code, "message": message}}, status_code=status)
+def envelope(status: int, code: str, what: Said) -> JSONResponse:
+    """Every refusal: ``{"error": {"code", "message", "key", "params"}}``, the message English
+    and the key for the page to say it in the household's language (ADR 0043)."""
+    return JSONResponse({"error": {"code": code, **what.out()}}, status_code=status)
 
 
 def csp(nonce: str) -> str:
@@ -118,16 +122,14 @@ class Guard:
             return
         headers = Headers(scope=scope)
         if headers.get("host", "").lower() not in self._hosts():
-            await _respond(
-                send, envelope(421, "unknown_host", "Sunroom Screen answers only on this screen.")
-            )
+            await _respond(send, envelope(421, "unknown_host", said("agent.api.unknown_host")))
             return
         method: str = scope["method"]
         origin = headers.get("origin")
         allowed = origin is not None and origin in self.agent.origins()
         if method == "OPTIONS" and origin and headers.get("access-control-request-method"):
             if not allowed:
-                await _respond(send, envelope(403, "origin", "That page can't use this screen."))
+                await _respond(send, envelope(403, "origin", said("agent.api.origin_read")))
                 return
             preflight = Response(status_code=204)
             preflight.headers["Access-Control-Allow-Origin"] = origin
@@ -141,12 +143,10 @@ class Guard:
             return
         if method in CHANGES:
             if origin is not None and not allowed:
-                await _respond(send, envelope(403, "origin", "That page can't change this screen."))
+                await _respond(send, envelope(403, "origin", said("agent.api.origin_change")))
                 return
             if headers.get("x-sunroom-screen") != "1":
-                await _respond(
-                    send, envelope(403, "header", "A change needs the X-Sunroom-Screen header.")
-                )
+                await _respond(send, envelope(403, "header", said("agent.api.header")))
                 return
 
         async def with_cors(message: Message) -> None:
@@ -167,9 +167,10 @@ def agent_of(request: Request) -> Agent:
 AgentDep = Annotated[Agent, Depends(agent_of)]
 
 
-def need(agent: Agent, capability: ScreenCapability, what: str) -> None:
+def need(agent: Agent, capability: ScreenCapability, key: str) -> None:
+    """Refused unless this screen can do it: ``key`` is the refusal's (agent.unsupported.*)."""
     if capability not in agent.capabilities():
-        raise AppError(409, "not_here", f"{what} isn't something this screen can do.")
+        raise AppError(409, "not_here", key)
 
 
 async def attempt(work: Awaitable[Any]) -> Any:
@@ -177,7 +178,7 @@ async def attempt(work: Awaitable[Any]) -> Any:
     try:
         return await work
     except PlatformError as error:
-        raise AppError(409, "device", str(error)) from None
+        raise AppError(409, "device", error.said.key, **error.said.params) from None
 
 
 router = APIRouter(prefix=PREFIX, tags=["screen"], responses=ERRORS)
@@ -199,21 +200,21 @@ async def events(agent: AgentDep) -> StreamingResponse:
 
 @router.post("/restart", status_code=202)
 async def restart(agent: AgentDep) -> ScreenAcceptedOut:
-    need(agent, "restart", "Restarting")
+    need(agent, "restart", "agent.unsupported.restart")
     await agent.later(agent.platform.restart)
     return ScreenAcceptedOut()
 
 
 @router.post("/shutdown", status_code=202)
 async def shutdown(agent: AgentDep) -> ScreenAcceptedOut:
-    need(agent, "shutdown", "Shutting down")
+    need(agent, "shutdown", "agent.unsupported.shutdown")
     await agent.later(agent.platform.shutdown)
     return ScreenAcceptedOut()
 
 
 @router.post("/quit", status_code=202)
 async def quit_screen(agent: AgentDep) -> ScreenAcceptedOut:
-    need(agent, "quit", "Quitting")
+    need(agent, "quit", "agent.unsupported.quit")
     await agent.later(agent.quit)
     return ScreenAcceptedOut()
 
@@ -222,7 +223,7 @@ async def quit_screen(agent: AgentDep) -> ScreenAcceptedOut:
 async def uninstall(body: ScreenUninstallIn, agent: AgentDep) -> ScreenAcceptedOut:
     """This Screen's Uninstall (ADR 0042), after the page unpaired the screen: a moment later
     the uninstaller starts as a process of its own and Sunroom Screen quits."""
-    need(agent, "uninstall", "Uninstalling Sunroom Screen")
+    need(agent, "uninstall", "agent.unsupported.uninstall")
     await agent.later(lambda: agent.uninstall(sunroom=body.sunroom))
     return ScreenAcceptedOut()
 
@@ -245,7 +246,7 @@ async def check_update(agent: AgentDep) -> ScreenUpdateOut:
 
 @router.post("/update", status_code=202)
 async def install_update(agent: AgentDep) -> ScreenAcceptedOut:
-    need(agent, "update", "Updating")
+    need(agent, "update", "agent.unsupported.update")
     agent.spawn(agent.updater.install(agent))
     return ScreenAcceptedOut()
 
@@ -253,7 +254,7 @@ async def install_update(agent: AgentDep) -> ScreenAcceptedOut:
 @router.post("/update-sunroom", status_code=202)
 async def update_sunroom(agent: AgentDep) -> ScreenAcceptedOut:
     """An all-in-one Pi: the Sunroom on this screen too (it runs /opt/sunroom/update.sh)."""
-    need(agent, "update_sunroom", "Updating Sunroom from here")
+    need(agent, "update_sunroom", "agent.unsupported.update_sunroom")
     agent.spawn(agent.update_sunroom())
     return ScreenAcceptedOut()
 
@@ -282,13 +283,13 @@ def wifi_out(networks: list[WifiNetwork]) -> ScreenWifiListOut:
 
 @router.get("/wifi")
 async def wifi_list(agent: AgentDep) -> ScreenWifiListOut:
-    need(agent, "wifi", "Wi-Fi")
+    need(agent, "wifi", "agent.unsupported.wifi")
     return wifi_out(await attempt(agent.platform.wifi_networks()))
 
 
 @router.post("/wifi")
 async def wifi_join(body: ScreenWifiJoinIn, agent: AgentDep) -> ScreenWifiListOut:
-    need(agent, "wifi", "Wi-Fi")
+    need(agent, "wifi", "agent.unsupported.wifi")
     await attempt(agent.platform.wifi_join(body.ssid, body.password))
     log.info("Joined the Wi-Fi network %s.", body.ssid)
     await agent.refresh_network()
@@ -297,7 +298,7 @@ async def wifi_join(body: ScreenWifiJoinIn, agent: AgentDep) -> ScreenWifiListOu
 
 @router.delete("/wifi/{network_id}")
 async def wifi_forget(network_id: str, agent: AgentDep) -> ScreenWifiListOut:
-    need(agent, "wifi", "Wi-Fi")
+    need(agent, "wifi", "agent.unsupported.wifi")
     await attempt(agent.platform.wifi_forget(network_id))
     await agent.refresh_network()
     return wifi_out(await attempt(agent.platform.wifi_networks()))
@@ -323,7 +324,13 @@ async def check_address(body: ScreenCheckIn, agent: AgentDep) -> ScreenCheckOut:
     try:
         found = await agent.check(body.url)
     except CheckFailedError as error:
-        return ScreenCheckOut(ok=False, sunroom=None, message=str(error))
+        return ScreenCheckOut(
+            ok=False,
+            sunroom=None,
+            message=str(error),
+            key=error.said.key,
+            params=error.said.params,
+        )
     return ScreenCheckOut(
         ok=True, sunroom=ScreenFoundOut.model_validate(found_out(found)), message=None
     )
@@ -335,7 +342,7 @@ async def save_sunroom(body: ScreenSaveIn, agent: AgentDep) -> ScreenStateOut:
     try:
         found = await agent.check(body.url)
     except CheckFailedError as error:
-        raise AppError(422, "not_a_sunroom", str(error)) from None
+        raise AppError(422, "not_a_sunroom", error.said.key, **error.said.params) from None
     await agent.use(found, body.found)
     return agent.snapshot()
 
@@ -348,14 +355,14 @@ async def forget_sunroom(agent: AgentDep) -> ScreenStateOut:
 
 @router.post("/run-sunroom", status_code=202)
 async def run_sunroom(agent: AgentDep) -> ScreenAcceptedOut:
-    need(agent, "run_sunroom", "Running Sunroom here")
+    need(agent, "run_sunroom", "agent.unsupported.run_sunroom")
     agent.start_run()
     return ScreenAcceptedOut()
 
 
 @router.put("/display")
 async def display(body: ScreenRotationIn, agent: AgentDep) -> ScreenStateOut:
-    need(agent, "rotate", "Turning the picture")
+    need(agent, "rotate", "agent.unsupported.rotate")
     await attempt(agent.rotate(body.rotation))
     return agent.snapshot()
 
@@ -381,7 +388,7 @@ def mount_pages(app: FastAPI, static: Path) -> None:
         @app.get("/{path:path}", include_in_schema=False)
         async def no_pages(path: str) -> Response:  # pyright: ignore[reportUnusedFunction]
             if path.startswith("api/"):
-                return envelope(404, "not_found", "That couldn't be found.")
+                return envelope(404, "not_found", said("agent.api.not_found"))
             return HTMLResponse(
                 "Sunroom Screen is running, but its pages aren't built here "
                 "(just kiosk-build, or just kiosk-dev for development).",
@@ -397,7 +404,7 @@ def mount_pages(app: FastAPI, static: Path) -> None:
     @app.get("/{path:path}", include_in_schema=False)
     async def pages(path: str) -> Response:  # pyright: ignore[reportUnusedFunction]
         if path.startswith("api/") or path.startswith("assets/"):
-            return envelope(404, "not_found", "That couldn't be found.")
+            return envelope(404, "not_found", said("agent.api.not_found"))
         if path and "/" not in path:
             candidate = (root / path).resolve()
             if candidate.is_file() and candidate.is_relative_to(root) and candidate != index:
@@ -441,11 +448,11 @@ def create_app(
 
     @app.exception_handler(AppError)
     async def app_error(request: Request, error: AppError) -> JSONResponse:  # pyright: ignore[reportUnusedFunction]
-        return envelope(error.status, error.code, error.message)
+        return envelope(error.status, error.code, error.said)
 
     @app.exception_handler(PlatformError)
     async def platform_error(request: Request, error: PlatformError) -> JSONResponse:  # pyright: ignore[reportUnusedFunction]
-        return envelope(409, "device", str(error))
+        return envelope(409, "device", error.said)
 
     app.include_router(router)
     if test_routes:

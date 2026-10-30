@@ -129,9 +129,9 @@ class FakePlatform(Platform):
         self.calls.append(f"wifi_join {ssid}")
         target = next((n for n in self.networks if n.ssid == ssid), None)
         if target is None:
-            raise PlatformError(f"{ssid} is out of range. Move closer, or try another network.")
+            raise PlatformError("agent.wifi.out_of_range", ssid=ssid)
         if target.secured and (len(password) < 8 or password == TURNED_DOWN):
-            raise PlatformError(f"That password didn't work for {ssid}. Check it and try again.")
+            raise PlatformError("agent.wifi.wrong_password", ssid=ssid)
         self.networks = [
             replace(n, connected=n.ssid == ssid, saved=n.saved or n.ssid == ssid, id=n.id or ssid)
             if n.ssid == ssid
@@ -167,16 +167,13 @@ class FakePlatform(Platform):
 
     async def run_sunroom(self, progress: Progress) -> str:
         self.calls.append("run_sunroom")
-        await progress(10, "Downloading Sunroom…")
+        await progress(10, "agent.local.step.downloading")
         if self.run == "fail":
-            raise PlatformError(
-                "Sunroom didn't download. Check this computer's internet connection, "
-                "then try again."
-            )
+            raise PlatformError("agent.local.didnt_download")
         if self.run == "hold":
-            await progress(40, "Downloading Sunroom…")
+            await progress(40, "agent.local.step.downloading")
             await self._release.wait()
-            raise PlatformError("Stopped.")
-        for percent, step in ((60, "Installing Sunroom…"), (90, "Installing Sunroom…")):
-            await progress(percent, step)
+            raise PlatformError("agent.local.stopped")
+        for percent in (60, 90):
+            await progress(percent, "agent.local.step.installing")
         return self.local_url

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -71,7 +72,11 @@ async def test_a_found_sunroom_that_moved_is_followed(
     clock.now += 2
     await agent.health_tick()
     assert settings_file.load(config_path).url == moved
-    assert {"message": "Found Sunroom at its new address."} in toasts
+    assert {
+        "message": "Found Sunroom at its new address.",
+        "key": "agent.toast.found_again",
+        "params": {},
+    } in toasts
     # No page chose it, so the open one is sent there; the browser isn't restarted (ADR 0042).
     assert browser.calls == [f"navigate {moved}/display?dimmer=page&screen={PORT}"]
 
@@ -200,10 +205,10 @@ async def test_run_it_here_waits_for_the_new_sunroom_then_shows_it(
     await agent.run_sunroom()
     saved = settings_file.load(config_path)
     assert (saved.url, saved.found) == (LOCAL, "local")
-    steps = [data for kind, data in said if kind == "run.progress"]
-    assert steps[-2:] == [
-        {"percent": 92, "step": "Starting Sunroom…", "message": None},
-        {"percent": 100, "step": "Sunroom is running.", "message": None},
+    steps = [cast(dict[str, object], data) for kind, data in said if kind == "run.progress"]
+    assert [(step["percent"], step["step"], step["key"]) for step in steps[-2:]] == [
+        (92, "Starting Sunroom…", "agent.local.step.starting"),
+        (100, "Sunroom is running.", "agent.local.step.running"),
     ]
     assert not agent.running_sunroom
 
@@ -226,7 +231,10 @@ async def test_run_it_here_says_so_when_sunroom_never_answers(
     assert steps[-1] == {
         "percent": 100,
         "step": "Stopped",
+        "key": "agent.local.step.stopped",
         "message": "Sunroom didn't start. Restart this screen, then try again.",
+        "message_key": "agent.local.didnt_start_screen",
+        "message_params": {},
     }
     assert settings_file.load(config_path).url is None
     assert not agent.running_sunroom
@@ -258,3 +266,16 @@ def test_every_screen_installs_updates_overnight_unless_turned_off(
     agent.set_update_check("off")
     assert settings_file.load(config_path).update_check == "off"
     assert make_agent().update_check() == "off"
+
+
+async def test_the_households_language_reaches_the_screens_own_pages(
+    make_agent: Callable[..., Agent], sunrooms: FakeSunrooms, config_path: Path
+) -> None:
+    """ADR 0043: a Sunroom says its household's language (GET /api/discover); the state carries
+    it, and the screen's own pages speak it."""
+    sunrooms.new[SUNROOM]["language"] = "es"
+    settings_file.save(config_path, Config(url=SUNROOM, sunroom_id=SUNROOM_ID, found="typed"))
+    agent = make_agent()
+    await agent.ask_sunroom()
+    sunroom = agent.snapshot().sunroom
+    assert sunroom is not None and sunroom.language == "es"

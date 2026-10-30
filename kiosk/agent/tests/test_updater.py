@@ -19,7 +19,8 @@ import pytest
 
 from sunroom_kiosk import updater
 from sunroom_kiosk.apply import Paths, apply
-from sunroom_kiosk.updater import DIDNT_START, Updater, newest, sums_from
+from sunroom_kiosk.updater import Updater, newest, sums_from
+from sunroom_kiosk.words import said
 
 WHEEL = b"sample wheel bytes"
 
@@ -95,7 +96,8 @@ async def test_github_not_answering_is_said_plainly(paths: Paths) -> None:
         current="0.12.0",
     )
     status = await check.check_now()
-    assert status.message == "GitHub didn't answer. This screen asks again tomorrow."
+    assert status.message is not None
+    assert status.message.message == "GitHub didn't answer. This screen asks again tomorrow."
 
 
 async def test_a_download_that_doesnt_match_its_checksum_is_refused(paths: Paths) -> None:
@@ -162,7 +164,7 @@ def test_apply_puts_the_previous_version_back_when_the_new_one_doesnt_start(
     # The agent that starts again says so in This Screen's Software row.
     after = Updater(http=GitHub(["v0.13.0"]).client, paths=paths, current="0.12.0")
     assert after.current.state == "failed"
-    assert after.current.message == DIDNT_START
+    assert after.current.message == said("agent.update.didnt_start")
 
 
 async def test_install_downloads_then_hands_over_to_the_apply_step(paths: Paths) -> None:

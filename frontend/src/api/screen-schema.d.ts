@@ -398,10 +398,16 @@ export interface components {
         };
         /** ScreenCheckOut */
         ScreenCheckOut: {
+            /** Key */
+            key?: string | null;
             /** Message */
             message: string | null;
             /** Ok */
             ok: boolean;
+            /** Params */
+            params?: {
+                [key: string]: string;
+            };
             sunroom: components["schemas"]["ScreenFoundOut"] | null;
         };
         /** ScreenDisplayOut */
@@ -413,8 +419,14 @@ export interface components {
         ScreenErrorBody: {
             /** Code */
             code: string;
+            /** Key */
+            key?: string | null;
             /** Message */
             message: string;
+            /** Params */
+            params?: {
+                [key: string]: string;
+            };
         };
         /**
          * ScreenErrorOut
@@ -518,6 +530,8 @@ export interface components {
             found: components["schemas"]["ScreenFoundHow"];
             /** Id */
             id: string | null;
+            /** Language */
+            language?: string | null;
             /** Name */
             name: string | null;
             /** Reachable */
@@ -548,6 +562,12 @@ export interface components {
             latest: string | null;
             /** Message */
             message: string | null;
+            /** Message Key */
+            message_key?: string | null;
+            /** Message Params */
+            message_params?: {
+                [key: string]: string;
+            };
             state: components["schemas"]["ScreenUpdateState"];
             /**
              * Sunroom Outdated
