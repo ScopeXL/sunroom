@@ -464,6 +464,12 @@ def _v0_17_0() -> list[Statement]:
     ]
 
 
+def _v0_18_0() -> list[Statement]:
+    """0.18.0 (M10): 0.17.0's rows, with the household's language (ADR 0043) set to one that
+    isn't the column's default, so a later migration has to carry it."""
+    return [*_v0_17_0(), "UPDATE household SET language = 'es'"]
+
+
 SEEDS: dict[str, Callable[[], list[Statement]]] = {
     "202610071800": _v0_1_0,
     "202610081454": _v0_2_0,
@@ -480,6 +486,7 @@ SEEDS: dict[str, Callable[[], list[Statement]]] = {
     "202610201813": _v0_13_0,
     "202610211809": _v0_14_0,
     "202610282014": _v0_17_0,
+    "202610301744": _v0_18_0,
 }
 
 
