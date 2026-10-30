@@ -48,7 +48,7 @@ def member_out(member: Member) -> MemberOut:
 async def household(session: AsyncSession) -> Household:
     row = await session.get(Household, 1)
     if row is None:  # the baseline migration always creates it
-        raise AppError(500, "server_error", "Household settings are missing.")
+        raise AppError(500, "server_error", "api.settings.missing")
     return row
 
 
@@ -132,7 +132,7 @@ async def active_members(session: AsyncSession) -> list[Member]:
 async def get_member(session: AsyncSession, member_id: str) -> Member:
     member = await session.get(Member, member_id)
     if member is None:
-        raise AppError(404, "not_found", "That person isn't in this household.")
+        raise AppError(404, "not_found", "api.members.not_found")
     return member
 
 
@@ -154,7 +154,7 @@ async def create_member(
 ) -> Member:
     members = await active_members(session)
     if any(member.name.casefold() == name.casefold() for member in members):
-        raise AppError(409, "name_taken", "That name is already in use. Pick another.")
+        raise AppError(409, "name_taken", "api.members.name_taken")
     member = Member(
         name=name,
         role=role,
@@ -207,12 +207,7 @@ def allow_target(raw: str) -> str:
         pass
     if _HOST_NAME.match(target):
         return target
-    raise AppError(
-        422,
-        "invalid",
-        "Enter a server name (nas.lan), an address (192.168.1.20) or a range (192.168.1.0/24).",
-        extra={"fields": ["target"]},
-    )
+    raise AppError(422, "invalid", "api.network.allow_target", extra={"fields": ["target"]})
 
 
 async def allow_network(session: AsyncSession, target: str, label: str, now: datetime) -> bool:

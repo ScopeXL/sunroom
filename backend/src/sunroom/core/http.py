@@ -121,7 +121,7 @@ class GuardedHttp:
                     method, content = "GET", None
                 continue
             return FetchResult(response.status, response.headers, response.content, current)
-        raise OutboundError("too_many_redirects", "That address redirected too many times.")
+        raise OutboundError("too_many_redirects", "api.network.too_many_redirects")
 
     async def get(
         self,
@@ -167,16 +167,14 @@ class GuardedHttp:
                     async for chunk in response.aiter_bytes():
                         body += chunk
                         if len(body) > max_bytes:
-                            raise OutboundError(
-                                "too_large", "That address sent more than Sunroom can take."
-                            )
+                            raise OutboundError("too_large", "api.network.too_large")
                     return _Raw(response.status_code, response.headers, bytes(body))
                 finally:
                     await response.aclose()
         except httpx.TimeoutException:
-            raise OutboundError("timeout", "That server didn't answer in time.") from None
+            raise OutboundError("timeout", "api.network.timeout") from None
         except httpx.TransportError:
-            raise OutboundError("unreachable", "That server couldn't be reached.") from None
+            raise OutboundError("unreachable", "api.network.unreachable") from None
 
 
 @dataclass(frozen=True, slots=True)

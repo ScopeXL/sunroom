@@ -26,6 +26,7 @@ from typing import Any, Protocol, cast
 from sqlalchemy import delete, select
 
 from sunroom.calendar.synced import MergeResult, PendingSeries
+from sunroom.core.lang import t_en
 from sunroom.core.logging import get_logger
 from sunroom.plugins.calendar_sync.models import (
     AccountStatus,
@@ -50,8 +51,8 @@ MAX_BACKOFF_S = 3600
 ERROR_AFTER = 3  # failures in a row before an account shows as "error"
 RUNS_KEPT = 50
 RUNS_DAYS = 7
-RECONNECT = "Sunroom can't read this account's saved password any more. Connect it again."
-UNEXPECTED = "Something went wrong while syncing. It will try again."
+RECONNECT = "api.sync.saved_password_unreadable"
+UNEXPECTED = "api.sync.unexpected"
 
 
 class ProviderFactory(Protocol):
@@ -166,7 +167,7 @@ class SyncEngine:
             try:
                 provider = await self._provider(account_id)
                 if provider is None:
-                    await self._finish_run(run_id, clock, totals, "auth", RECONNECT)
+                    await self._finish_run(run_id, clock, totals, "auth", t_en(RECONNECT))
                     return
                 await self._refresh_calendars(account_id, provider)
                 await self._pull_all(account_id, provider, totals)
@@ -178,7 +179,7 @@ class SyncEngine:
             except Exception:
                 log.exception("sync.unexpected", account_id=account_id)
                 await self._failed(account_id, SyncError(ErrorKind.UNREACHABLE, UNEXPECTED))
-                await self._finish_run(run_id, clock, totals, "error", UNEXPECTED)
+                await self._finish_run(run_id, clock, totals, "error", t_en(UNEXPECTED))
                 return
             await self._succeeded(account_id)
             await self._finish_run(run_id, clock, totals, "ok", None)
@@ -229,7 +230,7 @@ class SyncEngine:
                     row.read_only = remote.read_only
             gone = {row.remote_id for row in rows.values()} - {r.remote_id for r in listed}
             for remote_id in gone:
-                rows[remote_id].last_error = "This calendar isn't on the server any more."
+                rows[remote_id].last_error = t_en("api.sync.calendar_gone")
 
     async def _mapped(self, account_id: str) -> list[RemoteCalendarRow]:
         async with self.ctx.read() as session:

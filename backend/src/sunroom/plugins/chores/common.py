@@ -41,20 +41,17 @@ KID = "kid"
 # ---- errors ------------------------------------------------------------------------------------
 
 
-def invalid(message: str, *fields: str) -> AppError:
-    return AppError(422, "invalid", message, extra={"fields": list(fields)})
+def invalid(key: str, *fields: str) -> AppError:
+    return AppError(422, "invalid", key, extra={"fields": list(fields)})
 
 
 def unknown_member() -> AppError:
-    return AppError(422, "unknown_member", "That person isn't in the household.")
+    return AppError(422, "unknown_member", "api.tasks.unknown_member")
 
 
-def gone(what: str) -> AppError:
-    return AppError(404, "not_found", f"That {what} isn't here any more.")
-
-
-def possessive(name: str) -> str:
-    return f"{name}'s"
+def gone(key: str) -> AppError:
+    """What isn't here any more, by its sentence's key: a task, a routine, a reward."""
+    return AppError(404, "not_found", key)
 
 
 # ---- the switches and the household's day -----------------------------------------------------
@@ -114,7 +111,7 @@ def credited(actor: Actor, member_id: str | None, members: Sequence[MemberView])
     if actor.is_kiosk:
         tapped = known.get(actor.member_id or "")
         if tapped is None:
-            raise AppError(422, "who_needed", "Who did it? Tap a name first.")
+            raise AppError(422, "who_needed", "api.tasks.who_tapped")
         return tapped
     if member_id is not None and member_id != actor.member_id:
         if not actor.is_parent:
@@ -125,7 +122,7 @@ def credited(actor: Actor, member_id: str | None, members: Sequence[MemberView])
         return named
     person = known.get(actor.member_id or "")
     if person is None:
-        raise AppError(422, "who_needed", "Pick who's using this device first.")
+        raise AppError(422, "who_needed", "api.tasks.who_device")
     return person
 
 

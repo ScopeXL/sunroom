@@ -21,8 +21,8 @@ HEADER = "x-sunroom"
 log = get_logger(__name__)
 
 
-def _refuse(code: str, message: str) -> JSONResponse:
-    return JSONResponse(envelope(code, message), status_code=403)
+def _refuse(code: str, key: str) -> JSONResponse:
+    return JSONResponse(envelope(code, key), status_code=403)
 
 
 class CSRFGuard:
@@ -44,9 +44,7 @@ class CSRFGuard:
 
     def _check(self, scope: Scope) -> JSONResponse | None:
         headers = Headers(scope=scope)
-        blocked = _refuse(
-            "csrf", "This request was blocked for safety. Reload the page and try again."
-        )
+        blocked = _refuse("csrf", "api.csrf.blocked")
         if headers.get(HEADER) != "1":
             return blocked
         origin = headers.get("origin")
@@ -68,12 +66,7 @@ class CSRFGuard:
                         proxy=client[0] if client else None,
                         fix="send X-Forwarded-Proto: https from the home network",
                     )
-                return _refuse(
-                    "https_not_forwarded",
-                    "Sunroom is reached over https, but the proxy didn't say so. Make it send "
-                    "X-Forwarded-Proto: https from the home network (docs/REMOTE-ACCESS.md), "
-                    "then try again.",
-                )
+                return _refuse("https_not_forwarded", "api.csrf.https_not_forwarded")
             return blocked
         fetch_site = headers.get("sec-fetch-site")
         if fetch_site is not None and fetch_site not in {"same-origin", "none"}:

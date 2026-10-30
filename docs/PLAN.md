@@ -130,7 +130,7 @@ One Docker image runs one process, `sunroom serve`: uvicorn with exactly one wor
 
 | Path | Response |
 |---|---|
-| `/api/*` | JSON, `Cache-Control: no-store`; one error envelope `{"error":{"code","message"}}` |
+| `/api/*` | JSON, `Cache-Control: no-store`; one error envelope `{"error":{"code","message","key","params"}}`: `message` is the English of `key` in `lang/en.json` with `params` filled in, which the page says in the family's language (ADR 0043) |
 | `/api/events` | Server-sent events |
 | `/photos/*` | Household photos and thumbnails from `/data/photos`, session-gated, `Cache-Control: private, max-age=31536000` keyed by content hash. The bare `/photos` is the Photos room, so it gets the SPA fallback |
 | `/assets/*` | Hashed build files, `max-age=31536000, immutable`; a missing asset is a 404, never `index.html` |
@@ -269,13 +269,15 @@ class Plugin(Protocol):
     async def problems(self, ctx: PluginContext) -> list[Problem]: ...  # Needs Attention (ADR 0034)
 ```
 
-`Problem(id, title, detail=None, since=None, page=None)`: a stable id per cause ("sync:<account id>"), one sentence in the family's words with no ids or secrets, a parent's quiet second line, when it started, and the Settings page that fixes it. `PluginManager.problems()` asks each enabled, running plugin on the request path (a stopped one is core's to report); a hook that raises is logged and adds nothing. Core's `GET /api/problems` (`problems/`) puts a stopped feature first, then the plugins' own, then a failed or week-old backup and low disk space, and drops `detail` for anyone but a parent.
+`Problem(id, key, params={}, detail=None, since=None, page=None)`: a stable id per cause ("sync:<account id>"), one sentence in the family's words with no ids or secrets, by its key in `lang/en.json` and its `{name}` values (its English is `title`, and `ProblemOut` carries all three, so the page says it in the family's language; ADR 0043), a parent's quiet second line, when it started, and the Settings page that fixes it. `PluginManager.problems()` asks each enabled, running plugin on the request path (a stopped one is core's to report); a hook that raises is logged and adds nothing. Core's `GET /api/problems` (`problems/`) puts a stopped feature first, then the plugins' own, then a failed or week-old backup and low disk space, and drops `detail` for anyone but a parent.
 
 `PluginBase` gives every hook a no-op default. A plugin keeps its context when it stops (no `ctx = None` in `on_disable`): a job that raises marks it errored while its routes stay up (§11.4), and switched off, the framework's gate answers for them. The test server's `POST _test/seed` calls `seed_sample` on each enabled plugin; it adds its synthetic data only when its tables are empty.
 
 `PluginContext` is the whole world a plugin sees: `now()`, `zone()`, `settings()` (coerced against the spec), `read()` / `write()` session managers (the write transaction carries `tx.publish`), read-only facades `household` (name, week start, child-safe editing), `members`, `calendar` (occurrences, calendars, `upsert_synced`, `register_overlay`), `photos` (the `PhotoStore` itself: `encode`, `ingest`, `file`, `inbox`), `network` (`allow(target, label)` and `disallow(target, label)`: the allowlist rows a home-network tick writes, ADR 0036), `publish()`, `http(allow_private=False)` (the SSRF-guarded client, §12.6), `encrypt()` / `decrypt()` (Fernet under the `plugin-secrets-v1` HKDF subkey), `every(name, seconds, job)`, `spawn(name, coro)` and `enabled(other_id)`. Plugins never see the engine. A contract test (`tests/plugins/test_contract.py`) enforces: no plugin imports the engine, another plugin, or state internals; plugin models only reference core tables or their own; every table in the metadata is owned by exactly one of core or a manifest; every `*_enc`, `*_hash`, `*_fp` column is in an export exclusion; every plugin route returns 404 `plugin_disabled` when disabled; spec defaults round-trip through `coerce_params`.
 
 `ParamField` is the earlier project's (§4) with more types: `int, float, bool, string, text, secret, percent, choice, multichoice, time, date, color, member, calendar, latlon, json`. The frontend renders a settings form generically from the spec; `secret` values are write-only and read back as `***`.
+
+A plugin's words are keys in `lang/en.json` (ADR 0043): the manifest says their English through `t_en` at import, each key written out in the plugin's own code: `plugins.<id>.name` and `.description`; a field's `.settings.<key>.label`, `.help` and `.choices.<value>` (the value lowercased, anything else `_`); `.panels.<key>`, `.rooms.<key>`, `.tabs.<key>` and `.sections.<key>`. The page finds the same word in the family's language by the same key, with the API's English as the fallback. Its refusals are `AppError(status, code, "api.<area>.<name>")` with `params` for the values in them, and its `Problem`s are keys too. The contract test checks every word a manifest says against its key.
 
 ### 6.3 Runner and isolation
 

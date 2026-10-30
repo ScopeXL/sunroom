@@ -41,7 +41,7 @@ log = get_logger(__name__)
 
 
 def _not_found() -> AppError:
-    return AppError(404, "not_found", "That couldn't be found.")
+    return AppError(404, "not_found", "api.http.404")
 
 
 def _reserved(path: str) -> bool:

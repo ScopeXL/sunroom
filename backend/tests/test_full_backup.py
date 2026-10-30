@@ -271,6 +271,8 @@ async def test_no_room_for_the_copy_is_a_plain_answer(
         "code": "storage_full",
         "message": "There isn't enough free space on the server to make the download. Free "
         "some space, then try again.",
+        "key": "api.backups.no_room_download",
+        "params": {},
     }
     assert leftovers(app) == []
 

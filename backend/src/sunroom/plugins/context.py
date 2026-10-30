@@ -57,6 +57,9 @@ class HouseholdView:
     location_label: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    # The household's language (Settings → Household → Language): a code from
+    # lang/languages.json, for words that come from outside (a place's name, a holiday's).
+    language: str = "en"
 
 
 class Sessions(Protocol):
@@ -85,6 +88,7 @@ class HouseholdFacade:
                 home.location_label,
                 home.latitude,
                 home.longitude,
+                language=home.language,
             )
 
 

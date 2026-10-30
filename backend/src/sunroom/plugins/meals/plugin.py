@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter
 
+from sunroom.core.lang import t_en
 from sunroom.plugins.base import (
     Contributions,
     DisplayPanel,
@@ -26,35 +27,49 @@ HOUR_S = 3600
 MANIFEST = PluginManifest(
     id="meals",
     version="1.1.0",  # 1.1.0: calendar_slots replaced show_on_calendar (upgrade_settings)
-    name="Meals",
-    description="The week's dinners, saved meals to add in one tap, and Tonight on the wall.",
+    name=t_en("plugins.meals.name"),
+    description=t_en("plugins.meals.description"),
     settings_spec=(
         ParamField(
             "slots",
-            "Which meals",
+            t_en("plugins.meals.settings.slots.label"),
             "multichoice",
-            help="The meals the family plans. Each is a column in Meals.",
+            help=t_en("plugins.meals.settings.slots.help"),
             default=["dinner"],
             choices=("breakfast", "lunch", "dinner", "snack"),
-            choice_labels=("Breakfast", "Lunch", "Dinner", "Snack"),
+            choice_labels=(
+                t_en("plugins.meals.settings.slots.choices.breakfast"),
+                t_en("plugins.meals.settings.slots.choices.lunch"),
+                t_en("plugins.meals.settings.slots.choices.dinner"),
+                t_en("plugins.meals.settings.slots.choices.snack"),
+            ),
         ),
         ParamField(
             "calendar_slots",
-            "On the calendar",
+            t_en("plugins.meals.settings.calendar_slots.label"),
             "multichoice",
-            help="These meals show at the top of their day on the board.",
+            help=t_en("plugins.meals.settings.calendar_slots.help"),
             default=[],
             choices=("breakfast", "lunch", "dinner", "snack"),
-            choice_labels=("Breakfast", "Lunch", "Dinner", "Snack"),
+            choice_labels=(
+                t_en("plugins.meals.settings.calendar_slots.choices.breakfast"),
+                t_en("plugins.meals.settings.calendar_slots.choices.lunch"),
+                t_en("plugins.meals.settings.calendar_slots.choices.dinner"),
+                t_en("plugins.meals.settings.calendar_slots.choices.snack"),
+            ),
         ),
     ),
     tables=TABLES,
     export_tables=EXPORT_TABLES,
     contributes=Contributions(
-        display_panels=(DisplayPanel("tonight", "Tonight"),),
-        display_rooms=(DisplayRoom("meals", "Meals", "utensils", order=40),),
-        phone_tabs=(PhoneTab("meals", "Meals", "utensils", "/meals", order=40),),
-        settings_sections=(SettingsSection("meals", "Meals"),),
+        display_panels=(DisplayPanel("tonight", t_en("plugins.meals.panels.tonight")),),
+        display_rooms=(
+            DisplayRoom("meals", t_en("plugins.meals.rooms.meals"), "utensils", order=40),
+        ),
+        phone_tabs=(
+            PhoneTab("meals", t_en("plugins.meals.tabs.meals"), "utensils", "/meals", order=40),
+        ),
+        settings_sections=(SettingsSection("meals", t_en("plugins.meals.sections.meals")),),
     ),
     default_enabled=True,
 )
@@ -99,7 +114,7 @@ class Meals(PluginBase):
 
     async def validate_settings(self, ctx: PluginContext, values: dict[str, Any]) -> list[str]:
         if not values.get("slots"):
-            return ["Pick at least one meal."]
+            return [t_en("api.meals.pick_a_meal")]
         return []
 
     async def seed_sample(self, ctx: PluginContext, people: dict[str, str]) -> None:

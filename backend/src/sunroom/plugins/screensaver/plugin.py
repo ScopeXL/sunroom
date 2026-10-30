@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from sunroom.core.lang import t_en
 from sunroom.plugins.base import (
     Contributions,
     DisplayRoom,
@@ -24,36 +25,48 @@ LIBRARY_SYNC_S = 30 * 60
 MANIFEST = PluginManifest(
     id="screensaver",
     version="1.0.0",
-    name="Photos & Screensaver",
-    description="The family's photos on paired screens while nobody's using them.",
+    name=t_en("plugins.screensaver.name"),
+    description=t_en("plugins.screensaver.description"),
     settings_spec=(
         ParamField(
             "start_after",
-            "Start after",
+            t_en("plugins.screensaver.settings.start_after.label"),
             "choice",
-            help="How long nobody touches the screen before the photos start.",
+            help=t_en("plugins.screensaver.settings.start_after.help"),
             # 10 minutes was a choice until 0.8.0: a stored "10" reads as this default.
             default="15",
             choices=("never", "5", "15", "30", "60"),
-            choice_labels=("Never", "5 min", "15 min", "30 min", "1 hour"),
+            choice_labels=(
+                t_en("plugins.screensaver.settings.start_after.choices.never"),
+                t_en("plugins.screensaver.settings.start_after.choices.5"),
+                t_en("plugins.screensaver.settings.start_after.choices.15"),
+                t_en("plugins.screensaver.settings.start_after.choices.30"),
+                t_en("plugins.screensaver.settings.start_after.choices.60"),
+            ),
         ),
         ParamField(
             "every",
-            "Change photo every",
+            t_en("plugins.screensaver.settings.every.label"),
             "choice",
             default="30",
             choices=("15", "30", "60", "120", "300"),
-            choice_labels=("15 s", "30 s", "1 min", "2 min", "5 min"),
+            choice_labels=(
+                t_en("plugins.screensaver.settings.every.choices.15"),
+                t_en("plugins.screensaver.settings.every.choices.30"),
+                t_en("plugins.screensaver.settings.every.choices.60"),
+                t_en("plugins.screensaver.settings.every.choices.120"),
+                t_en("plugins.screensaver.settings.every.choices.300"),
+            ),
         ),
         ParamField(
             "show_clock",
-            "Show the clock and what's next",
+            t_en("plugins.screensaver.settings.show_clock.label"),
             "bool",
             default=True,
         ),
         ParamField(
             "shuffle",
-            "Shuffle",
+            t_en("plugins.screensaver.settings.shuffle.label"),
             "bool",
             default=True,
         ),
@@ -62,9 +75,17 @@ MANIFEST = PluginManifest(
     export_tables=EXPORT_TABLES,
     export_column_excluded=EXPORT_COLUMN_EXCLUDED,
     contributes=Contributions(
-        display_rooms=(DisplayRoom("photos", "Photos", "image", order=60),),
-        phone_tabs=(PhoneTab("photos", "Photos", "image", "/photos", order=60),),
-        settings_sections=(SettingsSection("screensaver", "Screensaver"),),
+        display_rooms=(
+            DisplayRoom("photos", t_en("plugins.screensaver.rooms.photos"), "image", order=60),
+        ),
+        phone_tabs=(
+            PhoneTab(
+                "photos", t_en("plugins.screensaver.tabs.photos"), "image", "/photos", order=60
+            ),
+        ),
+        settings_sections=(
+            SettingsSection("screensaver", t_en("plugins.screensaver.sections.screensaver")),
+        ),
         display_overlay=True,
     ),
     default_enabled=True,

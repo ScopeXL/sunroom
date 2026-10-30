@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any, Protocol, cast
 from zoneinfo import ZoneInfo
 
+from sunroom.core.lang import plain, t_en
 from sunroom.core.logging import get_logger
 from sunroom.db import backup
 
@@ -378,17 +379,16 @@ class FullBackupStream:
 
 # ---- reading it back (sunroom restore) -------------------------------------------------------
 
-_AS_MADE = "Use the zip exactly as Download everything made it."
-_DAMAGED = "That zip is damaged. Download everything again."
-_REPACKED = f"That zip was packed in a way Sunroom can't read. {_AS_MADE}"
-
 
 class ArchiveError(Exception):
-    """This zip can't be restored. The message says why and what to do, in plain words; ``code``
-    names the cause for the API (Settings → Backup → Restore from a File, ADR 0034)."""
+    """This zip can't be restored. ``key`` says why and what to do, in plain words
+    (``lang/en.json``), and the message is its English; ``code`` names the cause for the API
+    (Settings → Backup → Restore from a File, ADR 0034)."""
 
-    def __init__(self, message: str, code: str = "zip_not_ours") -> None:
-        super().__init__(message)
+    def __init__(self, key: str, *, code: str = "zip_not_ours", **params: object) -> None:
+        self.key = key
+        self.params = plain(params)
+        super().__init__(t_en(key, **self.params))
         self.code = code
 
 
@@ -428,48 +428,34 @@ def read_archive(archive: zipfile.ZipFile) -> Archive:
         name = info.filename
         photo = PHOTO_ENTRY.fullmatch(name)
         if name not in (DATABASE, MANIFEST) and photo is None:
-            raise ArchiveError(
-                f"That zip has something in it that Sunroom didn't put there ({_printable(name)}), "
-                f"so nothing was restored. {_AS_MADE}"
-            )
+            raise ArchiveError("api.restore.zip_stranger", name=_printable(name))
         if name in entries:
-            raise ArchiveError(
-                f"That zip has {_printable(name)} in it twice, so nothing was restored. {_AS_MADE}"
-            )
+            raise ArchiveError("api.restore.zip_twice", name=_printable(name))
         if info.flag_bits & 0x1:
-            raise ArchiveError(
-                f"That zip is password-protected, so nothing was restored. {_AS_MADE}"
-            )
+            raise ArchiveError("api.restore.zip_password")
         entries[name] = info
         if photo is not None:
             photos.append((photo.group(1), photo.group(2), info))
     manifest_info = entries.get(MANIFEST)
     if manifest_info is None:
-        raise ArchiveError(
-            "That zip has no manifest.json, so it isn't one Download everything made. "
-            "Nothing was restored."
-        )
+        raise ArchiveError("api.restore.zip_no_manifest")
     manifest = _read_manifest(archive, manifest_info)
     database = entries.get(DATABASE)
     if database is None:
-        raise ArchiveError(
-            f"That zip has no database (sunroom.db) in it, so nothing was restored. {_AS_MADE}"
-        )
+        raise ArchiveError("api.restore.zip_no_database")
     return Archive(manifest=manifest, database=database, photos=tuple(photos))
 
 
 def _read_manifest(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> dict[str, Any]:
-    not_ours = ArchiveError(
-        "That zip's manifest.json isn't one Sunroom wrote, so nothing was restored. " + _AS_MADE
-    )
+    not_ours = ArchiveError("api.restore.zip_not_ours")
     if info.file_size > MAX_MANIFEST_BYTES:
         raise not_ours
     try:
         loaded: object = json.loads(archive.read(info))
     except (zipfile.BadZipFile, zlib.error, EOFError) as exc:
-        raise ArchiveError(_DAMAGED, "backup_damaged") from exc
+        raise ArchiveError("api.restore.zip_damaged", code="backup_damaged") from exc
     except NotImplementedError as exc:  # a compression zipfile can't read
-        raise ArchiveError(_REPACKED) from exc
+        raise ArchiveError("api.restore.zip_repacked") from exc
     except ValueError as exc:
         raise not_ours from exc
     if not isinstance(loaded, dict):
@@ -479,11 +465,10 @@ def _read_manifest(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> dict[str,
     if manifest.get("format") != FORMAT or type(version) is not int or version < 1:
         raise not_ours
     if version > FORMAT_VERSION:
-        raise ArchiveError(
-            f"That zip is from a newer Sunroom ({manifest.get('app_version') or 'unknown'}). "
-            "Run restore with that version's image or newer.",
-            "backup_newer",
-        )
+        made_by = manifest.get("app_version")
+        if not made_by:
+            raise ArchiveError("api.restore.zip_newer_unknown", code="backup_newer")
+        raise ArchiveError("api.restore.zip_newer", code="backup_newer", version=made_by)
     return manifest
 
 
@@ -512,10 +497,10 @@ def extract(archive: zipfile.ZipFile, info: zipfile.ZipInfo, destination: Path) 
             os.fsync(target.fileno())
     except (zipfile.BadZipFile, zlib.error, EOFError) as exc:
         destination.unlink(missing_ok=True)
-        raise ArchiveError(_DAMAGED, "backup_damaged") from exc
+        raise ArchiveError("api.restore.zip_damaged", code="backup_damaged") from exc
     except NotImplementedError as exc:  # a compression zipfile can't read
         destination.unlink(missing_ok=True)
-        raise ArchiveError(_REPACKED) from exc
+        raise ArchiveError("api.restore.zip_repacked") from exc
     except BaseException:
         destination.unlink(missing_ok=True)
         raise

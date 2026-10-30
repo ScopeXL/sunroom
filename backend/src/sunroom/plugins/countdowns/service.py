@@ -44,19 +44,19 @@ DAY = timedelta(days=1)
 
 
 def countdown_gone() -> AppError:
-    return AppError(404, "not_found", "That countdown isn't here any more.")
+    return AppError(404, "not_found", "api.countdowns.gone")
 
 
-def _invalid(message: str, field: str) -> AppError:
-    return AppError(422, "invalid", message, extra={"fields": [field]})
+def _invalid(key: str, field: str) -> AppError:
+    return AppError(422, "invalid", key, extra={"fields": [field]})
 
 
 def day_passed() -> AppError:
-    return _invalid("Pick a day that hasn't passed.", "date")
+    return _invalid("api.countdowns.day_passed", "date")
 
 
 def not_in_family() -> AppError:
-    return _invalid("That person isn't in the family.", "member_id")
+    return _invalid("api.countdowns.not_in_family", "member_id")
 
 
 # ---- rules -------------------------------------------------------------------------------------

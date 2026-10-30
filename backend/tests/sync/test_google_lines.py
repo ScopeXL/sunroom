@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from sunroom.calendar.synced import SyncedEvent, SyncedSeries
+from sunroom.core.lang import t_en
 from sunroom.domain.recurrence import RecurrenceError, Timing
 from sunroom.domain.timeparts import from_local
 from sunroom.plugins.calendar_sync.ical import parse_recurrence_lines, recurrence_lines
@@ -103,7 +104,7 @@ def test_what_sunroom_cant_follow_raises(lines: list[str], code: str) -> None:
     with pytest.raises(RecurrenceError) as raised:
         parse_recurrence_lines(lines, THURSDAYS, "America/New_York", NY)
     assert raised.value.code == code
-    assert raised.value.message
+    assert t_en(raised.value.key)  # a sentence the API can say (ADR 0043)
 
 
 def test_writing_needs_a_master() -> None:

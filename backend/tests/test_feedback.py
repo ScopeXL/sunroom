@@ -208,6 +208,8 @@ async def test_five_an_hour_then_a_plain_refusal(
     assert refused.json()["error"] == {
         "code": "too_much_feedback",
         "message": "That's all Sunroom sends in an hour. Try again later.",
+        "key": "api.feedback.too_much",
+        "params": {},
     }
     assert len(relay.requests) == feedback.SENDS_PER_HOUR
     clock.advance(hours=1)
@@ -229,6 +231,8 @@ async def test_a_relay_that_fails_says_try_again(
     assert failed.json()["error"] == {
         "code": "feedback_failed",
         "message": "Couldn't send it. Try again in a moment.",
+        "key": "api.feedback.failed",
+        "params": {},
     }
 
 
@@ -278,6 +282,8 @@ async def test_off_when_set_empty(data_dir: Path, clock: FakeClock, relay: FakeR
         assert off.json()["error"] == {
             "code": "feedback_off",
             "message": "Feedback isn't set up on this Sunroom.",
+            "key": "api.feedback.off",
+            "params": {},
         }
         assert (await phone.get("/api/admin/diagnostics")).json()["feedback"] is False
     assert relay.requests == []

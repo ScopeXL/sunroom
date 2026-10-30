@@ -201,6 +201,10 @@ async def test_a_foreign_host_gets_421_with_the_fix_once_the_lock_is_set(data_di
             assert api.status_code == 421
             assert api.json()["error"]["code"] == "unknown_host"
             assert "APP_ALLOWED_HOSTS" in api.json()["error"]["message"]
+            assert (api.json()["error"]["key"], api.json()["error"]["params"]) == (
+                "api.host.unknown",
+                {"host": "evil.example"},
+            )
             page = await client.get("/", headers={"host": "evil.example"})
             assert page.status_code == 421
             assert page.headers["content-type"].startswith("text/plain")

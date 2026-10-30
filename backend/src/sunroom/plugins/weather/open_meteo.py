@@ -58,14 +58,15 @@ def forecast_url(latitude: float, longitude: float, units: Units, zone: str) -> 
     return f"{FORECAST_URL}?{urlencode(query, safe=',/', quote_via=quote)}"
 
 
-def search_url(name: str) -> str:
-    """Up to PLACES_MAX places called ``name``, named in English. Open-Meteo matches two
-    characters exactly and three or more loosely, which is why the field says "Keep typing…"
-    under three."""
+def search_url(name: str, language: str = "en") -> str:
+    """Up to PLACES_MAX places called ``name``, named in ``language`` (the household's, a code
+    from lang/languages.json; Open-Meteo answers in English, or the place's own name, where it
+    has no translation). Open-Meteo matches two characters exactly and three or more loosely,
+    which is why the field says "Keep typing…" under three."""
     query: dict[str, str | int] = {
         "name": name,
         "count": PLACES_MAX,
-        "language": "en",
+        "language": language.lower(),
         "format": "json",
     }
     return f"{SEARCH_URL}?{urlencode(query, quote_via=quote)}"

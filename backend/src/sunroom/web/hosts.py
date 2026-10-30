@@ -28,6 +28,9 @@ from collections.abc import Callable
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from sunroom.core.errors import envelope
+from sunroom.core.lang import t_en
+
 LAN_SUFFIXES = (".local", ".lan", ".home", ".home.arpa", ".internal", ".ts.net", ".localhost")
 # Asked by machines, not people: they never go into About's "Recently reached at".
 UNNOTED = frozenset({"/api/health", "/api/discover"})
@@ -122,15 +125,13 @@ class HostGuard:
             await self.app(scope, receive, send)
             return
         shown = name[:80] or "(none)"
-        message = (
-            f"Sunroom doesn't answer to the address {shown}. If that's your own name for it, "
-            "add it to APP_ALLOWED_HOSTS (for example calendar.example.com) and restart."
-        )
         if str(scope.get("path", "")).startswith("/api/"):
-            body = json.dumps({"error": {"code": "unknown_host", "message": message}}).encode()
+            body = json.dumps(
+                envelope("unknown_host", "api.host.unknown", {"host": shown})
+            ).encode()
             content_type = b"application/json"
         else:
-            body = message.encode()
+            body = t_en("api.host.unknown", host=shown).encode()
             content_type = b"text/plain; charset=utf-8"
         if scope["type"] == "websocket":
             await send({"type": "websocket.close", "code": 1008})

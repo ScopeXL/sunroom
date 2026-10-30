@@ -45,17 +45,12 @@ async def get_settings(state: StateDep, actor: ActorDep) -> SettingsOut:
 async def update_settings(body: SettingsUpdate, state: StateDep, actor: ParentDep) -> SettingsOut:
     changes = body.model_dump(exclude_unset=True)
     if "timezone" in changes and service.valid_zone(changes["timezone"]) is None:
-        raise AppError(
-            422,
-            "invalid",
-            "That time zone isn't one Sunroom knows.",
-            extra={"fields": ["timezone"]},
-        )
+        raise AppError(422, "invalid", "api.settings.unknown_zone", extra={"fields": ["timezone"]})
     if ("sleep_from" in changes) != ("sleep_to" in changes):
         raise AppError(
             422,
             "invalid",
-            "Set when sleep starts and ends together.",
+            "api.settings.sleep_together",
             extra={"fields": ["sleep_from", "sleep_to"]},
         )
     async with state.db.write() as tx:
@@ -121,7 +116,7 @@ async def update_member(
         if changes.get("name") and changes["name"].casefold() != member.name.casefold():
             others = await service.active_members(tx.session)
             if any(m.name.casefold() == changes["name"].casefold() for m in others):
-                raise AppError(409, "name_taken", "That name is already in use. Pick another.")
+                raise AppError(409, "name_taken", "api.members.name_taken")
         renamed = bool(changes.get("name")) and changes["name"] != member.name
         for key in ("name", "role", "color"):
             if changes.get(key) is not None:
@@ -201,7 +196,7 @@ async def get_layout(state: StateDep, actor: ActorDep) -> list[KioskPanelOut]:
 async def set_layout(body: KioskLayoutIn, state: StateDep, actor: ParentDep) -> list[KioskPanelOut]:
     keys = [panel.key for panel in body.panels]
     if len(set(keys)) != len(keys):
-        raise AppError(422, "invalid", "Each panel can appear once.")
+        raise AppError(422, "invalid", "api.settings.panel_twice")
     async with state.db.write() as tx:
         # Panels left out keep their rows (a disabled plugin's panel comes back where it was),
         # after the ones listed.
@@ -252,5 +247,5 @@ async def remove_allowlist(entry_id: str, state: StateDep, actor: ParentDep) -> 
             delete(NetworkAllowEntry).where(NetworkAllowEntry.id == entry_id)
         )
         if not getattr(result, "rowcount", 0):
-            raise AppError(404, "not_found", "That address isn't on the list.")
+            raise AppError(404, "not_found", "api.network.allow_not_found")
         tx.publish("settings.changed", {"area": "network"})

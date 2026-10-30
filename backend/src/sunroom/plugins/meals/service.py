@@ -63,19 +63,19 @@ Spot = tuple[date, str, int]  # day, slot, position
 
 
 def entry_gone() -> AppError:
-    return AppError(404, "not_found", "That meal isn't here any more.")
+    return AppError(404, "not_found", "api.meals.meal_gone")
 
 
 def saved_gone() -> AppError:
-    return AppError(404, "not_found", "That saved meal isn't here any more.")
+    return AppError(404, "not_found", "api.meals.saved_gone")
 
 
 def already_saved() -> AppError:
-    return AppError(409, "already_saved", "That meal is saved already.")
+    return AppError(409, "already_saved", "api.meals.already_saved")
 
 
-def invalid(message: str, field: str) -> AppError:
-    return AppError(422, "invalid", message, extra={"fields": [field]})
+def invalid(key: str, field: str) -> AppError:
+    return AppError(422, "invalid", key, extra={"fields": [field]})
 
 
 # ---- rules (pure) ------------------------------------------------------------------------------
@@ -364,7 +364,7 @@ async def save_entry(ctx: PluginContext, actor: Actor, body: EntryIn) -> EntrySa
         entry = await _live_entry(session, body.id) if body.id is not None else None
         cook = body.member_id
         if cook is not None and cook not in active and (entry is None or entry.member_id != cook):
-            raise invalid("That person isn't in the family.", "member_id")
+            raise invalid("api.meals.not_in_family", "member_id")
         renamed = entry is None or text_key(entry.text) != text_key(body.text)
         saved = await _saved_for(session, actor, body, entry, renamed, now)
         anew = saved is not None and (entry is None or entry.saved_meal_id != saved.id)
@@ -470,7 +470,7 @@ async def copy_week(ctx: PluginContext, actor: Actor, body: CopyWeekIn) -> CopyW
     ``skipped``). A copy keeps the text, emoji, recipe link, cook (if still in the family) and
     saved meal, counting a use; not the note."""
     if body.from_start == body.to_start:
-        raise invalid("Pick another week.", "to_start")
+        raise invalid("api.meals.pick_another_week", "to_start")
     now = ctx.now()
     active = {member.id for member in await ctx.members.active()}
     shift = body.to_start - body.from_start

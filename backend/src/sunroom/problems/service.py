@@ -13,6 +13,7 @@ import shutil
 from datetime import datetime
 
 from sunroom.auth.deps import Actor
+from sunroom.core.lang import t_en
 from sunroom.plugins.base import PluginStatus
 from sunroom.problems.schemas import ProblemOut
 from sunroom.state import AppState
@@ -32,10 +33,13 @@ async def collect(state: AppState, actor: Actor) -> list[ProblemOut]:
     manager = state.plugins
     for plugin_id, plugin in manager.registry.items():
         if manager.is_enabled(plugin_id) and manager.status(plugin_id) is PluginStatus.ERRORED:
+            params: dict[str, str | int | float] = {"name": plugin.manifest.name}
             found.append(
                 ProblemOut(
                     id=f"plugin:{plugin_id}",
-                    title=f"{plugin.manifest.name} stopped working.",
+                    title=t_en("api.problems.plugin_stopped", **params),
+                    key="api.problems.plugin_stopped",
+                    params=params,
                     detail=None,
                     since=None,
                     page="features",
@@ -47,6 +51,8 @@ async def collect(state: AppState, actor: Actor) -> list[ProblemOut]:
             ProblemOut(
                 id=problem.id,
                 title=problem.title,
+                key=problem.key,
+                params=dict(problem.params),
                 detail=problem.detail,
                 since=problem.since,
                 page=problem.page,
@@ -58,8 +64,10 @@ async def collect(state: AppState, actor: Actor) -> list[ProblemOut]:
         found.append(
             ProblemOut(
                 id="backup:failed",
-                title="The last backup didn't complete.",
-                detail=f"The last try failed: {backup['last_error']}",
+                title=t_en("api.problems.backup_failed"),
+                key="api.problems.backup_failed",
+                params={},
+                detail=t_en("api.problems.backup_failed_detail", error=backup["last_error"]),
                 since=None,
                 page="backup",
                 source="core",
@@ -70,7 +78,9 @@ async def collect(state: AppState, actor: Actor) -> list[ProblemOut]:
         found.append(
             ProblemOut(
                 id="backup:stale",
-                title="The newest backup is over a week old.",
+                title=t_en("api.problems.backup_stale"),
+                key="api.problems.backup_stale",
+                params={},
                 detail=None,
                 since=datetime.fromisoformat(last) if isinstance(last, str) else None,
                 page="backup",
@@ -79,13 +89,13 @@ async def collect(state: AppState, actor: Actor) -> list[ProblemOut]:
         )
     free = shutil.disk_usage(state.settings.data_dir).free
     if free < LOW_SPACE_BYTES:
+        params: dict[str, str | int | float] = {"free": _gigabytes(free)}
         found.append(
             ProblemOut(
                 id="storage:low",
-                title=(
-                    f"The server has {_gigabytes(free)} free. "
-                    "Sunroom needs room for photos and backups."
-                ),
+                title=t_en("api.problems.storage_low", **params),
+                key="api.problems.storage_low",
+                params=params,
                 detail=None,
                 since=None,
                 page="about",

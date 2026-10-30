@@ -71,17 +71,17 @@ def photo_out(photo: Photo) -> PhotoOut:
 async def read_upload(request: Request) -> bytes:
     content_type = request.headers.get("content-type", "")
     if not content_type.startswith("image/"):
-        raise AppError(415, "not_a_photo", "That file isn't a photo.")
+        raise AppError(415, "not_a_photo", "api.photos.not_a_photo")
     length = request.headers.get("content-length")
     if length and length.isdigit() and int(length) > MAX_UPLOAD_BYTES:
-        raise AppError(413, "too_large", "That photo is too big. Try a smaller one.")
+        raise AppError(413, "too_large", "api.photos.too_big")
     data = bytearray()
     async for chunk in request.stream():
         data += chunk
         if len(data) > MAX_UPLOAD_BYTES:
-            raise AppError(413, "too_large", "That photo is too big. Try a smaller one.")
+            raise AppError(413, "too_large", "api.photos.too_big")
     if not data:
-        raise AppError(422, "photo_unreadable", "That photo couldn't be read. Try a different one.")
+        raise AppError(422, "photo_unreadable", "api.photos.unreadable")
     return bytes(data)
 
 
@@ -90,7 +90,7 @@ def _check_upload_rate(uploads: dict[str, deque[datetime]], device_id: str, now:
     while recent and now - recent[0] > timedelta(hours=1):
         recent.popleft()
     if len(recent) >= UPLOADS_PER_HOUR:
-        raise AppError(429, "rate_limited", "That's a lot of photos at once. Try again in a while.")
+        raise AppError(429, "rate_limited", "api.photos.too_many")
     recent.append(now)
 
 
@@ -143,7 +143,7 @@ async def get_photo(photo_id: str, state: StateDep, actor: ActorDep) -> PhotoOut
     async with state.db.read() as db:
         photo = await db.get(Photo, photo_id)
         if photo is None or photo.deleted_at is not None:
-            raise AppError(404, "not_found", "That photo isn't here anymore.")
+            raise AppError(404, "not_found", "api.photos.not_found")
         return photo_out(photo)
 
 
@@ -155,14 +155,9 @@ async def delete_photo(photo_id: str, state: StateDep, actor: ParentDep) -> None
     async with state.db.write() as tx:
         photo = await tx.session.get(Photo, photo_id)
         if photo is None or photo.deleted_at is not None:
-            raise AppError(404, "not_found", "That photo isn't here anymore.")
+            raise AppError(404, "not_found", "api.photos.not_found")
         if photo.source_key.startswith(LIBRARY_PREFIX):
-            raise AppError(
-                409,
-                "from_library",
-                "This photo comes from a photo library. Hide it from the screensaver instead, "
-                "or take it out of the library.",
-            )
+            raise AppError(409, "from_library", "api.photos.from_library")
         photo.deleted_at = state.clock.now()
         tx.publish("photos.changed", {"id": photo.id})
 
@@ -172,7 +167,7 @@ async def restore_photo(photo_id: str, state: StateDep, actor: ParentDep) -> Pho
     async with state.db.write() as tx:
         photo = await tx.session.get(Photo, photo_id)
         if photo is None:
-            raise AppError(404, "not_found", "That photo isn't here anymore.")
+            raise AppError(404, "not_found", "api.photos.not_found")
         photo.deleted_at = None
         tx.publish("photos.changed", {"id": photo.id})
         return photo_out(photo)
@@ -186,7 +181,7 @@ async def hide_photo(
     async with state.db.write() as tx:
         photo = await tx.session.get(Photo, photo_id)
         if photo is None or photo.deleted_at is not None:
-            raise AppError(404, "not_found", "That photo isn't here anymore.")
+            raise AppError(404, "not_found", "api.photos.not_found")
         photo.hidden = hidden
         tx.publish("photos.changed", {"id": photo.id})
         return photo_out(photo)

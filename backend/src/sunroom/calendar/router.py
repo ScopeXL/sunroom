@@ -125,9 +125,9 @@ async def get_occurrences(
     """Every occurrence in [from, to) (household dates, at most 93 days), sorted by start.
     ``member_ids`` keeps events for those people and for Everyone."""
     if to_date <= from_date:
-        raise invalid("The range ends before it starts.", "to")
+        raise invalid("api.calendar.range_backwards", "to")
     if (to_date - from_date) > timedelta(days=MAX_DAYS):
-        raise invalid("Ask for at most 93 days at a time.", "to")
+        raise invalid("api.calendar.range_too_long", "to")
     zone = state.zone()
     async with state.db.read() as db:
         calendars = await service.list_calendars(db)
@@ -290,5 +290,5 @@ async def describe_rule(
     try:
         text = recurrence.describe(normalized, timing, zone_key)
     except RecurrenceError as exc:
-        raise AppError(422, exc.code, exc.message) from None
+        raise AppError(422, exc.code, exc.key) from None
     return DescribeOut(text=text, rrule=normalized)

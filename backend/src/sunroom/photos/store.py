@@ -60,7 +60,7 @@ class Encoded:
 
 
 def _unreadable() -> AppError:
-    return AppError(422, "photo_unreadable", "That photo couldn't be read. Try a different one.")
+    return AppError(422, "photo_unreadable", "api.photos.unreadable")
 
 
 def _open(data: bytes) -> tuple[Image.Image, datetime | None, str | None]:
@@ -171,11 +171,7 @@ class PhotoStore:
 
     def _check_room(self) -> None:
         if self.free_bytes() < MIN_FREE_BYTES:
-            raise AppError(
-                507,
-                "storage_full",
-                "Photos need room. Remove some, or move photos to a bigger disk (About → Storage).",
-            )
+            raise AppError(507, "storage_full", "api.photos.storage_full")
 
     async def encode(self, data: bytes, *, kind: PhotoKind, zone: ZoneInfo) -> Encoded:
         """Re-encode a photo (in a thread). Call it before the write transaction and hand the

@@ -24,7 +24,6 @@ from sunroom.plugins.chores.common import (
     gone,
     invalid,
     now_of,
-    possessive,
     stars_for,
     switches,
     unknown_member,
@@ -55,7 +54,7 @@ CHECKS_KEPT_DAYS = 60
 
 
 def routines_off() -> AppError:
-    return AppError(409, "routines_off", "Routines are turned off in Settings.")
+    return AppError(409, "routines_off", "api.tasks.routines_off")
 
 
 def applies(routine: Routine, member: MemberView) -> bool:
@@ -209,7 +208,7 @@ async def routines_view(
 async def _routine(session: AsyncSession, routine_id: str) -> Routine:
     routine = await session.get(Routine, routine_id)
     if routine is None or routine.deleted_at is not None:
-        raise gone("routine")
+        raise gone("api.tasks.routine_gone")
     return routine
 
 
@@ -229,13 +228,13 @@ async def _steps(session: AsyncSession, routine_id: str) -> list[RoutineStep]:
 def _days_json(days: Sequence[int]) -> str:
     chosen = sorted(set(days))
     if not chosen:
-        raise invalid("Pick at least one day.", "days")
+        raise invalid("api.tasks.pick_a_day", "days")
     return json.dumps(chosen)
 
 
 def _check_window(start: str, end: str) -> None:
     if start == end:
-        raise invalid("The routine has to end at a different time than it starts.", "window_end")
+        raise invalid("api.tasks.routine_window", "window_end")
 
 
 async def _check_member(ctx: PluginContext, member_id: str | None) -> None:
@@ -345,9 +344,11 @@ async def replace_steps(ctx: PluginContext, routine_id: str, body: StepsIn) -> R
 
 def _theirs(routine: Routine, member: MemberView, day: date) -> None:
     if not applies(routine, member):
-        raise AppError(409, "not_theirs", f"That isn't {possessive(member.name)} routine.")
+        raise AppError(
+            409, "not_theirs", "api.tasks.not_their_routine", params={"name": member.name}
+        )
     if day.weekday() not in weekdays(routine.days_json):
-        raise AppError(409, "not_due", "That routine isn't on that day.")
+        raise AppError(409, "not_due", "api.tasks.routine_not_due")
 
 
 async def check(
@@ -362,10 +363,10 @@ async def check(
     async with ctx.write() as tx:
         routine = await _routine(tx.session, routine_id)
         if not routine.active:
-            raise gone("routine")
+            raise gone("api.tasks.routine_gone")
         step = await tx.session.get(RoutineStep, step_id)
         if step is None or step.routine_id != routine.id:
-            raise AppError(404, "not_found", "That step isn't in this routine any more.")
+            raise AppError(404, "not_found", "api.tasks.step_gone")
         _theirs(routine, member, body.date)
         found = await tx.session.get(RoutineCheck, (step.id, member.id, body.date))
         if body.checked and found is None:
@@ -396,7 +397,7 @@ async def finish(ctx: PluginContext, actor: Actor, routine_id: str, body: Finish
     async with ctx.write() as tx:
         routine = await _routine(tx.session, routine_id)
         if not routine.active:
-            raise gone("routine")
+            raise gone("api.tasks.routine_gone")
         _theirs(routine, member, body.date)
         if await tx.session.get(RoutineFinish, (routine.id, member.id, body.date)) is None:
             awarded = routine.points if flags.stars else 0

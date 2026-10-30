@@ -80,12 +80,12 @@ async def check_now(state: StateDep, actor: ParentDep) -> UpdateOut:
     """Check now (About's button), at most once a minute."""
     found = await update_out(state)
     if found.locked:
-        raise AppError(409, "update_check_off", "This server keeps update checks off.")
+        raise AppError(409, "update_check_off", "api.update.locked")
     if not found.enabled:
-        raise AppError(409, "update_check_off", "Turn on Check for updates daily first.")
+        raise AppError(409, "update_check_off", "api.update.off")
     now = state.clock.now()
     last = state.updates.checked_at
     if last is not None and now - last < CHECK_NOW_EVERY:
-        raise AppError(429, "too_soon", "It just checked. Try again in a minute.")
+        raise AppError(429, "too_soon", "api.update.too_soon")
     await ask(state, found.current, now)
     return await update_out(state)

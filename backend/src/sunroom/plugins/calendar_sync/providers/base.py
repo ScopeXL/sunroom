@@ -14,6 +14,7 @@ from enum import StrEnum
 from typing import Protocol
 
 from sunroom.calendar.synced import PendingSeries, SyncedSeries
+from sunroom.core.lang import Words, plain, t_en
 
 
 class ErrorKind(StrEnum):
@@ -27,11 +28,27 @@ class ErrorKind(StrEnum):
 
 
 class SyncError(Exception):
-    def __init__(self, kind: ErrorKind, message: str, *, retry_after: float | None = None) -> None:
-        super().__init__(message)
+    """A provider's failure: ``key`` names its sentence in ``lang/en.json`` (ADR 0043) and
+    ``message`` is its English, plain, with no secrets and no URLs beyond the host."""
+
+    def __init__(
+        self,
+        kind: ErrorKind,
+        key: str,
+        *,
+        retry_after: float | None = None,
+        params: Mapping[str, object] | None = None,
+    ) -> None:
         self.kind = kind
-        self.message = message  # plain English, no secrets, no URLs beyond the host
+        self.key = key
+        self.params = plain(params)
+        self.message = t_en(key, **self.params)
+        super().__init__(self.message)
         self.retry_after = retry_after
+
+    @property
+    def words(self) -> Words:
+        return Words(self.key, self.params)
 
 
 @dataclass(frozen=True, slots=True)

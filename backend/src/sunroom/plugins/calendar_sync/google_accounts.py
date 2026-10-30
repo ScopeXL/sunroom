@@ -30,6 +30,7 @@ from sunroom.plugins.calendar_sync.models import (
 )
 from sunroom.plugins.calendar_sync.providers.base import ErrorKind, RemoteCalendar, SyncError
 from sunroom.plugins.calendar_sync.providers.google import (
+    NOT_A_KEY,
     GoogleClient,
     OAuthAuth,
     ServiceAccountAuth,
@@ -43,13 +44,8 @@ from sunroom.plugins.context import PluginContext
 
 STATE_TTL = timedelta(minutes=10)
 CALLBACK_PATH = "/api/calendar-sync/google/callback"
-NEEDS_KEYS = (
-    "Sign in with Google needs your Google app's client ID and secret first: Settings → "
-    "Features → Synced Calendars."
-)
-NEEDS_HTTPS = (
-    "Google only signs in to apps at an https:// address. Use Share with a Sunroom helper instead."
-)
+NEEDS_KEYS = "api.sync.google.needs_keys"
+NEEDS_HTTPS = "api.sync.google.needs_https"
 
 
 def redirect_uri(origin: str) -> str:
@@ -88,7 +84,7 @@ def auth_for(
         if not client_id or not client_secret:
             raise SyncError(ErrorKind.AUTH, NEEDS_KEYS)
         return OAuthAuth(client_id, client_secret, str(secrets["refresh_token"]), http, ctx.now)
-    raise SyncError(ErrorKind.AUTH, "Sunroom needs this Google account connected again.")
+    raise SyncError(ErrorKind.AUTH, "api.sync.google.connect_again")
 
 
 def _rows(found: list[RemoteCalendar]) -> list[tuple[str, str, str | None, bool]]:
@@ -105,8 +101,8 @@ async def add_helper(
     """Upload the helper's key: checked with Google, kept encrypted, its address shown once."""
     try:
         key = parse_service_account_key(key_json)
-    except ValueError as exc:
-        raise service.bad(str(exc), "not_a_key") from None
+    except ValueError:
+        raise service.bad(NOT_A_KEY, "not_a_key") from None
     http = ctx.http()
     client = GoogleClient(http, ServiceAccountAuth(key, http, ctx.now))
     try:

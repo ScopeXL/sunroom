@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sunroom.auth.deps import grant_expires_at, issue_session
 from sunroom.auth.models import Device, DeviceKind, PairedVia
 from sunroom.auth.password import env_password_matches, verify_password
-from sunroom.auth.ratelimit import FailureLimiter, wait_message
+from sunroom.auth.ratelimit import FailureLimiter, wait_words
 from sunroom.auth.schemas import SessionOut
 from sunroom.auth.sessions import DeviceInfo
 from sunroom.core.errors import AppError
@@ -28,7 +28,9 @@ def client_ip(request: Request) -> str:
 def check_rate(limiter: FailureLimiter, key: str) -> None:
     wait = limiter.retry_after_seconds(key)
     if wait is not None:
-        raise AppError(429, "rate_limited", wait_message(wait), headers={"Retry-After": str(wait)})
+        raise AppError.said(
+            429, "rate_limited", wait_words(wait), headers={"Retry-After": str(wait)}
+        )
 
 
 async def password_ok(state: AppState, session: AsyncSession, given: str) -> bool:
@@ -43,9 +45,7 @@ async def password_ok(state: AppState, session: AsyncSession, given: str) -> boo
 
 def require_setup(state: AppState) -> None:
     if not state.household.setup_complete:
-        raise AppError(
-            409, "setup_required", "Sunroom isn't set up yet. Open it on a device to set it up."
-        )
+        raise AppError(409, "setup_required", "api.setup.required")
 
 
 async def new_device(
@@ -75,7 +75,7 @@ async def session_out(
 ) -> SessionOut:
     device = await db.get(Device, device_id)
     if device is None:
-        raise AppError(401, "signed_out", "Please sign in.")
+        raise AppError(401, "signed_out", "api.auth.signed_out")
     members = await household_service.active_members(db)
     current = next((m for m in members if m.id == device.member_id), None)
     home = await household_service.household(db)

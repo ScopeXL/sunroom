@@ -35,6 +35,32 @@ the glossary, each language's style, quick add's words and the keyboards.)
 4. `just lang --fix` sorts the file; `just lang` checks everything (a key nothing names fails, so
    a key is added as it is used, never ahead).
 
+## The server's words
+
+The server says English and names each sentence beside it (`core/lang.py`, ADR 0043):
+
+- **A refusal** is `AppError(status, code, "api.<area>.<name>", params={…})`; the envelope is
+  `{"error": {"code", "message", "key", "params"}}`, `message` being the key's English with its
+  values. The page says the key in the family's language (`errorMessage`), and the server's
+  English for a key it doesn't know (an older page after an update). An exception that carries a
+  sentence to a refusal (`OutboundError`, `SyncError`, `LibraryError`, `RestoreError`,
+  `RecurrenceError`, which holds only the key: `domain/` stays standard library) has `key` and
+  `params`, and `message` is its English. A helper that words an error returns `Words(key,
+  params)`.
+- **Needs Attention**: each problem's `key` and `params` beside its English `title`.
+- **A plugin's words**: `plugins.<id>.…` (docs/PLUGINS.md).
+- **Plain `{name}`s only**: no plural or select, so `t_en` is a substitution. A count is two
+  keys, one for one and one for more (`api.photos.inbox.unreadable_one`); a word chosen by a case
+  ("Apple" or "the server") is a whole sentence per case, never a piece glued in. Change a
+  message's placeholders, and give it a new key: an older page still holds the old one.
+- A sentence kept as English in a row (the photo inbox's last line) is named by its key again
+  with `match_english`.
+- `api.testing.*` are the test server's own (test mode only): a translation may leave them out.
+- **Not yet keys**: what's kept as English in a row and shown as it was kept (an account's or a
+  photo library's last error, a sync's run, the update check's line, how the last restore went,
+  the weather's error line), names the server gives things (a device's, a new calendar's, "No
+  title"), and the settings form's list of problems. Each needs its key stored or sent beside it.
+
 ## Adding a language
 
 Copy `lang/en.json` to `lang/<code>.json`, add its entry to `lang/languages.json` as a

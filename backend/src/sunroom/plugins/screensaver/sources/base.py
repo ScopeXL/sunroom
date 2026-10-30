@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal, Protocol
 
+from sunroom.core.lang import Words, plain, t_en
 from sunroom.plugins.context import PluginHttp
 
 LibraryErrorCode = Literal[
@@ -28,12 +29,19 @@ LibraryErrorCode = Literal[
 
 
 class LibraryError(Exception):
-    """A library that said no, or couldn't be asked; ``message`` is for a parent."""
+    """A library that said no, or couldn't be asked: ``key`` names the sentence for a parent in
+    ``lang/en.json`` (ADR 0043), and ``message`` is its English."""
 
-    def __init__(self, code: LibraryErrorCode, message: str) -> None:
-        super().__init__(message)
+    def __init__(self, code: LibraryErrorCode, key: str, **params: object) -> None:
         self.code: LibraryErrorCode = code
-        self.message = message
+        self.key = key
+        self.params = plain(params)
+        self.message = t_en(key, **self.params)
+        super().__init__(self.message)
+
+    @property
+    def words(self) -> Words:
+        return Words(self.key, self.params)
 
 
 @dataclass(frozen=True, slots=True)

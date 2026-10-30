@@ -54,11 +54,9 @@ async def send_feedback(body: FeedbackIn, state: StateDep, actor: ActorDep) -> N
     nothing, as it makes up the update check's answer."""
     url = address(state.settings)
     if url is None:
-        raise AppError(409, "feedback_off", "Feedback isn't set up on this Sunroom.")
+        raise AppError(409, "feedback_off", "api.feedback.off")
     if not state.feedback.take(state.clock.now()):
-        raise AppError(
-            429, "too_much_feedback", "That's all Sunroom sends in an hour. Try again later."
-        )
+        raise AppError(429, "too_much_feedback", "api.feedback.too_much")
     sent = feedback.message(
         kind=body.kind,
         title=body.title,
@@ -83,8 +81,8 @@ async def send_feedback(body: FeedbackIn, state: StateDep, actor: ActorDep) -> N
         )
     except OutboundError as exc:
         log.warning("feedback.unreachable", reason=exc.code)
-        raise AppError(502, "feedback_failed", "Couldn't send it. Try again in a moment.") from exc
+        raise AppError(502, "feedback_failed", "api.feedback.failed") from exc
     if not answer.ok:
         log.warning("feedback.refused", status=answer.status)
-        raise AppError(502, "feedback_failed", "Couldn't send it. Try again in a moment.")
+        raise AppError(502, "feedback_failed", "api.feedback.failed")
     log.info("feedback.sent", kind=body.kind)

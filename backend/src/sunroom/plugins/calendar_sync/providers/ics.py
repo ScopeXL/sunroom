@@ -26,10 +26,8 @@ from sunroom.plugins.calendar_sync.providers.base import (
 from sunroom.plugins.context import PluginHttp
 
 ICS_MAX_BYTES = 20 * 1024 * 1024
-NOT_A_CALENDAR = (
-    "That address didn't give us a calendar. Check it ends in .ics, or try another way."
-)
-READ_ONLY = "A calendar address shows events only; change them where the calendar lives."
+NOT_A_CALENDAR = "api.sync.ics.not_a_calendar"
+READ_ONLY = "api.sync.ics.read_only"
 
 
 class IcsProvider:
@@ -59,25 +57,22 @@ class IcsProvider:
             )
         except OutboundError as exc:
             kind = ErrorKind.REFUSED if exc.code == "private_address" else ErrorKind.UNREACHABLE
-            raise SyncError(kind, exc.message) from None
+            raise SyncError(kind, exc.key, params=exc.params) from None
         status = result.status
         if status == 304:
             return status, b"", cursor
         if status in {401, 403, 404, 410}:
             # A feed's address is its key: one that stops working (Google's secret address after
             # a reset, a feed taken down) needs its new address, like a refused password.
-            raise SyncError(
-                ErrorKind.AUTH,
-                "That calendar address doesn't work any more. Paste its new address.",
-            )
+            raise SyncError(ErrorKind.AUTH, "api.sync.ics.address_gone")
         if status in {429, 503}:
             raise SyncError(
                 ErrorKind.RATE_LIMITED,
-                "That calendar's server asked us to slow down. It will try again later.",
+                "api.sync.ics.slow_down",
                 retry_after=_retry_after(result.headers.get("retry-after")),
             )
         if not 200 <= status < 300:
-            raise SyncError(ErrorKind.UNREACHABLE, "That calendar's server had a problem.")
+            raise SyncError(ErrorKind.UNREACHABLE, "api.sync.ics.server_trouble")
         fresh = {
             key: value
             for key, value in (

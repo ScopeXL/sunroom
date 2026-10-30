@@ -43,7 +43,7 @@ Search = Annotated[str | None, Query(max_length=120)]
 def build(router: APIRouter, plugin: Meals) -> None:
     def ctx() -> PluginContext:
         if plugin.ctx is None:
-            raise AppError(503, "starting", "Meals are still starting. Try again.")
+            raise AppError(503, "starting", "api.meals.starting")
         return plugin.ctx
 
     # ---- the week (static paths before /{id} ones) ---------------------------------------------

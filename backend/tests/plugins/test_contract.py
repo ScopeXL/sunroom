@@ -7,6 +7,7 @@ plugin added later is checked by the same tests without anyone remembering to.
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 import httpx
@@ -15,6 +16,7 @@ from fastapi import FastAPI
 
 import sunroom.plugins
 from sunroom.app import create_app
+from sunroom.core.lang import english
 from sunroom.db.export import (
     CORE_COLUMN_EXCLUDED,
     CORE_EXPORT_EXCLUDED,
@@ -101,6 +103,50 @@ def test_spec_defaults_round_trip(plugin: Plugin) -> None:
     values, problems = coerce_params(spec, defaults(spec))
     assert problems == []
     assert coerce_params(spec, values, previous=values) == (values, [])
+
+
+def choice_key(value: str) -> str:
+    """A choice's value as a key's last segment: lowercase, anything else ``_``."""
+    return re.sub(r"[^a-z0-9_]", "_", value.lower())
+
+
+def manifest_words(plugin: Plugin) -> dict[str, str]:
+    """Every word a manifest says, by the key the page finds it under (ADR 0043):
+    ``plugins.<id>.name`` and ``.description``; ``.settings.<field>.label``, ``.help`` and
+    ``.choices.<value>``; ``.panels.<key>``, ``.rooms.<key>``, ``.tabs.<key>`` and
+    ``.sections.<key>``."""
+    manifest = plugin.manifest
+    base = f"plugins.{manifest.id}"
+    words = {f"{base}.name": manifest.name, f"{base}.description": manifest.description}
+    for field in manifest.settings_spec:
+        words[f"{base}.settings.{field.key}.label"] = field.label
+        if field.help:
+            words[f"{base}.settings.{field.key}.help"] = field.help
+        if field.choice_labels is not None:
+            assert field.choices is not None and len(field.choices) == len(field.choice_labels)
+            for value, label in zip(field.choices, field.choice_labels, strict=True):
+                words[f"{base}.settings.{field.key}.choices.{choice_key(value)}"] = label
+    contributes = manifest.contributes
+    for panel in contributes.display_panels:
+        words[f"{base}.panels.{panel.key}"] = panel.title
+    for room in contributes.display_rooms:
+        words[f"{base}.rooms.{room.key}"] = room.title
+    for tab in contributes.phone_tabs:
+        words[f"{base}.tabs.{tab.key}"] = tab.title
+    for section in contributes.settings_sections:
+        words[f"{base}.sections.{section.key}"] = section.title
+    return words
+
+
+@registered
+def test_every_word_a_manifest_says_is_its_key_s_english(plugin: Plugin) -> None:
+    """A plugin's words live in lang/en.json under ``plugins.<id>`` (ADR 0043): the manifest
+    says each key's English (``t_en`` at import), and the page finds the same word in the
+    family's language by the same key."""
+    words = manifest_words(plugin)
+    missing = sorted(key for key in words if key not in english())
+    assert missing == [], f"add these to lang/en.json: {missing}"
+    assert {key: english()[key] for key in words} == words
 
 
 @registered

@@ -27,7 +27,7 @@ def build(router: APIRouter, plugin: Weather) -> None:
 
     def ctx() -> PluginContext:
         if plugin.ctx is None:
-            raise AppError(503, "starting", "Weather is still starting. Try again.")
+            raise AppError(503, "starting", "api.weather.starting")
         return plugin.ctx
 
     @router.get("")

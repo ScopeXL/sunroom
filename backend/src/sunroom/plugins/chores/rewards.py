@@ -39,7 +39,7 @@ RECENT = timedelta(days=14)
 
 
 def rewards_off() -> AppError:
-    return AppError(409, "rewards_off", "Rewards are turned off in Settings.")
+    return AppError(409, "rewards_off", "api.tasks.rewards_off")
 
 
 def _rewards_on(ctx: PluginContext) -> None:
@@ -47,8 +47,15 @@ def _rewards_on(ctx: PluginContext) -> None:
         raise rewards_off()
 
 
-def not_enough(name: str, have: int, cost: int) -> AppError:
-    return AppError(409, "not_enough", f"{name} has {have} of {cost} stars.")
+def not_enough(name: str | None, have: int, cost: int) -> AppError:
+    """Not enough stars; ``name`` None for someone no longer in the family."""
+    if name is None:
+        return AppError(
+            409, "not_enough", "api.tasks.not_enough_them", params={"have": have, "cost": cost}
+        )
+    return AppError(
+        409, "not_enough", "api.tasks.not_enough", params={"name": name, "have": have, "cost": cost}
+    )
 
 
 def reward_out(reward: Reward) -> RewardOut:
@@ -128,7 +135,7 @@ async def rewards_view(ctx: PluginContext, *, include_inactive: bool) -> Rewards
 async def _reward(session: AsyncSession, reward_id: str) -> Reward:
     reward = await session.get(Reward, reward_id)
     if reward is None or reward.deleted_at is not None:
-        raise gone("reward")
+        raise gone("api.tasks.reward_gone")
     return reward
 
 
@@ -181,7 +188,7 @@ async def redeem(ctx: PluginContext, actor: Actor, reward_id: str, body: RedeemI
     async with ctx.write() as tx:
         reward = await _reward(tx.session, reward_id)
         if not reward.active:
-            raise gone("reward")
+            raise gone("api.tasks.reward_gone")
         stars = await ledger(tx.session, now, [member.id])
         free = stars.balance(member.id) - stars.held(member.id)
         if free < reward.cost_points:
@@ -209,15 +216,17 @@ async def _redemption(session: AsyncSession, redemption_id: str) -> tuple[Redemp
         )
     ).first()
     if found is None:
-        raise AppError(404, "not_found", "That ask isn't here any more.")
+        raise AppError(404, "not_found", "api.tasks.ask_gone")
     redemption, title = found
     return redemption, title
 
 
-def _answered(redemption: Redemption, who: str) -> AppError:
+def _answered(redemption: Redemption, who: str | None) -> AppError:
     if redemption.status == RedemptionStatus.CANCELLED:
-        return AppError(409, "already_answered", f"{who} took that back.")
-    return AppError(409, "already_answered", "A parent already answered that.")
+        if who is None:
+            return AppError(409, "already_answered", "api.tasks.taken_back_them")
+        return AppError(409, "already_answered", "api.tasks.taken_back", params={"name": who})
+    return AppError(409, "already_answered", "api.tasks.already_answered")
 
 
 async def cancel(ctx: PluginContext, actor: Actor, redemption_id: str) -> RedemptionOut:
@@ -231,7 +240,7 @@ async def cancel(ctx: PluginContext, actor: Actor, redemption_id: str) -> Redemp
         if redemption.status == RedemptionStatus.CANCELLED:
             return redemption_out(redemption, title)
         if redemption.status != RedemptionStatus.REQUESTED:
-            raise AppError(409, "already_answered", "A parent already answered that.")
+            raise AppError(409, "already_answered", "api.tasks.already_answered")
         redemption.status = RedemptionStatus.CANCELLED
         redemption.decided_by_member_id = actor.member_id
         redemption.decided_at = ctx.now()
@@ -250,7 +259,7 @@ async def decide(
     target = RedemptionStatus.APPROVED if approve else RedemptionStatus.DENIED
     async with ctx.write() as tx:
         redemption, title = await _redemption(tx.session, redemption_id)
-        name = who.get(redemption.member_id, "They")
+        name = who.get(redemption.member_id)
         if redemption.status == target:
             return redemption_out(redemption, title)
         if redemption.status != RedemptionStatus.REQUESTED:

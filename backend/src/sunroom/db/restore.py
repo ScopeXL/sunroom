@@ -29,6 +29,7 @@ from typing import Any, cast
 
 from sunroom.core.clock import Clock
 from sunroom.core.config import Settings
+from sunroom.core.lang import plain, t_en
 from sunroom.core.logging import get_logger
 from sunroom.db import backup, full_backup, migrate
 
@@ -46,13 +47,16 @@ _STAGE_FILES = (UPLOAD, f"{STAGED_DB}.partial", STAGED_DB, STAGED_ZIP, SUMMARY, 
 
 
 class RestoreError(Exception):
-    """This backup can't be restored. The message says why and what to do, in plain words;
-    ``code`` names the cause for the API."""
+    """This backup can't be restored. ``key`` says why and what to do, in plain words
+    (``lang/en.json``, ``api.restore.*``), and ``message`` is its English, which the command line
+    prints; ``code`` names the cause for the API."""
 
-    def __init__(self, code: str, message: str) -> None:
-        super().__init__(message)
+    def __init__(self, code: str, key: str, **params: object) -> None:
         self.code = code
-        self.message = message
+        self.key = key
+        self.params = plain(params)
+        self.message = t_en(key, **self.params)
+        super().__init__(self.message)
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,17 +107,9 @@ def backup_kind_or_refuse(source: Path) -> str:
     try:
         kind = full_backup.backup_kind(source)
     except PermissionError as exc:
-        raise RestoreError(
-            "unreadable",
-            f"Restore isn't allowed to read {source.name}. Let everyone read it (chmod a+r "
-            f"{source.name}, in its folder on the server), then run restore again.",
-        ) from exc
+        raise RestoreError("unreadable", "api.restore.unreadable", name=source.name) from exc
     if kind is None:
-        raise RestoreError(
-            "not_a_backup",
-            "That file isn't a Sunroom backup. Restore takes a .db file or the .zip from "
-            "Download everything.",
-        )
+        raise RestoreError("not_a_backup", "api.restore.not_a_backup")
     return kind
 
 
@@ -127,11 +123,7 @@ def _copy_database(source: Path, partial: Path) -> None:
 
 def _room(data_dir: Path, needed: int) -> None:
     if shutil.disk_usage(data_dir).free < needed:
-        raise RestoreError(
-            "no_room",
-            "There isn't enough free space on the data volume for this backup (it needs "
-            f"about {needed / 1024**3:.1f} GB). Free some space, then run restore again.",
-        )
+        raise RestoreError("no_room", "api.restore.no_room", size=f"{needed / 1024**3:.1f}")
 
 
 def check_database(partial: Path) -> dict[str, object]:
@@ -145,25 +137,18 @@ def check_database(partial: Path) -> dict[str, object]:
             conn.close()
         info = backup.inspect_backup(partial)
     except sqlite3.DatabaseError as exc:
-        raise RestoreError(
-            "backup_damaged",
-            "That backup is damaged (it isn't a database Sunroom can read). Pick another.",
-        ) from exc
+        raise RestoreError("backup_damaged", "api.restore.not_a_database") from exc
     finally:
         without_journal(partial)
     if info["quick_check"] != "ok":
-        raise RestoreError(
-            "backup_damaged", "That backup is damaged (its integrity check failed). Pick another."
-        )
+        raise RestoreError("backup_damaged", "api.restore.damaged")
     revision = info["revision"]
     if revision is None:
-        raise RestoreError("not_a_backup", "That database isn't a Sunroom backup. Pick another.")
+        raise RestoreError("not_a_backup", "api.restore.not_ours")
     if revision not in migrate.known_revisions():
-        raise RestoreError(
-            "backup_newer",
-            f"That backup is from a newer Sunroom ({info['app_version'] or 'unknown'}). "
-            "Run restore with that version's image or newer.",
-        )
+        if not info["app_version"]:
+            raise RestoreError("backup_newer", "api.restore.newer_unknown")
+        raise RestoreError("backup_newer", "api.restore.newer", version=info["app_version"])
     return info
 
 
@@ -186,11 +171,9 @@ def prepare(source: Path, partial: Path, photos_dir: Path, data_dir: Path) -> Pr
                     _room(data_dir, full_backup.room_needed(contents, photos_dir))
                     full_backup.extract(archive, contents.database, partial)
             except zipfile.BadZipFile as exc:
-                raise RestoreError(
-                    "backup_damaged", "That zip is damaged. Download everything again."
-                ) from exc
+                raise RestoreError("backup_damaged", "api.restore.zip_damaged") from exc
             except full_backup.ArchiveError as problem:
-                raise RestoreError(problem.code, str(problem)) from problem
+                raise RestoreError(problem.code, problem.key, **problem.params) from problem
         else:
             wal = Path(f"{source}-wal")
             needed = source.stat().st_size + ROOM_TO_SPARE
@@ -256,9 +239,7 @@ def swap_in(db: Path, prepared: Path, stamp: str) -> list[str]:
     finally:
         conn.close()
     if not check or check[0] != "ok":
-        raise RestoreError(
-            "backup_damaged", "The copy failed its integrity check; nothing was swapped in."
-        )
+        raise RestoreError("backup_damaged", "api.restore.swap_check_failed")
     moved: list[str] = []
     for suffix in ("", "-wal", "-shm"):  # together: a stale -wal would corrupt the new file
         current = Path(f"{db}{suffix}")
@@ -400,9 +381,7 @@ def arm(settings: Settings, requested_at: datetime, device_id: str | None) -> No
     finally:
         conn.close()
     if not check or check[0] != "ok":
-        raise RestoreError(
-            "backup_damaged", "That backup is damaged (its integrity check failed). Pick another."
-        )
+        raise RestoreError("backup_damaged", "api.restore.damaged")
     _write_json(
         folder / MARKER,
         {"step": "armed", "requested_at": requested_at.isoformat(), "device_id": device_id},

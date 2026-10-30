@@ -10,6 +10,7 @@ plugin's tables.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
@@ -17,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from fastapi import APIRouter
 
+from sunroom.core.lang import Value, t_en
 from sunroom.plugins.spec import ParamField
 
 if TYPE_CHECKING:
@@ -105,15 +107,21 @@ class PluginManifest:
 class Problem:
     """Something that needs a parent, for Needs Attention (ADR 0034): an account that stopped
     syncing, a photo source that fails. ``id`` is stable per cause ("sync:<account id>");
-    ``title`` one sentence in the family's words, with no ids or secrets; ``detail`` a quiet
-    second line, for parents only; ``since`` when it started; ``page`` the Settings page that
-    fixes it."""
+    ``key`` its one sentence in the family's words, with no ids or secrets, in ``lang/en.json``
+    (``api.<area>.*``), and ``params`` its values: the page says it in the family's language,
+    and ``title`` is its English (ADR 0043); ``detail`` a quiet second line, for parents only;
+    ``since`` when it started; ``page`` the Settings page that fixes it."""
 
     id: str
-    title: str
+    key: str
+    params: Mapping[str, Value] = field(default_factory=dict[str, Value])
     detail: str | None = None
     since: datetime | None = None
     page: str | None = None
+
+    @property
+    def title(self) -> str:
+        return t_en(self.key, **self.params)
 
 
 @dataclass(frozen=True, slots=True)

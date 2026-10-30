@@ -253,6 +253,8 @@ async def test_off_every_route_is_404_and_on_again_the_data_is_there(
         assert response.json()["error"] == {
             "code": "plugin_disabled",
             "message": "Meals is turned off. A parent can turn it on in Settings.",
+            "key": "api.plugins.turned_off",
+            "params": {"name": "Meals"},
         }
     assert await occurrences(parent) == []  # the overlay goes quiet too
     on = await parent.post("/api/plugins/meals/enable", headers=CSRF)
@@ -275,6 +277,8 @@ async def test_while_meals_start_a_request_asks_to_try_again(
     assert response.json()["error"] == {
         "code": "starting",
         "message": "Meals are still starting. Try again.",
+        "key": "api.meals.starting",
+        "params": {},
     }
 
 

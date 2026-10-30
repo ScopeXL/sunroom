@@ -43,12 +43,12 @@ if TYPE_CHECKING:
 def build(router: APIRouter, plugin: CalendarSync) -> None:
     def ctx() -> PluginContext:
         if plugin.ctx is None:
-            raise AppError(503, "starting", "Synced calendars are still starting. Try again.")
+            raise AppError(503, "starting", "api.sync.starting")
         return plugin.ctx
 
     def engine() -> SyncEngine:
         if plugin.engine is None:
-            raise AppError(503, "starting", "Synced calendars are still starting. Try again.")
+            raise AppError(503, "starting", "api.sync.starting")
         return plugin.engine
 
     @router.get("/accounts")
@@ -143,7 +143,7 @@ def build(router: APIRouter, plugin: CalendarSync) -> None:
     async def add_fake() -> AccountOut:  # pyright: ignore[reportUnusedFunction]
         context = ctx()
         if not context.test_mode:
-            raise AppError(404, "not_found", "Not found.")
+            raise AppError(404, "not_found", "api.testing.not_found")
         account_id = await service.save_account(
             context,
             provider=Provider.FAKE,
@@ -166,7 +166,7 @@ def build(router: APIRouter, plugin: CalendarSync) -> None:
         context = ctx()
         remote = FAKE_REMOTES.get(account_id)
         if not context.test_mode or remote is None:
-            raise AppError(404, "not_found", "Not found.")
+            raise AppError(404, "not_found", "api.testing.not_found")
         for remote_id, name, read_only in body.calendars:
             remote.add_calendar(remote_id, name, read_only=read_only)
         for event in body.events:

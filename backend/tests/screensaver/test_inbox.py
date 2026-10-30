@@ -138,12 +138,18 @@ async def test_a_file_that_isnt_a_photo_is_set_aside(
     assert [(p["id"], p["title"], p["page"]) for p in listed] == [
         (f"photos:{source['id']}", ONE_UNREADABLE, "screensaver")
     ]
+    # Named by its key, so the page says it in the family's language (ADR 0043).
+    assert [(p["key"], p["params"]) for p in listed] == [("api.photos.inbox.unreadable_one", {})]
     # Two more: the line counts them.
     drop(inbox, "receipt.png", b"\x89PNG and then nothing")
     drop(inbox, "scan.heic", b"not a picture either")
     await service.scan_inbox(ctx)
     assert names(inbox / "unreadable") == ["notes.jpg", "receipt.png", "scan.heic"]
     assert (await inbox_source(parent))["last_error"] == TWO_UNREADABLE
+    listed = (await parent.get("/api/problems")).json()["problems"]
+    assert [(p["title"], p["key"], p["params"]) for p in listed] == [
+        (TWO_UNREADABLE, "api.photos.inbox.unreadable", {"count": "2"})
+    ]
     # A check that finds nothing keeps the line, so a parent sees it later; Check now says
     # afresh.
     await service.scan_inbox(ctx)
@@ -330,6 +336,8 @@ async def test_only_a_parent_checks_now(
         assert refused.json()["error"] == {
             "code": "parent_required",
             "message": "Only a parent can do that. Enter the parent PIN.",
+            "key": "api.auth.parent_pin",
+            "params": {},
             "pin": True,
         }
     assert names(inbox) == ["IMG_0012.JPG"]

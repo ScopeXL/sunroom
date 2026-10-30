@@ -269,6 +269,8 @@ async def test_the_cook_is_someone_in_the_family(parent: httpx.AsyncClient, fami
     assert refused.json()["error"] == {
         "code": "invalid",
         "message": "That person isn't in the family.",
+        "key": "api.meals.not_in_family",
+        "params": {},
         "fields": ["member_id"],
     }
     tacos = await plan(parent, WED, "Tacos", member_id=family.leo)

@@ -32,6 +32,8 @@ afterEach(() => {
 const APPLE: Problem = {
   id: "sync:1",
   title: "Apple needs its password again.",
+  key: "api.sync.needs_password",
+  params: { name: "Apple" },
   detail: "Apple said that password isn't right.",
   since: null,
   page: "calendars",
@@ -40,6 +42,8 @@ const APPLE: Problem = {
 const BACKUP: Problem = {
   id: "backup:stale",
   title: "The newest backup is over a week old.",
+  key: "api.problems.backup_stale",
+  params: {},
   detail: null,
   since: null,
   page: "backup",

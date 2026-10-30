@@ -125,6 +125,8 @@ async def test_what_isnt_a_backup_is_refused_and_nothing_is_staged(
         "code": "not_a_backup",
         "message": "That file isn't a Sunroom backup. Restore takes a .db file or the .zip from "
         "Download everything.",
+        "key": "api.restore.not_a_backup",
+        "params": {},
     }
     assert (await phone.get(RESTORE)).json() == {"staged": None, "last": None}
     assert stage_files(server) == []
@@ -148,6 +150,8 @@ async def test_a_damaged_or_newer_backup_gets_restores_own_words(
     assert damaged.json()["error"] == {
         "code": "backup_damaged",
         "message": "That backup is damaged (it isn't a database Sunroom can read). Pick another.",
+        "key": "api.restore.not_a_database",
+        "params": {},
     }
     newer = handmade_zip(
         {"format": "sunroom-full-backup", "format_version": 2, "app_version": "9.0.0"}, b"x"
@@ -158,6 +162,8 @@ async def test_a_damaged_or_newer_backup_gets_restores_own_words(
         "code": "backup_newer",
         "message": "That zip is from a newer Sunroom (9.0.0). Run restore with that version's "
         "image or newer.",
+        "key": "api.restore.zip_newer",
+        "params": {"version": "9.0.0"},
     }
     odd = handmade_zip(
         {"format": "sunroom-full-backup", "format_version": 1, "app_version": "0.6.0"},
@@ -191,6 +197,8 @@ async def test_a_wall_screen_and_a_childs_phone_cant(
             assert response.json()["error"] == {
                 "code": "not_on_a_screen",
                 "message": "Restore from a signed-in device.",
+                "key": "api.restore.not_on_a_screen",
+                "params": {},
             }
     await set_pin(phone)
     async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as kid:
@@ -220,6 +228,8 @@ async def test_no_room_gets_the_plain_answer(
         "code": "storage_full",
         "message": "There isn't enough free space on the server for this file. Free some space, "
         "then try again.",
+        "key": "api.restore.no_room_upload",
+        "params": {},
     }
     assert stage_files(server) == []
 
@@ -252,6 +262,8 @@ async def test_restoring_needs_the_password_and_a_file(
     assert nothing.json()["error"] == {
         "code": "nothing_staged",
         "message": "There's no file to restore. Choose one first.",
+        "key": "api.restore.nothing_staged",
+        "params": {},
     }
     sent = await backups_of(server, phone)
     assert (await send(phone, sent.db, "sunroom.db")).status_code == 200
@@ -262,6 +274,8 @@ async def test_restoring_needs_the_password_and_a_file(
     assert wrong.json()["error"] == {
         "code": "wrong_password",
         "message": "That password didn't match. Try again.",
+        "key": "api.auth.wrong_password",
+        "params": {},
     }
     assert "apply.json" not in stage_files(server)
     assert restarts == []

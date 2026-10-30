@@ -56,7 +56,7 @@ DAYS = 7
 
 NO_ANSWER = "Open-Meteo didn't answer."
 UNREADABLE = "Open-Meteo sent something Sunroom couldn't read."
-SEARCH_FAILED = "The place search didn't answer. Try again in a minute."
+SEARCH_FAILED = "api.weather.search_failed"
 
 # °F is usual in the United States and its territories, °C everywhere else; "auto" goes by the
 # household's time zone. Older names for the same zones are here too.
@@ -375,10 +375,7 @@ async def check_now(ctx: PluginContext) -> WeatherOut:
         if last is not None and _within(last, now, CHECK_EVERY):
             wait = math.ceil((last + CHECK_EVERY - now).total_seconds())
             raise AppError(
-                429,
-                "too_soon",
-                "It just checked. Try again in a minute.",
-                headers={"Retry-After": str(wait)},
+                429, "too_soon", "api.weather.too_soon", headers={"Retry-After": str(wait)}
             )
         await refresh(ctx, force=True)
     return await weather(ctx)
@@ -407,22 +404,24 @@ class SearchLimit:
             raise AppError(
                 429,
                 "rate_limited",
-                "That's a lot of searches. Try again in a minute.",
+                "api.weather.too_many_searches",
                 headers={"Retry-After": str(max(wait, 1))},
             )
         times.append(now)
 
 
 async def search(ctx: PluginContext, query: str) -> list[PlaceOut]:
-    """Cities called ``query``, for Settings → Household → Location and onboarding."""
+    """Cities called ``query``, for Settings → Household → Location and onboarding, named in
+    the household's language where Open-Meteo has it."""
     name = " ".join(query.split())
     if len(name) < 2:
         return []
     if ctx.test_mode:
         return fake.places(name)
+    language = (await ctx.household.get()).language
     try:
         result = await ctx.http().get(
-            open_meteo.search_url(name), max_bytes=open_meteo.SEARCH_MAX_BYTES
+            open_meteo.search_url(name, language), max_bytes=open_meteo.SEARCH_MAX_BYTES
         )
     except OutboundError as exc:
         raise _search_failed(exc.code) from None

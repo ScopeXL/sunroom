@@ -175,7 +175,7 @@ async def run_backup(state: StateDep, actor: ParentDep) -> BackupRunOut:
     try:
         result = await state.backups.run_now()
     except Exception as exc:
-        raise AppError(500, "backup_failed", f"The backup didn't complete: {exc}") from exc
+        raise AppError(500, "backup_failed", "api.backups.failed", params={"reason": exc}) from exc
     return BackupRunOut(file=result.path.name, bytes=result.bytes, seconds=result.seconds)
 
 
@@ -219,17 +219,10 @@ async def _fresh_copy(state: AppState) -> Path:
             full_backup.make_database_copy, state.settings.db_path, state.settings.backup_dir
         )
     except NoRoomError as exc:
-        raise AppError(
-            507,
-            "storage_full",
-            "There isn't enough free space on the server to make the download. Free some space, "
-            "then try again.",
-        ) from exc
+        raise AppError(507, "storage_full", "api.backups.no_room_download") from exc
     except Exception as exc:
         log.error("backup.download_failed", reason=f"{type(exc).__name__}: {exc}")
-        raise AppError(
-            500, "backup_failed", "The download couldn't be made. Try again in a minute."
-        ) from exc
+        raise AppError(500, "backup_failed", "api.backups.download_failed") from exc
 
 
 # Before /admin/backups/{name}, which would otherwise take "full.zip" as a name.
@@ -277,7 +270,7 @@ async def download_data(state: StateDep, actor: ParentDep) -> FreshCopyResponse:
 def _located(state: AppState, name: str) -> Path:
     copy = state.backups.locate(name)
     if copy is None:
-        raise AppError(404, "not_found", "That backup doesn't exist.")
+        raise AppError(404, "not_found", "api.backups.not_found")
     return copy.path
 
 
@@ -297,15 +290,13 @@ async def remove_backup(name: str, state: StateDep, actor: ParentDep) -> None:
     """Remove one copy (ADR 0034). Never from a paired screen, as Erase everything: it can't be
     undone, it's never urgent, and a parent's grant outlives the parent at the wall."""
     if actor.is_kiosk:
-        raise AppError(403, "not_on_a_screen", "Remove backups from a signed-in device.")
+        raise AppError(403, "not_on_a_screen", "api.backups.not_on_a_screen")
     try:
         await state.backups.remove(name)
     except LookupError as exc:
-        raise AppError(404, "not_found", "That backup doesn't exist.") from exc
+        raise AppError(404, "not_found", "api.backups.not_found") from exc
     except BackupBusyError as exc:
-        raise AppError(
-            409, "backup_busy", "A backup is being written. Try again in a moment."
-        ) from exc
+        raise AppError(409, "backup_busy", "api.backups.busy") from exc
 
 
 class EraseIn(BaseModel):
@@ -322,9 +313,7 @@ async def erase(body: EraseIn, request: Request, state: StateDep, actor: ParentD
     device, with the household password. Never from a paired screen, which a child can reach.
     The password is checked as at sign-in, wrong tries counting against the same limiter."""
     if actor.is_kiosk:
-        raise AppError(
-            403, "not_on_a_screen", "Erase everything from a signed-in device, not a paired screen."
-        )
+        raise AppError(403, "not_on_a_screen", "api.erase.not_on_a_screen")
     ip = client_ip(request)
     check_rate(state.login_limiter, ip)
     async with state.db.read() as db:
@@ -332,15 +321,13 @@ async def erase(body: EraseIn, request: Request, state: StateDep, actor: ParentD
     if not matched:
         state.login_limiter.record_failure(ip)
         log.info("erase.wrong_password")
-        raise AppError(403, "wrong_password", "That password didn't match. Try again.")
+        raise AppError(403, "wrong_password", "api.auth.wrong_password")
     state.login_limiter.record_success(ip)
     try:
         await erase_everything(state)
     except BackupError as exc:
         raise AppError(
-            500,
-            "backup_failed",
-            f"Nothing was erased: the copy to keep first couldn't be made ({exc}).",
+            500, "backup_failed", "api.erase.copy_failed", params={"reason": exc}
         ) from exc
     return EraseOut()
 
@@ -364,7 +351,7 @@ async def check_password(
     if not matched:
         state.login_limiter.record_failure(ip)
         log.info("password_check.wrong_password")
-        raise AppError(403, "wrong_password", "That password didn't match. Try again.")
+        raise AppError(403, "wrong_password", "api.auth.wrong_password")
     state.login_limiter.record_success(ip)
 
 

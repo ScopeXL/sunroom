@@ -11,6 +11,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from sunroom.core.lang import t_en
 from sunroom.plugins.base import (
     Contributions,
     HubEvent,
@@ -30,20 +31,20 @@ from sunroom.plugins.spec import ParamField
 MANIFEST = PluginManifest(
     id="calendar_sync",
     version="1.0.0",
-    name="Synced Calendars",
-    description="Google, Apple and any calendar address on the board, kept up to date.",
+    name=t_en("plugins.calendar_sync.name"),
+    description=t_en("plugins.calendar_sync.description"),
     settings_spec=(
         ParamField(
             "google_client_id",
-            "Google app's client ID",
+            t_en("plugins.calendar_sync.settings.google_client_id.label"),
             "string",
-            help="Only for Sign in with Google. Settings → Calendars & Accounts explains it.",
+            help=t_en("plugins.calendar_sync.settings.google_client_id.help"),
             group="Sign in with Google",
             max_length=200,
         ),
         ParamField(
             "google_client_secret",
-            "Google app's client secret",
+            t_en("plugins.calendar_sync.settings.google_client_secret.label"),
             "secret",
             group="Sign in with Google",
             max_length=200,
@@ -53,7 +54,9 @@ MANIFEST = PluginManifest(
     export_tables=EXPORT_TABLES,
     export_column_excluded={"sync_accounts": frozenset({"credentials_enc"})},
     contributes=Contributions(
-        settings_sections=(SettingsSection("accounts", "Calendars & Accounts"),),
+        settings_sections=(
+            SettingsSection("accounts", t_en("plugins.calendar_sync.sections.accounts")),
+        ),
     ),
     default_enabled=True,
     subscribes=("events.changed",),
@@ -130,7 +133,7 @@ def _caldav(ctx: PluginContext, account: Any, secrets: dict[str, Any], http: Any
     from sunroom.plugins.calendar_sync.providers.caldav_provider import CaldavProvider
 
     if "password" not in secrets:
-        raise SyncError(ErrorKind.AUTH, "Sunroom needs this account's password again.")
+        raise SyncError(ErrorKind.AUTH, "api.sync.password_again")
     client = CaldavClient(
         http, account.server_url or "", account.username or "", str(secrets["password"])
     )

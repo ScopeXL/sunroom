@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 def build(router: APIRouter, plugin: Lists) -> None:
     def ctx() -> PluginContext:
         if plugin.ctx is None:
-            raise AppError(503, "starting", "Lists are still starting. Try again.")
+            raise AppError(503, "starting", "api.lists.starting")
         return plugin.ctx
 
     # ---- every list (static paths before /{list_id}) ------------------------------------------

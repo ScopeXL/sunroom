@@ -30,6 +30,7 @@ from icalendar.error import GloballyUniqueTZIDGuessed
 from icalendar.prop import vDDDLists, vDDDTypes, vDuration, vInt, vRecur, vText
 
 from sunroom.calendar.synced import SyncedEvent, SyncedOverride, SyncedSeries
+from sunroom.core.lang import t_en
 from sunroom.domain.recurrence import RecurrenceError, Timing, shift_rid, validate_rrule
 from sunroom.domain.timeparts import from_local, parse_rid, rid_date, rid_timed, to_local
 from sunroom.plugins.calendar_sync.tzmap import named_zone, zone_for
@@ -730,7 +731,7 @@ def _rule_reason(exc: RecurrenceError, rule: str) -> str:
         return f"repeats every {unit}, which Sunroom can't show"
     if exc.code == "rrule_unsupported":
         return "repeats in a way Sunroom can't show"
-    detail = exc.message.rstrip(".")
+    detail = t_en(exc.key).rstrip(".")
     return f"has a repeat Sunroom can't follow ({detail[:1].lower()}{detail[1:]})"
 
 
@@ -1282,14 +1283,12 @@ def parse_recurrence_lines(
     for line in lines:
         match = _LINE.fullmatch(line.strip())
         if match is None:
-            raise RecurrenceError("rrule_invalid", "This repeat isn't written correctly.")
+            raise RecurrenceError("rrule_invalid", "api.repeat.bad_rule")
         name = match.group("name").upper()
         if name == "RRULE":
             rules.append(match.group("value"))
         elif name == "EXRULE":
-            raise RecurrenceError(
-                "rrule_unsupported", "Skipping repeats by a rule isn't supported."
-            )
+            raise RecurrenceError("rrule_unsupported", "api.repeat.exrule")
         elif name in ("RDATE", "EXDATE"):
             params = _line_params(match.group("params"))
             target = rdates if name == "RDATE" else exdates
@@ -1297,7 +1296,7 @@ def parse_recurrence_lines(
                 when = context.when(_moment_value(text), params.get("TZID"))
                 target.add(frame.rid(when, household))
     if len(rules) > 1:
-        raise RecurrenceError("rrule_unsupported", "An event can repeat in only one way.")
+        raise RecurrenceError("rrule_unsupported", "api.repeat.one_way")
     rrule = validate_rrule(rules[0], timing, rule_zone) if rules else None
     return rrule, tuple(sorted(rdates)), tuple(sorted(exdates))
 
@@ -1315,7 +1314,7 @@ def _moment_value(text: str) -> date | datetime:
     """One EXDATE or RDATE value: a date, a wall time, or a UTC time (a period's start)."""
     match = _MOMENT.fullmatch(text.strip().split("/")[0])
     if match is None:
-        raise RecurrenceError("rrule_invalid", "A date in this repeat isn't written correctly.")
+        raise RecurrenceError("rrule_invalid", "api.repeat.bad_date")
     digits, clock, utc = match.groups()
     try:
         day = date(int(digits[:4]), int(digits[4:6]), int(digits[6:]))
@@ -1323,7 +1322,7 @@ def _moment_value(text: str) -> date | datetime:
             return day
         moment = datetime.combine(day, time(int(clock[:2]), int(clock[2:4]), int(clock[4:])))
     except ValueError:
-        raise RecurrenceError("rrule_invalid", "A date in this repeat isn't a real date.") from None
+        raise RecurrenceError("rrule_invalid", "api.repeat.unreal_date") from None
     return moment.replace(tzinfo=UTC) if utc else moment
 
 

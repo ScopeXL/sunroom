@@ -14,6 +14,7 @@ from typing import Any, cast
 from sqlalchemy import select
 
 from sunroom.core.errors import AppError
+from sunroom.core.lang import Words
 from sunroom.core.netguard import OutboundError
 from sunroom.plugins.base import Problem
 from sunroom.plugins.calendar_sync import addresses
@@ -52,21 +53,20 @@ READ_ONLY_PROVIDERS = {Provider.ICS, Provider.HOLIDAYS}
 NETWORK_LABEL = "Calendars & Accounts"
 
 
-def bad(message: str, code: str = "invalid") -> AppError:
-    return AppError(422, code, message)
+def bad(key: str, code: str = "invalid", **params: object) -> AppError:
+    return AppError(422, code, key, params=params)
 
 
 def not_found() -> AppError:
-    return AppError(404, "not_found", "That account isn't connected any more.")
+    return AppError(404, "not_found", "api.sync.account_not_found")
 
 
 # ---- what needs a parent (Needs Attention, ADR 0034) ---------------------------------------------
 
 
 def account_name(account: SyncAccount) -> str:
-    """What the family calls the account, as the app does (features/sync's sourceName)."""
-    if account.provider == Provider.HOLIDAYS:
-        return "Holidays"
+    """What the family calls the account, as the app does (features/sync's sourceName): a
+    brand's name, or the one it was given. The holidays have sentences of their own."""
     if account.provider == Provider.GOOGLE:
         return "Google"
     address = account.server_url or ""
@@ -77,16 +77,18 @@ def account_name(account: SyncAccount) -> str:
     return account.label
 
 
-def problem_sentence(account: SyncAccount) -> str:
-    """One sentence for an account that stopped working; when it started is said apart."""
-    name = account_name(account)
+def problem_sentence(account: SyncAccount) -> Words:
+    """One sentence for an account that stopped working, by its key (ADR 0043); when it started
+    is said apart."""
     if account.status == AccountStatus.NEEDS_RECONNECT:
         if account.provider == Provider.GOOGLE:
-            return "Google signed Sunroom out."
+            return Words("api.sync.google_signed_out")
         if account.provider == Provider.ICS:
-            return f"{name}'s calendar address stopped working."
-        return f"{name} needs its password again."
-    return f"{name} hasn't answered. Showing what we had."
+            return Words("api.sync.address_stopped", {"name": account_name(account)})
+        return Words("api.sync.needs_password", {"name": account_name(account)})
+    if account.provider == Provider.HOLIDAYS:
+        return Words("api.sync.holidays_not_answering")
+    return Words("api.sync.not_answering", {"name": account_name(account)})
 
 
 async def problems(ctx: PluginContext) -> list[Problem]:
@@ -103,21 +105,24 @@ async def problems(ctx: PluginContext) -> list[Problem]:
                 .order_by(SyncAccount.created_at)
             )
         ).all()
-    return [
-        Problem(
-            id=f"sync:{account.id}",
-            title=problem_sentence(account),
-            detail=account.last_error,
-            # Hasn't answered: since it last did. Refused: since the refusal.
-            since=(
-                account.last_success_at or account.last_error_at
-                if account.status == AccountStatus.ERROR
-                else account.last_error_at or account.last_success_at
-            ),
-            page="calendars",
-        )
-        for account in accounts
-    ]
+    return [_problem(account) for account in accounts]
+
+
+def _problem(account: SyncAccount) -> Problem:
+    said = problem_sentence(account)
+    return Problem(
+        id=f"sync:{account.id}",
+        key=said.key,
+        params=said.params,
+        detail=account.last_error,
+        # Hasn't answered: since it last did. Refused: since the refusal.
+        since=(
+            account.last_success_at or account.last_error_at
+            if account.status == AccountStatus.ERROR
+            else account.last_error_at or account.last_success_at
+        ),
+        page="calendars",
+    )
 
 
 # ---- reading -----------------------------------------------------------------------------------
@@ -295,7 +300,7 @@ async def _check_member(ctx: PluginContext, member_id: str | None) -> MemberView
         return None
     member = await ctx.members.get(member_id)
     if member is None:
-        raise bad("That person isn't in the household.", "unknown_member")
+        raise bad("api.sync.unknown_member", "unknown_member")
     return member
 
 
@@ -312,10 +317,10 @@ async def add_ics(
         parsed = await asyncio.to_thread(parse_calendar, content, ctx.zone())
     except SyncError as exc:
         await _forget_home(ctx, url, added)
-        raise bad(exc.message, "address_failed") from None
+        raise AppError.said(422, "address_failed", exc.words) from None
     except OutboundError as exc:
         await _forget_home(ctx, url, added)
-        raise bad(exc.message, exc.code) from None
+        raise AppError.said(422, exc.code, exc.words) from None
     except ValueError:
         await _forget_home(ctx, url, added)
         raise bad(NOT_A_CALENDAR, "not_a_calendar") from None
@@ -370,9 +375,9 @@ async def add_holidays(
     subdivision = body.subdivision.upper() if body.subdivision else None
     places_known = supported()
     if country not in places_known:
-        raise bad("Sunroom doesn't have holidays for that country.", "unknown_country")
+        raise bad("api.sync.holidays.no_country", "unknown_country")
     if subdivision and subdivision not in places_known[country]:
-        raise bad("Sunroom doesn't have holidays for that state or region.", "unknown_region")
+        raise bad("api.sync.holidays.no_region", "unknown_region")
     owner = await _check_member(ctx, body.owner_member_id)
     provider = HolidaysProvider(country, subdivision, ctx.now)
     label = "Holidays · " + country + (f"-{subdivision}" if subdivision else "")
@@ -492,7 +497,7 @@ async def map_calendar(
         account = await _account(session, account_id)
         row = await session.get(RemoteCalendarRow, row_id)
         if row is None or row.account_id != account_id:
-            raise AppError(404, "not_found", "That calendar isn't in this account any more.")
+            raise AppError(404, "not_found", "api.sync.calendar_not_in_account")
         provider_name, row_name, read_only = account.provider, row.name, row.read_only
         calendar_id, was_mapped = row.calendar_id, row.mapped
     label = source_label(provider_name, account.server_url)
@@ -540,9 +545,9 @@ async def sync_now(ctx: PluginContext, engine: SyncEngine, account_id: str) -> A
         account = await _account(session, account_id)
         last = account.last_sync_at
     if engine.is_running(account_id):
-        raise AppError(409, "already_syncing", "It's syncing right now.")
+        raise AppError(409, "already_syncing", "api.sync.already_syncing")
     if last is not None and ctx.now() - last < SYNC_NOW_EVERY:
-        raise AppError(429, "too_soon", "It synced a moment ago. Try again in a minute.")
+        raise AppError(429, "too_soon", "api.sync.too_soon")
     engine.start(account_id)
     return await get_account(ctx, engine, account_id)
 
@@ -592,7 +597,7 @@ async def reconnect(
     secrets: dict[str, Any]
     if provider_name == Provider.ICS:
         if not body.url:
-            raise bad("Paste the calendar's address.")
+            raise bad("api.sync.paste_address")
         url = addresses.normalize(body.url)
         probe = IcsProvider(ctx.http(allow_private=account.allow_private), url, "", ctx.zone)
         # A new address on the home network: its host joins the allowlist as the tick says.
@@ -602,7 +607,7 @@ async def reconnect(
             await asyncio.to_thread(parse_calendar, content, ctx.zone())
         except SyncError as exc:
             await _forget_home(ctx, url, added)
-            raise bad(exc.message, "address_failed") from None
+            raise AppError.said(422, "address_failed", exc.words) from None
         except ValueError:
             await _forget_home(ctx, url, added)
             raise bad(NOT_A_CALENDAR, "not_a_calendar") from None
@@ -610,7 +615,7 @@ async def reconnect(
         shown = addresses.shown(url)
     else:
         if not body.app_password:
-            raise bad("Type the new password.")
+            raise bad("api.sync.type_password")
         if check is not None:
             await check(body.app_password)
         secrets = {"password": body.app_password}
@@ -708,7 +713,7 @@ async def _release_home(ctx: PluginContext, host: str) -> None:
 
 def failure_message(exc: SyncError) -> AppError:
     code = "auth_failed" if exc.kind == ErrorKind.AUTH else "unreachable"
-    return bad(exc.message, code)
+    return AppError.said(422, code, exc.words)
 
 
 def fresh(now: datetime, then: datetime | None, within: timedelta) -> bool:
@@ -742,7 +747,7 @@ async def add_caldav(
         raise failure_message(exc) from None
     except OutboundError as exc:
         await _forget_home(ctx, server_url, added)
-        raise bad(exc.message, exc.code) from None
+        raise AppError.said(422, exc.code, exc.words) from None
     icloud = addresses.host_of(server_url).endswith("icloud.com")
     name = "Apple" if icloud else addresses.host_of(server_url)
     label = body.label or f"{name} · {masked_user(body.username)}"

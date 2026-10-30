@@ -240,6 +240,8 @@ async def test_off_every_route_is_404_and_on_again_the_data_is_there(
         assert response.json()["error"] == {
             "code": "plugin_disabled",
             "message": "Countdowns is turned off. A parent can turn it on in Settings.",
+            "key": "api.plugins.turned_off",
+            "params": {"name": "Countdowns"},
         }
     assert await overlaid(parent, "2026-10-04", "2026-11-01") == []  # off the calendar too
     on = await parent.post("/api/plugins/countdowns/enable", headers=CSRF)

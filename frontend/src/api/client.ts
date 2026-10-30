@@ -5,12 +5,14 @@
  * * Every response feeds the server-clock offset (the display shows the server's time) and the
  *   reachability store.
  * * A non-JSON reply (e.g. a proxy's 502 HTML page) counts as "server unreachable".
+ * * A refusal names its sentence's key and values beside the server's English (ADR 0043): the
+ *   page says it in the family's language, and the English for a key this page doesn't know.
  */
 import createClient, { type Middleware } from "openapi-fetch";
 
 import { recordClockSample } from "../lib/clock";
 import { markReachable, markUnreachable } from "../lib/connection";
-import { getLanguage, t } from "../lib/lang";
+import { getLanguage, isKey, t, type Params } from "../lib/lang";
 import type { paths } from "./schema";
 
 export class ApiError extends Error {
@@ -23,6 +25,10 @@ export class ApiError extends Error {
     readonly problems: string[] = [],
     /** Seconds until another try is allowed (429). */
     readonly retryAfter: number | null = null,
+    /** The sentence's key in lang/en.json (`api.…`, or the page's own), when one was named. */
+    readonly key: string | null = null,
+    /** The key's `{name}` values. */
+    readonly params: Params = {},
   ) {
     super(message);
     this.name = "ApiError";
@@ -53,7 +59,7 @@ const middleware: Middleware = {
   },
   onError() {
     markUnreachable();
-    return new ApiError(0, "offline", t("app.offline.error"));
+    return new ApiError(0, "offline", t("app.offline.error"), false, [], null, "app.offline.error");
   },
 };
 
@@ -61,28 +67,40 @@ export const api = createClient<paths>({ baseUrl: "" });
 api.use(middleware);
 
 interface ErrorEnvelope {
-  error?: { code?: string; message?: string; pin?: boolean; problems?: string[] };
+  error?: {
+    code?: string;
+    message?: string;
+    key?: string;
+    params?: Params;
+    pin?: boolean;
+    problems?: string[];
+  };
 }
 
 /** Unwrap an openapi-fetch result: return data, or throw an ApiError with the server's message. */
 export function unwrap<T>(result: { data?: T; error?: unknown; response: Response }): T {
   if (result.error !== undefined || !result.response.ok) {
-    const envelope = (result.error ?? {}) as ErrorEnvelope;
+    const said = ((result.error ?? {}) as ErrorEnvelope).error;
+    const message = said?.message;
     throw new ApiError(
       result.response.status,
-      envelope.error?.code ?? "error",
-      envelope.error?.message ?? t("app.error.generic"),
-      envelope.error?.pin === true,
-      envelope.error?.problems ?? [],
+      said?.code ?? "error",
+      message ?? t("app.error.generic"),
+      said?.pin === true,
+      said?.problems ?? [],
       Number(result.response.headers.get("retry-after")) || null,
+      said?.key ?? (message === undefined ? "app.error.generic" : null),
+      said?.params ?? {},
     );
   }
   return result.data as T;
 }
 
+/** What went wrong, in the page's language: the sentence's key when this page knows it, else the
+ * server's own English (a key from a newer server). */
 export function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
-  return t("app.offline.error");
+  if (!(error instanceof ApiError)) return t("app.offline.error");
+  return error.key !== null && isKey(error.key) ? t(error.key, error.params) : error.message;
 }
 
 /** "Not saved — you're offline. Try again when you have signal." (UX §2): what a setting that

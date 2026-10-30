@@ -57,16 +57,17 @@ _PROBE = {"DAILY": 3000, "WEEKLY": 600, "MONTHLY": 600, "YEARLY": 400}
 
 
 class RecurrenceError(ValueError):
-    """A rule we refuse. ``code`` is ``rrule_invalid`` or ``rrule_unsupported``; ``message`` is
-    a sentence for people."""
+    """A rule we refuse. ``code`` is ``rrule_invalid`` or ``rrule_unsupported``; ``key`` names
+    the sentence for people in ``lang/en.json`` (``api.repeat.*``), which the API says with it
+    (ADR 0043). The engine holds keys only, never the English: it stays standard library."""
 
     code: str
-    message: str
+    key: str
 
-    def __init__(self, code: str, message: str) -> None:
-        super().__init__(message)
+    def __init__(self, code: str, key: str) -> None:
+        super().__init__(key)
         self.code = code
-        self.message = message
+        self.key = key
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,12 +109,12 @@ class Occurrence:
     is_override: bool
 
 
-def _invalid(message: str) -> RecurrenceError:
-    return RecurrenceError("rrule_invalid", message)
+def _invalid(key: str) -> RecurrenceError:
+    return RecurrenceError("rrule_invalid", key)
 
 
-def _unsupported(message: str) -> RecurrenceError:
-    return RecurrenceError("rrule_unsupported", message)
+def _unsupported(key: str) -> RecurrenceError:
+    return RecurrenceError("rrule_unsupported", key)
 
 
 # --- Parsing -------------------------------------------------------------------------------
@@ -136,23 +137,23 @@ def _signed_order(value: int) -> tuple[bool, int]:
     return value < 0, abs(value)
 
 
-def _numbers(value: str, low: int, high: int, message: str, *, signed: bool) -> tuple[int, ...]:
+def _numbers(value: str, low: int, high: int, key: str, *, signed: bool) -> tuple[int, ...]:
     pattern = _SIGNED if signed else _UNSIGNED
     found: set[int] = set()
     for item in value.split(","):
         if not pattern.fullmatch(item):
-            raise _invalid(message)
+            raise _invalid(key)
         number = int(item)
         if number == 0 or not low <= abs(number) <= high:
-            raise _invalid(message)
+            raise _invalid(key)
         found.add(number)
     return tuple(sorted(found, key=_signed_order))
 
 
-def _number(value: str, low: int, high: int, message: str) -> int:
+def _number(value: str, low: int, high: int, key: str) -> int:
     if "," in value:
-        raise _invalid(message)
-    return _numbers(value, low, high, message, signed=False)[0]
+        raise _invalid(key)
+    return _numbers(value, low, high, key, signed=False)[0]
 
 
 def _byday(value: str, freq: str) -> tuple[tuple[int, int], ...]:
@@ -160,26 +161,26 @@ def _byday(value: str, freq: str) -> tuple[tuple[int, int], ...]:
     for item in value.split(","):
         match = _BYDAY.fullmatch(item)
         if match is None:
-            raise _invalid("The weekdays in this repeat aren't written correctly.")
+            raise _invalid("api.repeat.bad_weekdays")
         nth = int(match.group(1) or 0)
         if match.group(1) is not None:
             if freq not in ("MONTHLY", "YEARLY"):
-                raise _invalid("Only monthly and yearly repeats can pick a week of the month.")
+                raise _invalid("api.repeat.week_of_month")
             if nth == 0 or abs(nth) > (5 if freq == "MONTHLY" else 53):
-                raise _invalid("No month or year has that many of one weekday.")
+                raise _invalid("api.repeat.too_many_weekday")
         found.add((nth, _DAYS.index(match.group(2))))
     return tuple(sorted(found, key=lambda entry: (entry[1], _signed_order(entry[0]))))
 
 
 def _check_until(value: str) -> str:
     if not _UNTIL.fullmatch(value):
-        raise _invalid("The end date of this repeat isn't written correctly.")
+        raise _invalid("api.repeat.bad_end_date")
     try:
         date(int(value[:4]), int(value[4:6]), int(value[6:8]))
         if len(value) > 8:
             time(int(value[9:11]), int(value[11:13]), int(value[13:15]))
     except ValueError:
-        raise _invalid("The end date of this repeat isn't a real date.") from None
+        raise _invalid("api.repeat.unreal_end_date") from None
     return value
 
 
@@ -192,58 +193,58 @@ def _parse(text: str) -> _Rule:
             continue
         name, equals, value = (piece.strip() for piece in chunk.partition("="))
         if not equals or not value:
-            raise _invalid("This repeat isn't written correctly.")
+            raise _invalid("api.repeat.bad_rule")
         if name in parts:
-            raise _invalid("This repeat says the same thing twice.")
+            raise _invalid("api.repeat.said_twice")
         parts[name] = value
     freq = parts.pop("FREQ", None)
     if freq is None:
-        raise _invalid("A repeat needs to say how often it happens.")
+        raise _invalid("api.repeat.no_freq")
     if freq in _TOO_OFTEN:
-        raise _unsupported("Events can repeat at most once a day.")
+        raise _unsupported("api.repeat.too_often")
     if freq not in _FREQS:
-        raise _invalid("A repeat happens daily, weekly, monthly or yearly.")
+        raise _invalid("api.repeat.bad_freq")
     for name in parts:
         if name in _UNSUPPORTED:
-            raise _unsupported("Repeating by hour, day of the year or week number isn't supported.")
+            raise _unsupported("api.repeat.unsupported_part")
         if name not in _KNOWN:
-            raise _invalid("This repeat has a part Sunroom doesn't understand.")
+            raise _invalid("api.repeat.unknown_part")
 
     interval = _number(
         parts.get("INTERVAL", "1"),
         1,
         MAX_INTERVAL,
-        "Repeat every 1 to 9,999 days, weeks, months or years.",
+        "api.repeat.bad_interval",
     )
     count = None
     if "COUNT" in parts:
-        count = _number(parts["COUNT"], 1, MAX_COUNT, "A repeat can happen 1 to 1,000 times.")
+        count = _number(parts["COUNT"], 1, MAX_COUNT, "api.repeat.bad_count")
     until = _check_until(parts["UNTIL"]) if "UNTIL" in parts else None
     if count is not None and until is not None:
-        raise _invalid("A repeat ends after a number of times or on a date, not both.")
+        raise _invalid("api.repeat.count_and_until")
     bymonth = (
-        _numbers(parts["BYMONTH"], 1, 12, "Months go from 1 to 12.", signed=False)
+        _numbers(parts["BYMONTH"], 1, 12, "api.repeat.bad_month", signed=False)
         if "BYMONTH" in parts
         else ()
     )
     bymonthday = (
-        _numbers(parts["BYMONTHDAY"], 1, 31, "Days of the month go from 1 to 31.", signed=True)
+        _numbers(parts["BYMONTHDAY"], 1, 31, "api.repeat.bad_month_day", signed=True)
         if "BYMONTHDAY" in parts
         else ()
     )
     if bymonthday and freq == "WEEKLY":
-        raise _invalid("A weekly repeat can't also pick days of the month.")
+        raise _invalid("api.repeat.weekly_month_days")
     byday = _byday(parts["BYDAY"], freq) if "BYDAY" in parts else ()
     bysetpos = (
-        _numbers(parts["BYSETPOS"], 1, 366, "That position in the set doesn't exist.", signed=True)
+        _numbers(parts["BYSETPOS"], 1, 366, "api.repeat.bad_position", signed=True)
         if "BYSETPOS" in parts
         else ()
     )
     if bysetpos and not (byday or bymonthday or bymonth):
-        raise _invalid("A position in the set needs days or months to pick from.")
+        raise _invalid("api.repeat.position_alone")
     wkst = parts.get("WKST", "MO")
     if wkst not in _DAYS:
-        raise _invalid("The week has to start on a weekday.")
+        raise _invalid("api.repeat.bad_week_start")
     return _Rule(
         freq=freq,
         interval=interval,
@@ -663,11 +664,11 @@ def validate_rrule(rrule: str, timing: Timing, tzid: str) -> str:
     if isinstance(until, datetime):
         assert timing.start_utc is not None
         if until < timing.start_utc:
-            raise _invalid("The repeat can't end before the event starts.")
+            raise _invalid("api.repeat.ends_before_start")
     elif until is not None and until < anchor.first:
-        raise _invalid("The repeat can't end before the event starts.")
+        raise _invalid("api.repeat.ends_before_start")
     if not walk.repeats():
-        raise _invalid("This repeat never lands on another day.")
+        raise _invalid("api.repeat.never_again")
     return _format(rule, until)
 
 
@@ -828,7 +829,7 @@ def count_before(series: Series, rid: str) -> int:
     try:
         day, at = _point(rid, anchor)
     except ValueError:
-        raise _invalid("That isn't a day this event happens on.") from None
+        raise _invalid("api.repeat.not_a_day") from None
     if not series.rrule:
         return 1 if (anchor.first, anchor.at) < (day, at) else 0
     return _Walk(_parse(series.rrule), anchor).count_before(day, at)
@@ -847,21 +848,21 @@ def split(series: Series, rid: str) -> tuple[str, str]:
     """Rules for "this and the ones after" at occurrence ``rid`` (never the first): one that
     ends the series just before it, and one for a new series that starts at it."""
     if not series.rrule:
-        raise _invalid("Only a repeating event can change from one day onward.")
+        raise _invalid("api.repeat.not_repeating")
     rule = _parse(series.rrule)
     anchor = _anchor(series.timing, series.tzid)
     walk = _Walk(rule, anchor)
     try:
         value = parse_rid(rid)
     except ValueError:
-        raise _invalid("That isn't a day this event happens on.") from None
+        raise _invalid("api.repeat.not_a_day") from None
     if isinstance(value, datetime) != (anchor.zone is not None):
-        raise _invalid("That isn't a day this event happens on.")
+        raise _invalid("api.repeat.not_a_day")
     day, at = _point(rid, anchor)
     if _rid_of(anchor, day, anchor.at) != rid or day not in walk.days(day, day):
-        raise _invalid("That isn't a day this event happens on.")
+        raise _invalid("api.repeat.not_a_day")
     if day == anchor.first:
-        raise _invalid("That's the first time; change the whole series instead.")
+        raise _invalid("api.repeat.first_time")
     if rule.count is not None:
         before = walk.count_before(day, at)
         return (

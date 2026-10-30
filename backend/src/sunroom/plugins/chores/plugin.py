@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from sunroom.core.lang import t_en
 from sunroom.plugins.base import (
     Contributions,
     DisplayPanel,
@@ -26,45 +27,49 @@ HOUR_S = 3600
 MANIFEST = PluginManifest(
     id="chores",
     version="1.0.0",
-    name="Tasks",
-    description="Tasks for each person or anyone, with stars, rewards and routines.",
+    name=t_en("plugins.chores.name"),
+    description=t_en("plugins.chores.description"),
     settings_spec=(
         ParamField(
             "stars",
-            "Stars",
+            t_en("plugins.chores.settings.stars.label"),
             "bool",
-            help="Tasks give stars, and children see their own.",
+            help=t_en("plugins.chores.settings.stars.help"),
             default=True,
         ),
         ParamField(
             "rewards",
-            "Rewards",
+            t_en("plugins.chores.settings.rewards.label"),
             "bool",
-            help="Stars buy rewards a parent says yes to.",
+            help=t_en("plugins.chores.settings.rewards.help"),
             default=True,
         ),
         ParamField(
             "routines",
-            "Routines",
+            t_en("plugins.chores.settings.routines.label"),
             "bool",
-            help="Morning and bedtime checklists children run on their own.",
+            help=t_en("plugins.chores.settings.routines.help"),
             default=True,
         ),
         ParamField(
             "approval",
-            "A parent checks finished tasks",
+            t_en("plugins.chores.settings.approval.label"),
             "bool",
-            help="Stars arrive once a parent says a task is done. Each task can say otherwise.",
+            help=t_en("plugins.chores.settings.approval.help"),
             default=False,
         ),
     ),
     tables=TABLES,
     export_tables=EXPORT_TABLES,
     contributes=Contributions(
-        display_panels=(DisplayPanel("today", "Tasks Today"),),
-        display_rooms=(DisplayRoom("chores", "Tasks", "check", order=30),),
-        phone_tabs=(PhoneTab("chores", "Tasks", "check", "/chores", order=30),),
-        settings_sections=(SettingsSection("chores", "Tasks"),),
+        display_panels=(DisplayPanel("today", t_en("plugins.chores.panels.today")),),
+        display_rooms=(
+            DisplayRoom("chores", t_en("plugins.chores.rooms.chores"), "check", order=30),
+        ),
+        phone_tabs=(
+            PhoneTab("chores", t_en("plugins.chores.tabs.chores"), "check", "/chores", order=30),
+        ),
+        settings_sections=(SettingsSection("chores", t_en("plugins.chores.sections.chores")),),
     ),
     default_enabled=True,
 )

@@ -24,6 +24,10 @@ Everything that changes in Sunroom, written in plain English. The format follows
   Sunroom Screen, the way it starts, and Sunroom itself when it runs there. The screen says what
   it's doing step by step, restarts the computer only when it must, and says Updated when it's
   back. If the new version doesn't start, the one before comes back.
+- Holidays are named in the household's language when Sunroom has them in it for that country,
+  so a family whose Sunroom speaks English sees another country's holidays in English (Spain's
+  "Año Nuevo" becomes "New Year's Day"). They change at the next sync. The town search in
+  Settings → Household → Location names places in the household's language too.
 - Send Feedback goes to the people who make Sunroom again, with no account: what you write posts
   to the project's relay (feedback.sunroom.day), which puts it in a private channel of the
   Sunroom Discord that only the people who make Sunroom read, with Sunroom's version and nothing

@@ -113,7 +113,7 @@ def face(index: int) -> bytes:
 
 def _check_place(url: str, key: str) -> None:
     if (urlsplit(url).hostname or "") != FAKE_HOST:
-        raise LibraryError("unreachable", "That server couldn't be found. Check the address.")
+        raise LibraryError("unreachable", "api.network.not_found")
     if key != FAKE_KEY:
         raise LibraryError("auth", AUTH)
 

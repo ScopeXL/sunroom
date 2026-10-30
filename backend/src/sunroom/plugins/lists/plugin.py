@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from sunroom.core.lang import t_en
 from sunroom.plugins.base import (
     Contributions,
     DisplayPanel,
@@ -21,25 +22,32 @@ HOUR_S = 3600
 MANIFEST = PluginManifest(
     id="lists",
     version="1.0.0",
-    name="Lists",
-    description="Groceries, to-dos and packing lists that everyone adds to and checks off.",
+    name=t_en("plugins.lists.name"),
+    description=t_en("plugins.lists.description"),
     settings_spec=(
         ParamField(
             "auto_clear_days",
-            "Clear completed items after",
+            t_en("plugins.lists.settings.auto_clear_days.label"),
             "choice",
-            help="Checked items leave Done on their own after this long.",
+            help=t_en("plugins.lists.settings.auto_clear_days.help"),
             default="never",
             choices=("never", "1", "3", "7"),
-            choice_labels=("Never", "1 day", "3 days", "1 week"),
+            choice_labels=(
+                t_en("plugins.lists.settings.auto_clear_days.choices.never"),
+                t_en("plugins.lists.settings.auto_clear_days.choices.1"),
+                t_en("plugins.lists.settings.auto_clear_days.choices.3"),
+                t_en("plugins.lists.settings.auto_clear_days.choices.7"),
+            ),
         ),
     ),
     tables=TABLES,
     export_tables=EXPORT_TABLES,
     contributes=Contributions(
-        display_panels=(DisplayPanel("todo", "To Do"),),
-        display_rooms=(DisplayRoom("lists", "Lists", "list", order=20),),
-        phone_tabs=(PhoneTab("lists", "Lists", "list", "/lists", order=20),),
+        display_panels=(DisplayPanel("todo", t_en("plugins.lists.panels.todo")),),
+        display_rooms=(DisplayRoom("lists", t_en("plugins.lists.rooms.lists"), "list", order=20),),
+        phone_tabs=(
+            PhoneTab("lists", t_en("plugins.lists.tabs.lists"), "list", "/lists", order=20),
+        ),
     ),
     default_enabled=True,
 )

@@ -34,6 +34,7 @@ from typing import Any, cast
 from urllib.parse import urlencode
 
 from sunroom.core.http import FetchResult
+from sunroom.core.lang import t_en
 from sunroom.core.netguard import OutboundError
 from sunroom.plugins.context import PluginHttp
 from sunroom.plugins.screensaver.sources.base import (
@@ -55,24 +56,19 @@ MAX_PAGES = 50  # however many photos are asked for, a pick never walks further
 OLDEST_MAJOR = 2
 REMOTE_ID = re.compile(r"^[A-Za-z0-9-]{1,100}$")
 
-AUTH = "Immich said that key isn't right. Make a new API key in Immich and connect again."
-FORBIDDEN = (
-    "That key can't read photos. In Immich, make a key that can read photos, albums, people "
-    "and tags."
-)
-NOT_IMMICH = "That address isn't an Immich server."
-BAD_REPLY = "Immich sent a reply Sunroom couldn't read."
-GONE = "That isn't in Immich any more."
+# What Immich's failures say, by their keys in lang/en.json (ADR 0043).
+AUTH = "api.photos.immich.auth"
+FORBIDDEN = "api.photos.immich.forbidden"
+NOT_IMMICH = "api.photos.immich.not_immich"
+BAD_REPLY = "api.photos.immich.bad_reply"
+GONE = "api.photos.immich.gone"
 
 KIND = LibraryKind(
     kind="immich",
     name="Immich",
     placeholder="http://192.168.1.30:2283",
-    address_hint="The address you open Immich at.",
-    key_help=(
-        "In Immich: Account Settings → API Keys → New API Key. Name it Sunroom; it needs to "
-        "read photos, albums, people and tags."
-    ),
+    address_hint=t_en("plugins.screensaver.libraries.immich.address_hint"),
+    key_help=t_en("plugins.screensaver.libraries.immich.key_help"),
 )
 
 
@@ -156,7 +152,7 @@ class ImmichLibrary:
         except OutboundError as exc:
             # The guard's own sentence: a home address not allowed, not found, no answer.
             code = "private_address" if exc.code == "private_address" else "unreachable"
-            raise LibraryError(code, exc.message) from None
+            raise LibraryError(code, exc.key, **exc.params) from None
         if result.status == 401:
             raise LibraryError("auth", AUTH)
         if result.status == 403:
@@ -203,10 +199,7 @@ class ImmichLibrary:
             raise LibraryError("bad_reply", BAD_REPLY)
         major, minor, patch = cast(list[int], parts)
         if major < OLDEST_MAJOR:
-            raise LibraryError(
-                "too_old",
-                f"Sunroom works with Immich 2.0 and newer; this one is {major}.{minor}.",
-            )
+            raise LibraryError("too_old", "api.photos.immich.too_old", version=f"{major}.{minor}")
         # The key reads photos: one search, one photo (401 and 403 say what's wrong).
         await self._json(
             http, "POST", url, key, "/search/metadata", body={"type": "IMAGE", "size": 1}

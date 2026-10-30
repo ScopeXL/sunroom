@@ -68,11 +68,11 @@ DONE_ORDER = (ListItem.checked_at.desc(), ListItem.id.desc())  # the latest chec
 
 
 def list_gone() -> AppError:
-    return AppError(404, "not_found", "That list isn't here any more.")
+    return AppError(404, "not_found", "api.lists.list_gone")
 
 
 def item_gone() -> AppError:
-    return AppError(404, "not_found", "That item isn't here any more.")
+    return AppError(404, "not_found", "api.lists.item_gone")
 
 
 # ---- rules (pure) ------------------------------------------------------------------------------
@@ -172,9 +172,7 @@ async def _check_people(ctx: PluginContext, wanted: Sequence[tuple[str, str | No
     active = {member.id for member in await ctx.members.active()}
     for field, member_id in asked:
         if member_id not in active:
-            raise AppError(
-                422, "invalid", "That person isn't in the household.", extra={"fields": [field]}
-            )
+            raise AppError(422, "invalid", "api.lists.unknown_member", extra={"fields": [field]})
 
 
 # ---- shapes ------------------------------------------------------------------------------------

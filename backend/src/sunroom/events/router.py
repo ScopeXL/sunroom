@@ -42,7 +42,7 @@ def _later_position(a: str | None, b: str | None) -> str | None:
 async def events(request: Request, state: StateDep, since: str | None = None) -> StreamingResponse:
     token = read_token(request, state)
     if token is None:
-        raise AppError(401, "signed_out", "Please sign in.")
+        raise AppError(401, "signed_out", "api.auth.signed_out")
     hub = state.hub
     conn = hub.register(token.device_id, token.epoch)
     mode, backlog, start_seq = hub.catch_up(

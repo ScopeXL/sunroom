@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter
 
+from sunroom.core.lang import t_en
 from sunroom.plugins.base import (
     Contributions,
     DisplayPanel,
@@ -25,37 +26,52 @@ HOUR_S = 3600
 MANIFEST = PluginManifest(
     id="countdowns",
     version="1.0.0",
-    name="Countdowns",
-    description="Days until birthdays, trips and the last day of school.",
+    name=t_en("plugins.countdowns.name"),
+    description=t_en("plugins.countdowns.description"),
     settings_spec=(
         ParamField(
             "birthdays",
-            "Count down to birthdays",
+            t_en("plugins.countdowns.settings.birthdays.label"),
             "bool",
-            help="Birthdays set in Family count down by themselves.",
+            help=t_en("plugins.countdowns.settings.birthdays.help"),
             default=True,
         ),
         # Coming Up on the Today panel: a countdown someone added always shows, however far
         # out; a birthday, which everyone gets for free, only within this window (ADR 0032).
         ParamField(
             "birthdays_within",
-            "Birthdays in Coming Up",
+            t_en("plugins.countdowns.settings.birthdays_within.label"),
             "choice",
-            help=(
-                "Countdowns you add always show in Coming Up. Birthdays further out still show "
-                "on the board on their day."
-            ),
+            help=t_en("plugins.countdowns.settings.birthdays_within.help"),
             default="30",
             choices=("7", "14", "30", "90", "any"),
-            choice_labels=("1 week", "2 weeks", "1 month", "3 months", "Any time"),
+            choice_labels=(
+                t_en("plugins.countdowns.settings.birthdays_within.choices.7"),
+                t_en("plugins.countdowns.settings.birthdays_within.choices.14"),
+                t_en("plugins.countdowns.settings.birthdays_within.choices.30"),
+                t_en("plugins.countdowns.settings.birthdays_within.choices.90"),
+                t_en("plugins.countdowns.settings.birthdays_within.choices.any"),
+            ),
         ),
     ),
     tables=TABLES,
     export_tables=EXPORT_TABLES,
     contributes=Contributions(
-        display_panels=(DisplayPanel("coming_up", "Coming Up"),),
-        display_rooms=(DisplayRoom("countdowns", "Countdowns", "hourglass", order=50),),
-        phone_tabs=(PhoneTab("countdowns", "Countdowns", "hourglass", "/countdowns", order=50),),
+        display_panels=(DisplayPanel("coming_up", t_en("plugins.countdowns.panels.coming_up")),),
+        display_rooms=(
+            DisplayRoom(
+                "countdowns", t_en("plugins.countdowns.rooms.countdowns"), "hourglass", order=50
+            ),
+        ),
+        phone_tabs=(
+            PhoneTab(
+                "countdowns",
+                t_en("plugins.countdowns.tabs.countdowns"),
+                "hourglass",
+                "/countdowns",
+                order=50,
+            ),
+        ),
     ),
     default_enabled=True,
 )

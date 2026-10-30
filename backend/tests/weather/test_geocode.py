@@ -82,6 +82,18 @@ async def test_the_search_names_each_place_once(
     }
 
 
+async def test_places_are_named_in_the_households_language(
+    parent: httpx.AsyncClient, ctx: PluginContext, open_meteo: OpenMeteo
+) -> None:
+    """Open-Meteo names places in the language it's asked for (ADR 0043): the household's,
+    from Settings → Household → Language."""
+    spanish = await parent.patch("/api/settings", json={"language": "es"}, headers=CSRF)
+    assert spanish.status_code == 200, spanish.text
+    assert (await search(parent, "Sample")).status_code == 200
+    [request] = open_meteo.requests
+    assert request.url.params["language"] == "es"
+
+
 async def test_what_is_typed_is_sent_tidied(
     parent: httpx.AsyncClient, ctx: PluginContext, open_meteo: OpenMeteo
 ) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from sunroom.core.lang import t_en
 from sunroom.plugins.base import (
     Contributions,
     DisplayPanel,
@@ -20,24 +21,28 @@ REFRESH_S = 30 * 60
 MANIFEST = PluginManifest(
     id="weather",
     version="1.0.0",
-    name="Weather",
-    description="Today's weather and the week's on the wall, from Open-Meteo.",
+    name=t_en("plugins.weather.name"),
+    description=t_en("plugins.weather.description"),
     settings_spec=(
         ParamField(
             "units",
-            "Temperature unit",
+            t_en("plugins.weather.settings.units.label"),
             "choice",
-            help=(
-                "Auto: °F in the United States, °C elsewhere, going by the household's time zone."
-            ),
+            help=t_en("plugins.weather.settings.units.help"),
             default="auto",
             choices=("auto", "fahrenheit", "celsius"),
-            choice_labels=("Auto", "°F", "°C"),
+            choice_labels=(
+                t_en("plugins.weather.settings.units.choices.auto"),
+                t_en("plugins.weather.settings.units.choices.fahrenheit"),
+                t_en("plugins.weather.settings.units.choices.celsius"),
+            ),
         ),
     ),
     tables=TABLES,
     export_tables=EXPORT_TABLES,
-    contributes=Contributions(display_panels=(DisplayPanel("weather", "Weather"),)),
+    contributes=Contributions(
+        display_panels=(DisplayPanel("weather", t_en("plugins.weather.panels.weather")),)
+    ),
     default_enabled=True,
     # The household's place (core settings) or this plugin's units changed: fetch again.
     subscribes=("settings.changed", "plugins.changed"),

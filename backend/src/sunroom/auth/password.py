@@ -19,6 +19,7 @@ import secrets
 from pydantic import SecretStr
 
 from sunroom.auth.schemas import DeviceFormName
+from sunroom.core.lang import Words
 
 SCRYPT_N = 2**15
 SCRYPT_R = 8
@@ -73,12 +74,12 @@ def env_password_matches(given: str, configured: SecretStr) -> bool:
     return hmac.compare_digest(given_digest, configured_digest)
 
 
-def password_problem(password: str) -> str | None:
+def password_problem(password: str) -> Words | None:
     """Why a new household password won't do, in words for the setup wizard; None if it will."""
     if len(password) < MIN_PASSWORD_LENGTH:
-        return f"Use at least {MIN_PASSWORD_LENGTH} characters. A few words together work well."
+        return Words("api.setup.password_short", {"length": MIN_PASSWORD_LENGTH})
     if password.strip() != password:
-        return "Leave out spaces at the start and end."
+        return Words("api.setup.password_spaces")
     return None
 
 

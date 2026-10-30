@@ -18,8 +18,18 @@ SUN, MON, TUE, WED, THU, FRI, SAT = (date(2026, 10, day) for day in range(4, 11)
 TODAY = WED
 DAY = timedelta(days=1)
 WEEK = timedelta(days=7)
-MEAL_GONE = {"code": "not_found", "message": "That meal isn't here any more."}
-SAVED_GONE = {"code": "not_found", "message": "That saved meal isn't here any more."}
+MEAL_GONE: dict[str, Any] = {
+    "code": "not_found",
+    "message": "That meal isn't here any more.",
+    "key": "api.meals.meal_gone",
+    "params": {},
+}
+SAVED_GONE: dict[str, Any] = {
+    "code": "not_found",
+    "message": "That saved meal isn't here any more.",
+    "key": "api.meals.saved_gone",
+    "params": {},
+}
 
 Json = dict[str, Any]
 Events = list[tuple[str, dict[str, Any]]]

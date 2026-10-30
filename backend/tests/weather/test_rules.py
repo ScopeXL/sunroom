@@ -96,6 +96,10 @@ def test_the_requests_say_what_they_ask() -> None:
         "https://geocoding-api.open-meteo.com/v1/search"
         "?name=Sample%20Town&count=5&language=en&format=json"
     )
+    assert client.search_url("Sample Town", "es") == (
+        "https://geocoding-api.open-meteo.com/v1/search"
+        "?name=Sample%20Town&count=5&language=es&format=json"
+    )
 
 
 # ---- reading answers ---------------------------------------------------------------------------

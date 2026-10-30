@@ -274,6 +274,9 @@ async def test_a_refused_password_asks_to_reconnect(
             "The test server said that password isn't right.",
         )
     ]
+    assert [(p["key"], p["params"]) for p in listed] == [
+        ("api.sync.needs_password", {"name": "Test server"})
+    ]
     # It isn't tried again until someone reconnects it.
     await engine(plugin).tick()
     assert not engine(plugin).is_running(account_id)

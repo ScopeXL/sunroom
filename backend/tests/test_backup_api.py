@@ -114,6 +114,8 @@ async def test_any_copy_downloads_by_its_name_and_nothing_else_does(
         assert removed.json()["error"] == {
             "code": "not_found",
             "message": "That backup doesn't exist.",
+            "key": "api.backups.not_found",
+            "params": {},
         }
     # A slash never reaches the route: the path matches only the page's own (GET) fallback.
     for name in ("..%2Fsunroom.db", "sunroom.2026-10-05.db%2F..", "pre-erase%2Fsunroom.db"):
@@ -137,6 +139,8 @@ async def test_a_parent_removes_a_copy_and_a_wall_screen_cant(
     assert refused.json()["error"] == {
         "code": "not_on_a_screen",
         "message": "Remove backups from a signed-in device.",
+        "key": "api.backups.not_on_a_screen",
+        "params": {},
     }
     assert (data_dir / name).is_file()
     # The screen still sees the copies, to know they're there.
@@ -179,6 +183,8 @@ async def test_a_copy_isnt_removed_while_a_backup_is_written(
         assert refused.json()["error"] == {
             "code": "backup_busy",
             "message": "A backup is being written. Try again in a moment.",
+            "key": "api.backups.busy",
+            "params": {},
         }
         assert (data_dir / "backups" / "sunroom.2026-10-05.db").is_file()
     finally:

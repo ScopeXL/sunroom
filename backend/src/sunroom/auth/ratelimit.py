@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 from sunroom.core.clock import Clock
+from sunroom.core.lang import Words
 
 PER_KEY_LIMIT = 5
 PER_KEY_WINDOW = timedelta(minutes=15)
@@ -71,6 +72,10 @@ class FailureLimiter:
         self._paused_until = None
 
 
-def wait_message(seconds: int) -> str:
+def wait_words(seconds: int) -> Words:
+    """How long to wait, in whole minutes: a sentence of its own for one (no plurals on the
+    server, ADR 0043)."""
     minutes = max(1, round(seconds / 60))
-    return f"Too many tries. Wait {minutes} minute{'s' if minutes != 1 else ''}."
+    if minutes == 1:
+        return Words("api.auth.wait_one_minute")
+    return Words("api.auth.wait_minutes", {"minutes": minutes})

@@ -24,18 +24,27 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from urllib.parse import SplitResult, urlsplit
 
+from sunroom.core.lang import Words, plain, t_en
+
 IPAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 Resolver = Callable[[str, int], Awaitable[list[str]]]
 AllowlistProvider = Callable[[], Awaitable[Sequence[str]]]
 
 
 class OutboundError(Exception):
-    """A fetch that won't be made, with a plain-English reason a parent can act on."""
+    """A fetch that won't be made, with a plain-English reason a parent can act on: ``key``
+    names it in ``lang/en.json`` (``api.network.*``), and ``message`` is its English."""
 
-    def __init__(self, code: str, message: str) -> None:
-        super().__init__(message)
+    def __init__(self, code: str, key: str, **params: object) -> None:
         self.code = code
-        self.message = message
+        self.key = key
+        self.params = plain(params)
+        self.message = t_en(key, **self.params)
+        super().__init__(self.message)
+
+    @property
+    def words(self) -> Words:
+        return Words(self.key, self.params)
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,26 +109,19 @@ class NetGuard:
             parts = urlsplit(url.strip())
             port = parts.port
         except ValueError:
-            raise OutboundError("bad_address", "That address doesn't look right.") from None
+            raise OutboundError("bad_address", "api.network.bad_address") from None
         if parts.scheme not in {"http", "https"}:
-            raise OutboundError("bad_address", "Only http:// and https:// addresses work here.")
+            raise OutboundError("bad_address", "api.network.http_only")
         if parts.username is not None or parts.password is not None:
-            raise OutboundError(
-                "bad_address",
-                "Leave the user name and password out of the address; there are fields for them.",
-            )
+            raise OutboundError("bad_address", "api.network.no_password_in_address")
         host = (parts.hostname or "").rstrip(".").lower()
         if not host:
-            raise OutboundError("bad_address", "That address doesn't name a server.")
+            raise OutboundError("bad_address", "api.network.no_server")
         port = port or (443 if parts.scheme == "https" else 80)
         addresses = await self._addresses(host, port)
         private = not all(is_public(address) for address in addresses)
         if private and not (allow_private and await self._private_allowed(host, addresses)):
-            raise OutboundError(
-                "private_address",
-                'That address is on your home network. A parent can allow it: tick "This '
-                'server is on your home network".',
-            )
+            raise OutboundError("private_address", "api.network.private")
         return Target(parts, host, port, tuple(addresses), private)
 
     async def _addresses(self, host: str, port: int) -> list[IPAddress]:
@@ -138,7 +140,7 @@ class NetGuard:
             except ValueError:
                 continue
         if not addresses:
-            raise OutboundError("not_found", "That server couldn't be found. Check the address.")
+            raise OutboundError("not_found", "api.network.not_found")
         return addresses
 
     async def _private_allowed(self, host: str, addresses: Sequence[IPAddress]) -> bool:

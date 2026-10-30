@@ -6,6 +6,7 @@ working with every other plugin off. Synthetic pictures only."""
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -42,10 +43,14 @@ DEFAULTS = {"start_after_minutes": 15, "every_seconds": 30, "show_clock": True, 
 OFF = {
     "code": "plugin_disabled",
     "message": "Photos & Screensaver is turned off. A parent can turn it on in Settings.",
+    "key": "api.plugins.turned_off",
+    "params": {"name": "Photos & Screensaver"},
 }
-PARENT_PIN = {
+PARENT_PIN: dict[str, Any] = {
     "code": "parent_required",
     "message": "Only a parent can do that. Enter the parent PIN.",
+    "key": "api.auth.parent_pin",
+    "params": {},
     "pin": True,
 }
 
@@ -313,6 +318,8 @@ async def test_while_photos_start_a_request_asks_to_try_again(
     assert response.json()["error"] == {
         "code": "starting",
         "message": "Photos are still starting. Try again.",
+        "key": "api.photos.starting",
+        "params": {},
     }
 
 

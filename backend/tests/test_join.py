@@ -79,6 +79,8 @@ async def test_a_code_works_once(
         "code": "join_code_invalid",
         "message": "That code didn't work. A code works once, for 10 minutes. Make a new one "
         "on a signed-in device.",
+        "key": "api.auth.join_code_invalid",
+        "params": {},
     }
 
 

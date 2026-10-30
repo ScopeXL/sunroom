@@ -44,8 +44,8 @@ starting. The examples below use the id `notes`; use your own.
 | `models.py` | SQLAlchemy models on `sunroom.db.base.Base`, with `sunroom.db.types`: `String(36)` ids from `new_id()` (UUIDv7), `UTCDateTime`, `IsoDate`, `utcnow`; `deleted_at` for removals that Undo and Recently removed can put back. Then `TABLES` (every table, parents first) and `EXPORT_TABLES` |
 | `plugin.py` | `MANIFEST`, the plugin class, and `PLUGIN = Notes()` |
 | `schemas.py` | Pydantic shapes. **Every class name must be unique across the whole API**: FastAPI names schemas after their class, and two classes with one name both become `sunroom__plugins__…__ItemOut`, renaming types the frontend already uses. Prefix them with the plugin's noun (`NoteIn`, `NoteOut`, `NotePatch`, `RemovedNoteOut`) and check the names in `frontend/src/api/openapi.json` |
-| `service.py` | The rules. Writes go in `async with ctx.write() as tx:`, stamp times with `ctx.now()`, and publish from the same transaction: `tx.publish("notes.changed", {"id": row.id})` (delivered after commit). Errors are `AppError(status, code, "Plain words.")` (UX §2: say what happened and what to do; never an ID) |
-| `router.py` | `build(router, plugin)`: routes on the router the framework hands over, already prefixed `/api/<url prefix>` and gated. `ActorDep` for anyone signed in, `ParentDep` for parents only (`Actor` also says whether it's the wall screen, and who tapped there). Static paths before `/{note_id}`; a `ctx()` helper answering 503 "Notes are still starting. Try again." until `on_enable` has run |
+| `service.py` | The rules. Writes go in `async with ctx.write() as tx:`, stamp times with `ctx.now()`, and publish from the same transaction: `tx.publish("notes.changed", {"id": row.id})` (delivered after commit). Errors are `AppError(status, code, "api.notes.gone")`: the key of a sentence in `lang/en.json`, in plain words (UX §2: say what happened and what to do; never an ID), with `params={"name": …}` for a value in it. The server's sentences are plain `{name}`s, never a plural: one key for one and one for more (ADR 0043, docs/LANGUAGES.md) |
+| `router.py` | `build(router, plugin)`: routes on the router the framework hands over, already prefixed `/api/<url prefix>` and gated. `ActorDep` for anyone signed in, `ParentDep` for parents only (`Actor` also says whether it's the wall screen, and who tapped there). Static paths before `/{note_id}`; a `ctx()` helper answering 503 `api.notes.starting` ("Notes are still starting. Try again.") until `on_enable` has run |
 | `sample.py` | `seed(ctx, people)`: the synthetic Sample Family's rows (`people` maps Ana, Sam, Mia and Leo to member ids), added only when the plugin's tables are empty. The test server's `POST /api/_test/seed` (`just seed`, end-to-end runs, screenshots) calls it for each enabled plugin |
 
 The manifest (`plugins/base.py` has every field):
@@ -54,14 +54,25 @@ The manifest (`plugins/base.py` has every field):
 MANIFEST = PluginManifest(
     id="notes",  # ^[a-z][a-z0-9_]{1,30}$; the URL prefix is the id with "-" for "_"
     version="1.0.0",  # the plugin's API and settings shape
-    name="Notes",  # Settings → Features, and "Notes is turned off. A parent can turn it on…"
-    description="Short notes for the whole family.",
-    settings_spec=(ParamField("pinned_first", "Pinned notes first", "bool", default=True),),
+    name=t_en("plugins.notes.name"),  # Settings → Features, and "Notes is turned off. …"
+    description=t_en("plugins.notes.description"),
+    settings_spec=(
+        ParamField(
+            "pinned_first",
+            t_en("plugins.notes.settings.pinned_first.label"),
+            "bool",
+            default=True,
+        ),
+    ),
     tables=TABLES,
     export_tables=EXPORT_TABLES,
     contributes=Contributions(
-        display_rooms=(DisplayRoom("notes", "Notes", "sticky-note", order=70),),
-        phone_tabs=(PhoneTab("notes", "Notes", "sticky-note", "/notes", order=70),),
+        display_rooms=(
+            DisplayRoom("notes", t_en("plugins.notes.rooms.notes"), "sticky-note", order=70),
+        ),
+        phone_tabs=(
+            PhoneTab("notes", t_en("plugins.notes.tabs.notes"), "sticky-note", "/notes", order=70),
+        ),
     ),
     default_enabled=True,
 )
@@ -69,6 +80,14 @@ MANIFEST = PluginManifest(
 
 `contributes` is what `GET /api/plugins` reports; the frontend draws from its own module (step 5),
 so keep the two in step.
+
+**Every word is a key** (ADR 0043, docs/LANGUAGES.md). The manifest's words come from
+`lang/en.json` through `t_en` (`sunroom.core.lang`), each key written out in the plugin's code so
+`just lang` sees it: `plugins.<id>.name` and `.description`; a field's `.settings.<key>.label`,
+`.help` and `.choices.<value>` (the value lowercased, anything else `_`); and `.panels.<key>`,
+`.rooms.<key>`, `.tabs.<key>`, `.sections.<key>`. The page finds each word in the family's
+language by the same key; `test_every_word_a_manifest_says_is_its_key_s_english` holds the two
+together. A refusal names its key (`api.notes.gone`), and so does a `Problem` (`key`, `params`).
 
 The class follows countdowns: it extends `PluginBase` (a no-op default for every hook);
 `register_routes` imports `router.py` and calls `build(router, self)`; `on_enable(ctx)` keeps

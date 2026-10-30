@@ -164,6 +164,8 @@ async def test_a_photo_library_s_photo_is_hidden_never_removed_one_by_one(
         "code": "from_library",
         "message": "This photo comes from a photo library. Hide it from the screensaver "
         "instead, or take it out of the library.",
+        "key": "api.photos.from_library",
+        "params": {},
     }
     hidden = await parent.post(f"/api/photos/{photo.id}/hide", headers=CSRF)
     assert hidden.status_code == 200 and hidden.json()["hidden"] is True

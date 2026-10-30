@@ -41,6 +41,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sunroom.core.errors import AppError
+from sunroom.core.lang import t_en
 from sunroom.core.logging import get_logger
 from sunroom.photos.models import Photo, PhotoKind
 from sunroom.plugins.base import Problem
@@ -85,15 +86,15 @@ NEXT_PASS_S = 2.0
 MAX_ROUNDS = 50  # passes one start may chain (10,000 photos)
 SYNC_EVERY_S = 30 * 60
 PRETEND_WAIT_TICKS = 600  # the test route waits up to 30 s for a pass already running
-KEY_WIPED = "Sunroom can't read this library's saved key any more. Connect it again."
-UNKNOWN_KIND = "That kind of library isn't one Sunroom knows."
+KEY_WIPED = "api.photos.library_key_unreadable"
+UNKNOWN_KIND = "api.photos.unknown_kind"
 
 # Libraries with a pass running (or about to): one at a time each, and what "checking" says.
 _passing: set[str] = set()
 
 
 def library_gone() -> AppError:
-    return AppError(404, "not_found", "That photo library isn't here any more.")
+    return AppError(404, "not_found", "api.photos.library_gone")
 
 
 # ---- what's kept -------------------------------------------------------------------------------
@@ -165,17 +166,11 @@ def library_address(raw: str) -> str:
     host = (parts.hostname or "").lower()
     if parts.scheme not in {"http", "https"} or not host or port == -1:
         raise AppError(
-            422,
-            "bad_address",
-            "That address doesn't look right. It looks like http://192.168.1.30:2283.",
-            extra={"fields": ["url"]},
+            422, "bad_address", "api.photos.library_bad_address", extra={"fields": ["url"]}
         )
     if parts.username is not None or parts.password is not None:
         raise AppError(
-            422,
-            "bad_address",
-            "Leave the user name and password out of the address; the key is all it needs.",
-            extra={"fields": ["url"]},
+            422, "bad_address", "api.photos.library_no_password", extra={"fields": ["url"]}
         )
     netloc = f"[{host}]" if ":" in host else host
     return f"{parts.scheme}://{netloc}{f':{port}' if port else ''}"
@@ -348,11 +343,12 @@ async def problems(ctx: PluginContext) -> list[Problem]:
     return [
         Problem(
             id=f"photos:{source.id}",
-            title=(
-                f"{source.label} needs its key again."
+            key=(
+                "api.photos.library_needs_key"
                 if source.status == SourceStatus.NEEDS_RECONNECT
-                else f"{source.label} hasn't answered. Showing the photos it had."
+                else "api.photos.library_not_answering"
             ),
+            params={"name": source.label},
             detail=source.last_error,
             since=source.last_scan_at,
             page="screensaver",
@@ -372,7 +368,7 @@ def _library(kind: str, url: str, ctx: PluginContext) -> Library:
 
 
 def _refused(exc: LibraryError) -> AppError:
-    return AppError(422, exc.code, exc.message, extra={"fields": ["api_key"]})
+    return AppError.said(422, exc.code, exc.words, extra={"fields": ["api_key"]})
 
 
 async def _allow_home(ctx: PluginContext, url: str, *, ticked: bool) -> bool:
@@ -586,7 +582,7 @@ async def library_choices(
         fresh = await library.choices(http, url, key)
     except LibraryError as exc:
         if refresh:
-            raise AppError(422, exc.code, exc.message) from None
+            raise AppError.said(422, exc.code, exc.words) from None
         return _choices_out(source.options_json, source.options_at)
     async with ctx.write() as tx:
         stored = await _live(tx.session, source_id)
@@ -602,7 +598,7 @@ async def library_thumb(
     reaches a browser."""
     wanted = person if person is not None else asset
     if (person is None) == (asset is None) or wanted is None or not REMOTE_ID.match(wanted):
-        raise AppError(404, "not_found", "That picture isn't there.")
+        raise AppError(404, "not_found", "api.photos.picture_gone")
     async with ctx.read() as session:
         source = await _live(session, source_id)
     try:
@@ -610,8 +606,8 @@ async def library_thumb(
         return await library.thumb(http, url, key, person=person, asset=asset)
     except LibraryError as exc:
         if exc.code == "not_found":
-            raise AppError(404, "not_found", "That picture isn't there.") from None
-        raise AppError(502, exc.code, exc.message) from None
+            raise AppError(404, "not_found", "api.photos.picture_gone") from None
+        raise AppError.said(502, exc.code, exc.words) from None
 
 
 # ---- passes ------------------------------------------------------------------------------------
@@ -926,6 +922,6 @@ async def pretend_library(ctx: PluginContext, *, wipe: bool) -> LibraryOut:
             source = await _live(tx.session, found)
             source.credentials_enc = None
             source.status = SourceStatus.NEEDS_RECONNECT.value
-            source.last_error = KEY_WIPED
+            source.last_error = t_en(KEY_WIPED)
             tx.publish(EVENT, {"source_id": found})
     return await get_library(ctx, found)

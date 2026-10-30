@@ -4,6 +4,7 @@ engine's types (PLAN §7.2)."""
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from datetime import UTC, date, datetime, time, timedelta
 from typing import cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -18,15 +19,17 @@ from sunroom.domain.timeparts import from_local, to_local
 DEFAULT_LENGTH = timedelta(hours=1)
 
 
-def invalid(message: str, *fields: str, code: str = "invalid") -> AppError:
-    return AppError(422, code, message, extra={"fields": list(fields)})
+def invalid(
+    key: str, *fields: str, code: str = "invalid", params: Mapping[str, object] | None = None
+) -> AppError:
+    return AppError(422, code, key, params=params, extra={"fields": list(fields)})
 
 
 def load_zone(tzid: str) -> ZoneInfo:
     try:
         return ZoneInfo(tzid)
     except ZoneInfoNotFoundError, ValueError:
-        raise invalid("That time zone isn't one we know.", "tzid") from None
+        raise invalid("api.calendar.unknown_zone", "tzid") from None
 
 
 def json_list(raw: str | None) -> list[str]:
@@ -106,14 +109,14 @@ def resolve_timing(
         elif current is not None:
             start_date = local_start(current, old_zone).date()
         else:
-            raise invalid("Pick a day.", "start_date")
+            raise invalid("api.calendar.pick_day", "start_date")
         span = timedelta(days=1)
         if current is not None and current.all_day:
             assert current.start_date is not None and current.end_date is not None
             span = current.end_date - current.start_date
         end_date = fields.end_date if fields.end_date is not None else start_date + span
         if end_date <= start_date:
-            raise invalid("The last day can't be before the first.", "end_date")
+            raise invalid("api.calendar.last_before_first", "end_date")
         return Timing(all_day=True, start_date=start_date, end_date=end_date), tzid
 
     length = DEFAULT_LENGTH
@@ -127,13 +130,13 @@ def resolve_timing(
     elif current is not None:
         start = datetime.combine(local_start(current, zone).date(), time(9))
     else:
-        raise invalid("Pick a time.", "start")
+        raise invalid("api.calendar.pick_time", "start")
     if fields.start_date is not None and fields.start is None:
         start = datetime.combine(fields.start_date, start.time())
     end = wall_time(fields.end, zone) if fields.end is not None else start + length
     start_utc, end_utc = from_local(start, zone), from_local(end, zone)
     if end_utc <= start_utc:
-        raise invalid("The end has to be after the start.", "end")
+        raise invalid("api.calendar.end_before_start", "end")
     return Timing(all_day=False, start_utc=start_utc, end_utc=end_utc), tzid
 
 
@@ -141,7 +144,7 @@ def checked_rule(rrule: str, timing: Timing, tzid: str) -> str:
     try:
         return recurrence.validate_rrule(rrule, timing, tzid)
     except RecurrenceError as exc:
-        raise invalid(exc.message, "rrule", code=exc.code) from None
+        raise invalid(exc.key, "rrule", code=exc.code) from None
 
 
 def same_start_day(a: Timing, b: Timing, zone: ZoneInfo) -> bool:

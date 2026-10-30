@@ -18,7 +18,12 @@ from tests.support import CSRF
 Json = dict[str, Any]
 Events = list[tuple[str, dict[str, Any]]]
 TODAY = date(2026, 10, 7)
-GONE = {"code": "not_found", "message": "That countdown isn't here any more."}
+GONE: dict[str, Any] = {
+    "code": "not_found",
+    "message": "That countdown isn't here any more.",
+    "key": "api.countdowns.gone",
+    "params": {},
+}
 
 
 @dataclass(frozen=True, slots=True)

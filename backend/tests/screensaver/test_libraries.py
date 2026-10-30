@@ -674,6 +674,9 @@ async def test_a_key_refused_midway_asks_for_it_again_and_the_inbox_keeps_going(
     assert [(p["title"], p["page"]) for p in mine] == [
         ("Immich needs its key again.", "screensaver")
     ]
+    assert [(p["key"], p["params"]) for p in mine] == [
+        ("api.photos.library_needs_key", {"name": "Immich"})
+    ]
     # The inbox doesn't notice.
     store = state_of(app).photos
     drop(store.inbox, "IMG_0001.JPG", photo((10, 120, 30)))

@@ -122,6 +122,6 @@ async def display_state(
 async def wake(state: StateDep, actor: ActorDep) -> None:
     """A tap on the sleeping wall screen: it stays on for 2 minutes (PLAN §13.5)."""
     if not actor.is_kiosk:
-        raise AppError(403, "not_a_screen", "Only a paired screen wakes itself this way.")
+        raise AppError(403, "not_a_screen", "api.devices.wake_screen_only")
     state.screen.awake_until = state.clock.now() + WAKE_FOR
     state.screen.notify()

@@ -89,6 +89,8 @@ async def test_off_means_404_and_on_means_running(
     assert off.json()["error"] == {
         "code": "plugin_disabled",
         "message": "Sample is turned off. A parent can turn it on in Settings.",
+        "key": "api.plugins.turned_off",
+        "params": {"name": "Sample"},
     }
     enabled = (await home.post("/api/plugins/sample/enable", headers=CSRF)).json()
     assert enabled["enabled"] is True

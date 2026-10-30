@@ -18,14 +18,15 @@ from sunroom.plugins.calendar_sync.providers.base import (
     SyncError,
 )
 
+# The test server's own sentences (test mode only), by their keys in lang/en.json.
 _MESSAGES = {
-    ErrorKind.AUTH: "The test server said that password isn't right.",
-    ErrorKind.RATE_LIMITED: "The test server asked us to slow down.",
-    ErrorKind.UNREACHABLE: "The test server didn't answer.",
-    ErrorKind.CONFLICT: "It changed on the test server meanwhile.",
-    ErrorKind.NOT_FOUND: "The test server doesn't have that calendar any more.",
-    ErrorKind.BAD_DATA: "The test server sent something Sunroom can't read.",
-    ErrorKind.REFUSED: "The test server refused the change.",
+    ErrorKind.AUTH: "api.testing.sync.auth",
+    ErrorKind.RATE_LIMITED: "api.testing.sync.slow_down",
+    ErrorKind.UNREACHABLE: "api.testing.sync.no_answer",
+    ErrorKind.CONFLICT: "api.testing.sync.changed",
+    ErrorKind.NOT_FOUND: "api.testing.sync.calendar_gone",
+    ErrorKind.BAD_DATA: "api.testing.sync.unreadable",
+    ErrorKind.REFUSED: "api.testing.sync.refused",
 }
 
 

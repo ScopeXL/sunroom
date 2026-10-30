@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from sunroom.app import create_app
 from sunroom.core.clock import FakeClock
 from sunroom.core.config import Settings
+from sunroom.core.lang import english, t_en
 from sunroom.plugins.base import PluginStatus, Problem
 from sunroom.plugins.context import PluginContext
 from sunroom.plugins.registry import REGISTRY
@@ -75,10 +76,12 @@ async def test_a_backup_a_week_old_and_one_that_failed(
         "backup",
         "core",
     )
+    assert (stale["key"], stale["params"]) == ("api.problems.backup_stale", {})
     assert stale["since"] is not None
     backups.last_error = "There isn't enough free space for a backup."
     [failed] = await problems(parent)
     assert (failed["id"], failed["title"]) == ("backup:failed", "The last backup didn't complete.")
+    assert (failed["key"], failed["params"]) == ("api.problems.backup_failed", {})
     assert failed["detail"] == "The last try failed: There isn't enough free space for a backup."
     # A wall screen sees the sentence, never the detail (with a PIN set, it isn't a parent).
     await set_pin(parent)
@@ -102,6 +105,8 @@ async def test_a_server_short_of_room(
     assert low["title"] == (
         "The server has 1.3 GB free. Sunroom needs room for photos and backups."
     )
+    # The page says it in the family's language from the key and its values (ADR 0043).
+    assert (low["key"], low["params"]) == ("api.problems.storage_low", {"free": "1.3 GB"})
 
 
 class Reporting(SamplePlugin):
@@ -116,7 +121,14 @@ class Reporting(SamplePlugin):
         self.asked += 1
         if self.broken:
             raise RuntimeError("the hook broke")
-        return [Problem(id="sample:1", title="Sample needs a look.", page="sample")]
+        return [
+            Problem(
+                id="sample:1",
+                key="api.sync.needs_password",
+                params={"name": "Sample"},
+                page="sample",
+            )
+        ]
 
 
 @pytest.fixture
@@ -150,10 +162,11 @@ async def test_a_feature_says_what_it_needs_only_while_its_on(
     [said] = await problems(home)
     assert (said["id"], said["title"], said["page"], said["source"]) == (
         "sample:1",
-        "Sample needs a look.",
+        "Sample needs its password again.",
         "sample",
         "sample",
     )
+    assert (said["key"], said["params"]) == ("api.sync.needs_password", {"name": "Sample"})
     # A hook that breaks adds nothing, and breaks nothing.
     reporting.broken = True
     assert await problems(home) == []
@@ -174,13 +187,18 @@ async def test_a_feature_that_stopped_is_core_s_to_say(
         "Sample stopped working.",
         "features",
     )
+    assert (stopped["key"], stopped["params"]) == (
+        "api.problems.plugin_stopped",
+        {"name": "Sample"},
+    )
     assert asked() == before  # its own hook isn't asked while it's stopped
 
 
 async def test_every_feature_answers_with_plain_problems(
     app: FastAPI, parent: httpx.AsyncClient
 ) -> None:
-    """The contract (ADR 0034): a list of Problem, each a sentence and a page Settings knows."""
+    """The contract (ADR 0034, 0043): a list of Problem, each a sentence by its key in the English
+    file, with the values it names, and a page Settings knows."""
     manager = state_of(app).plugins
     for plugin_id, plugin in manager.registry.items():
         ctx = manager._idle_context(plugin_id)  # pyright: ignore[reportPrivateUsage]
@@ -188,5 +206,7 @@ async def test_every_feature_answers_with_plain_problems(
         assert isinstance(found, list), plugin_id
         for problem in found:
             assert isinstance(problem, Problem), plugin_id
+            assert problem.key in english(), (plugin_id, problem.key)
+            assert problem.title == t_en(problem.key, **problem.params)
             assert problem.title.endswith("."), (plugin_id, problem.title)
             assert problem.page is None or problem.page in PAGES, (plugin_id, problem.page)

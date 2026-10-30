@@ -24,11 +24,11 @@ CACHE = {"Cache-Control": "private, max-age=31536000, immutable"}
 @router.get("/photos/{folder}/{name}", include_in_schema=False)
 async def photo_file(folder: str, name: str, request: Request, state: StateDep) -> FileResponse:
     if read_token(request, state) is None:
-        raise AppError(401, "signed_out", "Please sign in.")
+        raise AppError(401, "signed_out", "api.auth.signed_out")
     photo_id = name.removesuffix(".webp")
     if folder not in FOLDERS or not name.endswith(".webp") or not PHOTO_ID.match(photo_id):
-        raise AppError(404, "not_found", "That photo isn't here.")
+        raise AppError(404, "not_found", "api.photos.file_not_found")
     path = state.photos.file(folder, photo_id)
     if not path.is_file():
-        raise AppError(404, "not_found", "That photo isn't here.")
+        raise AppError(404, "not_found", "api.photos.file_not_found")
     return FileResponse(path, media_type="image/webp", headers=CACHE)

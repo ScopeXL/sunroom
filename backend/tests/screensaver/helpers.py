@@ -25,7 +25,12 @@ from tests.support import CSRF, state_of
 Json = dict[str, Any]
 Events = list[tuple[str, dict[str, Any]]]
 SETTLED_S = 60  # a file copied a minute ago has finished copying
-GONE = {"code": "not_found", "message": "That photo source isn't here any more."}
+GONE: dict[str, Any] = {
+    "code": "not_found",
+    "message": "That photo source isn't here any more.",
+    "key": "api.photos.source_gone",
+    "params": {},
+}
 
 
 @dataclass(frozen=True, slots=True)

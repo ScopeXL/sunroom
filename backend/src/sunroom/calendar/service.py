@@ -104,7 +104,7 @@ async def default_calendar(session: AsyncSession) -> Calendar:
     ).first()
     if first is not None:
         return first
-    raise AppError(409, "no_calendar", "Add a calendar first: Settings, then Calendars & Accounts.")
+    raise AppError(409, "no_calendar", "api.calendar.no_calendar")
 
 
 async def list_calendars(session: AsyncSession, *, include_deleted: bool = False) -> list[Calendar]:
@@ -160,11 +160,9 @@ async def create_calendar(tx: WriteTx, body: CalendarCreate, ctx: Context) -> Ca
 async def _local_calendar(session: AsyncSession, calendar_id: str) -> Calendar:
     calendar = await session.get(Calendar, calendar_id)
     if calendar is None:
-        raise AppError(404, "not_found", "That calendar isn't here any more.")
+        raise AppError(404, "not_found", "api.calendar.calendar_not_found")
     if calendar.kind != CalendarKind.LOCAL:
-        raise AppError(
-            409, "managed_by_sync", "This calendar comes from an account; change it there."
-        )
+        raise AppError(409, "managed_by_sync", "api.calendar.managed_by_sync")
     return calendar
 
 
@@ -173,7 +171,7 @@ async def update_calendar(
 ) -> Calendar:
     calendar = await _local_calendar(tx.session, calendar_id)
     if calendar.deleted_at is not None:
-        raise AppError(404, "not_found", "That calendar was removed. Put it back first.")
+        raise AppError(404, "not_found", "api.calendar.calendar_removed")
     if body.name is not None:
         calendar.name = body.name
     if body.color is not None:
@@ -194,13 +192,9 @@ async def make_default(tx: WriteTx, calendar_id: str) -> Calendar:
     that takes events can be it, a synced one from an account too."""
     calendar = await tx.session.get(Calendar, calendar_id)
     if calendar is None or calendar.deleted_at is not None:
-        raise AppError(404, "not_found", "That calendar isn't here any more.")
+        raise AppError(404, "not_found", "api.calendar.calendar_not_found")
     if calendar.read_only:
-        raise AppError(
-            409,
-            "calendar_read_only",
-            "This calendar only shows events, so new ones can't go there.",
-        )
+        raise AppError(409, "calendar_read_only", "api.calendar.shows_only")
     home = await tx.session.get(Household, 1)
     if home is not None and home.default_calendar_id != calendar.id:
         home.default_calendar_id = calendar.id
@@ -223,15 +217,9 @@ async def remove_calendar(tx: WriteTx, calendar_id: str, ctx: Context) -> Calend
         )
     )
     if not others:
-        raise AppError(
-            409, "last_calendar", "Sunroom keeps one calendar of its own, so this one stays."
-        )
+        raise AppError(409, "last_calendar", "api.calendar.last_calendar")
     if calendar.id == await default_calendar_id(tx.session):
-        raise AppError(
-            409,
-            "default_calendar",
-            "This is where new events go. Make another one the default first.",
-        )
+        raise AppError(409, "default_calendar", "api.calendar.default_calendar")
     calendar.deleted_at = ctx.now
     calendar.version += 1
     tx.publish("calendars.changed", {"calendar_id": calendar.id})
@@ -323,11 +311,11 @@ async def event_out(session: AsyncSession, event: Event) -> EventOut:
 async def get_master(session: AsyncSession, event_id: str) -> Event:
     event = await session.get(Event, event_id)
     if event is None or event.deleted_at is not None:
-        raise AppError(404, "not_found", "That event isn't on the calendar any more.")
+        raise AppError(404, "not_found", "api.calendar.event_not_found")
     if event.parent_event_id is not None:
         master = await session.get(Event, event.parent_event_id)
         if master is None or master.deleted_at is not None:
-            raise AppError(404, "not_found", "That event isn't on the calendar any more.")
+            raise AppError(404, "not_found", "api.calendar.event_not_found")
         return master
     return event
 
@@ -337,7 +325,7 @@ async def get_master(session: AsyncSession, event_id: str) -> Event:
 
 def _check_member(member_id: str | None, ctx: Context) -> None:
     if member_id is not None and member_id not in ctx.members:
-        raise invalid("That person isn't in the household.", "member_ids", code="unknown_member")
+        raise invalid("api.calendar.unknown_member", "member_ids", code="unknown_member")
 
 
 def _check_members(member_ids: list[str] | None, ctx: Context) -> list[str] | None:
@@ -352,13 +340,15 @@ def _check_members(member_ids: list[str] | None, ctx: Context) -> list[str] | No
 async def _writable_calendar(session: AsyncSession, calendar_id: str) -> Calendar:
     calendar = await session.get(Calendar, calendar_id)
     if calendar is None or calendar.deleted_at is not None:
-        raise invalid("That calendar isn't here any more.", "calendar_id", code="unknown_calendar")
+        raise invalid("api.calendar.calendar_not_found", "calendar_id", code="unknown_calendar")
     if calendar.read_only:
-        source = calendar.remote_ref or "an account"
+        if not calendar.remote_ref:
+            raise AppError(409, "calendar_read_only", "api.calendar.read_only_account")
         raise AppError(
             409,
             "calendar_read_only",
-            f"This calendar comes from {source} and can't be changed here.",
+            "api.calendar.read_only_from",
+            params={"source": calendar.remote_ref},
         )
     return calendar
 
@@ -375,7 +365,7 @@ async def _set_people(
     Default reminder, which the wall resolves. Rows sent turn the flag off; the flag sent on
     takes the rows away."""
     if reminders_off and reminders:
-        raise invalid("Pick reminders, or none, not both.", "reminders")
+        raise invalid("api.calendar.reminders_or_none", "reminders")
     event_id = row.id
     if member_ids is not None:
         for old in (
@@ -515,7 +505,7 @@ def _first_of_series(series: recurrence.Series, rid: str) -> bool:
     try:
         return recurrence.count_before(series, rid) == 0
     except ValueError:  # RecurrenceError is one
-        raise AppError(404, "not_found", "That occurrence isn't part of this event.") from None
+        raise AppError(404, "not_found", "api.calendar.occurrence_not_found") from None
 
 
 def _occurrence_at(master: Event, overrides: list[Event], rid: str) -> recurrence.Occurrence:
@@ -526,7 +516,7 @@ def _occurrence_at(master: Event, overrides: list[Event], rid: str) -> recurrenc
     try:
         original = parse_rid(rid)
     except ValueError:
-        raise AppError(404, "not_found", "That occurrence isn't part of this event.") from None
+        raise AppError(404, "not_found", "api.calendar.occurrence_not_found") from None
     zone = load_zone(master.tzid or "UTC")
     day = original.date() if isinstance(original, datetime) else original
     start_utc, _ = day_bounds(day - timedelta(days=1), zone)
@@ -535,7 +525,7 @@ def _occurrence_at(master: Event, overrides: list[Event], rid: str) -> recurrenc
     for occurrence in recurrence.expand(series_of(master), [], window):
         if occurrence.recurrence_id == rid:
             return occurrence
-    raise AppError(404, "not_found", "That occurrence isn't part of this event.")
+    raise AppError(404, "not_found", "api.calendar.occurrence_not_found")
 
 
 def _apply_text(row: Event, fields: EventFields, *, clear_color: bool = False) -> None:
@@ -625,19 +615,13 @@ async def update_series(
     """Scope "all": change the series in place. A new time of day shifts its exceptions with
     it; a new first day, a new repeat or switching all-day clears them (reported)."""
     if body.expected_version is not None and body.expected_version != master.version:
-        raise AppError(
-            409, "version_conflict", "Someone changed this event a moment ago. Have a look first."
-        )
+        raise AppError(409, "version_conflict", "api.calendar.version_conflict")
     calendar = await _writable_calendar(tx.session, master.calendar_id)
     calendars = {calendar.id}
     to_calendar: Calendar | None = None
     if body.calendar_id is not None and body.calendar_id != master.calendar_id:
         if master.source == EventSource.SYNC:
-            raise AppError(
-                409,
-                "synced_stays",
-                "An event from an account stays in its calendar. Copy it instead.",
-            )
+            raise AppError(409, "synced_stays", "api.calendar.synced_stays")
         to_calendar = await _writable_calendar(tx.session, body.calendar_id)
         calendars.add(to_calendar.id)
     before = await revisions.snapshot(tx.session, [master.id])
@@ -730,9 +714,7 @@ async def update_occurrence(
             tx, master, body.model_copy(update={"scope": "all"}), ctx, action
         )
     if body.expected_version is not None and body.expected_version != master.version:
-        raise AppError(
-            409, "version_conflict", "Someone changed this event a moment ago. Have a look first."
-        )
+        raise AppError(409, "version_conflict", "api.calendar.version_conflict")
     calendar = await _writable_calendar(tx.session, master.calendar_id)
     overrides = await _overrides(tx.session, master.id)
     occurrence = _occurrence_at(master, overrides, rid)
@@ -743,7 +725,7 @@ async def update_occurrence(
 
     if body.scope == "this":
         if body.rrule is not None or body.clear_rrule:
-            raise invalid("One occurrence can't repeat. Change all of them instead.", "rrule")
+            raise invalid("api.calendar.occurrence_cant_repeat", "rrule")
         timing, _ = resolve_timing(occurrence.timing, master.tzid, body, ctx.zone_key)
         row = next((o for o in overrides if o.recurrence_id == rid), None)
         old_title = row.title if row is not None else master.title
@@ -789,7 +771,7 @@ async def update_occurrence(
     try:
         truncated, remaining = recurrence.split(series, rid)
     except RecurrenceError as exc:
-        raise invalid(exc.message, "recurrence_id", code=exc.code) from None
+        raise invalid(exc.key, "recurrence_id", code=exc.code) from None
     original_start = _rid_start(rid)
     start_timing = recurrence.Occurrence(
         recurrence_id=rid,
@@ -934,7 +916,7 @@ async def remove_occurrence(
         try:
             truncated, _ = recurrence.split(series, rid)
         except RecurrenceError as exc:
-            raise invalid(exc.message, "recurrence_id", code=exc.code) from None
+            raise invalid(exc.key, "recurrence_id", code=exc.code) from None
         start = _rid_start(rid)
         master.rrule = truncated
         master.exdates_json = json.dumps(
@@ -969,19 +951,11 @@ def _moved_rule(rule: str | None, days: int) -> str | None:
         return rule
     parts = dict(part.split("=", 1) for part in rule.split(";") if "=" in part)
     if any(key in parts for key in ("BYMONTHDAY", "BYMONTH", "BYYEARDAY", "BYWEEKNO", "BYSETPOS")):
-        raise invalid(
-            "This one repeats on set dates. Change its repeat instead of moving it.",
-            "to_date",
-            code="move_unsupported",
-        )
+        raise invalid("api.calendar.move_set_dates", "to_date", code="move_unsupported")
     if "BYDAY" in parts:
         days_in = parts["BYDAY"].split(",")
         if any(len(day) != 2 for day in days_in):
-            raise invalid(
-                "This one repeats on a set weekday of the month. Change its repeat instead.",
-                "to_date",
-                code="move_unsupported",
-            )
+            raise invalid("api.calendar.move_set_weekday", "to_date", code="move_unsupported")
         parts["BYDAY"] = ",".join(_WEEKDAYS[(_WEEKDAYS.index(day) + days) % 7] for day in days_in)
     return ";".join(f"{key}={value}" for key, value in parts.items())
 
@@ -1027,7 +1001,7 @@ async def move(tx: WriteTx, master: Event, body: MoveIn, ctx: Context) -> Change
         try:
             remaining = recurrence.split(series_of(master), rid)[1]
         except RecurrenceError as exc:
-            raise invalid(exc.message, "recurrence_id", code=exc.code) from None
+            raise invalid(exc.key, "recurrence_id", code=exc.code) from None
         moved = _moved_rule(remaining, days)
         if moved != remaining:
             fields.rrule = moved
@@ -1048,9 +1022,9 @@ async def undo(tx: WriteTx, series_id: str, revision_id: str | None, ctx: Contex
         )
     ).first()
     if newest is None:
-        raise AppError(404, "nothing_to_undo", "There's nothing to undo.")
+        raise AppError(404, "nothing_to_undo", "api.calendar.nothing_to_undo")
     if revision_id is not None and newest.id != revision_id:
-        raise AppError(409, "changed_since", "Someone changed it since, so Undo can't put it back.")
+        raise AppError(409, "changed_since", "api.calendar.changed_since")
     calendars: set[str] = set()
     created = [str(event_id) for event_id in json.loads(newest.created_ids_json)]
     for event_id in created:
@@ -1087,7 +1061,7 @@ async def restore_event(tx: WriteTx, event_id: str, ctx: Context) -> ChangeOut:
     """Recently removed → Put back: the series and the exceptions removed with it."""
     master = await tx.session.get(Event, event_id)
     if master is None or master.parent_event_id is not None or master.deleted_at is None:
-        raise AppError(404, "not_found", "That event isn't in Recently Removed.")
+        raise AppError(404, "not_found", "api.calendar.not_in_removed")
     await _writable_calendar(tx.session, master.calendar_id)
     before = await revisions.snapshot(tx.session, [master.id])
     removed_at = master.deleted_at

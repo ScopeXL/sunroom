@@ -4803,8 +4803,14 @@ export interface components {
             detail: string | null;
             /** Id */
             id: string;
+            /** Key */
+            key: string;
             /** Page */
             page: string | null;
+            /** Params */
+            params: {
+                [key: string]: string | number;
+            };
             /** Since */
             since: string | null;
             /** Source */

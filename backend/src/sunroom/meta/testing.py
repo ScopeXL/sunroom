@@ -39,7 +39,7 @@ def _local_only(request: Request) -> None:
     except ValueError:
         loopback = host in {"testclient", "localhost"}
     if not loopback:
-        raise AppError(404, "not_found", "That couldn't be found.")
+        raise AppError(404, "not_found", "api.http.404")
 
 
 router = APIRouter(
@@ -113,7 +113,7 @@ class ClockIn(BaseModel):
 async def move_clock(body: ClockIn, state: StateDep) -> None:
     clock = state.clock
     if not isinstance(clock, ShiftableClock):
-        raise AppError(409, "clock_fixed", "This server's clock can't be moved.")
+        raise AppError(409, "clock_fixed", "api.testing.clock_fixed")
     if body.reset:
         clock.reset()
     if body.set is not None:
@@ -151,7 +151,7 @@ async def seed(body: SeedIn, state: StateDep) -> None:
 async def _seed(state: AppState, body: SeedIn) -> None:
     zone = household_service.valid_zone(body.timezone)
     if zone is None:
-        raise AppError(422, "invalid", "Unknown time zone.")
+        raise AppError(422, "invalid", "api.testing.unknown_zone")
     now = state.clock.now()
     password_hash = await asyncio.to_thread(hash_password, body.password)
     pin_hash = await asyncio.to_thread(hash_pin, body.pin) if body.pin else None

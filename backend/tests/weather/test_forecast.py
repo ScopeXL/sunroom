@@ -525,6 +525,8 @@ async def test_off_every_route_is_404_and_on_again_the_forecast_is_there(
             assert response.json()["error"] == {
                 "code": "plugin_disabled",
                 "message": "Weather is turned off. A parent can turn it on in Settings.",
+                "key": "api.plugins.turned_off",
+                "params": {"name": "Weather"},
             }
             answered.append((method, route.path))
     assert sorted(answered) == [("GET", ""), ("GET", "/geocode"), ("POST", "/refresh")]

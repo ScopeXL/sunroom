@@ -124,6 +124,8 @@ async def test_a_wall_screen_cant_erase(
         assert refused.json()["error"] == {
             "code": "not_on_a_screen",
             "message": "Erase everything from a signed-in device, not a paired screen.",
+            "key": "api.erase.not_on_a_screen",
+            "params": {},
         }
     after = row_counts(data_dir)
     assert {table: after[table] for table in before if table != "devices"} == {
@@ -142,6 +144,8 @@ async def test_a_wrong_password_erases_nothing_and_counts_like_a_wrong_sign_in(
     assert refused.json()["error"] == {
         "code": "wrong_password",
         "message": "That password didn't match. Try again.",
+        "key": "api.auth.wrong_password",
+        "params": {},
     }
     assert sum(limiter.recent_failures(key) for key in ("127.0.0.1", "unknown")) == 1
     assert row_counts(data_dir) == before
@@ -283,6 +287,8 @@ async def test_without_a_copy_nothing_is_erased(
             "Nothing was erased: the copy to keep first couldn't be made "
             "(not enough free disk space for a verified copy)."
         ),
+        "key": "api.erase.copy_failed",
+        "params": {"reason": "not enough free disk space for a verified copy"},
     }
     assert row_counts(data_dir) == before
     assert (await phone.get("/api/members")).status_code == 200

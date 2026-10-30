@@ -85,37 +85,28 @@ async def run_setup(
     body: SetupIn, request: Request, response: Response, state: StateDep
 ) -> SessionOut:
     if state.household.setup_complete:
-        raise AppError(410, "setup_done", "Sunroom is already set up. Sign in instead.")
+        raise AppError(410, "setup_done", "api.setup.done")
     ip = client_ip(request)
     check_rate(state.login_limiter, ip)
     zone = household_service.valid_zone(body.timezone)
     if zone is None:
-        raise AppError(
-            422,
-            "invalid",
-            "That time zone isn't one Sunroom knows.",
-            extra={"fields": ["timezone"]},
-        )
+        raise AppError(422, "invalid", "api.settings.unknown_zone", extra={"fields": ["timezone"]})
     env_password = state.settings.app_password
     if env_password is not None:
         if not env_password_matches(body.password, env_password):
             state.login_limiter.record_failure(ip)
-            raise AppError(
-                401,
-                "wrong_password",
-                "That isn't the password set on the server (APP_PASSWORD). Try again.",
-            )
+            raise AppError(401, "wrong_password", "api.setup.wrong_app_password")
         stored_hash = None
     else:
         problem = password_problem(body.password)
         if problem:
-            raise AppError(422, "weak_password", problem, extra={"fields": ["password"]})
+            raise AppError.said(422, "weak_password", problem, extra={"fields": ["password"]})
         stored_hash = await asyncio.to_thread(hash_password, body.password)
     now = state.clock.now()
     async with state.db.write() as tx:
         home = await household_service.household(tx.session)
         if home.onboarded_at is not None:  # someone finished first, a moment ago
-            raise AppError(410, "setup_done", "Sunroom is already set up. Sign in instead.")
+            raise AppError(410, "setup_done", "api.setup.done")
         meta = await tx.session.get(AppMeta, 1)
         assert meta is not None  # the baseline migration creates it
         if stored_hash is not None:

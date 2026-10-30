@@ -59,6 +59,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 from sunroom.calendar.synced import PendingSeries, SyncedEvent, SyncedOverride, SyncedSeries
 from sunroom.core.http import FetchResult
+from sunroom.core.lang import t_en
 from sunroom.core.logging import get_logger
 from sunroom.core.netguard import OutboundError
 from sunroom.domain.recurrence import Timing
@@ -98,41 +99,30 @@ GOOGLE_MAX_BYTES = 20 * 1024 * 1024
 TOKEN_MAX_BYTES = 64 * 1024
 KEY_MAX_CHARS = 64 * 1024
 
-NOT_A_KEY = "That isn't a Google key file. Download a JSON key for the helper and try again."
-KEY_AGAIN = "Sunroom can't read the helper's key any more. Upload the key file again."
-KEY_REFUSED = "Google turned down the helper's key. Make a new key for the helper and upload it."
-SIGNED_OUT = "Google signed Sunroom out. Sign in again."
-CLIENT_REFUSED = (
-    "Google didn't accept the client ID and secret. Check them in Settings, then sign in again."
-)
-SIGN_IN_FAILED = "That sign-in didn't work. Try again."
-NO_CALENDARS_GRANTED = (
-    "Google didn't give Sunroom your calendars. Sign in again and allow access to them."
-)
-CLOCK_WRONG = "Google says this server's clock is wrong. Check its date and time."
-NO_ANSWER = "Google didn't answer. It will try again."
-SLOW_DOWN = "Google asked Sunroom to slow down. It will try again later."
-API_OFF = "The Google Calendar API is off in your Google Cloud project. Turn it on, then try again."
-HELPER_REFUSED = (
-    "Google didn't let Sunroom change that calendar. "
-    "Share it with the helper with Make changes to events."
-)
-ACCOUNT_REFUSED = (
-    "Google didn't let Sunroom change that calendar. Ask its owner for Make changes to events."
-)
-CANT_SEE = "Google didn't let Sunroom see that calendar. Check it's still shared."
-NOT_SHARED = (
-    "No calendar with that address is shared with the helper yet. "
-    "Sharing can take a minute; try again."
-)
-CALENDAR_GONE = "That calendar isn't on Google any more, or isn't shared with Sunroom."
-EVENT_GONE = "That event isn't on Google any more."
-CHANGED = "That event changed on Google since Sunroom last looked."
-ALREADY_THERE = "That event is already on Google. Sunroom will catch up, then try again."
-REJECTED = "Google didn't accept that change."
-UNREADABLE = "Google sent a reply Sunroom couldn't read."
-TOO_BIG = "Google sent more than Sunroom can read at once."
-TOO_MANY = "That calendar is longer than Sunroom can read."
+# What Google's failures say, by their keys in lang/en.json (ADR 0043).
+NOT_A_KEY = "api.sync.google.not_a_key"
+KEY_AGAIN = "api.sync.google.key_again"
+KEY_REFUSED = "api.sync.google.key_refused"
+SIGNED_OUT = "api.sync.google.signed_out"
+CLIENT_REFUSED = "api.sync.google.client_refused"
+SIGN_IN_FAILED = "api.sync.google.sign_in_failed"
+NO_CALENDARS_GRANTED = "api.sync.google.no_calendars_granted"
+CLOCK_WRONG = "api.sync.google.clock_wrong"
+NO_ANSWER = "api.sync.google.no_answer"
+SLOW_DOWN = "api.sync.google.slow_down"
+API_OFF = "api.sync.google.api_off"
+HELPER_REFUSED = "api.sync.google.helper_refused"
+ACCOUNT_REFUSED = "api.sync.google.account_refused"
+CANT_SEE = "api.sync.google.cant_see"
+NOT_SHARED = "api.sync.google.not_shared"
+CALENDAR_GONE = "api.sync.google.calendar_gone"
+EVENT_GONE = "api.sync.google.event_gone"
+CHANGED = "api.sync.google.changed"
+ALREADY_THERE = "api.sync.google.already_there"
+REJECTED = "api.sync.google.rejected"
+UNREADABLE = "api.sync.google.unreadable"
+TOO_BIG = "api.sync.google.too_big"
+TOO_MANY = "api.sync.google.too_many"
 
 # Error reasons, folded (rateLimitExceeded and RATE_LIMIT_EXCEEDED are one).
 _SLOW_DOWN = frozenset(
@@ -302,11 +292,11 @@ def parse_service_account_key(text: str) -> dict[str, str]:
     Google's own token address. Returns the parts Sunroom keeps; raises ValueError (with a
     message for people) for anything else."""
     if len(text) > KEY_MAX_CHARS:
-        raise ValueError(NOT_A_KEY)
+        raise ValueError(t_en(NOT_A_KEY))
     try:
         raw: Any = json.loads(text)
     except ValueError:
-        raise ValueError(NOT_A_KEY) from None
+        raise ValueError(t_en(NOT_A_KEY)) from None
     data = _object(raw)
     email = _text(data.get("client_email")).strip()
     pem = _text(data.get("private_key"))
@@ -317,7 +307,7 @@ def parse_service_account_key(text: str) -> dict[str, str]:
         or token_uri not in TOKEN_URIS
         or _rsa_key(pem) is None
     ):
-        raise ValueError(NOT_A_KEY)
+        raise ValueError(t_en(NOT_A_KEY))
     key = {
         "type": "service_account",
         "client_email": email,

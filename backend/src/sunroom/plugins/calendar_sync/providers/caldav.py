@@ -79,13 +79,12 @@ _DECLARATIONS = (
     f'xmlns:d="{DAV}" xmlns:c="{CALDAV}" xmlns:cs="{CS}" xmlns:ical="{APPLE}"'  # explicit, always
 )
 
-# iCloud is Apple's CalDAV service; the family reads "Apple" (ADR 0032).
-_ICLOUD_AUTH = (
-    "Apple said that password isn't right. Make a new app-specific password and try again."
-)
-_AUTH = "The server said that user name or password isn't right."
-_ICLOUD_DOWN = "Apple didn't answer. Check the server has internet and try again."
-_NO_CALENDARS = "Sunroom couldn't find calendars at that address. Check it and try again."
+# iCloud is Apple's CalDAV service; the family reads "Apple" (ADR 0032), so each failure has a
+# sentence for Apple and one for any other server (keys in lang/en.json, ADR 0043).
+_ICLOUD_AUTH = "api.sync.caldav.auth_apple"
+_AUTH = "api.sync.caldav.auth"
+_ICLOUD_DOWN = "api.sync.caldav.no_answer_apple"
+_NO_CALENDARS = "api.sync.caldav.no_calendars"
 _NO_ANSWER = frozenset({"timeout", "unreachable", "not_found"})  # the guard's codes
 
 _Doing = Literal["discover", "read", "write"]
@@ -129,8 +128,8 @@ class SyncCollectionUnsupported(SyncError):  # noqa: N818 - says what it means
 
     code: str
 
-    def __init__(self, message: str) -> None:
-        super().__init__(ErrorKind.BAD_DATA, message)
+    def __init__(self, key: str) -> None:
+        super().__init__(ErrorKind.BAD_DATA, key)
         self.code = "unsupported"
 
 
@@ -344,8 +343,14 @@ class CaldavClient:
         if root is None or root.tag != _MULTISTATUS:
             if doing == "discover" and result.status != 207:
                 raise SyncError(ErrorKind.NOT_FOUND, _NO_CALENDARS)  # a web page, say
-            who = "Apple" if self._on_icloud(result.url) else "The server"
-            raise SyncError(ErrorKind.BAD_DATA, f"{who} sent a reply Sunroom couldn't read.")
+            raise SyncError(
+                ErrorKind.BAD_DATA,
+                _either(
+                    self._on_icloud(result.url),
+                    "api.sync.caldav.unreadable_apple",
+                    "api.sync.caldav.unreadable",
+                ),
+            )
         return root
 
     # ---- errors ---------------------------------------------------------------------------
@@ -356,45 +361,59 @@ class CaldavClient:
     def _unreachable(self, error: OutboundError, url: str) -> SyncError:
         if error.code in _NO_ANSWER and self._on_icloud(url):
             return SyncError(ErrorKind.UNREACHABLE, _ICLOUD_DOWN)
-        return SyncError(ErrorKind.UNREACHABLE, error.message)  # the guard's words: no URL
+        return SyncError(
+            ErrorKind.UNREACHABLE, error.key, params=error.params
+        )  # the guard's: no URL
 
     def _failure(self, result: FetchResult, doing: _Doing) -> SyncError:
         status = result.status
         icloud = self._on_icloud(result.url)
-        who, where = (
-            ("Apple", "in your Apple account") if icloud else ("The server", "on the server")
-        )
         if status == 401 or (status == 403 and doing != "write"):
             return SyncError(ErrorKind.AUTH, _ICLOUD_AUTH if icloud else _AUTH)
         if status in (429, 503):  # iCloud's undocumented rate limit is a 503
             return SyncError(
                 ErrorKind.RATE_LIMITED,
-                f"{who} asked Sunroom to slow down. It will try again later.",
+                _either(icloud, "api.sync.caldav.slow_down_apple", "api.sync.caldav.slow_down"),
                 retry_after=_retry_after(result.headers),
             )
         if status >= 500:
             return SyncError(
-                ErrorKind.UNREACHABLE, f"{who} had a problem. Sunroom will try again later."
+                ErrorKind.UNREACHABLE,
+                _either(icloud, "api.sync.caldav.trouble_apple", "api.sync.caldav.trouble"),
             )
         if doing == "discover":
             return SyncError(ErrorKind.NOT_FOUND, _NO_CALENDARS)
         if status in (404, 410):
-            return SyncError(ErrorKind.NOT_FOUND, f"That calendar isn't {where} anymore.")
+            return SyncError(
+                ErrorKind.NOT_FOUND,
+                _either(
+                    icloud, "api.sync.caldav.calendar_gone_apple", "api.sync.caldav.calendar_gone"
+                ),
+            )
         if doing == "read":
-            return SyncError(ErrorKind.BAD_DATA, f"{who} sent a reply Sunroom couldn't read.")
+            return SyncError(
+                ErrorKind.BAD_DATA,
+                _either(icloud, "api.sync.caldav.unreadable_apple", "api.sync.caldav.unreadable"),
+            )
         if status == 412:
             return SyncError(
-                ErrorKind.CONFLICT, f"That event changed {where} since Sunroom last looked."
+                ErrorKind.CONFLICT,
+                _either(icloud, "api.sync.caldav.changed_apple", "api.sync.caldav.changed"),
             )
         if _NO_UID_CONFLICT in _conditions(result.content):  # iCloud: one UID, one calendar
             return SyncError(
-                ErrorKind.REFUSED, f"{who} already has that event in another calendar."
+                ErrorKind.REFUSED,
+                _either(icloud, "api.sync.caldav.uid_taken_apple", "api.sync.caldav.uid_taken"),
             )
         if status == 403:
             return SyncError(
-                ErrorKind.REFUSED, f"{who} didn't allow that change. The calendar may be read-only."
+                ErrorKind.REFUSED,
+                _either(icloud, "api.sync.caldav.not_allowed_apple", "api.sync.caldav.not_allowed"),
             )
-        return SyncError(ErrorKind.REFUSED, f"{who} didn't accept that change.")
+        return SyncError(
+            ErrorKind.REFUSED,
+            _either(icloud, "api.sync.caldav.rejected_apple", "api.sync.caldav.rejected"),
+        )
 
     def _sync_failure(self, result: FetchResult, *, with_token: bool) -> Exception:
         """RFC 6578: a forgotten token is 403 or 409 with DAV:valid-sync-token; servers also
@@ -409,9 +428,12 @@ class CaldavClient:
             or status in (405, 415, 501)
             or (status == 400 and not with_token)
         ):
-            who = "Apple" if self._on_icloud(result.url) else "This server"
             return SyncCollectionUnsupported(
-                f"{who} can't list what changed, so Sunroom compares every event instead."
+                _either(
+                    self._on_icloud(result.url),
+                    "api.sync.caldav.no_change_list_apple",
+                    "api.sync.caldav.no_change_list",
+                )
             )
         return self._failure(result, "read")
 
@@ -666,6 +688,11 @@ _NEWLINES = re.compile(r"\r\n|\r|\n")
 def _crlf(text: str) -> str:
     """iCalendar lines end in CRLF (RFC 5545); text read back out of XML has bare LFs."""
     return _NEWLINES.sub("\r\n", text)
+
+
+def _either(icloud: bool, apple: str, server: str) -> str:
+    """Apple's sentence on iCloud, the other server's everywhere else."""
+    return apple if icloud else server
 
 
 def _retry_after(headers: Mapping[str, str]) -> float | None:

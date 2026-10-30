@@ -111,11 +111,15 @@ async def test_a_countdown_must_make_sense(parent: httpx.AsyncClient, family: Fa
         problem: Json = response.json()["error"]
         return problem
 
-    def invalid(message: str, field: str) -> Json:
-        return {"code": "invalid", "message": message, "fields": [field]}
+    def invalid(message: str, field: str, key: str = "api.invalid") -> Json:
+        return {"code": "invalid", "message": message, "key": key, "params": {}, "fields": [field]}
 
-    assert await refused(date=day(-1)) == invalid("Pick a day that hasn't passed.", "date")
-    stranger = invalid("That person isn't in the family.", "member_id")
+    assert await refused(date=day(-1)) == invalid(
+        "Pick a day that hasn't passed.", "date", "api.countdowns.day_passed"
+    )
+    stranger = invalid(
+        "That person isn't in the family.", "member_id", "api.countdowns.not_in_family"
+    )
     assert await refused(member_id="someone-else") == stranger
     archived = await parent.post(f"/api/members/{family.leo}/archive", headers=CSRF)
     assert archived.status_code == 200, archived.text

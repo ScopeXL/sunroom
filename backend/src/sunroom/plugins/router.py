@@ -146,14 +146,14 @@ def plugin_out(state: AppState, plugin: Plugin) -> PluginOut:
 def _plugin(state: AppState, plugin_id: str) -> Plugin:
     plugin = state.plugins.registry.get(plugin_id)
     if plugin is None:
-        raise AppError(404, "not_found", "That feature isn't part of this version.")
+        raise AppError(404, "not_found", "api.plugins.not_found")
     return plugin
 
 
 def _as_app_error(exc: PluginError) -> AppError:
     status = 404 if exc.code == "not_found" else 409 if exc.code == "plugin_disabled" else 422
     extra = {"problems": exc.problems} if exc.problems else None
-    return AppError(status, exc.code, exc.message, extra=extra)
+    return AppError(status, exc.code, exc.key, extra=extra)
 
 
 @router.get("")
@@ -214,11 +214,7 @@ def gate(plugin_id: str, name: str) -> Callable[[StateDep], Coroutine[Any, Any, 
 
     async def check(state: StateDep) -> None:
         if not state.plugins.is_enabled(plugin_id):
-            raise AppError(
-                404,
-                "plugin_disabled",
-                f"{name} is turned off. A parent can turn it on in Settings.",
-            )
+            raise AppError(404, "plugin_disabled", "api.plugins.turned_off", params={"name": name})
 
     return check
 

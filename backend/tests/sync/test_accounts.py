@@ -241,6 +241,33 @@ async def test_holidays_need_no_address(phone: httpx.AsyncClient) -> None:
     assert unknown.status_code == 422
 
 
+async def test_holidays_follow_the_households_language_at_the_next_sync(
+    phone: httpx.AsyncClient, plugin: CalendarSync
+) -> None:
+    """The holidays are named in the household's language where the holidays package has them
+    in it for that country (ADR 0043): an English household sees Spain's in English, and once
+    the household speaks Spanish, the next sync names them in Spanish."""
+    added = await phone.post(
+        "/api/calendar-sync/accounts/holidays", json={"country": "es"}, headers=CSRF
+    )
+    assert added.status_code == 201, added.text
+
+    async def new_year() -> list[str]:
+        response = await phone.get(
+            "/api/calendar/occurrences", params={"from": "2027-01-01", "to": "2027-01-02"}
+        )
+        assert response.status_code == 200, response.text
+        return [o["title"] for o in response.json()["occurrences"]]
+
+    assert await new_year() == ["New Year's Day"]
+    spanish = await phone.patch("/api/settings", json={"language": "es"}, headers=CSRF)
+    assert spanish.status_code == 200, spanish.text
+    assert await new_year() == ["New Year's Day"]  # until the next sync
+    assert plugin.engine is not None
+    await plugin.engine.sync_account(added.json()["id"])
+    assert await new_year() == ["Año Nuevo"]
+
+
 async def test_mapping_sets_the_person_and_color_and_disconnecting_clears_the_board(
     phone: httpx.AsyncClient,
 ) -> None:

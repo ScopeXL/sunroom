@@ -64,7 +64,7 @@ async def login(body: LoginIn, request: Request, response: Response, state: Stat
         if not await password_ok(state, tx.session, body.password):
             state.login_limiter.record_failure(ip)
             log.info("auth.login_failed")
-            raise AppError(401, "wrong_password", "That password didn't match. Try again.")
+            raise AppError(401, "wrong_password", "api.auth.wrong_password")
         state.login_limiter.record_success(ip)
         device = await new_device(
             tx.session,
@@ -155,12 +155,7 @@ async def join_with_code(
             return await session_out(tx.session, state, request, device.id)
     state.login_limiter.record_failure(ip)
     log.info("auth.join_failed")
-    raise AppError(
-        401,
-        "join_code_invalid",
-        "That code didn't work. A code works once, for 10 minutes. Make a new one on a "
-        "signed-in device.",
-    )
+    raise AppError(401, "join_code_invalid", "api.auth.join_code_invalid")
 
 
 @router.get("/session")
@@ -175,12 +170,12 @@ async def choose_member(
 ) -> SessionOut:
     """Who's using this device? A wall screen is everyone's: it picks a person per action."""
     if actor.is_kiosk:
-        raise AppError(409, "kiosk_has_no_member", "A paired screen is for everyone.")
+        raise AppError(409, "kiosk_has_no_member", "api.devices.screen_for_everyone")
     async with state.db.write() as tx:
         if body.member_id is not None:
             member = await tx.session.get(Member, body.member_id)
             if member is None or member.archived_at is not None:
-                raise AppError(404, "not_found", "That person isn't in this household.")
+                raise AppError(404, "not_found", "api.members.not_found")
         await tx.session.execute(
             update(Device).where(Device.id == actor.device_id).values(member_id=body.member_id)
         )
@@ -246,18 +241,14 @@ async def update_device(
     async with state.db.write() as tx:
         device = await tx.session.get(Device, device_id)
         if device is None or device.revoked_at is not None:
-            raise AppError(404, "not_found", "That device isn't signed in.")
+            raise AppError(404, "not_found", "api.devices.not_found")
         if body.label is not None:
             device.label = body.label
         if body.is_kid_device is not None:
             if device.kind == DeviceKind.KIOSK:
-                raise AppError(409, "kiosk_not_kid", "A paired screen is for everyone.")
+                raise AppError(409, "kiosk_not_kid", "api.devices.screen_for_everyone")
             if body.is_kid_device and not state.auth.has_pin:
-                raise AppError(
-                    409,
-                    "pin_needed",
-                    "Set a parent PIN first, so a parent can still unlock Settings there.",
-                )
+                raise AppError(409, "pin_needed", "api.devices.pin_needed")
             device.is_kid_device = body.is_kid_device
             state.auth.devices[device.id] = DeviceInfo(
                 device.kind, device.member_id, body.is_kid_device
@@ -284,7 +275,7 @@ async def sign_out_device(
     device_id: str, request: Request, response: Response, state: StateDep, actor: ParentDep
 ) -> None:
     if device_id not in state.auth.live_device_ids():
-        raise AppError(404, "not_found", "That device isn't signed in.")
+        raise AppError(404, "not_found", "api.devices.not_found")
     await revoke(state, [device_id])
     if device_id == actor.device_id:
         clear_session_cookie(response, request)
@@ -334,7 +325,7 @@ async def set_pin(body: PinSetIn, state: StateDep, actor: ParentDep) -> None:
             and unlocked_by_pin
             and not (body.current_pin and verify_pin(body.current_pin, home.parent_pin_hash))
         ):
-            raise AppError(403, "wrong_pin", "That PIN didn't match. Try again.")
+            raise AppError(403, "wrong_pin", "api.auth.wrong_pin")
         home.parent_pin_hash = await asyncio.to_thread(hash_pin, body.pin)
         home.pin_length = len(body.pin)
         home.pin_updated_at = now
@@ -362,7 +353,7 @@ async def verify_parent_pin(
 ) -> GrantOut:
     """A correct PIN unlocks parent things on this device for 10 minutes (no sliding)."""
     if not state.auth.has_pin:
-        raise AppError(409, "no_pin", "There's no parent PIN yet. Set one in Settings → Family.")
+        raise AppError(409, "no_pin", "api.auth.no_pin")
     check_rate(state.pin_limiter, actor.device_id)
     async with state.db.read() as db:
         home = await household_service.household(db)
@@ -372,7 +363,7 @@ async def verify_parent_pin(
         if state.pin_limiter.recent_failures(actor.device_id) >= SLOW_AFTER - 1:
             await asyncio.sleep(1)
         state.pin_limiter.record_failure(actor.device_id)
-        raise AppError(403, "wrong_pin", "That PIN didn't match. Try again.")
+        raise AppError(403, "wrong_pin", "api.auth.wrong_pin")
     state.pin_limiter.record_success(actor.device_id)
     expires = issue_grant(response, request, state, actor.device_id)
     log.info("auth.parent_grant", device=actor.device_id)

@@ -68,6 +68,8 @@ async def test_wrong_password_says_exactly_what_happened(
     assert response.json()["error"] == {
         "code": "wrong_password",
         "message": "That password didn't match. Try again.",
+        "key": "api.auth.wrong_password",
+        "params": {},
     }
 
 
@@ -249,6 +251,8 @@ async def test_a_kids_phone_needs_a_pin_to_exist_first(
     assert blocked.json()["error"] == {
         "code": "parent_required",
         "message": "Only a parent can do that. Enter the parent PIN.",
+        "key": "api.auth.parent_pin",
+        "params": {},
         "pin": True,
     }
 
@@ -389,6 +393,8 @@ async def test_a_parent_checks_the_household_password(
     assert wrong.json()["error"] == {
         "code": "wrong_password",
         "message": "That password didn't match. Try again.",
+        "key": "api.auth.wrong_password",
+        "params": {},
     }
     limiter = state_of(app).login_limiter
     assert sum(limiter.recent_failures(key) for key in ("127.0.0.1", "unknown")) == 1

@@ -163,7 +163,7 @@ def cmd_reset_password(args: argparse.Namespace) -> None:
         raise SystemExit(1)
     problem = password_problem(first)
     if problem:
-        print(f"{problem} Nothing changed.", file=sys.stderr)
+        print(f"{problem.english} Nothing changed.", file=sys.stderr)
         raise SystemExit(1)
     hashed = hash_password(first)
     conn = sqlite3.connect(settings.db_path, timeout=10)

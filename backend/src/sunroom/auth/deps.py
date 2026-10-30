@@ -131,7 +131,7 @@ def grant_expires_at(request: Request, state: AppState, device_id: str) -> int |
 async def current_actor(request: Request, response: Response, state: StateDep) -> Actor:
     token = read_token(request, state)
     if token is None:
-        raise AppError(401, "signed_out", "Please sign in.")
+        raise AppError(401, "signed_out", "api.auth.signed_out")
     now = state.clock.now()
     today = day_number(now)
     if today - token.issued_day >= REISSUE_AFTER_DAYS:
@@ -173,13 +173,8 @@ def parent_required(actor: Actor, state: AppState) -> AppError:
     """The refusal for a parent-only action. The display and kids' phones can unlock it with
     the PIN."""
     if state.auth.has_pin and (actor.is_kiosk or actor.is_kid_device):
-        return AppError(
-            403,
-            "parent_required",
-            "Only a parent can do that. Enter the parent PIN.",
-            extra={"pin": True},
-        )
-    return AppError(403, "parent_required", "Ask a parent to do that.", extra={"pin": False})
+        return AppError(403, "parent_required", "api.auth.parent_pin", extra={"pin": True})
+    return AppError(403, "parent_required", "api.auth.parent_only", extra={"pin": False})
 
 
 def parent_refusal(actor: Actor) -> AppError:
@@ -187,13 +182,8 @@ def parent_refusal(actor: Actor) -> AppError:
     isn't a parent's is a wall screen or a kid's phone only while the household has a PIN, so
     the PIN is on offer exactly then."""
     if actor.is_kiosk or actor.is_kid_device:
-        return AppError(
-            403,
-            "parent_required",
-            "Only a parent can do that. Enter the parent PIN.",
-            extra={"pin": True},
-        )
-    return AppError(403, "parent_required", "Ask a parent to do that.", extra={"pin": False})
+        return AppError(403, "parent_required", "api.auth.parent_pin", extra={"pin": True})
+    return AppError(403, "parent_required", "api.auth.parent_only", extra={"pin": False})
 
 
 async def current_parent(actor: ActorDep, state: StateDep) -> Actor:

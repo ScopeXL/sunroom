@@ -366,6 +366,8 @@ async def test_the_wall_screen_with_a_pin_needs_the_grant_to_approve(
     assert refused.json()["error"] == {
         "code": "parent_required",
         "message": "Only a parent can do that. Enter the parent PIN.",
+        "key": "api.auth.parent_pin",
+        "params": {},
         "pin": True,
     }
     granted = await screen.post("/api/auth/pin/verify", json={"pin": PIN}, headers=CSRF)

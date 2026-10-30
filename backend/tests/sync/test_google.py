@@ -33,6 +33,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from sunroom.calendar.synced import PendingSeries, SyncedEvent, SyncedOverride, SyncedSeries
 from sunroom.core.clock import FakeClock
 from sunroom.core.http import GuardedHttp
+from sunroom.core.lang import t_en
 from sunroom.core.netguard import NetGuard
 from sunroom.domain.recurrence import Override, Series, Timing, Window, expand
 from sunroom.plugins.calendar_sync.ical import NO_TITLE
@@ -763,7 +764,7 @@ async def test_a_key_google_turns_down_asks_for_a_new_one(
     other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     auth = ServiceAccountAuth(key_file(private_key=pem(other)), google.http(), clock.now)
     error = await failure(auth.access_token())
-    assert (error.kind, error.message) == (ErrorKind.AUTH, KEY_REFUSED)
+    assert (error.kind, error.key) == (ErrorKind.AUTH, KEY_REFUSED)
 
     # A clock that's off is said plainly, and doesn't ask for a new key.
     google.token_fail.append(
@@ -774,28 +775,28 @@ async def test_a_key_google_turns_down_asks_for_a_new_one(
         )
     )
     error = await failure(ServiceAccountAuth(key_file(), google.http(), clock.now).access_token())
-    assert (error.kind, error.message) == (ErrorKind.REFUSED, CLOCK_WRONG)
+    assert (error.kind, error.key) == (ErrorKind.REFUSED, CLOCK_WRONG)
 
     with pytest.raises(SyncError) as caught:
         ServiceAccountAuth(key_file(private_key="not a key"), google.http(), clock.now)
-    assert (caught.value.kind, caught.value.message) == (ErrorKind.AUTH, KEY_AGAIN)
+    assert (caught.value.kind, caught.value.key) == (ErrorKind.AUTH, KEY_AGAIN)
 
 
 async def test_the_token_endpoint_failing_says_so(google: FakeGoogle, clock: FakeClock) -> None:
     auth = OAuthAuth(CLIENT_ID, CLIENT_SECRET, REFRESH, google.http(), clock.now)
     google.token_fail.append(httpx.Response(503))
     error = await failure(auth.access_token())
-    assert (error.kind, error.message) == (ErrorKind.UNREACHABLE, NO_ANSWER)
+    assert (error.kind, error.key) == (ErrorKind.UNREACHABLE, NO_ANSWER)
     google.token_fail.append(httpx.Response(429, headers={"Retry-After": "120"}))
     error = await failure(auth.access_token())
-    assert (error.kind, error.message, error.retry_after) == (
+    assert (error.kind, error.key, error.retry_after) == (
         ErrorKind.RATE_LIMITED,
         SLOW_DOWN,
         120.0,
     )
     google.token_fail.append(httpx.Response(200, text="<html>not json</html>"))
     error = await failure(auth.access_token())
-    assert (error.kind, error.message) == (ErrorKind.BAD_DATA, UNREADABLE)
+    assert (error.kind, error.key) == (ErrorKind.BAD_DATA, UNREADABLE)
 
 
 def test_an_uploaded_key_is_checked() -> None:
@@ -831,7 +832,7 @@ def test_an_uploaded_key_is_checked() -> None:
 def test_anything_else_is_not_a_key(text: str) -> None:
     with pytest.raises(ValueError, match=r"^That isn't a Google key file\.") as caught:
         parse_service_account_key(text)
-    assert str(caught.value) == NOT_A_KEY
+    assert str(caught.value) == t_en(NOT_A_KEY)
 
 
 # ---- signing in ---------------------------------------------------------------------------------
@@ -883,14 +884,14 @@ async def test_a_sign_in_code_is_traded_for_tokens(google: FakeGoogle) -> None:
     error = await failure(
         exchange_code(http, CLIENT_ID, CLIENT_SECRET, "code-1", verifier, REDIRECT)
     )
-    assert (error.kind, error.message) == (ErrorKind.AUTH, SIGN_IN_FAILED)
+    assert (error.kind, error.key) == (ErrorKind.AUTH, SIGN_IN_FAILED)
     google.codes["code-2"] = challenge
     error = await failure(
         exchange_code(http, CLIENT_ID, CLIENT_SECRET, "code-2", new_pkce()[0], REDIRECT)
     )
-    assert (error.kind, error.message) == (ErrorKind.AUTH, SIGN_IN_FAILED)
+    assert (error.kind, error.key) == (ErrorKind.AUTH, SIGN_IN_FAILED)
     error = await failure(exchange_code(http, CLIENT_ID, "wrong", "code-3", verifier, REDIRECT))
-    assert (error.kind, error.message) == (ErrorKind.AUTH, CLIENT_REFUSED)
+    assert (error.kind, error.key) == (ErrorKind.AUTH, CLIENT_REFUSED)
 
 
 async def test_a_signed_in_account_refreshes_until_google_signs_it_out(
@@ -908,10 +909,10 @@ async def test_a_signed_in_account_refreshes_until_google_signs_it_out(
     google.refresh_tokens.clear()  # revoked, or the app was left in Testing for 7 days
     clock.advance(hours=1)
     error = await failure(auth.access_token())
-    assert (error.kind, error.message) == (ErrorKind.AUTH, SIGNED_OUT)
+    assert (error.kind, error.key) == (ErrorKind.AUTH, SIGNED_OUT)
     wrong = OAuthAuth(CLIENT_ID, "wrong", REFRESH, google.http(), clock.now)
     error = await failure(wrong.access_token())
-    assert (error.kind, error.message) == (ErrorKind.AUTH, CLIENT_REFUSED)
+    assert (error.kind, error.key) == (ErrorKind.AUTH, CLIENT_REFUSED)
 
 
 # ---- calendars ----------------------------------------------------------------------------------
@@ -962,10 +963,10 @@ async def test_a_calendar_shared_with_the_helper_is_added_by_its_address(
     assert await client.insert_calendar(SCHOOL) == added
     # Not shared (yet), or shared without the right: say so plainly.
     error = await failure(client.insert_calendar("nobody@example.com"))
-    assert (error.kind, error.message) == (ErrorKind.NOT_FOUND, NOT_SHARED)
+    assert (error.kind, error.key) == (ErrorKind.NOT_FOUND, NOT_SHARED)
     google.fail.append(("POST", google_error(403, "forbidden", "Forbidden")))
     error = await failure(client.insert_calendar("private@example.com"))
-    assert (error.kind, error.message) == (ErrorKind.NOT_FOUND, NOT_SHARED)
+    assert (error.kind, error.key) == (ErrorKind.NOT_FOUND, NOT_SHARED)
     # Slowing down is not "not shared".
     google.fail.append(("POST", google_error(403, "rateLimitExceeded", "Rate Limit Exceeded")))
     error = await failure(client.insert_calendar("private@example.com"))
@@ -1393,7 +1394,7 @@ async def test_a_change_replaces_googles_copy_if_it_is_still_the_one_seen(
     # The etag Sunroom holds is old: someone changed it on Google meanwhile. Nothing is sent.
     google.seen.clear()
     error = await failure(google_provider.push(FAMILY_CALENDAR, pending(changed)))
-    assert (error.kind, error.message) == (ErrorKind.CONFLICT, CHANGED)
+    assert (error.kind, error.key) == (ErrorKind.CONFLICT, CHANGED)
     assert [method for method, _ in google.asked()] == ["GET"]
 
 
@@ -1407,7 +1408,7 @@ async def test_a_412_is_a_conflict(google: FakeGoogle, clock: FakeClock) -> None
     (seen,) = (await google_provider.changes(FAMILY_CALENDAR, None, {})).series
     google.fail.append(("PUT", google_error(412, "conditionNotMet", "Precondition Failed")))
     error = await failure(google_provider.push(FAMILY_CALENDAR, pending(seen)))
-    assert (error.kind, error.message) == (ErrorKind.CONFLICT, CHANGED)
+    assert (error.kind, error.key) == (ErrorKind.CONFLICT, CHANGED)
     # Deleted on Google meanwhile: also pull first, then decide.
     google.cancel(FAMILY, "vet01")
     error = await failure(google_provider.push(FAMILY_CALENDAR, pending(seen)))
@@ -1517,7 +1518,7 @@ async def test_delete(google: FakeGoogle, clock: FakeClock) -> None:
     (lesson,) = (await google_provider.changes(FAMILY_CALENDAR, None, {})).series
     stale = replace(lesson, etag='"0"')
     error = await failure(google_provider.delete(FAMILY_CALENDAR, pending(stale, deleted=True)))
-    assert (error.kind, error.message) == (ErrorKind.CONFLICT, CHANGED)
+    assert (error.kind, error.key) == (ErrorKind.CONFLICT, CHANGED)
 
     google.seen.clear()
     await google_provider.delete(FAMILY_CALENDAR, pending(lesson, deleted=True))
@@ -1590,7 +1591,7 @@ async def test_failures_reading_map_to_plain_kinds(
 ) -> None:
     google.fail.append(("GET", reply))
     error = await failure(helper_client(google, clock).events(FAMILY, None))
-    assert (error.kind, error.message, error.retry_after) == (kind, message, retry_after)
+    assert (error.kind, error.key, error.retry_after) == (kind, message, retry_after)
     # Redirects are never followed: a bearer token goes to Google's host only.
     assert {request.headers["host"] for request in google.seen} <= {TOKEN_HOST, API_HOST}
 
@@ -1611,7 +1612,7 @@ async def test_failures_writing_map_to_plain_kinds(
     google.fail.append(("PUT", reply))
     client = helper_client(google, clock)
     error = await failure(client.update_event(FAMILY, "dentist01", {"summary": "Dentist"}, '"1"'))
-    assert (error.kind, error.message) == (kind, message)
+    assert (error.kind, error.key) == (kind, message)
 
 
 async def test_a_signed_in_account_is_told_whose_permission_to_ask(
@@ -1619,7 +1620,7 @@ async def test_a_signed_in_account_is_told_whose_permission_to_ask(
 ) -> None:
     google.fail.append(("POST", google_error(403, "forbidden")))
     error = await failure(account_client(google, clock).insert_event(FAMILY, {"summary": "Tea"}))
-    assert (error.kind, error.message) == (ErrorKind.REFUSED, ACCOUNT_REFUSED)
+    assert (error.kind, error.key) == (ErrorKind.REFUSED, ACCOUNT_REFUSED)
 
 
 async def test_a_401_gets_one_fresh_token_then_asks_to_reconnect(
@@ -1634,14 +1635,14 @@ async def test_a_401_gets_one_fresh_token_then_asks_to_reconnect(
 
     google.revoked = True  # Google takes no token any more, however fresh
     error = await failure(client.events(FAMILY, None))
-    assert (error.kind, error.message) == (ErrorKind.AUTH, KEY_REFUSED)
+    assert (error.kind, error.key) == (ErrorKind.AUTH, KEY_REFUSED)
     assert len(google.issued) == 3  # one more try, not a loop
 
     google.revoked = False
     signed_in = account_client(google, clock)
     google.fail.extend([("GET", google_error(401, "authError"))] * 2)
     error = await failure(signed_in.events(FAMILY, None))
-    assert (error.kind, error.message) == (ErrorKind.AUTH, SIGNED_OUT)
+    assert (error.kind, error.key) == (ErrorKind.AUTH, SIGNED_OUT)
 
 
 async def test_an_unreachable_google_says_so(google: FakeGoogle, clock: FakeClock) -> None:
@@ -1649,9 +1650,9 @@ async def test_an_unreachable_google_says_so(google: FakeGoogle, clock: FakeCloc
     await client.calendar_list()  # a token first, so only the API is down
     google.down = True
     error = await failure(client.events(FAMILY, None))
-    assert (error.kind, error.message) == (ErrorKind.UNREACHABLE, NO_ANSWER)
+    assert (error.kind, error.key) == (ErrorKind.UNREACHABLE, NO_ANSWER)
     error = await failure(provider(google, clock).changes(FAMILY_CALENDAR, None, {}))
-    assert (error.kind, error.message) == (ErrorKind.UNREACHABLE, NO_ANSWER)
+    assert (error.kind, error.key) == (ErrorKind.UNREACHABLE, NO_ANSWER)
 
 
 async def test_no_token_or_key_reaches_an_error_or_a_log(

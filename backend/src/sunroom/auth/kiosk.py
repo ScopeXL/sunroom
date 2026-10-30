@@ -137,12 +137,7 @@ async def pair(
             or row.expires_at <= now
         ):
             state.login_limiter.record_failure(ip)
-            raise AppError(
-                401,
-                "pair_code_invalid",
-                "That code didn't work. Codes change every 10 minutes; read the one on the "
-                "screen now.",
-            )
+            raise AppError(401, "pair_code_invalid", "api.pairing.code_invalid")
         device = Device(
             label=body.label,
             kind=DeviceKind.KIOSK.value,
@@ -175,7 +170,7 @@ async def pair_with_password(
     async with state.db.write() as tx:
         if not await password_ok(state, tx.session, body.password):
             state.login_limiter.record_failure(ip)
-            raise AppError(401, "wrong_password", "That password didn't match. Try again.")
+            raise AppError(401, "wrong_password", "api.auth.wrong_password")
         state.login_limiter.record_success(ip)
         device = await new_device(
             tx.session,

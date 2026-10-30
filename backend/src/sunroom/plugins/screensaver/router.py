@@ -44,7 +44,7 @@ class LibraryTestIn(BaseModel):
 def build(router: APIRouter, plugin: Screensaver) -> None:
     def ctx() -> PluginContext:
         if plugin.ctx is None:
-            raise AppError(503, "starting", "Photos are still starting. Try again.")
+            raise AppError(503, "starting", "api.photos.starting")
         return plugin.ctx
 
     @router.get("/manifest")
@@ -125,9 +125,9 @@ def build(router: APIRouter, plugin: Screensaver) -> None:
         context = ctx()
         library = await libraries.get_library(context, source_id)
         if not library.enabled:
-            raise AppError(409, "source_off", "Turn it on first.")
+            raise AppError(409, "source_off", "api.photos.turn_on_first")
         if not libraries.start_pass(context, source_id):
-            raise AppError(409, "already_checking", "It's checking that library right now.")
+            raise AppError(409, "already_checking", "api.photos.checking_library")
         return await libraries.get_library(context, source_id)
 
     # Like the core's /api/_test routes: open on the test server, absent everywhere else.
@@ -135,5 +135,5 @@ def build(router: APIRouter, plugin: Screensaver) -> None:
     async def test_library(body: LibraryTestIn) -> LibraryOut:  # pyright: ignore[reportUnusedFunction]
         context = ctx()
         if not context.test_mode:
-            raise AppError(404, "not_found", "Not found.")
+            raise AppError(404, "not_found", "api.testing.not_found")
         return await libraries.pretend_library(context, wipe=body.wipe)

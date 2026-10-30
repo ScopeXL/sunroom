@@ -6562,6 +6562,10 @@
             "title": "Id",
             "type": "string"
           },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
           "page": {
             "anyOf": [
               {
@@ -6572,6 +6576,23 @@
               }
             ],
             "title": "Page"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "title": "Params",
+            "type": "object"
           },
           "since": {
             "anyOf": [
@@ -6597,6 +6618,8 @@
         "required": [
           "id",
           "title",
+          "key",
+          "params",
           "detail",
           "since",
           "page",

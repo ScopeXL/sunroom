@@ -19,6 +19,7 @@ from typing import Any, cast
 from sqlalchemy import select
 
 from sunroom.core.clock import Clock
+from sunroom.core.lang import t_en
 from sunroom.core.logging import get_logger
 from sunroom.db.engine import Database
 from sunroom.plugins.base import HubEvent, Plugin, PluginStatus, Problem
@@ -187,10 +188,14 @@ class _Live:
 
 
 class PluginError(Exception):
-    def __init__(self, code: str, message: str, problems: list[str] | None = None) -> None:
-        super().__init__(message)
+    """A plugin action refused: ``key`` names the sentence in ``lang/en.json`` and ``message``
+    is its English; ``problems`` are a settings change's plain-English problems."""
+
+    def __init__(self, code: str, key: str, problems: list[str] | None = None) -> None:
         self.code = code
-        self.message = message
+        self.key = key
+        self.message = t_en(key)
+        super().__init__(self.message)
         self.problems = problems or []
 
 
@@ -313,7 +318,7 @@ class PluginManager:
         async with self._lock:
             self._known(plugin_id)
             if not self._live[plugin_id].enabled:
-                raise PluginError("plugin_disabled", "Turn it on first.")
+                raise PluginError("plugin_disabled", "api.plugins.turn_on_first")
             await self._stop_runner(plugin_id)
             self._start(plugin_id)
         self._changed(plugin_id)
@@ -327,7 +332,7 @@ class PluginManager:
             ctx = live.runner.ctx if live.runner else self._idle_context(plugin_id)
             problems = await plugin.validate_settings(ctx, values)
         if problems:
-            raise PluginError("invalid_settings", "Some settings aren't right.", problems)
+            raise PluginError("invalid_settings", "api.plugins.invalid_settings", problems)
         async with self._db.write() as tx:
             row = await tx.session.get(PluginState, plugin_id)
             assert row is not None  # boot() inserts every registered plugin
@@ -380,7 +385,7 @@ class PluginManager:
 
     def _known(self, plugin_id: str) -> None:
         if plugin_id not in self.registry:
-            raise PluginError("not_found", "That feature isn't part of this version.")
+            raise PluginError("not_found", "api.plugins.not_found")
 
     @staticmethod
     def _stored(settings_json: str) -> dict[str, Any]:

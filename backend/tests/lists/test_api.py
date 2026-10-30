@@ -41,8 +41,18 @@ from tests.support import (
 Json = dict[str, Any]
 Events = list[tuple[str, dict[str, Any]]]
 FAMILY = (("Ana", "parent"), ("Sam", "parent"), ("Mia", "kid"), ("Leo", "kid"))
-LIST_GONE = {"code": "not_found", "message": "That list isn't here any more."}
-ITEM_GONE = {"code": "not_found", "message": "That item isn't here any more."}
+LIST_GONE: dict[str, Any] = {
+    "code": "not_found",
+    "message": "That list isn't here any more.",
+    "key": "api.lists.list_gone",
+    "params": {},
+}
+ITEM_GONE: dict[str, Any] = {
+    "code": "not_found",
+    "message": "That item isn't here any more.",
+    "key": "api.lists.item_gone",
+    "params": {},
+}
 
 
 # ---- the app, its devices and the family -------------------------------------------------------
@@ -344,6 +354,8 @@ async def test_an_item_carries_a_quantity_a_note_a_person_and_a_day(
         assert refused.json()["error"] == {
             "code": "invalid",
             "message": "That person isn't in the household.",
+            "key": "api.lists.unknown_member",
+            "params": {},
             "fields": ["items.1.assigned_member_id"],
         }
     assert texts((await detail(phone, groceries))["items"]) == ["Apples"]  # nothing half-added
@@ -608,6 +620,8 @@ async def test_only_a_parent_removes_a_list_or_a_kid_their_own(
     assert refused.json()["error"] == {
         "code": "parent_required",
         "message": "Only a parent can do that. Enter the parent PIN.",
+        "key": "api.auth.parent_pin",
+        "params": {},
         "pin": True,
     }
     assert (
@@ -845,6 +859,8 @@ async def test_while_lists_start_a_request_asks_to_try_again(
     assert response.json()["error"] == {
         "code": "starting",
         "message": "Lists are still starting. Try again.",
+        "key": "api.lists.starting",
+        "params": {},
     }
 
 
@@ -869,6 +885,8 @@ async def test_every_route_is_off_while_lists_are_off_and_nothing_is_lost(
             assert response.json()["error"] == {
                 "code": "plugin_disabled",
                 "message": "Lists is turned off. A parent can turn it on in Settings.",
+                "key": "api.plugins.turned_off",
+                "params": {"name": "Lists"},
             }
             answered.append((method, route.path))
     assert len(answered) == 14  # every route the plugin has

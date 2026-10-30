@@ -37,6 +37,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sunroom.core.errors import AppError
+from sunroom.core.lang import Words, match_english
 from sunroom.core.logging import get_logger
 from sunroom.photos.models import Photo, PhotoKind
 from sunroom.photos.store import PhotoStore
@@ -76,12 +77,12 @@ _checking: set[Path] = set()
 
 
 def source_gone() -> AppError:
-    return AppError(404, "not_found", "That photo source isn't here any more.")
+    return AppError(404, "not_found", "api.photos.source_gone")
 
 
 def _store(ctx: PluginContext) -> PhotoStore:
     if ctx.photos is None:
-        raise AppError(503, "starting", "Photos are still starting. Try again.")
+        raise AppError(503, "starting", "api.photos.starting")
     return ctx.photos
 
 
@@ -157,16 +158,34 @@ async def problems(ctx: PluginContext) -> list[Problem]:
                 .order_by(PhotoSource.created_at)
             )
         ).all()
-    return [
-        Problem(
-            id=f"photos:{source.id}",
-            title=source.last_error or "",
-            since=source.last_scan_at,
-            page="screensaver",
-        )
-        for source in failing
-        if source.last_error
-    ]
+    return [_inbox_problem(source, source.last_error) for source in failing if source.last_error]
+
+
+def _inbox_problem(source: PhotoSource, line: str) -> Problem:
+    said = inbox_line(line)
+    return Problem(
+        id=f"photos:{source.id}",
+        key=said.key,
+        params=said.params,
+        since=source.last_scan_at,
+        page="screensaver",
+    )
+
+
+# Every line an inbox check keeps (_Tally.problem), by key: the source keeps the English.
+INBOX_LINES = (
+    "api.photos.storage_full",
+    "api.photos.inbox.stuck_one",
+    "api.photos.inbox.stuck",
+    "api.photos.inbox.unreadable_one",
+    "api.photos.inbox.unreadable",
+)
+
+
+def inbox_line(line: str) -> Words:
+    """The inbox's kept line, named by its key again for the page (ADR 0043). A line no key
+    matches (another version's words) is shown as it was kept."""
+    return match_english(line, INBOX_LINES) or Words("api.photos.inbox.line", {"line": line})
 
 
 def source_key(source: PhotoSource) -> str:
@@ -265,27 +284,21 @@ class _Tally:
     imported: int = 0  # photos new to the library
     unreadable: int = 0  # files moved to unreadable/
     stuck: int = 0  # files that couldn't be moved out of the inbox
-    full: str | None = None  # the store's "Photos need room" line, when that stopped it
+    full: Words | None = None  # the store's "Photos need room" line, when that stopped it
 
-    def problem(self) -> str | None:
-        """The plain line a parent sees under the source, or None when all went well."""
+    def problem(self) -> Words | None:
+        """The plain line a parent sees under the source, or None when all went well. One
+        sentence for one file and one for more: the server says no plurals (ADR 0043)."""
         if self.full:
             return self.full
+        if self.stuck == 1:
+            return Words("api.photos.inbox.stuck_one")
         if self.stuck:
-            files = "1 file" if self.stuck == 1 else f"{self.stuck} files"
-            return (
-                f"{files} couldn't be moved out of the inbox. "
-                "Check that Sunroom is allowed to change files there."
-            )
+            return Words("api.photos.inbox.stuck", {"count": self.stuck})
         if self.unreadable == 1:
-            return (
-                "1 file wasn't a photo Sunroom could read. It's in the inbox's unreadable folder."
-            )
+            return Words("api.photos.inbox.unreadable_one")
         if self.unreadable:
-            return (
-                f"{self.unreadable} files weren't photos Sunroom could read. "
-                "They're in the inbox's unreadable folder."
-            )
+            return Words("api.photos.inbox.unreadable", {"count": self.unreadable})
         return None
 
 
@@ -381,7 +394,7 @@ async def _import_files(ctx: PluginContext, store: PhotoStore) -> _Tally:
                 )
         except AppError as exc:
             if exc.status == 507:
-                tally.full = exc.message
+                tally.full = Words(exc.key, exc.params)
                 break
             await _set_aside(path, tally)
             continue
@@ -407,7 +420,8 @@ async def _record(ctx: PluginContext, source_id: str, tally: _Tally, *, asked: b
         source.last_scan_at = ctx.now()
         source.items_seen += tally.imported
         if asked or tally.seen:
-            source.last_error = tally.problem()
+            said = tally.problem()
+            source.last_error = said.english if said else None
         if tally.imported:
             tx.publish(PHOTOS_EVENT, {"source_id": source.id, "count": tally.imported})
         if asked or (source.items_seen, source.last_error) != before:
@@ -460,12 +474,12 @@ async def scan_source(ctx: PluginContext, source_id: str) -> ScanOut:
         kind, enabled = source.kind, source.enabled
     if kind != SourceKind.INBOX:
         # A photo library has its own Check Now (libraries.py, POST libraries/{id}/scan).
-        raise AppError(409, "cant_check", "Check a photo library from Photo Libraries.")
+        raise AppError(409, "cant_check", "api.photos.cant_check")
     if not enabled:
-        raise AppError(409, "source_off", "Turn it on first.")
+        raise AppError(409, "source_off", "api.photos.turn_on_first")
     tally = await _check_inbox(ctx, store, source_id, asked=True)
     if tally is None:
-        raise AppError(409, "already_checking", "It's checking the folder right now.")
+        raise AppError(409, "already_checking", "api.photos.checking_folder")
     async with ctx.read() as session:
         source = await _live_source(session, source_id)
         out = _source_out(source, await photo_counts(session))

@@ -50,7 +50,6 @@ from sunroom.plugins.chores.common import (
     member_ids,
     now_of,
     on_chores,
-    possessive,
     rule_of,
     stars_of,
     streak_book,
@@ -85,7 +84,7 @@ COUNTING = (CompletionStatus.DONE, CompletionStatus.PENDING)
 
 
 def not_due() -> AppError:
-    return AppError(409, "not_due", "It isn't due that day.")
+    return AppError(409, "not_due", "api.tasks.not_due")
 
 
 # ---- chores as people see them -----------------------------------------------------------------
@@ -195,7 +194,7 @@ def _checked_rule(rrule: str, start: date) -> str:
     try:
         return validate_rrule(rrule, _timing(start), "UTC")
     except RecurrenceError as exc:
-        raise invalid(exc.message, "rrule") from None
+        raise invalid(exc.key, "rrule") from None
 
 
 def _checked_people(mode: str, people: Sequence[str]) -> list[str]:
@@ -204,11 +203,11 @@ def _checked_people(mode: str, people: Sequence[str]) -> list[str]:
     if mode == ANY:
         return []
     if len(set(people)) != len(people):
-        raise invalid("Each person can be picked once.", "assignee_member_ids")
+        raise invalid("api.tasks.picked_twice", "assignee_member_ids")
     if mode == FIXED and not people:
-        raise invalid("Pick who does this task.", "assignee_member_ids")
+        raise invalid("api.tasks.pick_who", "assignee_member_ids")
     if mode == ROTATE and len(people) < 2:
-        raise invalid("Pick at least two people to take turns.", "assignee_member_ids")
+        raise invalid("api.tasks.pick_two", "assignee_member_ids")
     return list(people)
 
 
@@ -258,7 +257,7 @@ async def add_chore(ctx: PluginContext, actor: Actor, body: ChoreIn) -> ChoreOut
 async def _chore(session: AsyncSession, chore_id: str) -> Chore:
     chore = await session.get(Chore, chore_id)
     if chore is None or chore.deleted_at is not None:
-        raise gone("task")
+        raise gone("api.tasks.task_gone")
     return chore
 
 
@@ -328,7 +327,7 @@ async def restore_chore(ctx: PluginContext, chore_id: str) -> ChoreOut:
     async with ctx.write() as tx:
         chore = await tx.session.get(Chore, chore_id)
         if chore is None:
-            raise gone("task")
+            raise gone("api.tasks.task_gone")
         if chore.deleted_at is not None:
             chore.deleted_at = None
             chore.updated_at = now.utc
@@ -548,14 +547,22 @@ async def complete(
         )
         if chore.assignee_mode == FIXED:
             if member.id not in rule.assignees:
-                raise AppError(409, "not_theirs", f"That isn't {possessive(member.name)} task.")
+                raise AppError(
+                    409, "not_theirs", "api.tasks.not_their_task", params={"name": member.name}
+                )
         else:
             other = next(
                 (r for r in rows if r.member_id != member.id and r.status in COUNTING), None
             )
             if other is not None:
-                name = by_id[other.member_id].name if other.member_id in by_id else "Someone"
-                raise AppError(409, "already_done", f"{name} did it already.")
+                if other.member_id not in by_id:
+                    raise AppError(409, "already_done", "api.tasks.someone_did_it")
+                raise AppError(
+                    409,
+                    "already_done",
+                    "api.tasks.already_done",
+                    params={"name": by_id[other.member_id].name},
+                )
         row = next((r for r in rows if r.member_id == member.id), None)
         if row is None or row.status not in COUNTING:
             pending = _needs_approval(chore, flags) and member.role == KID
@@ -597,7 +604,7 @@ async def undo(ctx: PluginContext, actor: Actor, chore_id: str, body: CompleteIn
     async with ctx.write() as tx:
         chore = await tx.session.get(Chore, chore_id)
         if chore is None:
-            raise gone("task")
+            raise gone("api.tasks.task_gone")
         rows = list(
             await tx.session.scalars(
                 select(ChoreCompletion)
@@ -629,12 +636,12 @@ async def decide(
     async with ctx.write() as tx:
         row = await tx.session.get(ChoreCompletion, completion_id)
         if row is None:
-            raise AppError(404, "not_found", "That task isn't waiting any more.")
+            raise AppError(404, "not_found", "api.tasks.not_waiting")
         target = CompletionStatus.DONE if approve else CompletionStatus.REJECTED
         if row.status == target:
             return completion_out(row)
         if approve and row.status != CompletionStatus.PENDING:
-            raise AppError(409, "not_waiting", "That task isn't waiting any more.")
+            raise AppError(409, "not_waiting", "api.tasks.not_waiting")
         row.status = target
         row.approved_by_member_id = actor.member_id if approve else None
         row.approved_at = ctx.now() if approve else None
@@ -659,7 +666,7 @@ async def adjust(ctx: PluginContext, actor: Actor, body: AdjustIn) -> PointsOut:
     """A parent gives or takes stars, with a reason: to one child or several at once, a ledger
     row each in one transaction (ADR 0034). Answers their stars, in the order asked."""
     if body.points == 0:
-        raise invalid("Give or take at least one star.", "points")
+        raise invalid("api.tasks.give_or_take", "points")
     now = await now_of(ctx)
     active = await _active_ids(ctx)
     ids = list(dict.fromkeys(body.member_ids))

@@ -76,13 +76,13 @@ class RestoreApplyOut(BaseModel):
 
 def _on_a_device(actor: Actor) -> None:
     if actor.is_kiosk:
-        raise AppError(403, "not_on_a_screen", "Restore from a signed-in device.")
+        raise AppError(403, "not_on_a_screen", "api.restore.not_on_a_screen")
 
 
 def _refused(problem: restore.RestoreError) -> AppError:
     if problem.code == "no_room":
-        return AppError(507, "storage_full", problem.message)
-    return AppError(422, problem.code, problem.message)
+        return AppError(507, "storage_full", problem.key, params=problem.params)
+    return AppError(422, problem.code, problem.key, params=problem.params)
 
 
 def _shown_name(header: str | None) -> str:
@@ -123,7 +123,7 @@ async def _receive(request: Request, upload: Path, size: int) -> None:
         async for chunk in request.stream():
             received += len(chunk)
             if received > size:
-                raise AppError(400, "upload_too_long", "The file was longer than it said.")
+                raise AppError(400, "upload_too_long", "api.restore.upload_too_long")
             pending += chunk
             if len(pending) >= WRITE_BYTES:
                 await asyncio.to_thread(handle.write, bytes(pending))
@@ -137,7 +137,7 @@ async def _receive(request: Request, upload: Path, size: int) -> None:
         raise
     if received != size:
         await asyncio.to_thread(upload.unlink, missing_ok=True)
-        raise AppError(400, "upload_incomplete", "The file didn't arrive whole. Try again.")
+        raise AppError(400, "upload_incomplete", "api.restore.upload_incomplete")
 
 
 @router.post(
@@ -153,18 +153,13 @@ async def stage_upload(request: Request, state: StateDep, actor: ParentDep) -> R
     _on_a_device(actor)
     length = request.headers.get("content-length", "")
     if not length.isdigit():
-        raise AppError(411, "length_required", "Send the file's size with it, then try again.")
+        raise AppError(411, "length_required", "api.restore.length_required")
     size = int(length)
     free = (await asyncio.to_thread(shutil.disk_usage, state.settings.data_dir)).free
     if free < 2 * size + restore.ROOM_TO_SPARE:
-        raise AppError(
-            507,
-            "storage_full",
-            "There isn't enough free space on the server for this file. Free some space, then "
-            "try again.",
-        )
+        raise AppError(507, "storage_full", "api.restore.no_room_upload")
     if state.restore_lock.locked():
-        raise AppError(409, "restore_busy", "A restore is already on its way. Try again soon.")
+        raise AppError(409, "restore_busy", "api.restore.busy")
     async with state.restore_lock:
         upload = restore.stage_dir(state.settings) / restore.UPLOAD
         await _receive(request, upload, size)
@@ -217,17 +212,15 @@ async def apply(
     if not matched:
         state.login_limiter.record_failure(ip)
         log.info("restore.wrong_password")
-        raise AppError(403, "wrong_password", "That password didn't match. Try again.")
+        raise AppError(403, "wrong_password", "api.auth.wrong_password")
     state.login_limiter.record_success(ip)
     if state.restore_lock.locked():
-        raise AppError(409, "restore_busy", "A restore is already on its way. Try again soon.")
+        raise AppError(409, "restore_busy", "api.restore.busy")
     async with state.restore_lock:
         try:
             await asyncio.to_thread(restore.arm, state.settings, state.clock.now(), actor.device_id)
         except LookupError as exc:
-            raise AppError(
-                409, "nothing_staged", "There's no file to restore. Choose one first."
-            ) from exc
+            raise AppError(409, "nothing_staged", "api.restore.nothing_staged") from exc
         except restore.RestoreError as problem:
             raise _refused(problem) from problem
     details: dict[str, Any] = {"reason": "restore"}

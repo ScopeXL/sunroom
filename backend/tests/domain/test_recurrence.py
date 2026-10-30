@@ -19,6 +19,7 @@ from dateutil import rrule as du
 from hypothesis import assume, given, reject, settings
 from hypothesis import strategies as st
 
+from sunroom.core.lang import t_en
 from sunroom.domain.recurrence import (
     MAX_PER_SERIES,
     Occurrence,
@@ -213,8 +214,10 @@ def test_rules_are_refused_in_plain_words(rule: str, code: str) -> None:
     with pytest.raises(RecurrenceError) as caught:
         validate_rrule(rule, SOCCER, NY_KEY)
     assert caught.value.code == code
-    message = caught.value.message
-    assert str(caught.value) == message
+    # The engine names its sentence (ADR 0043); the API says the English from lang/en.json.
+    key = caught.value.key
+    assert str(caught.value) == key and key.startswith("api.repeat.")
+    message = t_en(key)
     assert message[0].isupper() and message.endswith(".")
     assert not re.search(r"[A-Z]{4,}|=", message), message  # no rule syntax in front of people
 
