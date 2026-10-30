@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { addDays, weekOf, weekSpan } from "../lib/dates";
+import { useT } from "../lib/lang";
 import { useReveal } from "../lib/reveal";
 import { Button } from "./Button";
 import { Chip } from "./Chip";
@@ -19,7 +20,7 @@ import { WeekStrip } from "./WeekStrip";
  * word typed into quick add).
  */
 export function DayField({
-  label = "Day",
+  label: given,
   value,
   onChange,
   today,
@@ -31,6 +32,7 @@ export function DayField({
   hint,
   inRow = false,
 }: {
+  /** Day, unless it's said otherwise. */
   label?: string;
   /** The chosen day; null only with `optional`. */
   value: string | null;
@@ -50,6 +52,8 @@ export function DayField({
   /** Inside a ValueRow that already says the label: don't write it twice. */
   inRow?: boolean;
 }) {
+  const t = useT();
+  const label = given ?? t("ui.day.label");
   const display = useShell() === "display";
   const labelClass = useFieldLabel();
   const [open, setOpen] = useState(grid === "open");
@@ -74,7 +78,7 @@ export function DayField({
         </span>
       </p>
       <WeekStrip
-        label={`${label}, this week's days`}
+        label={t("ui.day.week.aria", { label })}
         days={week}
         value={value}
         today={today}
@@ -90,7 +94,7 @@ export function DayField({
         <Button
           variant="secondary"
           icon
-          aria-label="Previous week"
+          aria-label={t("ui.day.previous.aria")}
           disabled={!firstAllowed}
           onClick={() => {
             setShown(addDays(shown, -7));
@@ -106,12 +110,12 @@ export function DayField({
             onChange(today);
           }}
         >
-          Today
+          {t("ui.day.today")}
         </Chip>
         <Button
           variant="secondary"
           icon
-          aria-label="Next week"
+          aria-label={t("ui.day.next.aria")}
           onClick={() => {
             setShown(addDays(shown, 7));
           }}
@@ -125,13 +129,13 @@ export function DayField({
             setOpen(!open);
           }}
         >
-          Pick a date
+          {t("ui.day.pick")}
         </Chip>
       </div>
       {open ? (
         <div ref={month}>
           <MonthGrid
-            label={`${label}, by month`}
+            label={t("ui.day.month.aria", { label })}
             value={value}
             today={today}
             weekStartsOn={weekStartsOn}

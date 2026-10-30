@@ -13,7 +13,7 @@ const module: PluginModule = {
   rooms: [
     {
       key: "lists",
-      label: "Lists",
+      label: "lists.room.title",
       icon: ListChecks,
       order: 20,
       Display: ListsRoom,
@@ -22,7 +22,14 @@ const module: PluginModule = {
   ],
   today: [{ key: "todo", order: 30, Display: TodoBlockWall, Phone: TodoBlockPhone }],
   add: [
-    { key: "item", label: "Item", icon: ListChecks, order: 20, room: "lists", Editor: AddItem },
+    {
+      key: "item",
+      label: "lists.add.label",
+      icon: ListChecks,
+      order: 20,
+      room: "lists",
+      Editor: AddItem,
+    },
   ],
   removed: RemovedListRows,
 };

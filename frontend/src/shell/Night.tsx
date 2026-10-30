@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useOccurrences } from "../features/calendar/data";
 import { byDay } from "../features/calendar/layout";
 import { addDays, formatClock, formatWallTime, zonedParts } from "../lib/dates";
+import { useT } from "../lib/lang";
 import { useMinute } from "../lib/time";
 import { Digits } from "../ui/Digits";
 
@@ -71,13 +72,13 @@ function NightLayer({
   const { data } = useOccurrences(next, addDays(next, 1), { enabled: mode === "dim_clock" });
   const column = byDay(data?.occurrences ?? [], [next]).get(next);
   const first = column?.timed[0]?.occurrence ?? column?.allDay[0]?.occurrence;
-  const when =
-    first && !first.all_day && first.start_local ? formatWallTime(first.start_local) : "All day";
+  const t = useT();
+  const when = first && !first.all_day && first.start_local ? first.start_local : null;
   return (
     <div
       role="button"
       tabIndex={0}
-      aria-label="The screen is sleeping. Tap to wake it."
+      aria-label={t("shell.night.aria")}
       onPointerDown={(event) => {
         event.preventDefault();
         onWake();
@@ -97,7 +98,16 @@ function NightLayer({
           </p>
           {first ? (
             <p className="max-w-[60rem] text-center text-d-glance font-semibold opacity-35">
-              {hour < 5 ? "Today" : "Tomorrow"} · {when} {first.title}
+              {when
+                ? t("shell.night.timed", {
+                    day: hour < 5 ? "today" : "tomorrow",
+                    time: formatWallTime(when),
+                    title: first.title,
+                  })
+                : t("shell.night.all_day", {
+                    day: hour < 5 ? "today" : "tomorrow",
+                    title: first.title,
+                  })}
             </p>
           ) : null}
         </>

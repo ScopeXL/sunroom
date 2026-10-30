@@ -6,12 +6,9 @@
  */
 import { ApiError } from "../api/client";
 import type { components } from "../api/schema";
+import { t } from "./lang";
 
 export type RestoreSummary = components["schemas"]["RestoreSummaryOut"];
-
-/** A proxy's own 413 page, not Sunroom's: the file never reached the server. */
-export const TOO_BIG_FOR_THE_PROXY =
-  "The file is bigger than your proxy allows. Raise its upload limit (docs/DEPLOY.md), or restore from the home network.";
 
 /** Rejects with an ApiError in the server's words; code "aborted" when `request.abort()` ran. */
 export function uploadBackup(
@@ -48,7 +45,8 @@ export function uploadBackup(
         payload as { error?: { code?: string; message?: string; pin?: boolean } } | null
       )?.error;
       if (request.status === 413 && !error) {
-        reject(new ApiError(413, "too_large", TOO_BIG_FOR_THE_PROXY));
+        // A proxy's own 413 page, not Sunroom's: the file never reached the server.
+        reject(new ApiError(413, "too_large", t("settings.backup.restore.too_big.error")));
         return;
       }
       reject(

@@ -7,6 +7,7 @@ import { api } from "../../api/client";
 import { qk } from "../../api/keys";
 import { sunroomName, useScreenAgent } from "../../lib/screenAgent";
 import { fetchSession } from "../../lib/session";
+import { useT } from "../../lib/lang";
 import { RoomHeader } from "../../shell/roomHeader";
 import { Button } from "../../ui/Button";
 import { Screen } from "../../ui/Screen";
@@ -58,6 +59,7 @@ const DEVICE_LEAD =
  * only where the wall's own Sunroom Screen answers (ADR 0035), first there (ADR 0039): never on a
  * phone. */
 function usePages(): { pages: Page[]; ready: boolean } {
+  const t = useT();
   const { modules, ready } = usePluginModulesState();
   const screenAgent = useScreenAgent();
   const core: Page[] = SETTINGS_PAGES.filter(
@@ -66,7 +68,7 @@ function usePages(): { pages: Page[]; ready: boolean } {
   const plugins: Page[] = modules.flatMap((module) =>
     (module.settingsPages ?? []).map(({ key, title, Page }) => ({
       key,
-      title,
+      title: t(title),
       render: () => <Page />,
     })),
   );

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { t } from "../lib/lang";
 import { ColorPicker, colorOrder, usedBy } from "./ColorPicker";
 
 const FAMILY = [
@@ -30,7 +31,7 @@ describe("the color picker (UX §4 Settings)", () => {
   });
 
   it("puts the colors nobody uses first, each part in the list's order", () => {
-    expect(colorOrder({}).map((color) => color.word)).toEqual([
+    expect(colorOrder({}).map((color) => t(color.word))).toEqual([
       "Red",
       "Olive",
       "Green",
@@ -44,7 +45,7 @@ describe("the color picker (UX §4 Settings)", () => {
       "Gray",
       "Lime",
     ]);
-    expect(colorOrder(usedBy(FAMILY)).map((color) => color.word)).toEqual([
+    expect(colorOrder(usedBy(FAMILY)).map((color) => t(color.word))).toEqual([
       "Olive",
       "Teal",
       "Purple",

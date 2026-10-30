@@ -9,6 +9,7 @@ import { api, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import type { components } from "../../api/schema";
 import { formatTime, shortDate, zonedParts } from "../../lib/dates";
+import { useT } from "../../lib/lang";
 import { SETTINGS_PAGES } from "../settings/pages";
 import { usePluginModulesState } from "../usePluginModules";
 
@@ -41,11 +42,12 @@ export function sinceWords(since: string, now: Date): string {
 
 /** The Settings pages' titles by key, core's and the features' own: "Open Calendars & Accounts". */
 export function usePageTitles(): (page: string | null | undefined) => string | null {
+  const t = useT();
   const { modules } = usePluginModulesState();
   const titles = new Map<string, string>([
     ...SETTINGS_PAGES.map(({ key, title }): [string, string] => [key, title]),
     ...modules.flatMap((module) =>
-      (module.settingsPages ?? []).map(({ key, title }): [string, string] => [key, title]),
+      (module.settingsPages ?? []).map(({ key, title }): [string, string] => [key, t(title)]),
     ),
   ]);
   return (page) => (page ? (titles.get(page) ?? null) : null);

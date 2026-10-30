@@ -1,5 +1,6 @@
 import { Minus, Plus } from "lucide-react";
 
+import { useT } from "../lib/lang";
 import { Button } from "./Button";
 import { Digits } from "./Digits";
 import { useShell } from "./shell";
@@ -27,6 +28,7 @@ export function Stepper({
   words?: (value: number) => string;
   onChange: (value: number) => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const icon = display ? "size-8" : "size-6";
   return (
@@ -34,7 +36,7 @@ export function Stepper({
       <Button
         variant="secondary"
         icon
-        aria-label={`${label}: less`}
+        aria-label={t("ui.stepper.less.aria", { label })}
         disabled={value <= min}
         onClick={() => {
           onChange(Math.max(min, Math.ceil(value / step) * step - step));
@@ -59,7 +61,7 @@ export function Stepper({
       <Button
         variant="secondary"
         icon
-        aria-label={`${label}: more`}
+        aria-label={t("ui.stepper.more.aria", { label })}
         disabled={value >= max}
         onClick={() => {
           onChange(Math.min(max, Math.floor(value / step) * step + step));

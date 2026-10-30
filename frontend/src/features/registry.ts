@@ -9,13 +9,16 @@
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 
+import type { Key } from "../lib/lang";
+
 import type { Occurrence } from "./calendar/types";
 
 /** A room on the wall screen's rail, and the same place as a tab on phones (UX §3). */
 export interface PluginRoom {
   /** Its address, /lists, and what follows the key is the room's own (/lists/<id>). */
   key: string;
-  label: string;
+  /** Its name, a key the shell says in the page's language (ADR 0043): `lists.room.title`. */
+  label: Key;
   icon: LucideIcon;
   /** Its place among the rooms; the calendar is 0. */
   order: number;
@@ -48,8 +51,8 @@ export interface AddEditorProps {
 /** A kind of thing Add makes, beside Event (UX §4 "The Add panel for other things"). */
 export interface AddType {
   key: string;
-  /** The cell's word in the Add panel's row of kinds: "Item", "Task". */
-  label: string;
+  /** The cell's word in the Add panel's row of kinds, a key: "Item" is `lists.add.label`. */
+  label: Key;
   /** Drawn over the word: the room's own icon, so Add mirrors the rail. */
   icon: LucideIcon;
   order: number;
@@ -76,7 +79,8 @@ export type RailPlace = "header" | "phone";
 /** A page of its own in Settings, after Calendars & accounts. */
 export interface SettingsPage {
   key: string;
-  title: string;
+  /** A key: `tasks.settings.title`. */
+  title: Key;
   Page: ComponentType;
 }
 

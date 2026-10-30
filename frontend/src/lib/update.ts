@@ -11,6 +11,7 @@ import { useEffect } from "react";
 
 import { rememberedDimmer } from "./dimmer";
 import { editorOpen, idleHolds } from "./displayState";
+import { t } from "./lang";
 import { screenReloadUrl } from "./screenAgent";
 import { createStore, useStore } from "./store";
 import { showToast } from "./toast";
@@ -91,7 +92,7 @@ export function useServerUpdate(refresh: () => Promise<void> = reloadFresh): voi
   const queryClient = useQueryClient();
   useEffect(() => {
     if (!version || reloadedFor() === version) return;
-    showToast(`Sunroom was updated to ${version}. Refreshing…`);
+    showToast(t("app.updated.toast", { version }));
     const started = Date.now();
     const attempt = () => {
       if (busy(queryClient) && Date.now() - started < WAIT_AT_MOST_MS) {

@@ -13,7 +13,7 @@ const module: PluginModule = {
   rooms: [
     {
       key: "countdowns",
-      label: "Countdowns",
+      label: "countdowns.room.title",
       icon: Hourglass,
       order: 50,
       Display: CountdownsRoom,
@@ -24,7 +24,7 @@ const module: PluginModule = {
   add: [
     {
       key: "countdown",
-      label: "Countdown",
+      label: "countdowns.add.label",
       icon: Hourglass,
       order: 50,
       room: "countdowns",

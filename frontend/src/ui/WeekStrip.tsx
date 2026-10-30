@@ -8,6 +8,7 @@ import {
   weekdayLong,
   weekdayShort,
 } from "../lib/dates";
+import { useT } from "../lib/lang";
 import { useShell } from "./shell";
 
 /** Left and right arrows walk a row of cells, for laptops (a finger just taps). */
@@ -46,6 +47,7 @@ export function WeekStrip({
   min?: string | undefined;
   onChange: (day: string) => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   return (
     <div
@@ -60,7 +62,9 @@ export function WeekStrip({
           key={day}
           type="button"
           aria-pressed={day === value}
-          aria-label={`${shortDate(day)}${day === today ? ", today" : ""}`}
+          aria-label={
+            day === today ? t("ui.week.today.aria", { day: shortDate(day) }) : shortDate(day)
+          }
           disabled={min !== undefined && day < min}
           onClick={() => {
             onChange(day);

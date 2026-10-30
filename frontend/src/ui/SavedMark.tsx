@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 
+import { useT } from "../lib/lang";
 import { useShell } from "./shell";
 
 /**
@@ -8,6 +9,7 @@ import { useShell } from "./shell";
  * the word comes and goes.
  */
 export function SavedMark({ show }: { show: boolean }) {
+  const t = useT();
   const display = useShell() === "display";
   return (
     <p
@@ -19,7 +21,7 @@ export function SavedMark({ show }: { show: boolean }) {
       {show ? (
         <>
           <Check aria-hidden="true" className={display ? "size-5" : "size-4"} />
-          Saved
+          {t("ui.saved")}
         </>
       ) : null}
     </p>

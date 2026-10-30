@@ -42,7 +42,7 @@ export function useRoomHeader(spec: RoomHeaderSpec): void {
   );
 }
 
-/** The same as an element, for a room whose title is a literal: `<RoomHeader title="Lists" />`. */
+/** The same as an element, for a room whose title is fixed: `<RoomHeader title={t(…)} />`. */
 export function RoomHeader(spec: RoomHeaderSpec): null {
   useRoomHeader(spec);
   return null;

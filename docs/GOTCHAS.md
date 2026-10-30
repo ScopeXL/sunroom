@@ -292,4 +292,8 @@ size limit.
   a button when its last segment is `action` or the one before it is.
 - `intl-messageformat` throws on a placeholder with no value. `t` throws in tests and shows English
   in production; a test that renders a message must give it every value.
-
+- A field that became a `Key` (a room's `label`) still compiles everywhere it was shown as a
+  string, and shows the key itself: `tsc` can't tell. When a type becomes a `Key`, grep every
+  reader and give it `t()`.
+- A word copied into `en.json` with a typographic apostrophe (’) where the code had `'` broke the
+  tests that read it: copy the English exactly, character for character.

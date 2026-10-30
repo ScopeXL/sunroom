@@ -1,4 +1,5 @@
 import { COLORS, type PersonColor } from "../lib/colors";
+import { useT } from "../lib/lang";
 import { useFieldLabel } from "./Field";
 import { useShell } from "./shell";
 
@@ -37,7 +38,7 @@ export function ColorPicker({
   value,
   onChange,
   used = {},
-  label = "Color",
+  label: given,
   initial,
 }: {
   /** The radios' group name: unique among the pickers on screen. */
@@ -49,6 +50,8 @@ export function ColorPicker({
   label?: string;
   initial?: string;
 }) {
+  const t = useT();
+  const label = given ?? t("ui.color.label");
   const display = useShell() === "display";
   const labelClass = useFieldLabel();
   return (
@@ -84,7 +87,7 @@ export function ColorPicker({
                 {initial}
               </span>
               <span className="flex min-w-0 flex-col leading-tight">
-                <span className="font-semibold">{option.word}</span>
+                <span className="font-semibold">{t(option.word)}</span>
                 {owner ? <span className="truncate text-ink-soft">{`${owner}'s`}</span> : null}
               </span>
             </label>

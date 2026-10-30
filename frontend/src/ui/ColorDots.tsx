@@ -2,6 +2,7 @@ import { UserRound } from "lucide-react";
 
 import { COLORS } from "../lib/colors";
 import type { components } from "../api/schema";
+import { useT } from "../lib/lang";
 import { useShell } from "./shell";
 
 type PersonColor = components["schemas"]["MemberOut"]["color"];
@@ -14,7 +15,7 @@ type PersonColor = components["schemas"]["MemberOut"]["color"];
  * wall's Add panel; dots aren't chips, so that's allowed (ADR 0034).
  */
 export function ColorDots({
-  label = "Color",
+  label: given,
   value,
   noneLabel,
   onChange,
@@ -25,6 +26,8 @@ export function ColorDots({
   noneLabel: string;
   onChange: (color: PersonColor | null) => void;
 }) {
+  const t = useT();
+  const label = given ?? t("ui.color.label");
   const display = useShell() === "display";
   const cell = `press flex shrink-0 items-center justify-center rounded-full ring-inset aria-checked:ring-4 aria-checked:ring-ink ${
     display ? "size-tap" : "size-11"
@@ -54,7 +57,7 @@ export function ColorDots({
           type="button"
           role="radio"
           aria-checked={value === color.value}
-          aria-label={color.word}
+          aria-label={t(color.word)}
           data-person={color.value}
           onClick={() => {
             onChange(color.value);

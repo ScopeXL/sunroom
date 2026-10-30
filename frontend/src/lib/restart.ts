@@ -7,6 +7,7 @@
  */
 import { useEffect } from "react";
 
+import { t } from "./lang";
 import { showToast } from "./toast";
 import { createStore, useStore } from "./store";
 import { reloadFresh } from "./update";
@@ -85,7 +86,7 @@ export function useServerRestart(refresh: () => Promise<void> = reloadFresh): vo
   useEffect(() => {
     if (!reason || waiting) return;
     waiting = true;
-    if (!askedHere) showToast("Sunroom is restarting… Sign in again in a moment.");
+    if (!askedHere) showToast(t("app.restarting.toast"));
     void waitForServer({ afterGoingAway: true, forMs: Number.POSITIVE_INFINITY }).then(() =>
       refresh(),
     );

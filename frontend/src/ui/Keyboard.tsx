@@ -12,6 +12,7 @@ import {
   type KeyboardField,
   type KeyboardLayout,
 } from "../lib/keyboard";
+import { useT } from "../lib/lang";
 import { useStore } from "../lib/store";
 
 /**
@@ -114,6 +115,7 @@ const DOCK = {
 } as const;
 
 export function KeyboardHost({ rail }: { rail: "left" | "right" | null }) {
+  const t = useT();
   const { target, layout, open } = useStore(keyboard);
   // Still sliding away: shown, marked closing, until the exit animation ends.
   const [closing, setClosing] = useState(false);
@@ -177,7 +179,7 @@ export function KeyboardHost({ rail }: { rail: "left" | "right" | null }) {
       data-keyboard=""
       data-state={open ? "open" : "closing"}
       role="group"
-      aria-label="On-screen keyboard"
+      aria-label={t("ui.keyboard.aria")}
       className={`fixed bottom-0 z-50 border-t border-line bg-wall px-3 pt-3 pb-4 ${DOCK[rail ?? "none"]}`}
       onPointerDown={keep}
     >
@@ -190,6 +192,7 @@ export function KeyboardHost({ rail }: { rail: "left" | "right" | null }) {
 }
 
 function Keys({ target, layout }: { target: KeyboardField; layout: KeyboardLayout }) {
+  const t = useT();
   const [page, setPage] = useState<"letters" | "symbols">("letters");
   const [shift, setShift] = useState<"auto" | "on" | "off">("auto");
   const [accents, setAccents] = useState<string | null>(null);
@@ -207,7 +210,7 @@ function Keys({ target, layout }: { target: KeyboardField; layout: KeyboardLayou
   const bottom = (
     <Row>
       <Key
-        label={page === "letters" ? "Numbers and symbols" : "Letters"}
+        label={page === "letters" ? t("ui.keyboard.symbols.aria") : t("ui.keyboard.letters.aria")}
         tone="action"
         wide={1.5}
         onPress={() => {
@@ -217,16 +220,16 @@ function Keys({ target, layout }: { target: KeyboardField; layout: KeyboardLayou
         {page === "letters" ? "123" : "ABC"}
       </Key>
       <Key
-        label="Space"
+        label={t("ui.keyboard.space.aria")}
         wide={5}
         onPress={() => {
           type(" ");
         }}
       >
-        <span className="sr-only">Space</span>
+        <span className="sr-only">{t("ui.keyboard.space.aria")}</span>
       </Key>
       <Key
-        label="Enter"
+        label={t("ui.keyboard.enter.aria")}
         tone="action"
         wide={1.5}
         onPress={() => {
@@ -238,8 +241,8 @@ function Keys({ target, layout }: { target: KeyboardField; layout: KeyboardLayou
       >
         <CornerDownLeft aria-hidden="true" className="size-8" />
       </Key>
-      <Key label="Done" tone="primary" wide={2} onPress={lowerKeyboard}>
-        Done
+      <Key label={t("app.action.done")} tone="primary" wide={2} onPress={lowerKeyboard}>
+        {t("app.action.done")}
       </Key>
     </Row>
   );
@@ -278,7 +281,7 @@ function Keys({ target, layout }: { target: KeyboardField; layout: KeyboardLayou
             }}
           />
           <Key
-            label="Delete"
+            label={t("ui.keyboard.delete.aria")}
             tone="action"
             wide={1.5}
             onPress={() => {
@@ -290,8 +293,8 @@ function Keys({ target, layout }: { target: KeyboardField; layout: KeyboardLayou
           </Key>
         </Row>
         <Row>
-          <Key label="Done" tone="primary" wide={4.5} onPress={lowerKeyboard}>
-            Done
+          <Key label={t("app.action.done")} tone="primary" wide={4.5} onPress={lowerKeyboard}>
+            {t("app.action.done")}
           </Key>
         </Row>
       </div>
@@ -325,7 +328,7 @@ function Keys({ target, layout }: { target: KeyboardField; layout: KeyboardLayou
         <Row key={row}>
           {index === rows.length - 1 && page === "letters" ? (
             <Key
-              label="Shift"
+              label={t("ui.keyboard.shift.aria")}
               tone={capital ? "primary" : "action"}
               wide={1.5}
               onPress={() => {
@@ -357,7 +360,7 @@ function Keys({ target, layout }: { target: KeyboardField; layout: KeyboardLayou
           })}
           {index === rows.length - 1 ? (
             <Key
-              label="Delete"
+              label={t("ui.keyboard.delete.aria")}
               tone="action"
               wide={1.5}
               onPress={() => {

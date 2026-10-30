@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import { usePluginRooms } from "../features/usePluginModules";
 import { useDatePreferences, useHouseholdLanguage, useSettings } from "../lib/household";
 import { useLiveUpdates } from "../lib/live";
+import { useT, type Key } from "../lib/lang";
 import { useServerRestart } from "../lib/restart";
 import { useServerUpdate } from "../lib/update";
 import { MotionProvider } from "../lib/motion";
@@ -18,7 +19,7 @@ import { OfflinePill, ToastRegion, UpdatePrompt } from "../ui/StatusLayer";
 
 interface Tab {
   key: string;
-  label: string;
+  label: Key;
   icon: LucideIcon;
 }
 
@@ -34,6 +35,7 @@ const TAB_PILL =
   "flex h-7 w-12 items-center justify-center rounded-full group-data-lit:bg-ink group-data-lit:text-on-ink group-data-[status=active]:bg-ink group-data-[status=active]:text-on-ink";
 
 function TabFace({ tab }: { tab: Tab }) {
+  const t = useT();
   const Icon = tab.icon;
   return (
     <>
@@ -41,13 +43,14 @@ function TabFace({ tab }: { tab: Tab }) {
       <span className={TAB_PILL}>
         <Icon aria-hidden="true" size={22} strokeWidth={2.25} />
       </span>
-      <span>{tab.label}</span>
+      <span>{t(tab.label)}</span>
     </>
   );
 }
 
 /** Bottom tabs on phones (UX §3 "The phone shell"). */
 export function TabBar() {
+  const t = useT();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const all = usePluginRooms();
   const rooms = all.slice(0, PLUGIN_TABS);
@@ -57,19 +60,19 @@ export function TabBar() {
     .some(({ key }) => pathname === `/${key}` || pathname.startsWith(`/${key}/`));
   return (
     <nav
-      aria-label="Main"
+      aria-label={t("shell.tabs.aria")}
       data-segmented=""
       className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] print:hidden"
     >
       <ul className="mx-auto flex max-w-xl">
         <li className="flex-1">
           <Link to="/" activeOptions={{ exact: true }} className={TAB_LINK}>
-            <TabFace tab={{ key: "today", label: "Today", icon: Sun }} />
+            <TabFace tab={{ key: "today", label: "shell.tabs.today", icon: Sun }} />
           </Link>
         </li>
         <li className="flex-1">
           <Link to="/calendar" className={TAB_LINK}>
-            <TabFace tab={{ key: "calendar", label: "Calendar", icon: CalendarDays }} />
+            <TabFace tab={{ key: "calendar", label: "calendar.room.title", icon: CalendarDays }} />
           </Link>
         </li>
         {rooms.map((room) => (
@@ -85,7 +88,7 @@ export function TabBar() {
             data-lit={UNDER_MORE.test(pathname) || inMore ? "" : undefined}
             className={TAB_LINK}
           >
-            <TabFace tab={{ key: "more", label: "More", icon: Menu }} />
+            <TabFace tab={{ key: "more", label: "shell.tabs.more", icon: Menu }} />
           </Link>
         </li>
       </ul>

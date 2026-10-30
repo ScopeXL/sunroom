@@ -1,3 +1,5 @@
+import { useT } from "../lib/lang";
+
 /**
  * Grey shapes where a screen's content is about to appear (UX §8), so nothing jumps when
  * it arrives. They wait 300 ms before showing (`.skeleton-wait`), so a quick load never flashes
@@ -17,17 +19,18 @@ function Lines({ index }: { index: number }) {
 export function Skeleton({
   rows = 3,
   shape = "rows",
-  label = "Loading…",
+  label,
 }: {
   rows?: number;
   /** rows: a photo and two lines each (lists); lines: text only; cards: the meal library. */
   shape?: "rows" | "lines" | "cards";
   label?: string;
 }) {
+  const t = useT();
   const indexes = Array.from({ length: rows }, (_, index) => index);
   return (
     <div role="status" className="skeleton-wait">
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{label ?? t("ui.loading")}</span>
       {shape === "cards" ? (
         <div aria-hidden="true" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {indexes.map((index) => (

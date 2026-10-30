@@ -1,3 +1,4 @@
+import { useT } from "../lib/lang";
 import { SunMark } from "./SunMark";
 
 const SIZES = {
@@ -22,12 +23,13 @@ export function Brand({
   /** The name is the page's h1 (sign-in). */
   heading?: boolean;
 }) {
+  const t = useT();
   const { box, mark, word } = SIZES[size];
   const Word = heading ? "h1" : "p";
   return (
     <div className={box}>
       <SunMark className={mark} decorative />
-      <Word className={`${word} font-extrabold`}>Sunroom</Word>
+      <Word className={`${word} font-extrabold`}>{t("app.sunroom")}</Word>
     </div>
   );
 }

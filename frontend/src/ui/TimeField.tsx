@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { formatWallTime } from "../lib/dates";
+import { useT } from "../lib/lang";
 import { atHour, atMinute } from "../lib/times";
 import { Chip } from "./Chip";
 import { useFieldLabel } from "./Field";
@@ -35,6 +36,7 @@ export function TimeField({
   none: { label: string } | null;
   words?: (time: string) => string;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const [open, setOpen] = useState(false);
   const [early, setEarly] = useState(false);
@@ -45,7 +47,7 @@ export function TimeField({
   return (
     <ValueRow
       label={label}
-      value={value ? words(value) : "Pick a time"}
+      value={value ? words(value) : t("ui.time.pick")}
       expanded={open}
       onToggle={() => {
         setOpen(!open);
@@ -64,8 +66,8 @@ export function TimeField({
         ) : null
       }
     >
-      <p className={soft}>Hour</p>
-      <div role="group" aria-label={`${label}: hour`} className={grid}>
+      <p className={soft}>{t("ui.time.hour.label")}</p>
+      <div role="group" aria-label={t("ui.time.hour.aria", { label })} className={grid}>
         {(early ? EARLIER : LATER).map((h) => (
           <Chip
             key={h}
@@ -79,8 +81,8 @@ export function TimeField({
           </Chip>
         ))}
       </div>
-      <p className={soft}>Minutes</p>
-      <div role="group" aria-label={`${label}: minutes`} className={grid}>
+      <p className={soft}>{t("ui.time.minutes.label")}</p>
+      <div role="group" aria-label={t("ui.time.minutes.aria", { label })} className={grid}>
         {MINUTES.map((m) => (
           <Chip
             key={m}
@@ -100,14 +102,14 @@ export function TimeField({
             setEarly(!early);
           }}
         >
-          {early ? "Later hours" : "Earlier hours"}
+          {early ? t("ui.time.later") : t("ui.time.earlier")}
         </Chip>
         <Chip
           onClick={() => {
             setOpen(false);
           }}
         >
-          Done
+          {t("app.action.done")}
         </Chip>
       </div>
     </ValueRow>

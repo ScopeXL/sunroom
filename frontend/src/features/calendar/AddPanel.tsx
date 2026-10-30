@@ -5,6 +5,7 @@ import { useState } from "react";
 import { addDays } from "../../lib/dates";
 import type { BoardPanel } from "../../lib/displayState";
 import { useSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { Segmented } from "../../ui/Segmented";
 import { SidePanel } from "../../ui/SidePanel";
 import { useAddTypes } from "../usePluginModules";
@@ -97,6 +98,7 @@ export function AddPanel({
   /** Where Add was opened: its kind of thing is chosen first. */
   room?: string;
 }) {
+  const t = useT();
   const types = useAddTypes();
   const weekStartsOn = useSettings().data?.week_starts_on ?? 6;
   const adding = panel?.kind === "add" ? panel : null;
@@ -146,7 +148,11 @@ export function AddPanel({
               value={chosen}
               options={[
                 { value: "event", label: "Event", icon: CalendarDays },
-                ...types.map((type) => ({ value: type.key, label: type.label, icon: type.icon })),
+                ...types.map((type) => ({
+                  value: type.key,
+                  label: t(type.label),
+                  icon: type.icon,
+                })),
               ]}
               onChange={(type) => {
                 onType?.(type);

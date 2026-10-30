@@ -14,7 +14,7 @@ const module: PluginModule = {
   rooms: [
     {
       key: "photos",
-      label: "Photos",
+      label: "photos.room.title",
       icon: Images,
       order: 60,
       Display: PhotosRoom,
@@ -22,7 +22,9 @@ const module: PluginModule = {
     },
   ],
   overlay: Saver,
-  settingsPages: [{ key: "screensaver", title: "Photos & Screensaver", Page: SettingsScreensaver }],
+  settingsPages: [
+    { key: "screensaver", title: "photos.settings.title", Page: SettingsScreensaver },
+  ],
 };
 
 export default module;

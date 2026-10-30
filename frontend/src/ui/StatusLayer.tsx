@@ -4,6 +4,7 @@ import { useRegisterSW } from "virtual:pwa-register/react";
 
 import { connection } from "../lib/connection";
 import { formatTime } from "../lib/dates";
+import { useT } from "../lib/lang";
 import { useStore } from "../lib/store";
 
 const UPDATE_CHECK_MS = 60 * 60 * 1000;
@@ -13,12 +14,13 @@ const UPDATE_CHECK_MS = 60 * 60 * 1000;
  * we had"; the wall screen says when it last heard from the server.
  */
 export function OfflinePill({ display = false }: { display?: boolean }) {
+  const t = useT();
   const { showOffline, lastReachableAt } = useStore(connection);
   if (!showOffline) return <div role="status" aria-live="polite" className="sr-only" />;
   const text =
     display && lastReachableAt
-      ? `Can't reach Sunroom · showing ${formatTime(new Date(lastReachableAt))}`
-      : "Offline · showing what we had";
+      ? t("ui.offline.unreachable", { time: formatTime(new Date(lastReachableAt)) })
+      : t("ui.offline.phone");
   return (
     <div
       role="status"
@@ -73,18 +75,19 @@ export function useAppUpdate(): { ready: boolean; apply: () => void } {
 
 /** "New version · Refresh" on phones. The wall screen restarts itself at night (shell/). */
 export function UpdatePrompt() {
+  const t = useT();
   const { ready, apply } = useAppUpdate();
   if (!ready) return null;
   return (
     <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+var(--tabbar-h)+12px)] z-30 flex justify-center px-4 print:hidden lg:bottom-6">
       <div className="rise-in flex items-center gap-3 rounded-button bg-ink py-2 pr-2 pl-4 text-on-ink [--focus-ring:var(--wall)]">
-        <span className="text-secondary font-semibold">New version</span>
+        <span className="text-secondary font-semibold">{t("ui.update.ready")}</span>
         <button
           type="button"
           className="press min-h-11 rounded-button bg-wall px-4 text-secondary font-bold text-ink"
           onClick={apply}
         >
-          Refresh
+          {t("ui.update.refresh.action")}
         </button>
       </div>
     </div>

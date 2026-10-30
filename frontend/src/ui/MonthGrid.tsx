@@ -9,6 +9,7 @@ import {
   orderedWeekdays,
   weekdayShort,
 } from "../lib/dates";
+import { useT } from "../lib/lang";
 import { Button } from "./Button";
 import { useShell } from "./shell";
 
@@ -36,6 +37,7 @@ export function MonthGrid({
   min?: string | undefined;
   onChange: (day: string) => void;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const anchor = value ?? (min !== undefined && min > today ? min : today);
   // The month on show follows the chosen day when it changes from outside (the week strip, the
@@ -58,7 +60,7 @@ export function MonthGrid({
         <Button
           variant="secondary"
           icon
-          aria-label="Previous month"
+          aria-label={t("ui.month.previous.aria")}
           disabled={earliest}
           onClick={() => {
             page(-1);
@@ -72,7 +74,7 @@ export function MonthGrid({
         <Button
           variant="secondary"
           icon
-          aria-label="Next month"
+          aria-label={t("ui.month.next.aria")}
           onClick={() => {
             page(1);
           }}

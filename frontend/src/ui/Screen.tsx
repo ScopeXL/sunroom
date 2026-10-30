@@ -2,6 +2,7 @@ import { useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { useT } from "../lib/lang";
 import { ActionBar } from "./ActionBar";
 
 /**
@@ -48,6 +49,7 @@ export function BackButton({ to }: { to: string }) {
   const router = useRouter();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
+  const t = useT();
   return (
     <button
       type="button"
@@ -58,7 +60,7 @@ export function BackButton({ to }: { to: string }) {
       className="press -ml-2 inline-flex min-h-11 items-center gap-1 rounded-button pr-3 pl-1 text-body font-semibold"
     >
       <ChevronLeft aria-hidden="true" />
-      Back
+      {t("app.action.back")}
     </button>
   );
 }

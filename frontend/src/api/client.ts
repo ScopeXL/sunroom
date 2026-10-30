@@ -10,6 +10,7 @@ import createClient, { type Middleware } from "openapi-fetch";
 
 import { recordClockSample } from "../lib/clock";
 import { markReachable, markUnreachable } from "../lib/connection";
+import { getLanguage, t } from "../lib/lang";
 import type { paths } from "./schema";
 
 export class ApiError extends Error {
@@ -28,7 +29,6 @@ export class ApiError extends Error {
   }
 }
 
-const OFFLINE_MESSAGE = "You're offline. Try again when you have signal.";
 const sentAt = new WeakMap<Request, number>();
 
 const middleware: Middleware = {
@@ -53,7 +53,7 @@ const middleware: Middleware = {
   },
   onError() {
     markUnreachable();
-    return new ApiError(0, "offline", OFFLINE_MESSAGE);
+    return new ApiError(0, "offline", t("app.offline.error"));
   },
 };
 
@@ -71,7 +71,7 @@ export function unwrap<T>(result: { data?: T; error?: unknown; response: Respons
     throw new ApiError(
       result.response.status,
       envelope.error?.code ?? "error",
-      envelope.error?.message ?? "Something went wrong. Try again.",
+      envelope.error?.message ?? t("app.error.generic"),
       envelope.error?.pin === true,
       envelope.error?.problems ?? [],
       Number(result.response.headers.get("retry-after")) || null,
@@ -82,16 +82,17 @@ export function unwrap<T>(result: { data?: T; error?: unknown; response: Respons
 
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
-  return OFFLINE_MESSAGE;
+  return t("app.offline.error");
 }
 
 /** "Not saved — you're offline. Try again when you have signal." (UX §2): what a setting that
  * saves itself says when the save is refused, with the server's own sentence after the dash. */
 export function notSaved(error: unknown): string {
   const why = errorMessage(error);
-  // A sentence's first letter drops to lower case after the dash; "PIN…" and "I…" don't.
-  const lower = /^[A-Z][a-z']/.test(why) && !why.startsWith("I ");
-  return `Not saved — ${lower ? why.charAt(0).toLowerCase() + why.slice(1) : why}`;
+  // In English a sentence's first letter drops to lower case after the dash ("PIN…" and "I…"
+  // don't); another language's message says it its own way (docs/LANGUAGES.md).
+  const lower = getLanguage() === "en" && /^[A-Z][a-z']/.test(why) && !why.startsWith("I ");
+  return t("app.not_saved", { why: lower ? why.charAt(0).toLowerCase() + why.slice(1) : why });
 }
 
 /**

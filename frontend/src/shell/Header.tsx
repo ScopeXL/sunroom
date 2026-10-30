@@ -2,6 +2,7 @@ import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "
 
 import { useRailBlocks } from "../features/usePluginModules";
 import { clockSuffix, formatClock, shortDate, zonedParts } from "../lib/dates";
+import { useT } from "../lib/lang";
 import { useStore } from "../lib/store";
 import { useMinute } from "../lib/time";
 import { Button } from "../ui/Button";
@@ -53,13 +54,15 @@ function HeaderToday() {
  * an arrow that says which way it will go.
  */
 function PanelToggle({
-  name,
+  hide,
+  show,
   open,
   side,
   onToggle,
 }: {
-  /** "the rail", "the Today panel". */
-  name: string;
+  /** What the button says to a screen reader: "Hide the rail", "Show the Today panel". */
+  hide: string;
+  show: string;
   open: boolean;
   /** Where its panel is. */
   side: "left" | "right";
@@ -80,7 +83,7 @@ function PanelToggle({
         icon
         aria-expanded={open}
         onClick={onToggle}
-        aria-label={open ? `Hide ${name}` : `Show ${name}`}
+        aria-label={open ? hide : show}
       >
         <Icon aria-hidden="true" className="size-8" />
       </Button>
@@ -119,10 +122,12 @@ export function Header({
   railSide: "left" | "right";
   onFoldRail: (compact: boolean) => void;
 }) {
+  const t = useT();
   const room = useStore(roomHeader);
   const rail = (
     <PanelToggle
-      name="the rail"
+      hide={t("shell.header.rail.hide")}
+      show={t("shell.header.rail.show")}
       open={!railCompact}
       side={railSide}
       onToggle={() => {
@@ -132,7 +137,8 @@ export function Header({
   );
   const panel = (
     <PanelToggle
-      name="the Today panel"
+      hide={t("shell.header.panel.hide")}
+      show={t("shell.header.panel.show")}
       open={panelShown}
       side={railSide === "left" ? "right" : "left"}
       onToggle={onTogglePanel}

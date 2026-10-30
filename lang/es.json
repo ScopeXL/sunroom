@@ -1,4 +1,5 @@
 {
+  "app.action.cancel": "Cancelar",
   "app.action.done": "Listo",
   "app.action.next": "Siguiente",
   "settings.household.language.label": "Idioma"

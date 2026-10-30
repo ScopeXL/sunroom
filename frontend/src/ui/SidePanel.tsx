@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { useSettings } from "../lib/household";
+import { useT } from "../lib/lang";
 import { Button } from "./Button";
 import { useShell } from "./shell";
 import { Sheet } from "./Sheet";
@@ -32,6 +33,7 @@ export function SidePanel({ scrollKey, ...props }: PanelProps) {
  * (styles/motion.css, `[data-panel]`) and keeps showing what it showed while it slides away.
  */
 function WallPanel({ open, title, onClose, children, footer, scrollKey }: PanelProps) {
+  const t = useT();
   const { data: settings } = useSettings();
   const titleId = useId();
   const ref = useRef<HTMLElement>(null);
@@ -97,7 +99,7 @@ function WallPanel({ open, title, onClose, children, footer, scrollKey }: PanelP
           {shown.title}
         </h2>
         <Button variant="quiet" onClick={onClose}>
-          Close
+          {t("app.action.close")}
         </Button>
       </header>
       {/* Focusable, so a keyboard can scroll it even when nothing inside takes focus. */}

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { useT } from "../lib/lang";
 import { Button } from "./Button";
 import { useShell } from "./shell";
 import { SheetToastsContext, type SheetToasts } from "./sheetToasts";
@@ -63,6 +64,7 @@ export function Sheet({
    * forecast's place). Off, a long title wraps, as an event's should. */
   oneLineTitle?: boolean;
 }) {
+  const t = useT();
   const display = useShell() === "display";
   const ref = useRef<HTMLDialogElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -164,7 +166,7 @@ export function Sheet({
                 {title}
               </h2>
               <Button variant="quiet" onClick={onClose}>
-                Close
+                {t("app.action.close")}
               </Button>
             </header>
           </Frozen>

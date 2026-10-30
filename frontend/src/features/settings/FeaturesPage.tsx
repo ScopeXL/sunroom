@@ -4,6 +4,7 @@ import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import type { components } from "../../api/schema";
 import { usePlugins } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { Button } from "../../ui/Button";
 import { ListRowLink } from "../../ui/ListRow";
@@ -18,6 +19,7 @@ type PluginInfo = components["schemas"]["PluginOut"];
 /** Under an enabled plugin's switch: rows to its own Settings pages when it has them, else its
  * fields from the spec; then whatever the plugin draws itself. */
 function PluginFields({ plugin, modules }: { plugin: PluginInfo; modules: PluginModule[] }) {
+  const t = useT();
   const module = modules.find((candidate) => candidate.id === plugin.id);
   const pages = module?.settingsPages ?? [];
   const Own = module?.settings?.features;
@@ -29,8 +31,8 @@ function PluginFields({ plugin, modules }: { plugin: PluginInfo; modules: Plugin
             key={page.key}
             to="/settings/$page"
             params={{ page: page.key }}
-            label={`${page.title} settings`}
-            title={`${page.title} settings`}
+            label={t("settings.features.page.label", { page: t(page.title) })}
+            title={t("settings.features.page.label", { page: t(page.title) })}
           />
         ))
       ) : plugin.settings_spec.length > 0 ? (

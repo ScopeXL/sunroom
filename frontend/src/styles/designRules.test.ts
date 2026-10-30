@@ -198,7 +198,11 @@ function literalTitles(): { where: string; title: string }[] {
         ? text.matchAll(/\btitle: "([^"]+)"/g)
         : []),
     ];
-    for (const match of found) titles.push({ where: path, title: (match[1] ?? "").trim() });
+    for (const match of found) {
+      const title = (match[1] ?? "").trim();
+      // A key (a plugin's Settings page): its words are English's, checked there.
+      if (!/^[a-z0-9_]+(\.[a-z0-9_]+)+$/.test(title)) titles.push({ where: path, title });
+    }
   }
   return titles;
 }

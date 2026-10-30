@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { qk } from "../../api/keys";
+import { useT } from "../../lib/lang";
 import { isStandalone } from "../../lib/platform";
 import { fetchSession } from "../../lib/session";
 import { PLUGIN_TABS } from "../../shell/PhoneShell";
@@ -19,6 +20,7 @@ import { usePluginRooms } from "../usePluginModules";
 /** More (UX §5): the rooms not in the tab bar (Meals, Countdowns, Photos), then everything
  * else. */
 export function MoreScreen() {
+  const t = useT();
   const { data: session } = useQuery({ queryKey: qk.session(), queryFn: fetchSession });
   const rooms = usePluginRooms().slice(PLUGIN_TABS);
   const rowClass = "press-row flex min-h-14 items-center gap-3 px-4 text-row font-semibold";
@@ -30,7 +32,7 @@ export function MoreScreen() {
             <li key={key}>
               <Link to="/$room" params={{ room: key }} className={rowClass}>
                 <Icon aria-hidden="true" />
-                <span className="flex-1">{label}</span>
+                <span className="flex-1">{t(label)}</span>
                 <ChevronRight aria-hidden="true" className="text-ink-soft" />
               </Link>
             </li>

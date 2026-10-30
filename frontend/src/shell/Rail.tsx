@@ -2,11 +2,13 @@ import { Link } from "@tanstack/react-router";
 import { CalendarDays, Lock, Plus, Settings, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useT, type Key } from "../lib/lang";
+
 import { SunMark } from "../ui/SunMark";
 
 export interface RailRoom {
   key: string;
-  label: string;
+  label: Key;
   icon: LucideIcon;
 }
 
@@ -68,11 +70,12 @@ export function Rail({
     };
   }, [settled]);
 
+  const t = useT();
   const word = compact ? `${WORD} ${WORD_FOLDED}` : WORD;
   const item = `${ROOM_ITEM} ${compact ? "landscape:flex-[0_1_4.5rem]" : "landscape:flex-[0_1_6rem]"}`;
   return (
     <nav
-      aria-label="Rooms"
+      aria-label={t("shell.rail.aria")}
       data-segmented=""
       data-rail-motion={moves ? "" : undefined}
       className={`flex flex-col bg-surface landscape:h-full landscape:w-[var(--rail-w)] landscape:overflow-clip landscape:border-line portrait:h-28 portrait:flex-row portrait:items-center portrait:border-t portrait:border-line ${
@@ -91,7 +94,7 @@ export function Rail({
             className={ROOM_LINK}
           >
             <CalendarDays aria-hidden="true" className="size-9 shrink-0" strokeWidth={2} />
-            <span className={word}>Calendar</span>
+            <span className={word}>{t("calendar.room.title")}</span>
           </Link>
         </li>
         {rooms.map(({ key, label, icon: Icon }) => (
@@ -103,7 +106,7 @@ export function Rail({
               className={ROOM_LINK}
             >
               <Icon aria-hidden="true" className="size-9 shrink-0" strokeWidth={2} />
-              <span className={word}>{label}</span>
+              <span className={word}>{t(label)}</span>
             </Link>
           </li>
         ))}
@@ -129,14 +132,14 @@ export function Rail({
               strokeWidth={2.5}
             />
           </span>
-          <span className={word}>Add</span>
+          <span className={word}>{t("shell.add.action")}</span>
         </button>
       </div>
       {/* One row, the height of the tips strip beside it, under the same kind of rule. */}
       <button
         type="button"
         onClick={onLock}
-        aria-label="Settings"
+        aria-label={t("settings.title")}
         aria-current={room === "settings" ? "page" : undefined}
         data-icon={lock === "locked" ? "lock" : "gear"}
         className="press-row flex shrink-0 items-center justify-center font-semibold text-ink-soft aria-[current=page]:bg-wall aria-[current=page]:text-ink landscape:h-tap landscape:border-t landscape:border-line landscape:px-3 landscape:text-d-secondary portrait:h-24 portrait:w-32 portrait:flex-col portrait:gap-1 portrait:text-d-caption"
@@ -154,7 +157,7 @@ export function Rail({
               : "landscape:ml-2 landscape:max-w-32"
           }`}
         >
-          {lock === "unlocked" ? "Unlocked" : "Settings"}
+          {lock === "unlocked" ? t("shell.rail.unlocked") : t("settings.title")}
         </span>
       </button>
     </nav>

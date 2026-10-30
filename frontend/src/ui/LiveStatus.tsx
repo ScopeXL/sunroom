@@ -2,6 +2,7 @@ import { Clock, RefreshCw, Wifi, WifiOff, type LucideIcon } from "lucide-react";
 
 import { connection } from "../lib/connection";
 import { liveStatus, type LiveStatus } from "../lib/events";
+import { t, useT, type Key } from "../lib/lang";
 import { createStore, useStore } from "../lib/store";
 import { showToast } from "../lib/toast";
 import { Button } from "./Button";
@@ -55,50 +56,47 @@ export function useLiveState(): LiveState {
   return useStore(liveState);
 }
 
+/** Each state's icon, its name for a screen reader, and what a tap says. */
 const GLYPHS: Record<
   Exclude<LiveState, "hidden">,
-  { Icon: LucideIcon; words: string; tone: string; says: string }
+  { Icon: LucideIcon; name: Key; tone: string; says: Key }
 > = {
   live: {
     Icon: Wifi,
-    words: "connected",
+    name: "ui.live.connected.aria",
     tone: "text-ink-soft",
-    says: "Live updates are on.",
+    says: "ui.live.connected.toast",
   },
   reconnecting: {
     Icon: RefreshCw,
-    words: "reconnecting",
+    name: "ui.live.reconnecting.aria",
     tone: "live-turn text-ink-soft",
-    says: "Reconnecting to Sunroom…",
+    says: "ui.live.reconnecting.toast",
   },
   polling: {
     Icon: Clock,
-    words: "checking every 30 seconds",
+    name: "ui.live.polling.aria",
     tone: "text-ink-soft",
-    says: "Live updates are off for now; checking every 30 seconds.",
+    says: "ui.live.polling.toast",
   },
   offline: {
     Icon: WifiOff,
-    words: "offline",
+    name: "ui.live.offline.aria",
     tone: "text-ink",
-    says: "Can't reach Sunroom.",
+    says: "ui.live.offline.toast",
   },
 };
 
 /** The icon alone, named in words for a screen reader (About → Connection). */
 export function LiveStatusIcon() {
+  const t = useT();
   const display = useShell() === "display";
   const state = useLiveState();
   if (state === "hidden") return null;
   const glyph = GLYPHS[state];
   const Icon = glyph.Icon;
   return (
-    <span
-      role="img"
-      aria-label={`Live updates: ${glyph.words}`}
-      data-live={state}
-      className="inline-flex shrink-0"
-    >
+    <span role="img" aria-label={t(glyph.name)} data-live={state} className="inline-flex shrink-0">
       <Icon
         aria-hidden="true"
         className={`${glyph.tone} ${display ? "size-8" : "size-6"}`}
@@ -119,7 +117,7 @@ export function LiveStatusButton() {
       variant="quiet"
       icon
       onClick={() => {
-        showToast(GLYPHS[state].says);
+        showToast(t(GLYPHS[state].says));
       }}
     >
       <LiveStatusIcon />

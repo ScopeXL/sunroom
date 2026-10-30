@@ -6,6 +6,7 @@ import { qk } from "../../api/keys";
 import type { components } from "../../api/schema";
 import { COLORS } from "../../lib/colors";
 import { useMembers } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { useSavedFlash } from "../../lib/savedFlash";
 import { showToast } from "../../lib/toast";
@@ -181,6 +182,7 @@ function FieldInput({
   value: unknown;
   onChange: (value: unknown) => Promise<boolean>;
 }) {
+  const t = useT();
   const { data: members = [] } = useMembers();
   const display = useShell() === "display";
   // A group's name reads like a field's label (ui/TextField): the shell's body size.
@@ -317,7 +319,7 @@ function FieldInput({
                   now(color.value);
                 }}
               >
-                {color.word}
+                {t(color.word)}
               </Chip>
             ))}
           </ChipRow>

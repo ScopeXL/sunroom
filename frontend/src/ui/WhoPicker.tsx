@@ -1,5 +1,6 @@
 import { fitRow } from "../lib/fit";
 import type { Member } from "../lib/household";
+import { useT } from "../lib/lang";
 import { useRootScale, useWidth } from "../lib/useWidth";
 import { Avatar } from "./Avatar";
 import { useOverflow } from "./ScrollRow";
@@ -36,7 +37,7 @@ export function WhoPicker({
   onChange,
   multiple = false,
   everyone = true,
-  everyoneLabel = "Everyone",
+  everyoneLabel,
   kidsOnly = false,
   wrap = false,
 }: {
@@ -54,6 +55,8 @@ export function WhoPicker({
   /** Wrap onto more lines instead of one row (a narrow column). */
   wrap?: boolean;
 }) {
+  const t = useT();
+  const firstCell = everyoneLabel ?? t("ui.who.everyone");
   const display = useShell() === "display";
   const people = kidsOnly ? members.filter((member) => member.role === "kid") : members;
   const count = people.length + (everyone ? 1 : 0);
@@ -101,7 +104,7 @@ export function WhoPicker({
           <button
             type="button"
             aria-pressed={value.length === 0}
-            aria-label={everyoneLabel}
+            aria-label={firstCell}
             data-person="everyone"
             onClick={() => {
               onChange([]);
@@ -110,7 +113,7 @@ export function WhoPicker({
             style={flex}
           >
             <Avatar member={null} size={size.avatar} />
-            <span className={name(value.length === 0)}>{everyoneLabel}</span>
+            <span className={name(value.length === 0)}>{firstCell}</span>
           </button>
         ) : null}
         {people.map((member) => {

@@ -15,7 +15,7 @@ const module: PluginModule = {
   rooms: [
     {
       key: "chores",
-      label: "Tasks",
+      label: "tasks.room.title",
       icon: SquareCheckBig,
       order: 30,
       Display: ChoresRoom,
@@ -26,7 +26,7 @@ const module: PluginModule = {
   add: [
     {
       key: "chore",
-      label: "Task",
+      label: "tasks.add.label",
       icon: SquareCheckBig,
       order: 30,
       room: "chores",
@@ -35,7 +35,7 @@ const module: PluginModule = {
   ],
   personColumn: ChoresPersonColumn,
   removed: RemovedChoreRows,
-  settingsPages: [{ key: "chores", title: "Tasks", Page: SettingsChores }],
+  settingsPages: [{ key: "chores", title: "tasks.settings.title", Page: SettingsChores }],
 };
 
 export default module;

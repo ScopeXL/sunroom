@@ -4,7 +4,7 @@
 // Checks: every language file is a flat JSON object of strings, sorted, two-space, with no key
 // twice; every message parses as ICU; the server's and Sunroom Screen's messages (`api.*`,
 // `agent.*`) are plain `{name}` substitutions; an apostrophe never quotes by accident; every
-// other language has only English's keys, with English's placeholders and tags; every key the
+// other language has only English's keys, and only English's placeholders and tags; every key the
 // code names exists in English, and every English key is named by the code (a family by the
 // members it is built from); the registry is sane; a complete language has every key.
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -165,7 +165,9 @@ for (const [code, words] of Object.entries(languages)) {
   }
 }
 
-const same = (a, b) => a.size === b.size && [...a].every((item) => b.has(item));
+// A translation may leave a placeholder or tag out ("El Sunroom de {name}" needs no `ends`), but
+// never brings one English doesn't give it.
+const within = (ours, theirs) => [...ours].every((item) => theirs.has(item));
 for (const [code, words] of Object.entries(languages)) {
   if (code === "en") continue;
   for (const key of Object.keys(words)) {
@@ -176,8 +178,8 @@ for (const [code, words] of Object.entries(languages)) {
     if (!parsed[code][key] || !parsed.en[key]) continue;
     const ours = shape(parsed[code][key]);
     const theirs = shape(parsed.en[key]);
-    if (!same(ours.names, theirs.names) || !same(ours.tags, theirs.tags)) {
-      problem(`lang/${code}.json: ${key} has other placeholders or tags than English's.`);
+    if (!within(ours.names, theirs.names) || !within(ours.tags, theirs.tags)) {
+      problem(`lang/${code}.json: ${key} has placeholders or tags that English's doesn't.`);
     }
   }
 }

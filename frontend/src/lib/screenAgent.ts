@@ -19,6 +19,7 @@ import { useEffect } from "react";
 
 import { qk } from "../api/keys";
 import type { components, paths } from "../api/screen-schema";
+import { t } from "./lang";
 import { createStore } from "./store";
 import { showToast } from "./toast";
 
@@ -236,6 +237,6 @@ export function listen(source: EventSource, queryClient: QueryClient): () => voi
 /** "The Sample Family's Sunroom", or plain "Sunroom" without a name to go by. */
 export function sunroomName(name: string | null | undefined): string {
   const trimmed = name?.trim();
-  if (!trimmed || /^(home|our home)$/i.test(trimmed)) return "Sunroom";
-  return `${trimmed}${trimmed.endsWith("s") ? "’" : "’s"} Sunroom`;
+  if (!trimmed || /^(home|our home)$/i.test(trimmed)) return t("app.sunroom");
+  return t("app.sunroom.named", { name: trimmed, ends: trimmed.endsWith("s") ? "s" : "other" });
 }

@@ -3,16 +3,17 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { qk } from "../api/keys";
+import { t } from "../lib/lang";
 import { usePluginRooms } from "./usePluginModules";
 
-/** The rail's part: the rooms, and every list of them it was ever drawn with. */
+/** The rail's part: the rooms' names, and every list of them it was ever drawn with. */
 function Rooms({ drawn }: { drawn: string[][] }) {
   const rooms = usePluginRooms();
-  drawn.push(rooms.map((room) => room.label));
+  drawn.push(rooms.map((room) => t(room.label)));
   return (
     <ul>
       {rooms.map((room) => (
-        <li key={room.key}>{room.label}</li>
+        <li key={room.key}>{t(room.label)}</li>
       ))}
     </ul>
   );

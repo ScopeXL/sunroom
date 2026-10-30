@@ -7,6 +7,7 @@ import { qk } from "../api/keys";
 import { finishPinRequest, pinRequest } from "../lib/parent";
 import { fetchSession } from "../lib/session";
 import { useStore } from "../lib/store";
+import { useT } from "../lib/lang";
 import { Button } from "./Button";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"] as const;
@@ -72,6 +73,7 @@ function PinPad({ reason }: { reason: string | null }) {
     };
   }, [waitUntil]);
 
+  const t = useT();
   const verify = useMutation({
     mutationFn: async (pin: string) =>
       unwrap(await api.POST("/api/auth/pin/verify", { body: { pin } })),
@@ -83,10 +85,10 @@ function PinPad({ reason }: { reason: string | null }) {
       setDigits("");
       if (error instanceof ApiError && error.status === 429) {
         setWaitUntil(Date.now() + (error.retryAfter ?? 60) * 1000);
-        setMessage("Too many tries.");
+        setMessage(t("ui.pin.too_many.error"));
       } else {
         setShaking((n) => n + 1);
-        setMessage(error instanceof ApiError ? error.message : "That PIN didn't match. Try again.");
+        setMessage(error instanceof ApiError ? error.message : t("ui.pin.wrong.error"));
       }
     },
   });
@@ -110,13 +112,13 @@ function PinPad({ reason }: { reason: string | null }) {
     <div className="flex w-[400px] max-w-full flex-col items-center gap-6">
       {reason ? <p className="text-center text-d-secondary text-ink-soft">{reason}</p> : null}
       <h2 id="pin-title" className="text-d-title font-bold">
-        Parent PIN
+        {t("ui.pin.title")}
       </h2>
       <div
         key={shaking}
         className={shaking ? "shake flex gap-4" : "flex gap-4"}
         role="img"
-        aria-label={`${String(digits.length)} of ${String(length)} digits entered`}
+        aria-label={t("ui.pin.dots.aria", { entered: digits.length, length })}
       >
         {Array.from({ length }, (_, index) => (
           <span
@@ -126,7 +128,7 @@ function PinPad({ reason }: { reason: string | null }) {
         ))}
       </div>
       <p role="alert" className="min-h-8 text-center text-d-secondary font-semibold text-alert">
-        {waiting ? `Too many tries. Wait ${countdown}.` : message}
+        {waiting ? t("ui.pin.wait.error", { time: countdown }) : message}
       </p>
       <div className="grid grid-cols-3 gap-3">
         {KEYS.map((key, index) =>
@@ -137,7 +139,7 @@ function PinPad({ reason }: { reason: string | null }) {
               key={index}
               type="button"
               disabled={waiting || verify.isPending}
-              aria-label={key === "back" ? "Delete" : key}
+              aria-label={key === "back" ? t("ui.pin.delete.aria") : key}
               onClick={() => {
                 press(key);
               }}
@@ -155,11 +157,9 @@ function PinPad({ reason }: { reason: string | null }) {
           finishPinRequest(false);
         }}
       >
-        Cancel
+        {t("app.action.cancel")}
       </Button>
-      <p className="max-w-sm text-center text-d-caption text-ink-soft">
-        Forgot it? A parent can change it on a signed-in device under Settings → Family.
-      </p>
+      <p className="max-w-sm text-center text-d-caption text-ink-soft">{t("ui.pin.forgot")}</p>
     </div>
   );
 }
