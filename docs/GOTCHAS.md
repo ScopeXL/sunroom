@@ -302,3 +302,17 @@ size limit.
   reader and give it `t()`.
 - A word copied into `en.json` with a typographic apostrophe (’) where the code had `'` broke the
   tests that read it: copy the English exactly, character for character.
+- The literal-string lint passed `` `Edit ${name}` `` and any literal under an allowed ancestor (a
+  `t()` call, a prop that carries no words, `===`, a default parameter, an UPPER_CASE const),
+  yet flagged a code inside a `.map` in JSX and an `options` value typed plain `string`. Build
+  such values before the JSX (or type them as a literal union); the design rules and the pseudo
+  language find what the lint can't.
+- In a plural, `#` groups the number ("1,000") but `{n}` writes it as `String(n)` did: use `{n}`
+  where the code used `String()`, and `#` where it grouped.
+- "Exactly one" that isn't a count (one name or several: "Added Milk", "Added 3 items") is two
+  keys, not a plural: some languages' `one` holds 21 and 31 too.
+- `tRich` reads the store, not the hook: a component that uses only `tRich` still calls `useT()`
+  so it draws again when the language changes. A screen reader's hidden prefix can be a tag in
+  the message (`<hidden>Done: </hidden>{name}`), so translators see the whole phrase.
+- A word made by editing other English (`allDoneText(null).toLowerCase()`) needs a key of its own.
+
