@@ -125,6 +125,14 @@ then asks where your family's Sunroom will run: **On This Computer** sets it up 
 the search, and `--dry-run` (`-DryRun` on Windows) says what it would do first.
 [docs/KIOSK.md](docs/KIOSK.md) has every option.
 
+## Languages
+
+Sunroom speaks English, and every word it shows lives in one file, `lang/en.json`, so it can be
+translated. A household picks its language in **Settings → Household → Language** (setup and the
+first page ask too); every screen and phone follows it. Another language shows there once it's
+translated; Spanish is started. To help translate, or to add your language, see
+[docs/LANGUAGES.md](docs/LANGUAGES.md), and say hello on the Discord.
+
 ## Lost the household password?
 
 Set `APP_PASSWORD` in the container's environment (it always wins), or run
@@ -136,6 +144,7 @@ the wall screen shows a new code to pair.
 - [Plan](docs/PLAN.md): architecture, data model, plugins, milestones.
   [Adding a plugin](docs/PLUGINS.md) gives the steps.
 - [UX](docs/UX.md): screens, flows and visual design.
+- [Languages](docs/LANGUAGES.md): how Sunroom's words are kept, and how to translate them.
 - [Decision records](docs/adr/README.md): why things are the way they are.
 - [The wall screen](docs/KIOSK.md), [Hardware](docs/HARDWARE.md), [Deploying](docs/DEPLOY.md),
   [Remote access and HTTPS](docs/REMOTE-ACCESS.md), [Restoring a backup](docs/RESTORE.md) and

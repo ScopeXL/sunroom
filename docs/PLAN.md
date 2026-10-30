@@ -213,6 +213,7 @@ code in step.
 - Every mutation from a phone or the display is optimistic in the UI and reconciled by the SSE invalidation.
 - Attribution ("Done by Mia") comes from the device's current member, never from the request body. On the display, the member is chosen per action by tapping an avatar when it matters (checking a chore), and defaults to Everyone.
 - Frontend: strict TypeScript, generated API client only, tokens only (no raw hex), `title=` banned, every action has a visible button (swipes and long-presses are shortcuts), prefer Undo over confirmation, offline and sync trouble are quiet pills.
+- Words (ADR 0043, docs/LANGUAGES.md): every word the family reads is a key in `lang/en.json` (`<area>.<place>.<thing>[.<kind>]`, the kind `.title`, `.action`, `.toast`, `.hint`, `.label`, `.empty`, `.error` or `.aria`), reached through `t()`/`useT()`; the server's and Sunroom Screen's sentences carry their keys and `{name}` values (`api.*`, `agent.*`: plain placeholders, no plurals), said on the page by `tSaid`; a plugin's manifest words by `tPlugin`. English is copied exactly; other languages are a subset of English's keys, placeholders and tags. Brands, people's and the household's own words, and the feedback relay's message are never translated.
 
 ## 6. The plugin system
 
@@ -728,6 +729,8 @@ Unknown `APP_*`/`SUNROOM_*` names produce a typo warning at boot.
 
 Dinner Bell's recipe set, verbatim where it applies: `setup`, `dev`, `fmt`, `lint`, `typecheck`, `test`, `api-types`, `api-types-check`, `migrations-check`, `release-meta-check`, `check` (CI runs the same checks as jobs, plus `e2e` and the secrets scan), `build`, `e2e`, `screenshots`, `scan`, the three hook recipes, `smoke-image`, `preflight`, `bump`, `release-tag`, `image`, `image-verify`, `release`, `inspect-backup`, `db-revision`. Additions: `quick`, `test-fe`, `test-py` and arguments to `e2e`, the per-task gate (§14.7); `display` (opens the built app at `/display` in a 1920×1080 Chromium window for review), `seed` (loads the synthetic fixture household: "Sample Family" with four members, two local calendars, an ICS fixture account, chores, lists, meals, countdowns and a dozen stock photos, so screenshots and demos never use real data), `kiosk-lint` (shellcheck on `kiosk/*.sh`).
 
+`lang [--fix]` (ADR 0043): `lang/` and the code naming it in step (`frontend/scripts/lang.mjs`: valid and sorted, ICU that parses, every named key in English and every English key named, the server's and agent's messages plain, other languages English's subset, each language's count printed; `--fix` sorts). `quick` and `check` run it, and so does CI's contract job.
+
 ### 14.4 Startup, migrations, backups, export
 
 Identical to Dinner Bell: settings → data dir and `flock` → a restore armed from the app, if any (ADR 0034) → pre-migration backup when migrations are pending or the version changed → migrate in one transaction → verify → serve; exit codes 78/73/74/65/70. One Alembic history for core and plugins (§6.4), timestamp revision ids, `released.lock`, forward-only, an upgrade test from each release's fixture DB. Nightly verified backups at 03:30 local keeping the household's numbers of daily and weekly copies (14 and 8 unless changed in Settings → Backup, which can also turn them off; ADR 0034); a JSON export in which every table is listed as exported or excluded (credentials ciphertext is excluded; a test enforces the listing). **New:** backups can be downloaded from Settings → Backup (§13.7). Later (not built yet): the export also writes an `.ics` per local calendar, so a family can leave Sunroom with their events in a calendar app's format; today the JSON export has them.
@@ -938,7 +941,8 @@ Numbers stay fixed because other sections cite them; settled items leave gaps.
 | Importers from Skylight (reverse-engineered API) and Cozi (ICS export works already) | Later |
 | School lunch menus (Nutrislice) | Later |
 | Allowance ledger and savings goals on top of points | Later |
-| Translations (strings are centralized from M0) and more calendars (Hebrew, Islamic) | Later |
+| Translations | **Built in 0.18.0** (ADR 0043): `lang/`, the household's Language, the server's and the screen's words by key, the pseudo-language check; English complete, Spanish started. Next: a translator per language (docs/LANGUAGES.md). Later: a language per device, right-to-left, fonts for other scripts |
+| More calendars (Hebrew, Islamic) | Later |
 | Home Assistant add-on packaging (`config.yaml`, `build.yaml`, `run.sh`, with `aarch64`) | **v1.x** |
 | Print the week or a list | v1.1, cheap |
 | "Who's looking" personalization via a camera | Not planned: privacy |

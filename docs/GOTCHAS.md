@@ -28,6 +28,8 @@ size limit.
 
 ## Components and their tests
 
+- `tsc --noEmit -p .` in `frontend/` passed with type errors: the root tsconfig has only
+  references. Type-check with `pnpm exec tsc -b` (what `just check` runs).
 - A `createLink` component lost its styles: the router passes its own `className`. Merge it
   after the spread (`shell/HeaderLinks`, `ui/ListRow`).
 - The design rules failed on a component's `title="…"` that wasn't a heading: every `title=`
@@ -71,6 +73,13 @@ size limit.
 
 ## Backend and its tests
 
+- Two plugins' pydantic shapes sharing a class name (`WeekOut`) came out of OpenAPI as
+  `sunroom__plugins__…` names. Name each shape uniquely across the app (`MealWeekOut`), and
+  check `schema.d.ts` after `just api-types`.
+- Imports broke mid-plugin: `db/models.py` imports each plugin's models, so a plugin's
+  `__init__.py` that imports its modules drags them all in. Keep it a docstring.
+- A route test silently checked nothing: since FastAPI 0.142 `app.routes` holds included
+  routers, not their routes. Walk `app.openapi()["paths"]` instead, and assert a count.
 - The image smoke test pins the plugin list and the export's tables (`scripts/image_common.sh`):
   a new plugin updates both, and `backend/tests/test_export.py`.
 - An in-app restart can't `exec` under `uvicorn --reload`: the worker is a spawned child with

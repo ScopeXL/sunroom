@@ -26,7 +26,8 @@ batch 1 (the agent, This Screen, discovery, the installer, GitHub Releases) and 
 macOS, Run It on This Screen, the Sunroom OS image, retired in M9) released as 0.13.0.
 M8 (docs/M8.md, ADR 0038), Sunroom on this computer, released as 0.15.0; M8 batch 2
 (docs/M8-batch-2.md, ADR 0039: setting up on the screen) as 0.16.0, Windows fixes as 0.16.1.
-M9 (docs/M9.md, ADR 0042: the owner's notes of 2026-10-28) is built for 0.17.0.
+M9 (docs/M9.md, ADR 0042: the owner's notes of 2026-10-28) released as 0.17.0. M10 (docs/M10.md:
+languages, ADR 0043; the screen setting itself up again, ADR 0044) is built for 0.18.0.
 
 **Read first:**
 - [`docs/PLAN.md`](docs/PLAN.md): what we're building and how, plus milestones. It's long, so
@@ -74,7 +75,9 @@ Keep this file under 15 KB; detail belongs in `docs/`.
    `/data/.lock`. The SSE hub, the write lock, rate limiters and pairing waiters live in its memory.
 6. **Words.** Plain words; Title Case for titles, headings and navigation, sentence case for
    everything else (UX §2); the family's vocabulary: a button says exactly what happens and its
-   toast repeats the verb. Never show an ID, an error code or a stack trace.
+   toast repeats the verb. Never show an ID, an error code or a stack trace. Every word the
+   family sees lives in `lang/en.json` and reaches the page through `t()`; no English literal
+   in code a family reads (the lint, `just lang` and `e2e/lang.spec.ts`; docs/LANGUAGES.md).
 7. **Every plugin is fully functional when every other plugin is disabled.** No plugin imports
    another or reads another's tables; cross-plugin needs go through core facades and calendar
    overlays (ADR 0002). A contract test enforces the imports and tables.
@@ -130,9 +133,11 @@ backend/src/sunroom/
   problems/      Needs Attention: what needs a parent, from the core and each plugin
   plugins/       manifest + context + manager + registry (explicit dict) + generic routes
   domain/        PURE logic
+lang/            en.json (every word, by key), the other languages, languages.json (ADR 0043)
 frontend/src/
   api/           generated schema.d.ts + openapi-fetch client (X-Sunroom, clock samples) + keys
-  lib/           store, events + eventRouter, clock and time, dates, theme, keyboard, idle, parent
+  lib/           store, events + eventRouter, clock and time, dates, lang (t), theme, keyboard,
+                 idle, parent
   ui/            primitives styled only with tokens; sized by ShellContext (display or phone)
   shell/         DisplayShell (rail, Header.tsx, Today panel, idle, Night, keyboard), PhoneShell
   features/      display (pairing), onboarding, auth, calendar, phone, settings; registry.ts
@@ -162,6 +167,8 @@ kiosk/           install.sh (Pi, Linux, macOS; --dry-run), install.ps1, files/, 
   - The wall screen's fields use the in-app keyboard (`data-osk`); keys never take focus.
   - Every action needs a visible button; swipes are shortcuts. Prefer Undo over confirmations.
   - Offline is a quiet pill, never an error wall.
+  - Words: `t(key)` from `lib/lang` (`useT()` in a component); a new word is a new key in
+    `lang/en.json`; the server's and the agent's sentences come with keys (`tSaid`).
 - **Tests:** synthetic data and isolated settings; pytest disables sockets; time comes from the
   `Clock`; tests copy a migrated template DB, never `create_all`. Playwright resets the test
   server before each test.
@@ -209,14 +216,7 @@ part your task touches, and move lines there when this file nears its limit.
 
 - `python3` on the build Mac is old and OrbStack's `docker` isn't always on PATH: repo scripts run
   through the justfile's `py` (uv, Python 3.14), and the justfile prepends `~/.orbstack/bin`.
-- `tsc --noEmit -p .` in `frontend/` passed with type errors: the root tsconfig has only
-  references. Type-check with `pnpm exec tsc -b` (what `just check` runs).
-- Two plugins' pydantic shapes sharing a class name (`WeekOut`) came out of OpenAPI as
-  `sunroom__plugins__…` names. Name each shape uniquely across the app (`MealWeekOut`), and
-  check `schema.d.ts` after `just api-types`.
-- Imports broke mid-plugin: `db/models.py` imports each plugin's models, so a plugin's
-  `__init__.py` that imports its modules drags them all in. Keep it a docstring.
-- A route test silently checked nothing: since FastAPI 0.142 `app.routes` holds included
-  routers, not their routes. Walk `app.openapi()["paths"]` instead, and assert a count.
+- One checkout's e2e run tested another's build: all use ports 4173 and 4174, and Playwright
+  reuses a server that's up. With sessions side by side, run `CI=1 just e2e …`.
 - The first migration after a release failed its migration test: the release had no fixture
   database. A release's `tests/fixtures/db/<revision>.sql` must exist before the next migration.
