@@ -7,6 +7,7 @@ import { useShell } from "../../ui/shell";
 import { useEventChanges, useRemovedEvents } from "../calendar/data";
 import { useRemovedGroups } from "../usePluginModules";
 import { Group, Text } from "./parts";
+import { repeatWords } from "../calendar/repeat";
 
 /**
  * Settings → Recently Removed (UX §4, PLAN §8.4), a page of its own: what was removed in the
@@ -34,7 +35,7 @@ export function RecentlyRemoved() {
           <RemovedRow
             key={event.id}
             title={event.title}
-            detail={event.repeat_text ?? (day ? shortDate(day) : null)}
+            detail={repeatWords(event) ?? (day ? shortDate(day) : null)}
             removedAt={event.deleted_at ?? null}
             pending={restore.isPending && restore.variables.id === event.id}
             onPutBack={() => {

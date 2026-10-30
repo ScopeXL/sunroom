@@ -22,7 +22,7 @@ import { calendarChoiceLabel, takesEvents, useCalendars } from "./data";
 import { parseQuickAdd, type QuickAddDraft } from "./quickAdd";
 import { reminderChoices, reminderPick, reminderValue } from "./reminderWords";
 import { RepeatField } from "./RepeatField";
-import { repeatToRRule, rruleToRepeat, type Repeat, type RepeatEnd } from "./repeat";
+import { repeatToRRule, repeatWords, rruleToRepeat, type Repeat, type RepeatEnd } from "./repeat";
 import type { CalendarEvent, EventFields, Occurrence, PersonColor } from "./types";
 import { useBoardDay } from "./useBoardDay";
 
@@ -169,7 +169,7 @@ export function draftFromEvent(
     repeatEnd: parsed?.end ?? {},
     kept:
       event.rrule && !parsed
-        ? { rrule: event.rrule, text: event.repeat_text ?? t("calendar.repeat.as_it_is") }
+        ? { rrule: event.rrule, text: repeatWords(event) ?? t("calendar.repeat.as_it_is") }
         : null,
     calendarId: event.calendar_id,
     color: own.color ?? null,

@@ -13,6 +13,7 @@ import { useEvent, useEventAt, useEventChanges } from "./data";
 import { EventEditor, draftFromEvent, draftToFields, type Draft } from "./EventEditor";
 import { ScopeChooser } from "./ScopeChooser";
 import type { CalendarEvent, EventFields, Occurrence, Scope } from "./types";
+import { repeatWords } from "./repeat";
 
 type EditorPanel = Extract<BoardPanel, { kind: "add" } | { kind: "edit" }>;
 
@@ -195,7 +196,7 @@ export function AddPanel({
         open={asking !== null}
         verb="Change"
         title={event?.title ?? ""}
-        repeatText={event?.repeat_text}
+        repeatText={event ? repeatWords(event) : null}
         onChoose={(scope) => {
           const draft = asking;
           setAsking(null);

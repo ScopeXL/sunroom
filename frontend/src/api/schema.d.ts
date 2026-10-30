@@ -3090,6 +3090,7 @@ export interface components {
             next_due: string | null;
             /** Points */
             points: number;
+            repeat?: components["schemas"]["RepeatPartsOut"] | null;
             /** Repeat Text */
             repeat_text: string;
             /** Requires Approval */
@@ -3393,6 +3394,7 @@ export interface components {
         };
         /** DescribeOut */
         DescribeOut: {
+            repeat?: components["schemas"]["RepeatPartsOut"] | null;
             /** Rrule */
             rrule: string;
             /** Text */
@@ -3699,6 +3701,7 @@ export interface components {
              * @default false
              */
             reminders_off: boolean;
+            repeat?: components["schemas"]["RepeatPartsOut"] | null;
             /** Repeat Text */
             repeat_text: string | null;
             /** Rrule */
@@ -4995,6 +4998,33 @@ export interface components {
             id: string;
             /** Text */
             text: string;
+        };
+        /**
+         * RepeatPartsOut
+         * @description A repeat in parts (``domain.recurrence.RepeatParts``) for the page to word in the
+         *     family's language (ADR 0043); ``repeat_text`` beside it says the same in English.
+         */
+        RepeatPartsOut: {
+            /** Count */
+            count: number | null;
+            /** Freq */
+            freq: ("daily" | "weekly" | "monthly" | "yearly") | null;
+            /** Interval */
+            interval: number;
+            /** Last Day */
+            last_day: boolean;
+            /** Month */
+            month: number | null;
+            /** Month Days */
+            month_days: number[];
+            /** Nth */
+            nth: number | null;
+            /** Until */
+            until: string | null;
+            /** Weekday */
+            weekday: number | null;
+            /** Weekdays */
+            weekdays: number[];
         };
         /** RestoreApplyIn */
         RestoreApplyIn: {

@@ -7,11 +7,13 @@ an exclusive end. Occurrences come back with UTC instants and the household's wa
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, StringConstraints
 
+from sunroom.domain.recurrence import RepeatParts
 from sunroom.household.schemas import PersonColor
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -96,6 +98,26 @@ class UndoIn(BaseModel):
     revision_id: str | None = None
 
 
+class RepeatPartsOut(BaseModel):
+    """A repeat in parts (``domain.recurrence.RepeatParts``) for the page to word in the
+    family's language (ADR 0043); ``repeat_text`` beside it says the same in English."""
+
+    freq: Literal["daily", "weekly", "monthly", "yearly"] | None  # None: a custom schedule
+    interval: int
+    weekdays: list[int]  # weekly: 0 Monday … 6 Sunday, in the rule's week order
+    month_days: list[int]  # monthly: 1…31; yearly: one
+    last_day: bool  # monthly: the month's last day
+    nth: int | None  # on a weekday: 1…5, or -1 for the last
+    weekday: int | None  # that weekday, 0 Monday … 6 Sunday
+    month: int | None  # yearly: 1…12
+    until: date | None  # the last day an occurrence can fall on
+    count: int | None
+
+    @classmethod
+    def of(cls, parts: RepeatParts) -> RepeatPartsOut:
+        return cls.model_validate(asdict(parts))
+
+
 class EventOut(BaseModel):
     id: str
     calendar_id: str
@@ -109,7 +131,8 @@ class EventOut(BaseModel):
     end_date: date | None
     tzid: str | None
     rrule: str | None
-    repeat_text: str | None  # "Every week on Thu"
+    repeat_text: str | None  # "Every week on Thu", in English
+    repeat: RepeatPartsOut | None = None  # the same in parts, for the family's language
     exdates: list[str]
     member_ids: list[str]
     # The title decides who it's for (ADR 0034): set on import, or by names in a new title; a
@@ -179,8 +202,9 @@ class OccurrencesOut(BaseModel):
 
 
 class DescribeOut(BaseModel):
-    text: str
+    text: str  # in English
     rrule: str  # normalized
+    repeat: RepeatPartsOut | None = None  # the same in parts, for the family's language
 
 
 class SearchHit(BaseModel):

@@ -39,6 +39,7 @@ from sunroom.calendar.schemas import (
     EventOut,
     EventUpdate,
     MoveIn,
+    RepeatPartsOut,
     Scope,
     SearchHit,
 )
@@ -265,12 +266,14 @@ async def event_out(session: AsyncSession, event: Event) -> EventOut:
         zone = load_zone(event.tzid or "UTC")
         assert event.start_utc is not None and event.end_utc is not None
         start, end = to_local(event.start_utc, zone), to_local(event.end_utc, zone)
-    repeat_text = None
+    repeat_text = repeat = None
     if event.rrule:
+        timing, zone = timing_of(event), event.tzid or "UTC"
         try:
-            repeat_text = recurrence.describe(event.rrule, timing_of(event), event.tzid or "UTC")
+            repeat = RepeatPartsOut.of(recurrence.describe_parts(event.rrule, timing, zone))
+            repeat_text = recurrence.describe(event.rrule, timing, zone)
         except RecurrenceError:
-            repeat_text = None
+            repeat_text = repeat = None
     return EventOut.model_validate(
         {
             "id": event.id,
@@ -286,6 +289,7 @@ async def event_out(session: AsyncSession, event: Event) -> EventOut:
             "tzid": event.tzid,
             "rrule": event.rrule,
             "repeat_text": repeat_text,
+            "repeat": repeat,
             "exdates": json_list(event.exdates_json),
             "member_ids": await _members_of(session, event.id),
             "people_from_title": event.people_from_title,

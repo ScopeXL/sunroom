@@ -4,7 +4,7 @@
  * XMLHttpRequest, because a zip with every photo can take minutes from a phone and only XHR
  * says how far it got.
  */
-import { ApiError } from "../api/client";
+import { ApiError, refusal } from "../api/client";
 import type { components } from "../api/schema";
 import { t } from "./lang";
 
@@ -25,10 +25,12 @@ export function uploadBackup(
       if (event.lengthComputable && event.total > 0) onProgress(event.loaded / event.total);
     };
     request.onabort = () => {
-      reject(new ApiError(0, "aborted", "Not sent."));
+      const key = "settings.backup.restore.not_sent.error";
+      reject(new ApiError(0, "aborted", t(key), false, [], null, key));
     };
     request.onerror = () => {
-      reject(new ApiError(0, "offline", "Not sent — the server can't be reached. Try again."));
+      const key = "settings.backup.restore.unreachable.error";
+      reject(new ApiError(0, "offline", t(key), false, [], null, key));
     };
     request.onload = () => {
       let payload: unknown;
@@ -41,22 +43,13 @@ export function uploadBackup(
         resolve(payload as RestoreSummary);
         return;
       }
-      const error = (
-        payload as { error?: { code?: string; message?: string; pin?: boolean } } | null
-      )?.error;
-      if (request.status === 413 && !error) {
+      if (request.status === 413 && !(payload as { error?: unknown } | null)?.error) {
         // A proxy's own 413 page, not Sunroom's: the file never reached the server.
-        reject(new ApiError(413, "too_large", t("settings.backup.restore.too_big.error")));
+        const key = "settings.backup.restore.too_big.error";
+        reject(new ApiError(413, "too_large", t(key), false, [], null, key));
         return;
       }
-      reject(
-        new ApiError(
-          request.status,
-          error?.code ?? "error",
-          error?.message ?? "That file couldn't be sent. Try again.",
-          error?.pin === true,
-        ),
-      );
+      reject(refusal(request.status, payload, "settings.backup.restore.send_failed.error"));
     };
     request.send(file);
   });

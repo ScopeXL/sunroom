@@ -330,6 +330,27 @@ async def test_rules_are_checked_and_described(parent: httpx.AsyncClient) -> Non
     )
     assert described.status_code == 200, described.text
     assert described.json()["text"] == "Every 2 weeks on Thu"
+    # The same in parts, for a page to word in the family's language (ADR 0043).
+    parts = described.json()["repeat"]
+    assert (parts["freq"], parts["interval"], parts["weekdays"]) == ("weekly", 2, [3])
+    made = await parent.post(
+        "/api/calendar/events",
+        json={
+            "title": "Piano",
+            "start": "2026-10-08T16:00",
+            "rrule": "FREQ=MONTHLY;BYDAY=2TH;COUNT=6",
+        },
+        headers=CSRF,
+    )
+    assert made.status_code == 201, made.text
+    event = made.json()["event"]
+    assert event["repeat_text"] == "Every month on the second Thursday, 6 times"
+    assert {k: event["repeat"][k] for k in ("freq", "nth", "weekday", "count")} == {
+        "freq": "monthly",
+        "nth": 2,
+        "weekday": 3,
+        "count": 6,
+    }
 
 
 async def test_ranges_are_bounded(parent: httpx.AsyncClient) -> None:

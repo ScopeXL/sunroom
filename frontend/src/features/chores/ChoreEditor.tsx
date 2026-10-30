@@ -17,7 +17,13 @@ import { TimeField } from "../../ui/TimeField";
 import { WhoPicker } from "../../ui/WhoPicker";
 import { firstDayOf, type KeptRule } from "../calendar/EventEditor";
 import { RepeatField } from "../calendar/RepeatField";
-import { repeatToRRule, rruleToRepeat, type Repeat, type RepeatEnd } from "../calendar/repeat";
+import {
+  repeatToRRule,
+  repeatWords,
+  rruleToRepeat,
+  type Repeat,
+  type RepeatEnd,
+} from "../calendar/repeat";
 import { useBoardDay } from "../calendar/useBoardDay";
 import type { AddEditorProps } from "../registry";
 import { useChoreChanges, useChoreSettings, type Chore, type ChoreIn } from "./data";
@@ -70,7 +76,9 @@ export function ChoreEditor({
   const [repeat, setRepeat] = useState<Repeat | null>(chore ? (parsed?.repeat ?? null) : DAILY);
   const [repeatEnd, setRepeatEnd] = useState<RepeatEnd>(parsed?.end ?? {});
   const [kept, setKept] = useState<KeptRule | null>(
-    chore?.rrule && !parsed ? { rrule: chore.rrule, text: chore.repeat_text } : null,
+    chore?.rrule && !parsed
+      ? { rrule: chore.rrule, text: repeatWords(chore) ?? chore.repeat_text }
+      : null,
   );
   // The rule and the day go back to the server only when one of them was changed here.
   const [whenTouched, setWhenTouched] = useState(false);

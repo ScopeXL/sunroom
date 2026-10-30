@@ -73,12 +73,17 @@ export function isKey(value: string): value is Key {
  * What the server or Sunroom Screen said, in the page's language: its key when this page knows
  * it, else the English it sent (a page older than the server, after an update). ADR 0043.
  */
-export function tSaid(
-  english: string,
-  key?: string | null,
-  params?: Record<string, string> | null,
-): string {
+export function tSaid(english: string, key?: string | null, params?: Params | null): string {
   return key && isKey(key) ? t(key, params ?? undefined) : english;
+}
+
+/**
+ * A plugin's own word from its manifest (GET /api/plugins: its name, description and settings),
+ * in the page's language: `plugins.<id>.<path>` (`settings.stars.label`), else the English the
+ * server sent. ADR 0043.
+ */
+export function tPlugin(plugin: string, path: string, english: string): string {
+  return tSaid(english, `plugins.${plugin}.${path}`);
 }
 
 /** The languages a family can pick, by their own names. */

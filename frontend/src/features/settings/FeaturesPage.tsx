@@ -4,7 +4,7 @@ import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import type { components } from "../../api/schema";
 import { usePlugins } from "../../lib/household";
-import { useT } from "../../lib/lang";
+import { tPlugin, useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { Button } from "../../ui/Button";
 import { ListRowLink } from "../../ui/ListRow";
@@ -104,16 +104,16 @@ export function FeaturesPage() {
       </Group>
     );
   }
-  // A plugin's name and description are the server's words.
+  // A plugin's name and description are its own words (lib/lang's tPlugin).
   return (
     <>
       {plugins.map((plugin) => (
-        <Group key={plugin.id} title={plugin.name}>
+        <Group key={plugin.id} title={tPlugin(plugin.id, "name", plugin.name)}>
           <Switch
             label={
               plugin.enabled ? t("settings.features.on.label") : t("settings.features.off.label")
             }
-            hint={plugin.description}
+            hint={tPlugin(plugin.id, "description", plugin.description)}
             checked={plugin.enabled}
             disabled={toggle.isPending}
             onChange={(on) => {
@@ -122,7 +122,9 @@ export function FeaturesPage() {
           />
           {plugin.status === "errored" ? (
             <div className="flex flex-wrap items-center justify-between gap-3 py-4">
-              <Text>{t("settings.features.stopped", { name: plugin.name })}</Text>
+              <Text>
+                {t("settings.features.stopped", { name: tPlugin(plugin.id, "name", plugin.name) })}
+              </Text>
               <Button
                 variant="secondary"
                 pending={retry.isPending}

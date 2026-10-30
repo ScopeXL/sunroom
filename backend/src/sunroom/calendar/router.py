@@ -27,6 +27,7 @@ from sunroom.calendar.schemas import (
     EventUpdate,
     MoveIn,
     OccurrencesOut,
+    RepeatPartsOut,
     SearchHit,
     UndoIn,
 )
@@ -289,6 +290,7 @@ async def describe_rule(
     normalized = checked_rule(rrule, timing, zone_key)
     try:
         text = recurrence.describe(normalized, timing, zone_key)
+        parts = recurrence.describe_parts(normalized, timing, zone_key)
     except RecurrenceError as exc:
         raise AppError(422, exc.code, exc.key) from None
-    return DescribeOut(text=text, rrule=normalized)
+    return DescribeOut(text=text, rrule=normalized, repeat=RepeatPartsOut.of(parts))

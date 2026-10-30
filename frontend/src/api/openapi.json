@@ -1077,6 +1077,16 @@
             "title": "Points",
             "type": "integer"
           },
+          "repeat": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatPartsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "repeat_text": {
             "title": "Repeat Text",
             "type": "string"
@@ -1994,6 +2004,16 @@
       },
       "DescribeOut": {
         "properties": {
+          "repeat": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatPartsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "rrule": {
             "title": "Rrule",
             "type": "string"
@@ -2978,6 +2998,16 @@
             "default": false,
             "title": "Reminders Off",
             "type": "boolean"
+          },
+          "repeat": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatPartsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "repeat_text": {
             "anyOf": [
@@ -7105,6 +7135,120 @@
           "deleted_at"
         ],
         "title": "RemovedSavedOut",
+        "type": "object"
+      },
+      "RepeatPartsOut": {
+        "description": "A repeat in parts (``domain.recurrence.RepeatParts``) for the page to word in the\nfamily's language (ADR 0043); ``repeat_text`` beside it says the same in English.",
+        "properties": {
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "freq": {
+            "anyOf": [
+              {
+                "enum": [
+                  "daily",
+                  "weekly",
+                  "monthly",
+                  "yearly"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freq"
+          },
+          "interval": {
+            "title": "Interval",
+            "type": "integer"
+          },
+          "last_day": {
+            "title": "Last Day",
+            "type": "boolean"
+          },
+          "month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "month_days": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Month Days",
+            "type": "array"
+          },
+          "nth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nth"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekday"
+          },
+          "weekdays": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weekdays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "freq",
+          "interval",
+          "weekdays",
+          "month_days",
+          "last_day",
+          "nth",
+          "weekday",
+          "month",
+          "until",
+          "count"
+        ],
+        "title": "RepeatPartsOut",
         "type": "object"
       },
       "RestoreApplyIn": {

@@ -12,15 +12,20 @@
  * The words are `calendar.repeat.*` in lang/, each sentence whole: the interval and the count are
  * plurals, the date an ordinal, the weekday's place in its month a select.
  */
+import type { components } from "../../api/schema";
 import {
   monthDay,
   orderedWeekdays,
+  shortMonth,
   weekdayLong,
   weekdayOf,
   weekdayShort,
   zonedParts,
 } from "../../lib/dates";
 import { t } from "../../lib/lang";
+
+/** A repeat as the server sends it beside its English `repeat_text`: in parts (ADR 0043). */
+export type RepeatParts = components["schemas"]["RepeatPartsOut"];
 
 export type Repeat =
   | { freq: "daily"; interval: number }
@@ -357,6 +362,97 @@ export function describeRepeat(
     return t("calendar.repeat.count", { rule: text, n: count });
   }
   return text;
+}
+
+/** A weekday's place in its month as the messages' select names it: 2 "second", -1 "last". */
+function nthWord(nth: number): string {
+  return nth === 5 ? "fifth" : nth > 0 ? pick(NTH, nth - 1) : "last";
+}
+
+/** "the 9th", "the 1st and 15th", "the last day", "the second Tuesday": a monthly repeat's day. */
+function monthlyOn(parts: RepeatParts): string {
+  if (parts.nth !== null && parts.weekday !== null) {
+    return t("calendar.repeat.month_weekday", {
+      nth: nthWord(parts.nth),
+      weekday: weekdayLong(parts.weekday),
+    });
+  }
+  if (parts.last_day) return t("calendar.repeat.month_last_day");
+  if (parts.month_days.length === 1) {
+    return t("calendar.repeat.month_date", { date: parts.month_days[0] ?? 1 });
+  }
+  const ordinals = parts.month_days.map((date) => t("calendar.repeat.ordinal", { n: date }));
+  return t("calendar.repeat.month_dates", { dates: listed(ordinals) });
+}
+
+/** "Oct 9", "the second Sunday of May": a yearly repeat's day. */
+function yearlyOn(parts: RepeatParts, firstDay: string): string {
+  const month = String(parts.month ?? Number(firstDay.slice(5, 7))).padStart(2, "0");
+  if (parts.nth !== null && parts.weekday !== null) {
+    return t("calendar.repeat.year_weekday", {
+      nth: nthWord(parts.nth),
+      weekday: weekdayLong(parts.weekday),
+      month: shortMonth(`${firstDay.slice(0, 4)}-${month}-01`),
+    });
+  }
+  const date = String(parts.month_days[0] ?? Number(firstDay.slice(8, 10))).padStart(2, "0");
+  return monthDay(`${firstDay.slice(0, 4)}-${month}-${date}`);
+}
+
+/**
+ * A repeat the server sent in parts, in the family's language (ADR 0043): the sentences the
+ * editor's own repeats say, in the order the rule names its days. `firstDay` is the series'
+ * first day (an end in another year names its year). The server's English when there are no
+ * parts (a server from before 0.18.0).
+ */
+export function partsToWords(
+  parts: RepeatParts | null | undefined,
+  english: string | null | undefined,
+  firstDay: string,
+): string | null {
+  if (!parts) return english ?? null;
+  const n = Math.max(1, parts.interval);
+  let text: string;
+  switch (parts.freq) {
+    case null:
+      text = t("calendar.repeat.custom_schedule");
+      break;
+    case "daily":
+      text = t("calendar.repeat.daily", { n });
+      break;
+    case "weekly": {
+      const days = [...new Set(parts.weekdays)];
+      text =
+        n === 1 && days.length === 7
+          ? t("calendar.repeat.daily", { n })
+          : n === 1 && [...days].sort().join() === WORKWEEK.join()
+            ? t("calendar.repeat.every_weekday")
+            : t("calendar.repeat.weekly", { n, days: listed(days.map(weekdayShort)) });
+      break;
+    }
+    case "monthly":
+      text = t("calendar.repeat.monthly", { n, day: monthlyOn(parts) });
+      break;
+    case "yearly":
+      text = t("calendar.repeat.yearly", { n, date: yearlyOn(parts, firstDay) });
+      break;
+  }
+  if (parts.count !== null) return t("calendar.repeat.count", { rule: text, n: parts.count });
+  if (parts.until) {
+    return t("calendar.repeat.until", { rule: text, date: untilDate(parts.until, firstDay) });
+  }
+  return text;
+}
+
+/** An event's or a task's repeat in the family's language, counted from its first day. */
+export function repeatWords(item: {
+  repeat?: RepeatParts | null;
+  repeat_text?: string | null;
+  start_date?: string | null;
+  start?: string | null;
+}): string | null {
+  const firstDay = item.start_date ?? item.start?.slice(0, 10) ?? "";
+  return partsToWords(item.repeat, item.repeat_text, firstDay);
 }
 
 /** What the Custom form holds: every `interval` days, weeks, months or years; the weekdays for

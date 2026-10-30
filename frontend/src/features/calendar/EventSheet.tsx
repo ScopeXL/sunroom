@@ -19,6 +19,7 @@ import { useCalendars, useEvent, useEventAt, useEventChanges } from "./data";
 import { coreOverlayOf } from "./overlays";
 import { ScopeChooser } from "./ScopeChooser";
 import type { CalendarInfo, Occurrence, Scope } from "./types";
+import { repeatWords } from "./repeat";
 
 /** The occurrence a panel was opened from, as the board last loaded it. */
 export function useCachedOccurrence(key: string | null): Occurrence | null {
@@ -144,6 +145,7 @@ export function EventSheet({
 
   const text = display ? "text-d-body" : "text-body";
   const soft = display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft";
+  const repeatText = event ? repeatWords(event) : null;
   const source = birthday
     ? birthdaySource(people[0]?.name)
     : calendar
@@ -202,7 +204,7 @@ export function EventSheet({
       <SidePanel open={panel !== null} title={title} onClose={close} footer={actions}>
         <div className="flex flex-col gap-4">
           {occurrence ? <p className={`${text} font-semibold`}>{whenText(occurrence)}</p> : null}
-          {event?.repeat_text ? <p className={soft}>{event.repeat_text}</p> : null}
+          {repeatText ? <p className={soft}>{repeatText}</p> : null}
           {occurrence?.is_override ? <p className={soft}>{t("calendar.sheet.override")}</p> : null}
           <div className="flex flex-wrap items-center gap-3">
             {people.length ? (
@@ -246,7 +248,7 @@ export function EventSheet({
         open={asking !== null}
         verb={asking?.verb ?? "Remove"}
         title={title}
-        repeatText={event?.repeat_text}
+        repeatText={repeatText}
         onChoose={(scope) => {
           const pending = asking;
           setAsking(null);

@@ -25,11 +25,13 @@ from sunroom.domain.recurrence import (
     Occurrence,
     Override,
     RecurrenceError,
+    RepeatParts,
     Series,
     Timing,
     Window,
     count_before,
     describe,
+    describe_parts,
     expand,
     series_bounds,
     shift_rid,
@@ -807,6 +809,47 @@ def test_until_names_the_last_day_an_occurrence_can_fall_on() -> None:
 def test_describe_refuses_a_broken_rule() -> None:
     with pytest.raises(RecurrenceError):
         describe("FREQ=HOURLY", THURSDAY, NY_KEY)
+    with pytest.raises(RecurrenceError):
+        describe_parts("FREQ=HOURLY", THURSDAY, NY_KEY)
+
+
+@pytest.mark.parametrize(
+    ("rule", "timing", "parts"),
+    [
+        ("FREQ=DAILY;INTERVAL=3", THURSDAY, RepeatParts("daily", 3)),
+        ("FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR", THURSDAY, RepeatParts("weekly", 1, (0, 1, 2, 3, 4))),
+        ("FREQ=WEEKLY", THURSDAY, RepeatParts("weekly", 1, (3,))),
+        ("FREQ=WEEKLY;BYDAY=MO,SU;WKST=SU", THURSDAY, RepeatParts("weekly", 1, (6, 0))),
+        ("FREQ=WEEKLY;INTERVAL=2;BYDAY=TH,TU", THURSDAY, RepeatParts("weekly", 2, (1, 3))),
+        ("FREQ=MONTHLY", OCT_9, RepeatParts("monthly", month_days=(9,))),
+        ("FREQ=MONTHLY;BYMONTHDAY=1,15", THURSDAY, RepeatParts("monthly", month_days=(1, 15))),
+        ("FREQ=MONTHLY;BYMONTHDAY=-1", THURSDAY, RepeatParts("monthly", last_day=True)),
+        ("FREQ=MONTHLY;BYDAY=-1FR", THURSDAY, RepeatParts("monthly", nth=-1, weekday=4)),
+        ("FREQ=YEARLY;INTERVAL=2", OCT_9, RepeatParts("yearly", 2, month=10, month_days=(9,))),
+        (
+            "FREQ=YEARLY;BYMONTH=5;BYDAY=2SU",
+            THURSDAY,
+            RepeatParts("yearly", month=5, nth=2, weekday=6),
+        ),
+        ("FREQ=WEEKLY;BYDAY=TU;COUNT=10", THURSDAY, RepeatParts("weekly", 1, (1,), count=10)),
+        (
+            "FREQ=DAILY;UNTIL=20270115T235959Z",
+            THURSDAY,
+            RepeatParts("daily", until=date(2027, 1, 15)),
+        ),
+        ("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1", THURSDAY, RepeatParts(None)),
+        ("FREQ=YEARLY;BYMONTH=1,7;COUNT=6", THURSDAY, RepeatParts(None, count=6)),
+    ],
+)
+def test_describe_parts(rule: str, timing: Timing, parts: RepeatParts) -> None:
+    """What a page words in the family's language: the parts describe's English is made of."""
+    assert describe_parts(rule, timing, NY_KEY) == parts
+
+
+def test_until_in_parts_is_the_last_day_an_occurrence_can_fall_on() -> None:
+    evening = timed("2026-10-08T20:00:00")  # 8 PM is past midnight UTC: Dec 31 can't make it
+    parts = describe_parts("FREQ=DAILY;UNTIL=20261231T235959Z", evening, NY_KEY)
+    assert parts.until == date(2026, 12, 30)
 
 
 # --- Properties -----------------------------------------------------------------------------

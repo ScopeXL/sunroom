@@ -12,7 +12,7 @@ import createClient, { type Middleware } from "openapi-fetch";
 
 import { recordClockSample } from "../lib/clock";
 import { markReachable, markUnreachable } from "../lib/connection";
-import { getLanguage, isKey, t, type Params } from "../lib/lang";
+import { getLanguage, isKey, t, type Key, type Params } from "../lib/lang";
 import type { paths } from "./schema";
 
 export class ApiError extends Error {
@@ -77,21 +77,33 @@ interface ErrorEnvelope {
   };
 }
 
+/** The ApiError a refusal's envelope says (`{"error": {code, message, key, params…}}`), or the
+ * page's own `fallback` sentence when the answer had none (a proxy's page, not Sunroom's). */
+export function refusal(
+  status: number,
+  payload: unknown,
+  fallback: Key,
+  retryAfter: number | null = null,
+): ApiError {
+  const said = (payload as ErrorEnvelope | null)?.error;
+  const message = said?.message;
+  return new ApiError(
+    status,
+    said?.code ?? "error",
+    message ?? t(fallback),
+    said?.pin === true,
+    said?.problems ?? [],
+    retryAfter,
+    said?.key ?? (message === undefined ? fallback : null),
+    said?.params ?? {},
+  );
+}
+
 /** Unwrap an openapi-fetch result: return data, or throw an ApiError with the server's message. */
 export function unwrap<T>(result: { data?: T; error?: unknown; response: Response }): T {
   if (result.error !== undefined || !result.response.ok) {
-    const said = ((result.error ?? {}) as ErrorEnvelope).error;
-    const message = said?.message;
-    throw new ApiError(
-      result.response.status,
-      said?.code ?? "error",
-      message ?? t("app.error.generic"),
-      said?.pin === true,
-      said?.problems ?? [],
-      Number(result.response.headers.get("retry-after")) || null,
-      said?.key ?? (message === undefined ? "app.error.generic" : null),
-      said?.params ?? {},
-    );
+    const retryAfter = Number(result.response.headers.get("retry-after")) || null;
+    throw refusal(result.response.status, result.error ?? {}, "app.error.generic", retryAfter);
   }
   return result.data as T;
 }

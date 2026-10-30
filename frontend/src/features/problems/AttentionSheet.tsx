@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 import { qk } from "../../api/keys";
-import { useT } from "../../lib/lang";
+import { tSaid, useT } from "../../lib/lang";
 import { askForPin } from "../../lib/parent";
 import { fetchSession } from "../../lib/session";
 import { useMinute } from "../../lib/time";
@@ -54,7 +54,7 @@ export function AttentionSheet({
           return (
             <li key={problem.id} className={`flex flex-col gap-1 ${display ? "py-5" : "py-4"}`}>
               <p className={`${display ? "text-d-body" : "text-body"} font-semibold`}>
-                {problem.title}
+                {tSaid(problem.title, problem.key, problem.params)}
               </p>
               {problem.since ? <p className={soft}>{sinceWords(problem.since, now)}</p> : null}
               {problem.detail ? <p className={soft}>{problem.detail}</p> : null}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { errorMessage } from "../../api/client";
 import { isHomeAddress } from "../../lib/address";
 import { formatTime } from "../../lib/dates";
-import { useT } from "../../lib/lang";
+import { tPlugin, useT } from "../../lib/lang";
 import { useSavedFlash } from "../../lib/savedFlash";
 import { useDebounced } from "../../lib/useDebounced";
 import { Button } from "../../ui/Button";
@@ -47,6 +47,17 @@ function picked(picks: LibraryPicks): Picked {
 type Limit = (typeof LIMITS)[number];
 /** Over this many albums, a field finds one by name. */
 const ALBUMS_BEFORE_SEARCH = 12;
+
+/** A library's own hints ("The address you open Immich at."), in the page's language. */
+function addressHint(kind: LibraryKind | undefined): string | null {
+  if (!kind?.address_hint) return null;
+  return tPlugin("screensaver", `libraries.${kind.kind}.address_hint`, kind.address_hint);
+}
+
+function keyHelp(kind: LibraryKind | undefined): string | null {
+  if (!kind?.key_help) return null;
+  return tPlugin("screensaver", `libraries.${kind.kind}.key_help`, kind.key_help);
+}
 
 /**
  * One panel for a photo library (UX §4 "Photo Libraries", ADR 0036), with two openings: **Add a
@@ -148,7 +159,7 @@ function AddLibrary({
       <TextField
         label={t("photos.library.address.label")}
         placeholder={kind?.placeholder}
-        hint={kind?.address_hint ?? null}
+        hint={addressHint(kind)}
         autoCapitalize="none"
         autoComplete="off"
         {...(display ? {} : { inputMode: "url" as const })}
@@ -162,7 +173,7 @@ function AddLibrary({
         type="password"
         layout="password"
         autoComplete="off"
-        hint={kind?.key_help ?? null}
+        hint={keyHelp(kind)}
         value={key}
         onChange={(event) => {
           setKey(event.target.value);
@@ -435,7 +446,7 @@ function ConnectAgain({ library, kind }: { library: PhotoLibrary; kind: LibraryK
         type="password"
         layout="password"
         autoComplete="off"
-        hint={kind?.key_help ?? null}
+        hint={keyHelp(kind)}
         value={key}
         onChange={(event) => {
           setKey(event.target.value);

@@ -56,13 +56,14 @@ async def test_a_chore_reads_its_rule_and_anyone_may_add_one(
     )
     assert dog["rrule"] == "FREQ=WEEKLY;BYDAY=MO,WE,FR"
     assert dog["repeat_text"] == "Every week on Mon, Wed and Fri"
+    assert (dog["repeat"]["freq"], dog["repeat"]["weekdays"]) == ("weekly", [0, 2, 4])
     assert (dog["start_date"], dog["assignee_mode"], dog["requires_approval"]) == (
         TODAY.isoformat(),
         "fixed",
         None,
     )
     once = await add_chore(parent, "Pack for the trip", assignee_member_ids=[family.leo])
-    assert (once["rrule"], once["repeat_text"]) == (None, "Doesn't repeat")
+    assert (once["rrule"], once["repeat_text"], once["repeat"]) == (None, "Doesn't repeat", None)
     # Adding never asks for the PIN: a kid's phone adds one too.
     kids = await add_chore(kid_phone, "Water the plants", assignee_mode="any", points=1)
     assert kids["assignee_member_ids"] == []

@@ -6,7 +6,7 @@ import { qk } from "../../api/keys";
 import type { components } from "../../api/schema";
 import { COLORS } from "../../lib/colors";
 import { useMembers } from "../../lib/household";
-import { useT } from "../../lib/lang";
+import { tPlugin, useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { useSavedFlash } from "../../lib/savedFlash";
 import { showToast } from "../../lib/toast";
@@ -101,6 +101,7 @@ export function PluginSettingsForm({
       {fields.map((field) => (
         <FieldInput
           key={field.key}
+          pluginId={pluginId}
           field={field}
           value={values[field.key]}
           onChange={(value) => change(field.key, value)}
@@ -177,10 +178,12 @@ function TypedField({
 }
 
 function FieldInput({
-  field,
+  pluginId,
+  field: spec,
   value,
   onChange,
 }: {
+  pluginId: string;
   field: Field;
   value: unknown;
   onChange: (value: unknown) => Promise<boolean>;
@@ -188,7 +191,20 @@ function FieldInput({
   const t = useT();
   const { data: members = [] } = useMembers();
   const display = useShell() === "display";
-  // A field's label, unit, help and choices are the plugin's own words, from the server.
+  // A field's label, help and choices are the plugin's own words: its keys in the page's
+  // language, else the server's English (lib/lang's tPlugin). The unit is the server's.
+  const said = (path: string, english: string) =>
+    tPlugin(pluginId, `settings.${spec.key}.${path}`, english);
+  const field: Field = {
+    ...spec,
+    label: said("label", spec.label),
+    help: spec.help ? said("help", spec.help) : spec.help,
+    choice_labels: spec.choices
+      ? spec.choices.map((choice, index) =>
+          said(`choices.${choice}`, spec.choice_labels?.[index] ?? choice),
+        )
+      : null,
+  };
   // A group's name reads like a field's label (ui/TextField): the shell's body size.
   const groupLabel = `${display ? "text-d-body" : "text-body"} font-semibold`;
   const hint = field.help || null;

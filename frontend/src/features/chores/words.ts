@@ -5,6 +5,7 @@
  */
 import { addDays, formatTime, formatWallTime, shortDate, shortWeekday } from "../../lib/dates";
 import { t } from "../../lib/lang";
+import { repeatWords, type RepeatParts } from "../calendar/repeat";
 
 export interface Named {
   id: string;
@@ -77,6 +78,8 @@ export function ruleLine(
   chore: {
     rrule: string | null;
     repeat_text: string;
+    repeat?: RepeatParts | null;
+    start_date?: string;
     next_due: string | null;
     due_time: string | null;
     points: number;
@@ -88,7 +91,7 @@ export function ruleLine(
   today: string,
 ): string {
   const parts = [
-    chore.rrule ? chore.repeat_text : t("tasks.rule.once"),
+    chore.rrule ? (repeatWords(chore) ?? chore.repeat_text) : t("tasks.rule.once"),
     nextWord(chore.next_due, today),
   ];
   if (chore.due_time) parts.push(t("tasks.box.by", { time: clockText(chore.due_time) }));

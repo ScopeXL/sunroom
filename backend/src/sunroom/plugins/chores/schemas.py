@@ -8,6 +8,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, StringConstraints
 
+from sunroom.calendar.schemas import RepeatPartsOut
+
 ModeName = Literal["fixed", "rotate", "any"]
 CompletionStatusName = Literal["done", "pending", "rejected"]
 RedemptionStatusName = Literal["requested", "approved", "denied", "cancelled"]
@@ -29,7 +31,8 @@ class ChoreOut(BaseModel):
     icon: str | None
     points: int
     rrule: str | None
-    repeat_text: str  # "Every day", "Every week on Mon, Wed and Fri", "Doesn't repeat"
+    repeat_text: str  # "Every day", "Every week on Mon, Wed and Fri", "Doesn't repeat" (English)
+    repeat: RepeatPartsOut | None = None  # the same in parts, for the family's language
     start_date: date
     due_time: str | None  # "17:00": "by 5:00 PM"
     assignee_mode: ModeName

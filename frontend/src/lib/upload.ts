@@ -4,7 +4,8 @@
  * the phone first when asked (an avatar); the server re-encodes everything as WebP without
  * metadata (ADR 0009), after reading when a photo was taken.
  */
-import { ApiError } from "../api/client";
+import { ApiError, refusal } from "../api/client";
+import { t } from "./lang";
 
 const SERVER_LIMIT = 15 * 1024 * 1024;
 const LIBRARY_SIDE = 2560;
@@ -34,19 +35,11 @@ export async function uploadPicture<T>(
       headers: { "Content-Type": body.type || "image/jpeg", "X-Sunroom": "1" },
     });
   } catch {
-    throw new ApiError(0, "offline", "Not saved — you're offline. Try again when you have signal.");
+    const key = "app.upload.offline.error";
+    throw new ApiError(0, "offline", t(key), false, [], null, key);
   }
   const payload: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    const error = (payload as { error?: { code?: string; message?: string; pin?: boolean } } | null)
-      ?.error;
-    throw new ApiError(
-      response.status,
-      error?.code ?? "error",
-      error?.message ?? "That photo couldn't be saved. Try again.",
-      error?.pin === true,
-    );
-  }
+  if (!response.ok) throw refusal(response.status, payload, "app.upload.failed.error");
   return payload as T;
 }
 

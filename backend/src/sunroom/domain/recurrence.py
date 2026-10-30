@@ -22,6 +22,7 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta
 from functools import lru_cache
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from sunroom.domain.timeparts import (
@@ -912,56 +913,112 @@ def _every(interval: int, unit: str) -> str:
     return f"Every {unit}" if interval == 1 else f"Every {interval} {unit}s"
 
 
-def _weekly(days: Sequence[int], interval: int, wkst: int) -> str:
+type RepeatFreq = Literal["daily", "weekly", "monthly", "yearly"]
+
+
+@dataclass(frozen=True, slots=True)
+class RepeatParts:
+    """A rule in the parts its sentence is made of, for a page to word in the family's language
+    (ADR 0043); ``describe`` words the same parts in English. ``freq`` None: a schedule these
+    parts can't hold ("Repeats on a custom schedule")."""
+
+    freq: RepeatFreq | None
+    interval: int = 1
+    weekdays: tuple[int, ...] = ()  # weekly: 0 Monday … 6 Sunday, in the rule's week order
+    month_days: tuple[int, ...] = ()  # monthly: 1…31, one or more; yearly: one
+    last_day: bool = False  # monthly: the month's last day
+    nth: int | None = None  # monthly or yearly on a weekday: 1…5, or -1 for the last
+    weekday: int | None = None  # that weekday, 0 Monday … 6 Sunday
+    month: int | None = None  # yearly: 1…12
+    until: date | None = None  # the last day an occurrence can fall on
+    count: int | None = None
+
+
+_CUSTOM_PARTS = RepeatParts(freq=None)
+
+
+def _one_nth(rule: _Rule) -> tuple[int, int] | None:
+    """A single nth weekday ("the second Tuesday") with no month day beside it, or None."""
+    if rule.bymonthday or len(rule.byday) != 1 or rule.byday[0][0] not in _NTH:
+        return None
+    return rule.byday[0]
+
+
+def _parts(rule: _Rule, first: date) -> RepeatParts:
+    if rule.bysetpos:
+        return _CUSTOM_PARTS
+    plain = [day for nth, day in rule.byday if nth == 0]
+    if rule.freq in ("DAILY", "WEEKLY"):
+        if rule.bymonth or rule.bymonthday or len(plain) != len(rule.byday):
+            return _CUSTOM_PARTS
+        if rule.freq == "DAILY" and not plain:
+            return RepeatParts("daily", rule.interval)
+        if rule.freq == "DAILY" and rule.interval != 1:
+            return _CUSTOM_PARTS
+        days = sorted(set(plain or [first.weekday()]), key=lambda day: (day - rule.wkst) % 7)
+        return RepeatParts("weekly", rule.interval, weekdays=tuple(days))
+    if rule.freq == "MONTHLY":
+        if rule.bymonth:
+            return _CUSTOM_PARTS
+        if rule.byday:
+            found = _one_nth(rule)
+            if found is None:
+                return _CUSTOM_PARTS
+            return RepeatParts("monthly", rule.interval, nth=found[0], weekday=found[1])
+        days = rule.bymonthday or (first.day,)
+        if all(day > 0 for day in days):
+            return RepeatParts("monthly", rule.interval, month_days=tuple(days))
+        if days == (-1,):
+            return RepeatParts("monthly", rule.interval, last_day=True)
+        return _CUSTOM_PARTS
+    months = rule.bymonth or (() if rule.byday or rule.bymonthday else (first.month,))
+    if len(months) != 1:
+        return _CUSTOM_PARTS
+    if rule.byday:
+        found = _one_nth(rule)
+        if found is None:
+            return _CUSTOM_PARTS
+        return RepeatParts("yearly", rule.interval, month=months[0], nth=found[0], weekday=found[1])
+    days = rule.bymonthday or (first.day,)
+    if len(days) != 1 or days[0] < 0:
+        return _CUSTOM_PARTS
+    return RepeatParts("yearly", rule.interval, month=months[0], month_days=(days[0],))
+
+
+def _weekly(days: Sequence[int], interval: int) -> str:
     if interval == 1 and len(set(days)) == 7:
         return "Every day"
     if interval == 1 and set(days) == {0, 1, 2, 3, 4}:
         return "Every weekday"
-    ordered = sorted(set(days), key=lambda day: (day - wkst) % 7)
-    return f"{_every(interval, 'week')} on {_listing([_SHORT_DAYS[day] for day in ordered])}"
+    return f"{_every(interval, 'week')} on {_listing([_SHORT_DAYS[day] for day in days])}"
 
 
-def _monthly_on(rule: _Rule, first: date) -> str | None:
-    if rule.byday:
-        if rule.bymonthday or len(rule.byday) != 1 or rule.byday[0][0] not in _NTH:
-            return None
-        nth, weekday = rule.byday[0]
-        return f"the {_NTH[nth]} {_LONG_DAYS[weekday]}"
-    days = rule.bymonthday or (first.day,)
-    if all(day > 0 for day in days):
-        return f"the {_listing([_ordinal(day) for day in days])}"
-    return "the last day" if days == (-1,) else None
+def _on_weekday(parts: RepeatParts) -> str:
+    assert parts.nth is not None and parts.weekday is not None
+    return f"the {_NTH[parts.nth]} {_LONG_DAYS[parts.weekday]}"
 
 
-def _phrase(rule: _Rule, first: date) -> str | None:
-    if rule.bysetpos:
-        return None
-    plain = [day for nth, day in rule.byday if nth == 0]
-    if rule.freq in ("DAILY", "WEEKLY"):
-        if rule.bymonth or rule.bymonthday or len(plain) != len(rule.byday):
-            return None
-        if rule.freq == "DAILY":
-            if not plain:
-                return _every(rule.interval, "day")
-            return _weekly(plain, 1, rule.wkst) if rule.interval == 1 else None
-        return _weekly(plain or [first.weekday()], rule.interval, rule.wkst)
-    every = _every(rule.interval, _UNITS[rule.freq])
-    if rule.freq == "MONTHLY":
-        on = None if rule.bymonth else _monthly_on(rule, first)
-        return f"{every} on {on}" if on else None
-    months = rule.bymonth or (() if rule.byday or rule.bymonthday else (first.month,))
-    if len(months) != 1:
-        return None
-    month = _MONTHS[months[0] - 1]
-    if rule.byday:
-        if rule.bymonthday or len(rule.byday) != 1 or rule.byday[0][0] not in _NTH:
-            return None
-        nth, weekday = rule.byday[0]
-        return f"{every} on the {_NTH[nth]} {_LONG_DAYS[weekday]} of {month}"
-    days = rule.bymonthday or (first.day,)
-    if len(days) != 1 or days[0] < 0:
-        return None
-    return f"{every} on {month} {days[0]}"
+def _phrase(parts: RepeatParts) -> str:
+    """The parts in English, without how the repeat ends."""
+    every = _every(parts.interval, _UNITS[(parts.freq or "daily").upper()])
+    match parts.freq:
+        case None:
+            return _CUSTOM
+        case "daily":
+            return every
+        case "weekly":
+            return _weekly(parts.weekdays, parts.interval)
+        case "monthly":
+            if parts.nth is not None:
+                return f"{every} on {_on_weekday(parts)}"
+            if parts.last_day:
+                return f"{every} on the last day"
+            return f"{every} on the {_listing([_ordinal(day) for day in parts.month_days])}"
+        case "yearly":
+            month = _MONTHS[(parts.month or 1) - 1]
+            if parts.nth is not None:
+                return f"{every} on {_on_weekday(parts)} of {month}"
+            return f"{every} on {month} {parts.month_days[0]}"
 
 
 def _last_day(until: datetime | date, anchor: _Anchor) -> date:
@@ -975,18 +1032,29 @@ def _last_day(until: datetime | date, anchor: _Anchor) -> date:
     return day
 
 
-def describe(rrule: str, timing: Timing, tzid: str) -> str:
-    """The rule as a sentence: "Every 2 weeks on Thu, until Dec 31"."""
+def describe_parts(rrule: str, timing: Timing, tzid: str) -> RepeatParts:
+    """The rule in parts: how often, on which days, and how it ends (a count, or the last day
+    an occurrence can fall on, in the series' zone)."""
     rule = _parse(rrule)
     anchor = _anchor(timing, tzid)
-    sentence = _phrase(rule, anchor.first) or _CUSTOM
+    parts = _parts(rule, anchor.first)
     if rule.count is not None:
-        return f"{sentence}, once" if rule.count == 1 else f"{sentence}, {rule.count} times"
+        return replace(parts, count=rule.count)
     until = _until(rule, anchor)
-    if until is None:
+    return parts if until is None else replace(parts, until=_last_day(until, anchor))
+
+
+def describe(rrule: str, timing: Timing, tzid: str) -> str:
+    """The rule as a sentence: "Every 2 weeks on Thu, until Dec 31"."""
+    parts = describe_parts(rrule, timing, tzid)
+    sentence = _phrase(parts)
+    if parts.count is not None:
+        return f"{sentence}, once" if parts.count == 1 else f"{sentence}, {parts.count} times"
+    if parts.until is None:
         return sentence
-    day = _last_day(until, anchor)
+    day = parts.until
     when = f"{_MONTHS[day.month - 1]} {day.day}"
-    if day.year != anchor.first.year:
+    first = _anchor(timing, tzid).first
+    if day.year != first.year:
         when = f"{when}, {day.year}"
     return f"{sentence}, until {when}"

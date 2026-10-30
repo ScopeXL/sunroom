@@ -6,6 +6,8 @@ import {
   describeRepeat,
   isPreset,
   monthDateWords,
+  partsToWords,
+  repeatWords,
   monthWeekdayWords,
   repeatPresets,
   repeatToCustom,
@@ -16,6 +18,7 @@ import {
   type CustomRepeat,
   type Repeat,
   type RepeatEnd,
+  type RepeatParts,
 } from "./repeat";
 
 afterEach(() => {
@@ -342,6 +345,65 @@ describe("the week's first day (WKST)", () => {
     );
     expect(describeRepeat(weekly(1, [1, 3, 5]), THURSDAY, { count: 6 }, 6)).toBe(
       "Every week on Tue, Thu and Sat, 6 times",
+    );
+  });
+});
+
+describe("a repeat the server sent in parts (ADR 0043)", () => {
+  const NONE: RepeatParts = {
+    freq: null,
+    interval: 1,
+    weekdays: [],
+    month_days: [],
+    last_day: false,
+    nth: null,
+    weekday: null,
+    month: null,
+    until: null,
+    count: null,
+  };
+  const FIRST = "2026-10-08";
+
+  // The server's own sentences for the same parts (tests/domain/test_recurrence.py).
+  it.each<[Partial<RepeatParts>, string]>([
+    [{ freq: "daily", interval: 3 }, "Every 3 days"],
+    [{ freq: "weekly", weekdays: [0, 1, 2, 3, 4] }, "Every weekday"],
+    [{ freq: "weekly", weekdays: [0, 1, 2, 3, 4, 5, 6] }, "Every day"],
+    [{ freq: "weekly", weekdays: [3] }, "Every week on Thu"],
+    [{ freq: "weekly", weekdays: [6, 0] }, "Every week on Sun and Mon"],
+    [{ freq: "weekly", interval: 2, weekdays: [0, 2, 4] }, "Every 2 weeks on Mon, Wed and Fri"],
+    [{ freq: "monthly", month_days: [9] }, "Every month on the 9th"],
+    [{ freq: "monthly", month_days: [1, 15] }, "Every month on the 1st and 15th"],
+    [{ freq: "monthly", last_day: true }, "Every month on the last day"],
+    [{ freq: "monthly", nth: 2, weekday: 1 }, "Every month on the second Tuesday"],
+    [{ freq: "monthly", nth: 5, weekday: 2 }, "Every month on the fifth Wednesday"],
+    [{ freq: "monthly", nth: -1, weekday: 4 }, "Every month on the last Friday"],
+    [{ freq: "monthly", interval: 3, month_days: [1] }, "Every 3 months on the 1st"],
+    [{ freq: "yearly", month: 10, month_days: [9] }, "Every year on Oct 9"],
+    [{ freq: "yearly", interval: 2, month: 10, month_days: [9] }, "Every 2 years on Oct 9"],
+    [{ freq: "yearly", month: 5, nth: 2, weekday: 6 }, "Every year on the second Sunday of May"],
+    [{ freq: "yearly", month: 9, nth: 1, weekday: 0 }, "Every year on the first Monday of Sep"],
+    [{ freq: "weekly", weekdays: [1], count: 10 }, "Every week on Tue, 10 times"],
+    [{ freq: "daily", count: 1 }, "Every day, once"],
+    [{ freq: "daily", until: "2026-12-31" }, "Every day, until Dec 31"],
+    [{ freq: "daily", until: "2027-01-15" }, "Every day, until Jan 15, 2027"],
+    [{ count: 6 }, "Repeats on a custom schedule, 6 times"],
+  ])("%j says the server's sentence", (shape, sentence) => {
+    expect(partsToWords({ ...NONE, ...shape }, "The server's English", FIRST)).toBe(sentence);
+  });
+
+  it("says the server's English when there are no parts, and nothing for no repeat", () => {
+    expect(partsToWords(null, "Every week on Thu", FIRST)).toBe("Every week on Thu");
+    expect(partsToWords(undefined, null, FIRST)).toBeNull();
+  });
+
+  it("counts an event's end from its first day", () => {
+    const parts = { ...NONE, freq: "daily" as const, until: "2027-01-15" };
+    expect(repeatWords({ repeat: parts, start: "2027-01-02T09:00:00" })).toBe(
+      "Every day, until Jan 15",
+    );
+    expect(repeatWords({ repeat: parts, start_date: "2026-12-30" })).toBe(
+      "Every day, until Jan 15, 2027",
     );
   });
 });

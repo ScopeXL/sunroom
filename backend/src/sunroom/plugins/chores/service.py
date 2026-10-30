@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sunroom.auth.deps import Actor, parent_refusal
+from sunroom.calendar.schemas import RepeatPartsOut
 from sunroom.core.errors import AppError
 from sunroom.domain.chores import (
     ANY,
@@ -31,7 +32,14 @@ from sunroom.domain.chores import (
     next_due,
     tally,
 )
-from sunroom.domain.recurrence import RecurrenceError, Timing, describe, validate_rrule
+from sunroom.domain.recurrence import (
+    RecurrenceError,
+    RepeatParts,
+    Timing,
+    describe,
+    describe_parts,
+    validate_rrule,
+)
 from sunroom.plugins.chores import rewards, routines
 from sunroom.plugins.chores.common import (
     DAY,
@@ -103,6 +111,16 @@ def repeat_text(chore: Chore) -> str:
         return "Repeats on a custom schedule"
 
 
+def repeat_parts(chore: Chore) -> RepeatPartsOut | None:
+    """The repeat in parts, for the page to word in the family's language (ADR 0043)."""
+    if not chore.rrule:
+        return None
+    try:
+        return RepeatPartsOut.of(describe_parts(chore.rrule, _timing(chore.start_date), "UTC"))
+    except RecurrenceError:
+        return RepeatPartsOut.of(RepeatParts(freq=None))
+
+
 def chore_out(chore: Chore, next_day: date | None) -> ChoreOut:
     return ChoreOut.model_validate(
         {
@@ -113,6 +131,7 @@ def chore_out(chore: Chore, next_day: date | None) -> ChoreOut:
             "points": chore.points,
             "rrule": chore.rrule,
             "repeat_text": repeat_text(chore),
+            "repeat": repeat_parts(chore),
             "start_date": chore.start_date,
             "due_time": chore.due_time,
             "assignee_mode": chore.assignee_mode,
