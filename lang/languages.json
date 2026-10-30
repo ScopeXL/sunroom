@@ -1,0 +1,18 @@
+{
+  "en": {
+    "name": "English",
+    "locale": "en-US",
+    "dir": "ltr",
+    "status": "complete",
+    "chrono": "en",
+    "keyboard": "qwerty"
+  },
+  "es": {
+    "name": "Español",
+    "locale": "es-ES",
+    "dir": "ltr",
+    "status": "preview",
+    "chrono": "es",
+    "keyboard": "qwerty-es"
+  }
+}

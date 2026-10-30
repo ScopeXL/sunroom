@@ -22,7 +22,7 @@ import {
   setRemembering,
   updateDisplay,
 } from "../lib/displayState";
-import { useDatePreferences, useSettings } from "../lib/household";
+import { useDatePreferences, useHouseholdLanguage, useSettings } from "../lib/household";
 import { idleFor, swallowFollowingClick, watchActivity, whenIdle } from "../lib/idle";
 import { watchKeyboardFields } from "../lib/keyboard";
 import { MotionProvider } from "../lib/motion";
@@ -114,6 +114,7 @@ export function DisplayShell({ home, children }: { home: "/display" | "/"; child
   useServerUpdate();
   useServerRestart();
   useDatePreferences();
+  useHouseholdLanguage();
   useReminders();
 
   const { mutate: lockNow } = useMutation({

@@ -1,13 +1,16 @@
 import { useState } from "react";
 
 import type { components } from "../../api/schema";
+import { weekdayLong } from "../../lib/dates";
 import { useSettings, useUpdateSettings } from "../../lib/household";
+import { useT } from "../../lib/lang";
 import { useSavedFlash } from "../../lib/savedFlash";
 import { SavedMark } from "../../ui/SavedMark";
 import { Segmented } from "../../ui/Segmented";
 import { Select } from "../../ui/Select";
 import { useShell } from "../../ui/shell";
 import { TextField } from "../../ui/TextField";
+import { LanguagePicker } from "../onboarding/LanguageButton";
 import { usePluginModules } from "../usePluginModules";
 import { Group, Row } from "./parts";
 
@@ -21,8 +24,8 @@ function zones(): string[] {
 
 type Settings = components["schemas"]["SettingsOut"];
 
-/** Settings → Household (UX §4): name, time zone, the week's first day, the clock, and what was
- * recently removed. */
+/** Settings → Household (UX §4): the language, the name, the time zone, the week's first day
+ * and the clock. */
 export function HouseholdPage() {
   const { data: settings } = useSettings();
   // The form starts from the saved values, so it waits for them.
@@ -30,6 +33,7 @@ export function HouseholdPage() {
 }
 
 function HouseholdForm({ settings }: { settings: Settings }) {
+  const t = useT();
   const display = useShell() === "display";
   const update = useUpdateSettings();
   // What plugins add to this page (the weather: Location).
@@ -62,11 +66,20 @@ function HouseholdForm({ settings }: { settings: Settings }) {
   };
   return (
     <>
-      <Group title="Household">
+      <Group title={t("settings.household.title")}>
+        <Row label={t("settings.household.language.label")}>
+          <LanguagePicker
+            label={t("settings.household.language.label")}
+            value={settings.language}
+            onChange={(language) => {
+              update.mutate({ language });
+            }}
+          />
+        </Row>
         <div className={`flex flex-col gap-1 ${display ? "py-5" : "py-4"}`}>
           <TextField
             strong
-            label="Name"
+            label={t("settings.household.name.label")}
             value={name ?? settings.household_name}
             maxLength={80}
             autoComplete="off"
@@ -86,7 +99,7 @@ function HouseholdForm({ settings }: { settings: Settings }) {
         <div className={`flex flex-col gap-1 ${display ? "py-5" : "py-4"}`}>
           <label className="flex flex-col gap-2">
             <span className={display ? "text-d-body font-semibold" : "text-body font-semibold"}>
-              Time zone
+              {t("settings.household.timezone.label")}
             </span>
             <Select
               value={zone}
@@ -105,29 +118,29 @@ function HouseholdForm({ settings }: { settings: Settings }) {
           </label>
           <SavedMark show={zoneSaved.saved} />
         </div>
-        <Row label="Week starts on">
+        <Row label={t("settings.household.week_start.label")}>
           <Segmented
-            label="Week starts on"
+            label={t("settings.household.week_start.label")}
             value={String(settings.week_starts_on) as "6" | "0"}
             onChange={(value) => {
               update.mutate({ week_starts_on: Number(value) });
             }}
             options={[
-              { value: "6", label: "Sunday" },
-              { value: "0", label: "Monday" },
+              { value: "6", label: weekdayLong(6) },
+              { value: "0", label: weekdayLong(0) },
             ]}
           />
         </Row>
-        <Row label="Time">
+        <Row label={t("settings.household.time.label")}>
           <Segmented
-            label="Time format"
+            label={t("settings.household.time.aria")}
             value={settings.time_format}
             onChange={(time_format) => {
               update.mutate({ time_format });
             }}
             options={[
-              { value: "12h", label: "12-hour" },
-              { value: "24h", label: "24-hour" },
+              { value: "12h", label: t("settings.household.time.12h") },
+              { value: "24h", label: t("settings.household.time.24h") },
             ]}
           />
         </Row>

@@ -34,7 +34,7 @@ from sunroom.core.logging import get_logger
 from sunroom.core.version import build_info
 from sunroom.household import service as household_service
 from sunroom.household.models import AppMeta
-from sunroom.household.schemas import HouseholdName, ThemeName, TimeFormat
+from sunroom.household.schemas import HouseholdName, LanguageCode, ThemeName, TimeFormat
 from sunroom.state import StateDep
 
 router = APIRouter(prefix="/api/setup", tags=["setup"])
@@ -48,6 +48,8 @@ class SetupStatusOut(BaseModel):
     server_timezone: str | None  # TZ, if the server has one; the phone suggests its own
     advertised_url: str  # what to open on a phone (the wall screen shows it as a QR code)
     version: str
+    # The household's language once it's set up, so Pair This Screen speaks it (ADR 0043).
+    language: str | None
 
 
 class SetupIn(BaseModel):
@@ -57,17 +59,24 @@ class SetupIn(BaseModel):
     week_starts_on: Annotated[int, Field(ge=0, le=6)] = 6
     time_format: TimeFormat = "12h"
     theme: ThemeName = "auto"  # chosen on the wizard's household step (ADR 0034)
+    language: LanguageCode = "en"  # the page's, chosen at the household step (ADR 0043)
     on_screen: bool = False  # run on a wall screen: it becomes a paired screen (ADR 0039)
 
 
 @router.get("/status")
 async def setup_status(request: Request, state: StateDep) -> SetupStatusOut:
+    complete = state.household.setup_complete
+    language = None
+    if complete:
+        async with state.db.read() as db:
+            language = (await household_service.household(db)).language
     return SetupStatusOut(
-        setup_complete=state.household.setup_complete,
+        setup_complete=complete,
         password_from_env=state.settings.app_password is not None,
         server_timezone=state.settings.tz,
         advertised_url=advertised_url(state, request),
         version=build_info().version,
+        language=language,
     )
 
 
@@ -116,6 +125,7 @@ async def run_setup(
         home.week_starts_on = body.week_starts_on
         home.time_format = body.time_format
         home.theme = body.theme
+        home.language = body.language
         home.onboarded_at = now
         home.updated_at = now
         device = await new_device(

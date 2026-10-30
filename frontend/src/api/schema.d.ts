@@ -3470,6 +3470,8 @@ export interface components {
         DiscoverOut: {
             /** Id */
             id: string;
+            /** Language */
+            language: string | null;
             /** Name */
             name: string | null;
             /** Setup Complete */
@@ -5444,6 +5446,8 @@ export interface components {
             household_name: string;
             /** Kid Safe Editing */
             kid_safe_editing: boolean;
+            /** Language */
+            language: string;
             /** Latitude */
             latitude: number | null;
             /** Location Label */
@@ -5535,6 +5539,8 @@ export interface components {
             household_name?: string | null;
             /** Kid Safe Editing */
             kid_safe_editing?: boolean | null;
+            /** Language */
+            language?: string | null;
             /** Latitude */
             latitude?: number | null;
             /** Location Label */
@@ -5567,6 +5573,11 @@ export interface components {
             /** Household Name */
             household_name: string;
             /**
+             * Language
+             * @default en
+             */
+            language: string;
+            /**
              * On Screen
              * @default false
              */
@@ -5597,6 +5608,8 @@ export interface components {
         SetupStatusOut: {
             /** Advertised Url */
             advertised_url: string;
+            /** Language */
+            language: string | null;
             /** Password From Env */
             password_from_env: boolean;
             /** Server Timezone */

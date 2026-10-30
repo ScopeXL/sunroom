@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, Field, StringConstraints
+
+from sunroom.core.lang import known_language
 
 MemberName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
 HouseholdName = Annotated[
@@ -31,6 +33,8 @@ HomeViewName = Literal["week", "rolling", "today", "people"]
 DisplayStartName = Literal["last", "home"]
 WeekLayoutName = Literal["agenda", "hours"]
 TimeFormat = Literal["12h", "24h"]
+# A code from lang/languages.json (ADR 0043): "en", "es".
+LanguageCode = Annotated[str, AfterValidator(known_language)]
 RailSide = Literal["left", "right"]
 Orientation = Literal["auto", "landscape", "portrait"]
 SleepModeName = Literal["dim_clock", "screen_off"]
@@ -68,6 +72,7 @@ class SettingsOut(BaseModel):
     timezone_chosen: bool  # False until the household picks one (TZ or UTC is a fallback)
     week_starts_on: int  # 0 Monday … 6 Sunday
     time_format: TimeFormat
+    language: str  # what every page of the household speaks (ADR 0043)
     theme: ThemeName
     daylight_tint: bool
     text_size: TextSizeName
@@ -109,6 +114,7 @@ class SettingsUpdate(BaseModel):
     timezone: Annotated[str, StringConstraints(max_length=64)] | None = None
     week_starts_on: Annotated[int, Field(ge=0, le=6)] | None = None
     time_format: TimeFormat | None = None
+    language: LanguageCode | None = None
     theme: ThemeName | None = None
     daylight_tint: bool | None = None
     text_size: TextSizeName | None = None

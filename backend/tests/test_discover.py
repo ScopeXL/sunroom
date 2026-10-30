@@ -44,13 +44,14 @@ async def test_a_screen_learns_what_this_sunroom_is(
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
     body = response.json()
-    assert set(body) == {"sunroom", "id", "version", "setup_complete", "name", "url"}
+    assert set(body) == {"sunroom", "id", "version", "setup_complete", "name", "url", "language"}
     assert body["sunroom"] is True
     assert uuid.UUID(body["id"]).version == 7
     assert body["version"] == build_info().version
     assert body["setup_complete"] is True
     assert body["name"] == "Sample Family"
     assert body["url"] is None  # no SUNROOM_ADVERTISED_URL here: the screen keeps what it found
+    assert body["language"] == "en"  # the screen's own pages speak it (ADR 0043)
 
 
 @pytest.mark.parametrize(
@@ -80,6 +81,7 @@ async def test_before_setup_it_says_so_and_names_nobody(app: FastAPI) -> None:
     body = (await discover(app, "192.168.1.20:8080")).json()
     assert body["setup_complete"] is False
     assert body["name"] is None
+    assert body["language"] is None  # no household has chosen yet: the screen keeps its own
 
 
 async def test_the_advertised_address_is_handed_on(data_dir: Path) -> None:

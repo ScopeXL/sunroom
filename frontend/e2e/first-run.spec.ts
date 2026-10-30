@@ -373,8 +373,16 @@ test("Erase everything starts Sunroom over: from a computer, never from the wall
   await screen.goto("/display");
   await expect(screen.getByRole("region", { name: "This Week" })).toBeVisible();
 
-  // A computer has it, with the downloads the wall can't use.
+  // A computer has it, with the downloads the wall can't use. Household's first row is the
+  // household's language, English the one complete language (ADR 0043).
   await signInPhone(page);
+  await page.goto("/settings/household");
+  const language = page.getByRole("group").first();
+  await expect(language).toHaveAccessibleName("Language");
+  await expect(language.getByRole("button", { name: "English" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await page.goto("/settings/backup");
   await page.getByRole("button", { name: "Download…" }).click();
   const which = page.getByRole("dialog", { name: "Download Which?" });
@@ -407,6 +415,16 @@ test("Erase everything starts Sunroom over: from a computer, never from the wall
     setup_complete: boolean;
   };
   expect(status.setup_complete).toBe(false);
+  // Both pages before setup offer the language (ADR 0043): a globe and the page's language.
+  await expect(screen.getByRole("button", { name: "Language: English" })).toBeVisible();
+  await page.getByRole("button", { name: "Language: English" }).click();
+  const choose = page.getByRole("dialog", { name: "Choose a Language" });
+  await expect(choose.getByRole("radio", { name: "English" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await choose.getByRole("button", { name: "Done" }).click();
+  await expect(choose).toBeHidden();
   // A computer's setup lists the six steps beside the form (ADR 0032), the current one marked.
   await page.getByRole("button", { name: "Start" }).click();
   const steps = page.getByRole("list", { name: "Setup steps" }).getByRole("listitem");
@@ -414,5 +432,14 @@ test("Erase everything starts Sunroom over: from a computer, never from the wall
   await expect(steps.nth(0)).toHaveAttribute("aria-current", "step");
   await expect(steps.nth(0)).toContainText("Household password");
   await expect(page.getByRole("progressbar")).toBeHidden();
+  // The household step asks the language first, as the page speaks it.
+  await page.getByLabel("Household password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Next" }).click();
+  const asked = page.getByRole("group").first();
+  await expect(asked).toHaveAccessibleName("Language");
+  await expect(asked.getByRole("button", { name: "English" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await context.close();
 });

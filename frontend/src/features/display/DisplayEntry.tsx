@@ -10,6 +10,7 @@ import { whenIdle, watchActivity } from "../../lib/idle";
 import { watchKeyboardFields } from "../../lib/keyboard";
 import { MotionProvider } from "../../lib/motion";
 import { watchPointer } from "../../lib/pointer";
+import { useFollowLanguage } from "../../lib/lang";
 import { keepPairing } from "../../lib/screenAgent";
 import { fetchSession, type Session } from "../../lib/session";
 import {
@@ -29,6 +30,7 @@ import { Brand } from "../../ui/Brand";
 import { ToastRegion } from "../../ui/ToastRegion";
 import { TextField } from "../../ui/TextField";
 import { CalendarRoom } from "../calendar/CalendarRoom";
+import { LanguageButton } from "../onboarding/LanguageButton";
 import { SetupWizard, type SetupStep } from "../onboarding/SetupWizard";
 import { ScreenNameFields } from "./ScreenName";
 
@@ -63,6 +65,8 @@ export function DisplayEntry() {
   });
   const [justPaired, setJustPaired] = useState(false);
   const [wallStep, setWallStep] = useState<WallStep | null>(null);
+  // Pair This Screen speaks the household's language before the screen can read its settings.
+  useFollowLanguage(status?.language);
 
   if (!status || isPending) return <Frame>{null}</Frame>;
   // Setting up here: until another device finishes setup first, then as the screen it made.
@@ -229,6 +233,7 @@ function Welcome({ address, onSetUpHere }: { address: string; onSetUpHere: () =>
           )}
         </Choice>
       </div>
+      <LanguageButton />
     </div>
   );
 }
@@ -372,6 +377,7 @@ function PairThisScreen({ onPaired }: { onPaired: () => void }) {
       >
         Type the household password here instead
       </Button>
+      <LanguageButton />
     </>
   );
 }

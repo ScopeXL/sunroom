@@ -103,6 +103,8 @@ class Household(Base):
     timezone: Mapped[str | None] = mapped_column(String(64), default=None)
     week_starts_on: Mapped[int] = mapped_column(Integer, default=6)  # 0 Monday … 6 Sunday
     time_format: Mapped[str] = mapped_column(String(4), default="12h")
+    # Settings → Household → Language: a code from lang/languages.json (ADR 0043).
+    language: Mapped[str] = mapped_column(String(16), default="en")
     theme: Mapped[str] = mapped_column(String(8), default=Theme.AUTO)
     daylight_tint: Mapped[bool] = mapped_column(Boolean, default=True)
     text_size: Mapped[str] = mapped_column(String(10), default=TextSize.STANDARD)

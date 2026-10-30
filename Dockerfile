@@ -13,6 +13,8 @@ COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml 
 RUN npm install --global "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")" \
  && pnpm install --frozen-lockfile
 COPY VERSION /src/VERSION
+# The words (ADR 0043): the page bundles lang/en.json and a chunk per other language.
+COPY lang/ /src/lang/
 COPY frontend/ ./
 RUN pnpm exec vite build
 
@@ -29,6 +31,8 @@ WORKDIR /src/backend
 COPY backend/pyproject.toml backend/uv.lock backend/.python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY backend/src ./src
+# The words (ADR 0043): the server reads its English from lang/en.json inside its package.
+COPY lang/ ./src/sunroom/lang/
 RUN uv sync --frozen --no-dev --no-editable
 
 # ---- runtime: non-root, read-only app files, all state on /data ----

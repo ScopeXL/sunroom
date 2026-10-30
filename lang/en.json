@@ -1,0 +1,17 @@
+{
+  "app.action.back": "Back",
+  "app.action.done": "Done",
+  "app.action.next": "Next",
+  "app.language.aria": "Language: {name}",
+  "app.language.title": "Choose a Language",
+  "settings.household.language.label": "Language",
+  "settings.household.name.label": "Name",
+  "settings.household.time.12h": "12-hour",
+  "settings.household.time.24h": "24-hour",
+  "settings.household.time.aria": "Time format",
+  "settings.household.time.label": "Time",
+  "settings.household.timezone.label": "Time zone",
+  "settings.household.title": "Household",
+  "settings.household.week_start.label": "Week starts on",
+  "setup.household.language.label": "Language"
+}

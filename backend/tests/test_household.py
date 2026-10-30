@@ -16,6 +16,7 @@ async def test_settings_start_with_the_household_defaults(parent: httpx.AsyncCli
     assert settings["timezone"] == "America/New_York"
     assert settings["timezone_chosen"] is True
     assert settings["week_starts_on"] == 6  # Sunday
+    assert settings["language"] == "en"
     assert settings["theme"] == "auto"
     assert settings["display_home_view"] == "week"
     assert settings["display_week_layout"] == "hours"  # a new household's start (ADR 0042)
@@ -122,6 +123,20 @@ async def test_bad_settings_are_refused(parent: httpx.AsyncClient) -> None:
     assert grid.status_code == 422
     tiny = await parent.patch("/api/settings", json={"text_size": "tiny"}, headers=CSRF)
     assert tiny.status_code == 422
+
+
+async def test_a_parent_picks_the_households_language(parent: httpx.AsyncClient) -> None:
+    """Settings → Household → Language (ADR 0043): a code from lang/languages.json, a preview
+    language included (a translator's); nothing else."""
+    spanish = await parent.patch("/api/settings", json={"language": "es"}, headers=CSRF)
+    assert spanish.status_code == 200, spanish.text
+    assert spanish.json()["language"] == "es"
+    assert (await parent.get("/api/settings")).json()["language"] == "es"
+    for code in ("xx", "pseudo", "EN", ""):
+        refused = await parent.patch("/api/settings", json={"language": code}, headers=CSRF)
+        assert refused.status_code == 422, code
+        assert refused.json()["error"]["fields"] == ["language"]
+    assert (await parent.get("/api/settings")).json()["language"] == "es"
 
 
 async def test_people_get_the_next_color_and_names_stay_unique(

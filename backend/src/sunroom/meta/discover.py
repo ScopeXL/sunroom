@@ -34,6 +34,8 @@ class DiscoverOut(BaseModel):
     setup_complete: bool
     name: str | None  # the household's name, only to a local address
     url: str | None  # SUNROOM_ADVERTISED_URL, when it is set
+    # The household's language once it's set up: the screen's own pages speak it (ADR 0043).
+    language: str | None
 
 
 @router.get("/discover")
@@ -50,4 +52,5 @@ async def discover(request: Request, response: Response, state: StateDep) -> Dis
         setup_complete=complete,
         name=home.name if local and complete and home.name else None,
         url=state.settings.sunroom_advertised_url,
+        language=home.language if complete else None,
     )

@@ -6,6 +6,12 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Settings → Household → Language: Sunroom can be shown in another language once someone
+  translates it (English is the only complete one for now; translators, see
+  docs/LANGUAGES.md). Setup asks too, and the first page has a Choose a Language button.
+
 ### Changed
 
 - Send Feedback goes to the people who make Sunroom again, with no account: what you write posts

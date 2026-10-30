@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 // The single source of truth for the version is the repo's VERSION file (Dinner Bell's ADR 0019).
@@ -50,6 +50,8 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    // The words live beside the app, in the repo's lang/ (ADR 0043).
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../lang"] },
     proxy: {
       // The Host rule accepts localhost:5173, and the CSRF check compares Origin with it.
       "/api": { target: "http://127.0.0.1:8080", changeOrigin: false },

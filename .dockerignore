@@ -15,6 +15,7 @@
 !frontend/tsconfig*.json
 !frontend/src/**
 !frontend/public/**
+!lang/**
 **/__pycache__
 **/*.db*
 **/.DS_Store

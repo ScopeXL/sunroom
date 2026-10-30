@@ -27,6 +27,7 @@ async def test_status_before_setup(client: httpx.AsyncClient) -> None:
     assert status["password_from_env"] is False
     assert status["server_timezone"] == "America/New_York"
     assert status["advertised_url"] == BASE_URL
+    assert status["language"] is None  # the household's, once there is one
 
 
 async def test_setup_signs_in_the_phone_as_a_parent(
@@ -93,6 +94,24 @@ async def test_setup_keeps_the_theme_it_was_given(client: httpx.AsyncClient) -> 
 async def test_setup_starts_on_auto(client: httpx.AsyncClient) -> None:
     assert (await run_setup(client)).status_code == 201
     assert (await client.get("/api/settings")).json()["theme"] == "auto"
+
+
+async def test_setup_keeps_the_language_the_page_speaks(client: httpx.AsyncClient) -> None:
+    """The household step's Language, pre-set to the page's (ADR 0043); English when none."""
+    assert (await run_setup(client, language="es")).status_code == 201
+    assert (await client.get("/api/settings")).json()["language"] == "es"
+    assert (await client.get("/api/setup/status")).json()["language"] == "es"
+
+
+async def test_setup_speaks_english_unless_told(client: httpx.AsyncClient) -> None:
+    assert (await run_setup(client)).status_code == 201
+    assert (await client.get("/api/settings")).json()["language"] == "en"
+
+
+async def test_setup_refuses_a_language_it_doesnt_have(client: httpx.AsyncClient) -> None:
+    response = await run_setup(client, language="xx")
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"] == ["language"]
 
 
 async def test_setup_refuses_a_theme_it_doesnt_know(client: httpx.AsyncClient) -> None:

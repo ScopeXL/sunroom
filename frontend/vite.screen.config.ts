@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 
 // The screen's own pages (src/screen, ADR 0035): the same tokens, type and parts as the wall,
 // built into Sunroom Screen's package, which serves them on 127.0.0.1. No service worker: the
@@ -26,6 +26,8 @@ export default defineConfig({
   server: {
     // just kiosk-dev: Vite on 5174, the pretend agent on 7800 behind it.
     port: 5174,
+    // The words live beside the app, in the repo's lang/ (ADR 0043).
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../lang"] },
     proxy: {
       // The agent answers only its own Host; it lets this page's origin in with --dev.
       "/api/screen": { target: "http://127.0.0.1:7800", changeOrigin: true },

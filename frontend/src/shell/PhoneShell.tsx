@@ -3,7 +3,7 @@ import { CalendarDays, Menu, Sun, type LucideIcon } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 
 import { usePluginRooms } from "../features/usePluginModules";
-import { useDatePreferences, useSettings } from "../lib/household";
+import { useDatePreferences, useHouseholdLanguage, useSettings } from "../lib/household";
 import { useLiveUpdates } from "../lib/live";
 import { useServerRestart } from "../lib/restart";
 import { useServerUpdate } from "../lib/update";
@@ -100,6 +100,7 @@ export function PhoneShell({ children, tabs = true }: { children: ReactNode; tab
   useServerUpdate();
   useServerRestart();
   useDatePreferences({ enabled: tabs });
+  useHouseholdLanguage({ enabled: tabs });
   const { data: settings } = useSettings({ enabled: tabs });
   const now = useMinute();
   const { day, hour, minute } = zonedParts(now);

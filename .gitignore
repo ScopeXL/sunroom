@@ -32,6 +32,9 @@ __pycache__/
 /kiosk/agent/dist/
 # The screen's own pages, built from frontend/src/screen into the agent's package
 /kiosk/agent/src/sunroom_kiosk/static/
+# The words, copied from lang/ into the packages when they're built (ADR 0043)
+/backend/src/sunroom/lang/
+/kiosk/agent/src/sunroom_kiosk/lang/
 
 # Frontend
 node_modules/

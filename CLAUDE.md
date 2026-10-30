@@ -103,6 +103,7 @@ Keep this file under 15 KB; detail belongs in `docs/`.
 | `just e2e [ARGS]` | Production build plus Playwright: the wall at 1920×1080 and 1080×1920 (touch), phones on WebKit and Chromium, a laptop; axe, tap targets, the CSP guard. Arguments pick a spec, a project or a test (`e2e/hours.spec.ts --project=display-1080p -g zoom`) |
 | `just screenshots` | Key screens on all five projects, light and dark, three times of day, into `.screenshots/` |
 | `just api-types` | Regenerate `frontend/src/api/schema.d.ts` from the backend's OpenAPI |
+| `just lang [--fix]` | The words in `lang/` and the code naming them, in step; `--fix` sorts |
 | `just db-revision "msg"` | Create a new migration |
 | `just scan` | gitleaks plus the private-terms scan (tree and history) |
 | `just smoke-image [REF]` | Build the image from git, boot it with no settings, set it up through the API, probe it |
@@ -215,8 +216,6 @@ part your task touches, and move lines there when this file nears its limit.
   check `schema.d.ts` after `just api-types`.
 - Imports broke mid-plugin: `db/models.py` imports each plugin's models, so a plugin's
   `__init__.py` that imports its modules drags them all in. Keep it a docstring.
-- The image smoke test pins the plugin list and the export's tables (`scripts/image_common.sh`):
-  a new plugin updates both, and `backend/tests/test_export.py`.
 - A route test silently checked nothing: since FastAPI 0.142 `app.routes` holds included
   routers, not their routes. Walk `app.openapi()["paths"]` instead, and assert a count.
 - The first migration after a release failed its migration test: the release had no fixture

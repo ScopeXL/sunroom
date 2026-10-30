@@ -7,6 +7,7 @@ import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { isLoopbackAddress } from "../../lib/address";
 import { useMembers } from "../../lib/household";
+import { setLanguage, useLanguage, useT } from "../../lib/lang";
 import { keepPairing } from "../../lib/screenAgent";
 import { rememberSignedIn } from "../../lib/session";
 import { previewTheme, type ThemeChoice } from "../../lib/theme";
@@ -19,6 +20,7 @@ import { Segmented } from "../../ui/Segmented";
 import { Select } from "../../ui/Select";
 import { TextField } from "../../ui/TextField";
 import { usePluginModules } from "../usePluginModules";
+import { LanguageButton, LanguagePicker } from "./LanguageButton";
 import { SetupEnd, SetupFrame, StepActions, useSetupType } from "./SetupFrame";
 
 export type SetupStep =
@@ -102,6 +104,7 @@ export function SetupWizard({ step, onScreen }: { step: SetupStep; onScreen?: On
           >
             Start
           </Button>
+          <LanguageButton />
         </SetupEnd>
       );
     case "password":
@@ -297,8 +300,11 @@ function HouseholdStep({
   onBack: () => void;
   onDone: () => void;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const type = useSetupType();
+  // The page's language is the household's: chosen here or on Choose a Language before.
+  const language = useLanguage();
   const [name, setName] = useState("Home");
   const [zone, setZone] = useState(phoneZone);
   const [changingZone, setChangingZone] = useState(false);
@@ -320,6 +326,7 @@ function HouseholdStep({
             week_starts_on: Number(weekStart),
             time_format: phoneTimeFormat(),
             theme,
+            language: language === "pseudo" ? "en" : language,
             on_screen: onScreen,
           },
         }),
@@ -340,7 +347,7 @@ function HouseholdStep({
         <p className={type.body}>Choose the household password first.</p>
         <StepActions>
           <Button block onClick={onBack}>
-            Back
+            {t("app.action.back")}
           </Button>
         </StepActions>
       </SetupFrame>
@@ -355,6 +362,18 @@ function HouseholdStep({
           if (name.trim()) setup.mutate();
         }}
       >
+        <div className="flex flex-col gap-2">
+          <span className={`${type.body} font-semibold`}>
+            {t("setup.household.language.label")}
+          </span>
+          <LanguagePicker
+            label={t("setup.household.language.label")}
+            value={language}
+            onChange={(code) => {
+              void setLanguage(code);
+            }}
+          />
+        </div>
         <TextField
           label="Household name"
           value={name}
@@ -444,12 +463,12 @@ function HouseholdStep({
         <StepActions
           back={
             <Button variant="quiet" block onClick={onBack}>
-              Back
+              {t("app.action.back")}
             </Button>
           }
         >
           <Button type="submit" block pending={setup.isPending} disabled={!name.trim()}>
-            Next
+            {t("app.action.next")}
           </Button>
         </StepActions>
       </form>

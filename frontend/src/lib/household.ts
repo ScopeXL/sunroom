@@ -6,6 +6,7 @@ import { api, notSaved, unwrap } from "../api/client";
 import { qk } from "../api/keys";
 import type { components } from "../api/schema";
 import { setDatePreferences } from "./dates";
+import { useFollowLanguage } from "./lang";
 import { asParent } from "./parent";
 import { refreshMinute } from "./time";
 import { showToast } from "./toast";
@@ -44,6 +45,16 @@ export function useDatePreferences({ enabled = true }: { enabled?: boolean } = {
     }
     shownZone.current = timezone;
   }, [timezone, timeFormat, queryClient]);
+}
+
+/**
+ * Every page of the household in its language (Settings → Household → Language, ADR 0043), a
+ * change reaching every screen at once with `settings.changed`. Each shell mounts it once, as
+ * `useDatePreferences`; a device with a language of its own keeps it (lib/lang).
+ */
+export function useHouseholdLanguage({ enabled = true }: { enabled?: boolean } = {}): void {
+  const { data: settings } = useSettings({ enabled });
+  useFollowLanguage(settings?.language);
 }
 
 /**

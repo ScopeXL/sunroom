@@ -83,6 +83,7 @@ def settings_out(home: Household, settings: Settings) -> SettingsOut:
             "timezone_chosen": valid_zone(home.timezone) is not None,
             "week_starts_on": home.week_starts_on,
             "time_format": home.time_format,
+            "language": home.language,
             "theme": home.theme,
             "daylight_tint": home.daylight_tint,
             "text_size": home.text_size,

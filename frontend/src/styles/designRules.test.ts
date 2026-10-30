@@ -1,14 +1,50 @@
 /**
- * House rules that are easy to break by accident (UX §1, §7, ADR 0007). Reads every source file
- * as text.
+ * House rules that are easy to break by accident (UX §1, §2, §7, ADR 0007, 0043). Reads every
+ * source file as text, and the English words in lang/en.json.
  */
+import { parse, TYPE, type MessageFormatElement } from "@formatjs/icu-messageformat-parser";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
+
+import en from "../../../lang/en.json";
+import unswept from "../../scripts/unswept.json";
 
 const sources = import.meta.glob<string>(
   ["../**/*.{ts,tsx}", "!../**/*.test.{ts,tsx}", "!../api/schema.d.ts"],
   { query: "?raw", import: "default", eager: true },
 );
+
+/** A source swept into lang/ (ADR 0043): out of scripts/unswept.json's ratchet. */
+function swept(path: string): boolean {
+  const file = path.replace(/^\.\.\//, "src/");
+  return !unswept.some((entry) => (entry.endsWith("/") ? file.startsWith(entry) : file === entry));
+}
+
+/** A message's words each way it can come out: a placeholder as "#" (a word with no letters, as
+ * a name), and every branch of a plural or a select. */
+function messageWords(elements: MessageFormatElement[]): string[] {
+  let words = [""];
+  for (const element of elements) {
+    let parts: string[];
+    if (element.type === TYPE.literal) parts = [element.value];
+    else if (element.type === TYPE.plural || element.type === TYPE.select) {
+      parts = Object.values(element.options).flatMap((option) => messageWords(option.value));
+    } else if (element.type === TYPE.tag) parts = messageWords(element.children);
+    else parts = ["#"];
+    words = words.flatMap((word) => parts.map((part) => word + part));
+  }
+  return words;
+}
+
+/** English's words for every key of a kind, each way: its last segment (`calendar.add.title`,
+ * `settings.backup.run.action`), or the one before it for a group (`app.action.done`). */
+function englishWords(kind: string): { key: string; words: string }[] {
+  return Object.entries(en)
+    .filter(([key]) => key.endsWith(`.${kind}`) || key.split(".").at(-2) === kind)
+    .flatMap(([key, message]) =>
+      messageWords(parse(message)).map((words) => ({ key, words: words.trim() })),
+    );
+}
 
 function offenders(pattern: RegExp, except: string[] = []): string[] {
   return Object.entries(sources)
@@ -152,8 +188,8 @@ function buttonLabels(): { where: string; label: string }[] {
 
 /** Every title the sources write as a literal: `title="…"` on a component, an h1 to h3's own
  * text, and the Settings pages' names (core's and each plugin's). */
-function literalTitles(): string[] {
-  const titles: string[] = [];
+function literalTitles(): { where: string; title: string }[] {
+  const titles: { where: string; title: string }[] = [];
   for (const [path, text] of Object.entries(sources)) {
     const found = [
       ...text.matchAll(/<[A-Z]\w*[^>]*\stitle="([^"]+)"/g),
@@ -162,9 +198,20 @@ function literalTitles(): string[] {
         ? text.matchAll(/\btitle: "([^"]+)"/g)
         : []),
     ];
-    for (const match of found) titles.push((match[1] ?? "").trim());
+    for (const match of found) titles.push({ where: path, title: (match[1] ?? "").trim() });
   }
   return titles;
+}
+
+/** A toast's words written as a literal: `showToast("Saved")`, or a template's words. */
+function literalToasts(): { where: string; words: string }[] {
+  const found: { where: string; words: string }[] = [];
+  for (const [path, text] of Object.entries(sources)) {
+    for (const match of text.matchAll(/\bshowToast\(\s*(["'`])((?:(?!\1)[^\\]|\\.)*?)\1/g)) {
+      if (/\p{L}/u.test(match[2] ?? "")) found.push({ where: path, words: match[2] ?? "" });
+    }
+  }
+  return found;
 }
 
 describe("design rules", () => {
@@ -234,14 +281,30 @@ describe("design rules", () => {
     }
   });
 
+  it("reads English's words each way a message can come out", () => {
+    expect(messageWords(parse("Add {n} Items"))).toEqual(["Add # Items"]);
+    expect(messageWords(parse("{n, plural, one {Add # Item} other {Add # Items}}"))).toEqual([
+      "Add # Item",
+      "Add # Items",
+    ]);
+    expect(englishWords("title").length).toBeGreaterThan(0);
+    expect(englishWords("action").length).toBeGreaterThan(0);
+  });
+
   it("writes titles, headings and navigation in Title Case (UX §2, ADR 0028)", () => {
-    const titles = literalTitles();
+    const titles = [
+      ...literalTitles().map(({ title }) => title),
+      ...englishWords("title").map(({ words }) => words),
+    ];
     expect(titles.length).toBeGreaterThan(60);
     expect(titles.filter((title) => !isTitleCase(title))).toEqual([]);
   });
 
   it("finds every button's words, however they're written", () => {
-    const labels = buttonLabels().map(({ label }) => label);
+    const labels = [
+      ...buttonLabels().map(({ label }) => label),
+      ...englishWords("action").map(({ words }) => words),
+    ];
     expect(labels.length).toBeGreaterThan(150);
     // Each way a conditional comes out, a template's value as "#", a toast's action.
     for (const label of ["Signing In…", "Add # Items", "Undo", "Take It Back"]) {
@@ -250,11 +313,23 @@ describe("design rules", () => {
   });
 
   it("writes every button of two to five words in Title Case (UX §2, ADR 0032)", () => {
-    const wrong = buttonLabels().filter(({ label }) => {
+    const wrong = [
+      ...buttonLabels(),
+      ...englishWords("action").map(({ key, words }) => ({ where: key, label: words })),
+    ].filter(({ label }) => {
       const count = label.split(" ").length;
       return count >= 2 && count <= 5 && !isTitleCase(label);
     });
     expect(wrong.map(({ where, label }) => `${where} ${label}`)).toEqual([]);
+  });
+
+  it("leaves no words in a swept folder's code: buttons, titles and toasts name keys (ADR 0043)", () => {
+    const left = [
+      ...buttonLabels().map(({ where, label }) => `${where} ${label}`),
+      ...literalTitles().map(({ where, title }) => `${where} ${title}`),
+      ...literalToasts().map(({ where, words }) => `${where} ${words}`),
+    ].filter((found) => swept(found.split(":")[0]?.split(" ")[0] ?? ""));
+    expect(left).toEqual([]);
   });
 
   it("writes no all-caps labels (UX §1 What never appears)", () => {

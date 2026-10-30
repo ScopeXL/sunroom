@@ -71,6 +71,8 @@ size limit.
 
 ## Backend and its tests
 
+- The image smoke test pins the plugin list and the export's tables (`scripts/image_common.sh`):
+  a new plugin updates both, and `backend/tests/test_export.py`.
 - An in-app restart can't `exec` under `uvicorn --reload`: the worker is a spawned child with
   multiprocessing's argv. The dev server writes a watched file instead (`devserver.reload`).
 - ruff's ASYNC240 flags a `Path` method in any async function, tests included: `await
@@ -276,3 +278,18 @@ size limit.
 - `getByRole("button", { name: "Eggs" })` on a phone also found the swiped row's hidden
   "Remove Eggs": Playwright's role queries don't skip `inert`. `ui/SwipeRow`'s hidden action is
   `aria-hidden` too.
+
+## Languages
+
+- The page imports `lang/en.json` from outside `frontend/`: `tsc -b` needs only
+  `resolveJsonModule` (the app's project is `noEmit` and not composite, so no `rootDir` or
+  `include`); Vite's dev servers need `server.fs.allow` with `../lang` beside
+  `searchForWorkspaceRoot`; the image's web stage copies `lang/` to `/src/lang` (`.dockerignore` is
+  an allowlist), and its backend stage into the package.
+- The lint's `words.exclude` patterns each match a whole text: " · 12 — …" mixes digits and glyphs,
+  so they share one character class.
+- The shared buttons are `app.action.done`, not `app.done.action`: the design rules count a key as
+  a button when its last segment is `action` or the one before it is.
+- `intl-messageformat` throws on a placeholder with no value. `t` throws in tests and shows English
+  in production; a test that renders a message must give it every value.
+

@@ -442,3 +442,17 @@ def test_a_new_household_starts_on_week_with_hours(tmp_path: Path) -> None:
         assert default == "'hours'"
     finally:
         conn.close()
+
+
+def test_a_household_from_0_17_0_speaks_english(tmp_path: Path) -> None:
+    """0.18.0 (ADR 0043): Settings → Household → Language, English for every household so far."""
+    db = tmp_path / "sunroom.db"
+    conn = sqlite3.connect(db)
+    conn.executescript((FIXTURE_DBS / "202610282014.sql").read_text())
+    conn.close()
+    assert migrate.upgrade(db) == migrate.head_revision()
+    conn = sqlite3.connect(db)
+    try:
+        assert conn.execute("SELECT language FROM household").fetchall() == [("en",)]
+    finally:
+        conn.close()

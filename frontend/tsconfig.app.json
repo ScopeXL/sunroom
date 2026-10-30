@@ -19,7 +19,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true
   },
   "include": ["src"],
   "exclude": ["src/sw.ts"]

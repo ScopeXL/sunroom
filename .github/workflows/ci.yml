@@ -132,6 +132,8 @@ jobs:
         run: just api-types-check
       - name: Release metadata
         run: just release-meta-check
+      - name: The words and the code in step
+        run: just lang
 
   e2e:
     runs-on: ubuntu-24.04

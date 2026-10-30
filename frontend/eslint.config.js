@@ -2,9 +2,12 @@ import js from "@eslint/js";
 import pluginQuery from "@tanstack/eslint-plugin-query";
 import pluginRouter from "@tanstack/eslint-plugin-router";
 import { defineConfig } from "eslint/config";
+import i18next from "eslint-plugin-i18next";
 import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+
+import unswept from "./scripts/unswept.json" with { type: "json" };
 
 export default defineConfig(
   {
@@ -37,6 +40,57 @@ export default defineConfig(
       "@typescript-eslint/only-throw-error": [
         "error",
         { allow: [{ from: "package", package: "@tanstack/router-core", name: "Redirect" }] },
+      ],
+    },
+  },
+  {
+    // Every word the family reads comes from lang/en.json through t() (ADR 0043,
+    // docs/LANGUAGES.md): JSX text and the props that carry words are never literals. The
+    // ratchet: scripts/unswept.json, the folders and files not yet swept, which each sweep task
+    // shortens until it's empty (styles/designRules.test.ts reads it too).
+    files: ["src/**/*.tsx"],
+    ignores: [
+      "src/**/*.test.tsx",
+      ...unswept.map((entry) => (entry.endsWith("/") ? `${entry}**` : entry)),
+    ],
+    plugins: { i18next },
+    rules: {
+      "i18next/no-literal-string": [
+        "error",
+        {
+          mode: "jsx-only",
+          "jsx-attributes": {
+            include: [
+              "aria-label",
+              "aria-valuetext",
+              "placeholder",
+              "alt",
+              "label",
+              "lead",
+              "hint",
+              "note",
+              "title",
+              "heading",
+              "name",
+              "text",
+              "act",
+              "keep",
+              "action",
+              "submit",
+              "options",
+              "choices",
+            ],
+          },
+          words: {
+            exclude: [
+              // Digits, punctuation and the glyphs the app writes between words (· — … × →).
+              "[\\s0-9!-/:-@[-`{-~·—–…%×→←↑↓✕−]+",
+              "[A-Z_-]+",
+              /^\p{Emoji}+$/u,
+            ],
+          },
+          callees: { exclude: ["t", "tRich", "tPlugin", "tFamily", "require", "includes"] },
+        },
       ],
     },
   },

@@ -110,8 +110,14 @@ test:
     cd backend && uv run pytest -q --disable-socket --allow-unix-socket
     cd frontend && pnpm exec vitest run
 
-# The per-task gate (CLAUDE.md "Definition of done"): lint and type checks, about a minute
-quick: lint typecheck
+# The per-task gate (CLAUDE.md "Definition of done"): lint and type checks and the words, about a
+# minute
+quick: lint typecheck lang
+
+# The words in lang/ and the code that names them, in step (docs/LANGUAGES.md); --fix sorts them
+[positional-arguments]
+lang *ARGS:
+    cd frontend && node scripts/lang.mjs "$@"
 
 # Vitest, quietly, for a file, a folder or `related src/ui/Sheet.tsx` (nothing: all of it)
 [positional-arguments]
@@ -160,7 +166,7 @@ release-meta-check:
     {{py}} scripts/check_release_meta.py
 
 # Everything a commit must pass
-check: lint typecheck test kiosk-test api-types-check migrations-check release-meta-check
+check: lint typecheck lang test kiosk-test api-types-check migrations-check release-meta-check
 
 # ---- build, end-to-end, screenshots ------------------------------------------------------------
 

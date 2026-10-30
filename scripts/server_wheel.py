@@ -6,7 +6,8 @@ so does the release workflow.
 
 The repo's backend stays 0.0.0 (PLAN §14.5): the wheel is built from a copy, with VERSION written
 into the copy's pyproject and the built app (frontend/dist, which `vite build` makes first)
-copied into the copy's package as sunroom/static. Into backend/dist (or --out):
+copied into the copy's package as sunroom/static, the words (lang/) as sunroom/lang. Into
+backend/dist (or --out):
 
   sunroom-X.Y.Z-py3-none-any.whl
   sunroom-X.Y.Z-constraints.txt
@@ -51,9 +52,11 @@ def main() -> int:
         shutil.copytree(
             REPO / "backend" / "src",
             root / "src",
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "static"),
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "static", "lang"),
         )
         shutil.copytree(app, root / "src" / "sunroom" / "static")
+        # The words (ADR 0043): core/lang.py reads lang/en.json from inside the package.
+        shutil.copytree(REPO / "lang", root / "src" / "sunroom" / "lang")
         project = root / "pyproject.toml"
         stamped, count = re.subn(
             r'^version = "0\.0\.0"',
@@ -73,6 +76,8 @@ def main() -> int:
     with zipfile.ZipFile(wheel) as archive:
         if "sunroom/static/index.html" not in archive.namelist():
             fail(f"{wheel.name} has no built app (sunroom/static/index.html).")
+        if "sunroom/lang/en.json" not in archive.namelist():
+            fail(f"{wheel.name} has no words (sunroom/lang/en.json).")
         metadata = archive.read(f"sunroom-{version}.dist-info/METADATA").decode()
         if f"\nVersion: {version}\n" not in metadata:
             fail(f"{wheel.name} doesn't say it is version {version}.")

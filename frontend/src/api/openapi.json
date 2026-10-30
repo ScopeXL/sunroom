@@ -2210,6 +2210,17 @@
             "title": "Id",
             "type": "string"
           },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
           "name": {
             "anyOf": [
               {
@@ -2252,7 +2263,8 @@
           "version",
           "setup_complete",
           "name",
-          "url"
+          "url",
+          "language"
         ],
         "title": "DiscoverOut",
         "type": "object"
@@ -8541,6 +8553,10 @@
             "title": "Kid Safe Editing",
             "type": "boolean"
           },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
           "latitude": {
             "anyOf": [
               {
@@ -8677,6 +8693,7 @@
           "timezone_chosen",
           "week_starts_on",
           "time_format",
+          "language",
           "theme",
           "daylight_tint",
           "text_size",
@@ -8998,6 +9015,17 @@
             ],
             "title": "Kid Safe Editing"
           },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
           "latitude": {
             "anyOf": [
               {
@@ -9182,6 +9210,11 @@
             "title": "Household Name",
             "type": "string"
           },
+          "language": {
+            "default": "en",
+            "title": "Language",
+            "type": "string"
+          },
           "on_screen": {
             "default": false,
             "title": "On Screen",
@@ -9239,6 +9272,17 @@
             "title": "Advertised Url",
             "type": "string"
           },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
           "password_from_env": {
             "title": "Password From Env",
             "type": "boolean"
@@ -9268,7 +9312,8 @@
           "password_from_env",
           "server_timezone",
           "advertised_url",
-          "version"
+          "version",
+          "language"
         ],
         "title": "SetupStatusOut",
         "type": "object"
