@@ -37,10 +37,13 @@ function messageWords(elements: MessageFormatElement[]): string[] {
 }
 
 /** English's words for every key of a kind, each way: its last segment (`calendar.add.title`,
- * `settings.backup.run.action`), or the one before it for a group (`app.action.done`). */
+ * `settings.backup.run.action`), or for buttons a group of them (`app.action.done`). */
 function englishWords(kind: string): { key: string; words: string }[] {
   return Object.entries(en)
-    .filter(([key]) => key.endsWith(`.${kind}`) || key.split(".").at(-2) === kind)
+    .filter(
+      ([key]) =>
+        key.endsWith(`.${kind}`) || (kind === "action" && key.split(".").at(-2) === "action"),
+    )
     .flatMap(([key, message]) =>
       messageWords(parse(message)).map((words) => ({ key, words: words.trim() })),
     );

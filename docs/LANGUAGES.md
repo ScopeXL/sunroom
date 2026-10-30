@@ -21,7 +21,8 @@ the glossary, each language's style, quick add's words and the keyboards.)
    `screen` (the screen's own pages), `agent` (Sunroom Screen's sentences), `api` (the server's).
    The last segment says what it is where it matters: `.title` (Title Case), `.action` (a
    button), `.toast`, `.hint`, `.label`, `.empty`, `.error`, `.aria` (a screen reader's only). A
-   group of buttons shares a segment: `app.action.done`.
+   group of buttons shares a segment: `app.action.done` (buttons only; every other kind is the
+   last segment).
 2. Write the English in `lang/en.json` as UX §2 says, as an ICU message: `{name}` for a value,
    `{n, plural, one {# day} other {# days}}` for a count, `{kind, select, idea {…} other {…}}`
    for a choice of words, `<b>…</b>` for a part drawn differently (`tRich`). A whole sentence,
