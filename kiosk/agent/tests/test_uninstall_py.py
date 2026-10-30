@@ -72,3 +72,17 @@ def test_it_waits_for_sunroom_screen_to_quit() -> None:
     answers = iter([True, True, False])
     assert uninstall.wait_for_quit(lambda: next(answers), within=5, pause=0)
     assert not uninstall.wait_for_quit(lambda: True, within=0.01, pause=0)
+
+
+def test_it_takes_out_the_run_value_that_starts_it(tmp_path: Path) -> None:
+    """Since 0.18.0 the Run value starts Sunroom Screen at sign-in (setup_files.py)."""
+    where = places(tmp_path)
+    asked: list[str] = []
+
+    def forget() -> bool:
+        asked.append("run-value")
+        return True
+
+    said = uninstall.uninstall(where, sunroom=False, run=lambda argv: 0, forget=forget)
+    assert asked == ["run-value"]
+    assert "Took Sunroom Screen out of what starts at sign-in." in said

@@ -19,6 +19,12 @@
     sunroom-kiosk config [--url URL]
                                   the screen's settings: where they are and the Sunroom it shows,
                                   or show the Sunroom at URL from now on (the installers' --url)
+    sunroom-kiosk setup [--check] [--force] [--json] [--first-install] [--from-update]
+                                  this screen's own start-up files and settings put in order from
+                                  this version's templates (ADR 0044): what differs is rewritten
+                                  (--check only says; --force rewrites every one); root's files
+                                  that differ are only named (needs_root). The installers run it,
+                                  and every update and every start do
     sunroom-kiosk --version
 
 Started with no console (Windows' ``sunroom-kioskw``, from the Startup folder), it writes what it
@@ -38,13 +44,16 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import httpx
 
 from sunroom_kiosk import config as settings_file
 from sunroom_kiosk import logs, screen
 from sunroom_kiosk.version import version
+
+if TYPE_CHECKING:
+    from sunroom_kiosk import setup_files
 
 DEFAULT_PORT = 7800
 # just kiosk-dev: Vite serves the pages on 5174 and passes /api/screen through to the agent.
@@ -112,6 +121,13 @@ def _parser() -> argparse.ArgumentParser:
     update.add_argument("--apply", type=Path, default=None, help=argparse.SUPPRESS)
     update.add_argument("--previous", type=Path, default=None, help=argparse.SUPPRESS)
     update.add_argument("--port", type=int, default=DEFAULT_PORT)
+
+    setup = commands.add_parser("setup", help="put this screen's own start-up files in order")
+    setup.add_argument("--check", action="store_true", help="say what differs, change nothing")
+    setup.add_argument("--force", action="store_true", help="rewrite every file, even unchanged")
+    setup.add_argument("--json", action="store_true", help="the report as JSON")
+    setup.add_argument("--first-install", action="store_true", help=argparse.SUPPRESS)
+    setup.add_argument("--from-update", action="store_true", help=argparse.SUPPRESS)
 
     here = commands.add_parser("sunroom", help="Sunroom run on this computer (ADR 0038)")
     here_commands = here.add_subparsers(dest="action", required=True)
@@ -207,6 +223,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         # says so at once, rather than after the real five seconds.
         http=_quick_client if fake else None,
         local=LocalSunroom() if not fake and installed_as_tool() else None,
+        setup=_own_setup if not fake and installed_as_tool() else None,
     )
     holder["agent"] = agent
     app = create_app(agent, static=None if args.dev else STATIC, test_routes=bool(fake))
@@ -217,6 +234,12 @@ def cmd_run(args: argparse.Namespace) -> int:
         log.info("Sunroom Screen couldn't start on port %d: %s", port, error)
         return 1
     return 0 if server.started else 1
+
+
+def _own_setup() -> setup_files.Report:
+    from sunroom_kiosk import setup_files
+
+    return setup_files.run(setup_files.Machine.here())
 
 
 def _quick_client() -> httpx.AsyncClient:
@@ -337,6 +360,36 @@ def cmd_config(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_setup(args: argparse.Namespace) -> int:
+    """The screen's own setup (setup_files.py). ``--first-install``: the installers' first run,
+    with nothing to copy aside yet. ``--from-update``: the apply step's, whose report the new
+    version reads at its start (update.json's ``setup``)."""
+    from sunroom_kiosk import setup_files
+    from sunroom_kiosk.apply import Paths
+
+    machine = setup_files.Machine.here()
+    report = setup_files.run(
+        machine,
+        check=cast(bool, args.check),
+        force=cast(bool, args.force),
+        backup=not cast(bool, args.first_install),
+    )
+    if cast(bool, args.from_update):
+        setup_files.save_report(report, Paths.default().state)
+    if cast(bool, args.json):
+        print(json.dumps(report.to_json(), indent=2))
+    else:
+        verb = "Would change" if cast(bool, args.check) else "Changed"
+        print(f"{verb}: {', '.join(report.changed)}." if report.changed else "Nothing to change.")
+        for failed in report.failed:
+            print(f"Couldn't set up {failed}", file=sys.stderr)
+        if report.needs_reboot:
+            print("Restart this computer to finish.")
+        if report.needs_root:
+            print(f"Root's part to update: {', '.join(report.needs_root)}.")
+    return 1 if report.failed else 0
+
+
 def cmd_sunroom(args: argparse.Namespace) -> int:
     """``sunroom remove``: Sunroom run on this computer, taken off (its data kept unless asked)."""
     from sunroom_kiosk.local import LocalSunroom
@@ -362,5 +415,6 @@ def main(argv: list[str] | None = None) -> int:
         "policy": cmd_policy,
         "config": cmd_config,
         "sunroom": cmd_sunroom,
+        "setup": cmd_setup,
     }
     return handlers[cast(str, args.command)](args)

@@ -57,6 +57,7 @@ from sunroom_kiosk.platform.base import (
     UnsupportedError,
     local_ip,
     run_command,
+    user_id,
 )
 from sunroom_kiosk.updater import DOWNLOAD, parse, sums_from
 from sunroom_kiosk.version import version
@@ -157,6 +158,21 @@ class Places:
             pid=state / "sunroom.pid",
             bin=home / ".local" / "bin",
         )
+
+
+def program_command(places: Places, system: str = sys.platform) -> list[str]:
+    """What runs Sunroom here: its ``sunroom`` command, answering on the network (phones)."""
+    name = "sunroom.exe" if system == "win32" else "sunroom"
+    return [str(places.bin / name), "serve", "--host", "0.0.0.0"]  # noqa: S104 - phones
+
+
+def program_environment(places: Places, port: int, advertised: str) -> dict[str, str]:
+    return {
+        "DATA_DIR": str(places.data),
+        "PORT": str(port),
+        "SUNROOM_INSTALL_KIND": KIND,
+        "SUNROOM_ADVERTISED_URL": advertised,
+    }
 
 
 # ---------------------------------------------------------------------- what keeps it running
@@ -268,7 +284,7 @@ class LaunchdService:
     def __init__(self, runner: Runner, places: Places, uid: int | None = None) -> None:
         self.run = runner
         self.places = places
-        self.uid = uid if uid is not None else (os.getuid() if hasattr(os, "getuid") else 0)
+        self.uid = uid if uid is not None else int(user_id())
 
     @property
     def domain(self) -> str:
@@ -458,16 +474,10 @@ class LocalSunroom:
         return f"http://localhost:{port}" if isinstance(port, int) else None
 
     def command(self) -> list[str]:
-        name = "sunroom.exe" if self.system == "win32" else "sunroom"
-        return [str(self.places.bin / name), "serve", "--host", "0.0.0.0"]  # noqa: S104 - phones
+        return program_command(self.places, self.system)
 
     def environment(self, port: int, advertised: str) -> dict[str, str]:
-        return {
-            "DATA_DIR": str(self.places.data),
-            "PORT": str(port),
-            "SUNROOM_INSTALL_KIND": KIND,
-            "SUNROOM_ADVERTISED_URL": advertised,
-        }
+        return program_environment(self.places, port, advertised)
 
     def _port(self) -> int:
         kept = self.remembered().get("port")

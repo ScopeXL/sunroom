@@ -62,6 +62,25 @@ class Places:
 
 type Run = Callable[[Sequence[str]], int]
 
+# What starts Sunroom Screen at sign-in since 0.18.0 (setup_files.py; the Startup folder's
+# shortcut before, which goes too).
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+RUN_NAME = "SunroomScreen"
+
+
+def remove_run_value() -> bool:
+    """The start-up entry under HKEY_CURRENT_USER's Run key taken out; True when there was one."""
+    if sys.platform != "win32":
+        return False
+    import winreg
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as at:
+            winreg.DeleteValue(at, RUN_NAME)
+    except OSError:
+        return False
+    return True
+
 
 def run(argv: Sequence[str]) -> int:
     try:
@@ -98,7 +117,13 @@ def wait_for_quit(
     return not answers()
 
 
-def uninstall(places: Places, *, sunroom: bool, run: Run = run) -> list[str]:
+def uninstall(
+    places: Places,
+    *,
+    sunroom: bool,
+    run: Run = run,
+    forget: Callable[[], bool] = remove_run_value,
+) -> list[str]:
     """Each step in order; what happened, in plain lines (the log's)."""
     said: list[str] = []
 
@@ -113,6 +138,8 @@ def uninstall(places: Places, *, sunroom: bool, run: Run = run) -> list[str]:
                 "Removed Sunroom and its data from this computer.",
             )
         step([str(places.agent), "policy", "--remove"], "Took the browser's policy out.")
+    if forget():
+        said.append("Took Sunroom Screen out of what starts at sign-in.")
     if places.shortcut.exists():
         places.shortcut.unlink(missing_ok=True)
         said.append("Took Sunroom Screen out of the Startup folder.")

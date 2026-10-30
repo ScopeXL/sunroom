@@ -66,6 +66,8 @@ jobs:
           wheel="kiosk/agent/dist/sunroom_kiosk-$version-py3-none-any.whl"
           unzip -l "$wheel" | grep -q 'sunroom_kiosk/static/screen.html' ||
             { echo "The wheel has no screen pages in it."; exit 1; }
+          unzip -l "$wheel" | grep -q 'sunroom_kiosk/files/sunroom-kiosk-root' ||
+            { echo "The wheel has no setup files in it (kiosk/files)."; exit 1; }
           server="backend/dist/sunroom-$version-py3-none-any.whl"
           unzip -l "$server" | grep -q 'sunroom/static/index.html' ||
             { echo "The server wheel has no app in it."; exit 1; }

@@ -41,6 +41,15 @@ packages = ["src/sunroom_kiosk"]
 # The screen's own pages, built by the frontend (vite.screen.config.ts); gitignored, so named.
 artifacts = ["src/sunroom_kiosk/static/**"]
 
+# The installer's templates and helpers travel in the wheel (ADR 0044): `sunroom-kiosk setup`
+# writes the screen's own start-up files from them, and the root helper takes the system's part
+# out of a checked wheel.
+[tool.hatch.build.targets.wheel.force-include]
+"../files" = "sunroom_kiosk/files"
+"../uninstall.sh" = "sunroom_kiosk/files/uninstall.sh"
+"../labwc-rule.py" = "sunroom_kiosk/files/labwc-rule.py"
+"../update.sh" = "sunroom_kiosk/files/update.sh"
+
 [tool.ruff]
 line-length = 100
 target-version = "py314"

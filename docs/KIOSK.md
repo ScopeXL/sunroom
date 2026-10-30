@@ -125,6 +125,16 @@ found, its pairing, its Updates choice) and replaces only its own files. Its log
   otherwise drops live updates.
 - Turns on `systemd-time-wait-sync`, so the clock is set from the internet before it's relied on.
   Sunroom Screen also waits up to a minute for it, and the screen shows the server's time anyway.
+- **Sunroom Screen's own start-up entries are its own** (ADR 0044): its user service, the labwc
+  block and window rule or the X11 autostart entry, the copies of the uninstaller and the labwc
+  helper in `~/.local/share/sunroom-kiosk`, the service of Sunroom run on this computer, its
+  settings file (brought to its version's keys) and `~/.local/state/sunroom-kiosk/install-state`.
+  `sunroom-kiosk setup` writes them from the templates its version carries, and Sunroom Screen
+  runs it every time it starts: a file that differs is rewritten (one that got broken heals
+  itself), and before it changes anything it copies its settings and notes to
+  `~/.local/state/sunroom-kiosk/backup/<version>/` (the last three versions are kept). It never
+  touches the browser's profile (the pairing) or Sunroom's data. `sunroom-kiosk setup --check`
+  says what differs without changing anything. Root's files are never its own to write.
 - With `--force-hdmi`: two options in the kernel command line (`cmdline.txt`), with the original
   kept beside it.
 
@@ -184,8 +194,9 @@ begin (ADR 0041). The installer itself starts no other PowerShell.
 
 It needs no administrator and installs no service. It installs uv (uv's own zip from GitHub,
 checked against its checksum) and Sunroom Screen (the same release and checks as above) for this
-user, puts **Sunroom Screen** in the Startup folder (it starts at sign-in with no console
-window), and starts it: Microsoft Edge full screen, or Google Chrome when there's no Edge.
+user, has **Sunroom Screen** start at sign-in with no console window (since 0.18.0 a `Run` value
+under `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`, which Sunroom Screen
+writes itself; the Startup folder's shortcut before, which it takes out), and starts it: Microsoft Edge full screen, or Google Chrome when there's no Edge.
 Sunroom Screen writes the browser's policy for this user itself
 (`HKEY_CURRENT_USER\Software\Policies\…`), so Sunroom reaches it without a prompt.
 

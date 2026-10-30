@@ -21,13 +21,11 @@ from sunroom_kiosk.platform.base import (
     run_command,
 )
 from sunroom_kiosk.platform.windows import (
-    BIOS_KEY,
     DisplayMode,
-    RegistryKind,
     WindowsPlatform,
     wifi_from_netsh,
 )
-from tests.support import Shell, ok
+from tests.support import FakeRegistry, Shell, ok
 
 ORIGIN = "https://calendar.example.com"
 # The allowance as 0.16.1 wrote it: the one Sunroom a screen showed.
@@ -46,29 +44,6 @@ There is 1 interface on the system:
     Signal                 : 82%
     Profile                : HomeNet
 """
-
-
-@dataclass
-class FakeRegistry:
-    """HKEY_CURRENT_USER as {key: {name: (kind, data)}}, and the firmware's two names."""
-
-    keys: dict[str, dict[str, tuple[RegistryKind, int | str]]] = field(
-        default_factory=dict[str, dict[str, tuple[RegistryKind, int | str]]]
-    )
-    machine: dict[str, str] = field(default_factory=dict[str, str])
-
-    def set_value(self, key: str, name: str, kind: RegistryKind, data: int | str) -> None:
-        self.keys.setdefault(key, {})[name] = (kind, data)
-
-    def delete_value(self, key: str, name: str) -> None:
-        self.keys.get(key, {}).pop(name, None)
-
-    def delete_key(self, key: str) -> None:
-        self.keys.pop(key, None)
-
-    def machine_value(self, key: str, name: str) -> str | None:
-        assert key == BIOS_KEY
-        return self.machine.get(name)
 
 
 def windows(

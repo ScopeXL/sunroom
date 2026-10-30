@@ -9,6 +9,8 @@ The installer's keys: SUNROOM_URL, SUNROOM_SESSION, SUNROOM_OUTPUT, SUNROOM_ROTA
 SUNROOM_SCREEN_HELPER, SUNROOM_BRIGHTNESS, SUNROOM_DDC_BUS, SUNROOM_BACKLIGHT and SUNROOM_MODE.
 The agent's own: SUNROOM_ID (the server's instance id, so a moved server is found again),
 SUNROOM_FOUND (discovered, typed or local) and SUNROOM_UPDATE_CHECK (nightly or off).
+``sunroom-kiosk setup``'s: SUNROOM_CONFIG_VERSION, the keys' version this file was brought to by
+``migrate`` (ADR 0044).
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ import os
 import re
 import shlex
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
@@ -152,7 +155,12 @@ HEADER = (
 def render(existing: str, config: Config) -> str:
     """``existing`` with each known key's line set to ``config``'s value, in place; keys that
     weren't there are added at the end. Every other line stays as it was."""
-    wanted = to_values(config)
+    return set_values(existing, to_values(config))
+
+
+def set_values(existing: str, wanted: dict[str, str]) -> str:
+    """``existing`` with each of ``wanted``'s keys set in place, the new ones added at the end;
+    every other line as it was (a new file starts with the header)."""
     seen: set[str] = set()
     lines: list[str] = []
     for line in existing.splitlines():
@@ -189,3 +197,46 @@ def save(path: Path, config: Config) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(render(existing, config), encoding="utf-8")
     os.replace(tmp, path)
+
+
+# ---------------------------------------------------------------------- the keys' version
+
+type Step = Callable[[dict[str, str]], dict[str, str]]
+
+STEPS: tuple[Step, ...] = ()
+"""Each brings the file's keys one version on: STEPS[0] from version 1 to 2, and so on. A
+release that renames or reshapes a setting appends a step here; ``sunroom-kiosk setup`` runs the
+ones a file hasn't had, at every start and after every update (ADR 0044)."""
+
+CONFIG_VERSION = 1 + len(STEPS)
+
+
+def migrate(values: dict[str, str]) -> dict[str, str]:
+    """``values`` brought to this version's keys. A file without SUNROOM_CONFIG_VERSION is
+    version 1 (the keys every release before 0.18.0 wrote); one from a newer release keeps its
+    own."""
+    raw = values.get("SUNROOM_CONFIG_VERSION", "")
+    have = int(raw) if raw.isdigit() else 1
+    if have > CONFIG_VERSION:
+        return values
+    moved = dict(values)
+    for step in STEPS[max(have, 1) - 1 :]:
+        moved = step(moved)
+    moved["SUNROOM_CONFIG_VERSION"] = str(CONFIG_VERSION)
+    return moved
+
+
+def migrated(existing: str) -> str:
+    """The settings file's text brought to this version's keys: a key a step set is written in
+    place, one it took away is gone, and every other line is kept."""
+    values = parse_values(existing)
+    moved = migrate(values)
+    gone = values.keys() - moved.keys()
+    if gone:
+        existing = "".join(
+            line
+            for line in existing.splitlines(keepends=True)
+            if line.strip().partition("=")[0] not in gone
+        )
+    changed = {key: value for key, value in moved.items() if values.get(key) != value}
+    return set_values(existing, changed) if changed else existing

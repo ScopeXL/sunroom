@@ -66,10 +66,12 @@ type RegistryKind = Literal["REG_DWORD", "REG_SZ"]
 
 
 class Registry(Protocol):
-    """The registry calls Sunroom Screen makes: this user's policy keys (HKEY_CURRENT_USER), and
-    the computer's name from its firmware (HKEY_LOCAL_MACHINE, read only)."""
+    """The registry calls Sunroom Screen makes: this user's policy keys and start-up entry
+    (HKEY_CURRENT_USER), and the computer's name from its firmware (HKEY_LOCAL_MACHINE, read
+    only)."""
 
     def set_value(self, key: str, name: str, kind: RegistryKind, data: int | str) -> None: ...
+    def user_value(self, key: str, name: str) -> str | None: ...
     def delete_value(self, key: str, name: str) -> None: ...
     def delete_key(self, key: str) -> None: ...
     def machine_value(self, key: str, name: str) -> str | None: ...
@@ -85,6 +87,14 @@ if sys.platform == "win32":
                     winreg.SetValueEx(at, name, 0, winreg.REG_DWORD, int(data))
                 else:
                     winreg.SetValueEx(at, name, 0, winreg.REG_SZ, str(data))
+
+        def user_value(self, key: str, name: str) -> str | None:
+            try:
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key) as at:
+                    value, _kind = winreg.QueryValueEx(at, name)
+            except OSError:
+                return None
+            return str(value)
 
         def delete_value(self, key: str, name: str) -> None:
             try:

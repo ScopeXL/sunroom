@@ -11,6 +11,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
 - Settings → Household → Language: Sunroom can be shown in another language once someone
   translates it (English is the only complete one for now; translators, see
   docs/LANGUAGES.md). Setup asks too, and the first page has a Choose a Language button.
+- Sunroom Screen keeps its own start-up entries and settings file in order every time it starts,
+  from the version it runs, so a file that got broken heals itself.
 
 ### Changed
 

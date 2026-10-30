@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 
 from sunroom_kiosk.platform.base import CommandResult
+from sunroom_kiosk.platform.windows import BIOS_KEY, RegistryKind
 
 PORT = 7800
 AGENT = f"http://127.0.0.1:{PORT}"
@@ -96,3 +97,30 @@ class Shell:
 
 def ok(output: str = "") -> CommandResult:
     return CommandResult(0, output)
+
+
+@dataclass
+class FakeRegistry:
+    """HKEY_CURRENT_USER as {key: {name: (kind, data)}}, and the firmware's two names."""
+
+    keys: dict[str, dict[str, tuple[RegistryKind, int | str]]] = field(
+        default_factory=dict[str, dict[str, tuple[RegistryKind, int | str]]]
+    )
+    machine: dict[str, str] = field(default_factory=dict[str, str])
+
+    def set_value(self, key: str, name: str, kind: RegistryKind, data: int | str) -> None:
+        self.keys.setdefault(key, {})[name] = (kind, data)
+
+    def user_value(self, key: str, name: str) -> str | None:
+        found = self.keys.get(key, {}).get(name)
+        return None if found is None else str(found[1])
+
+    def delete_value(self, key: str, name: str) -> None:
+        self.keys.get(key, {}).pop(name, None)
+
+    def delete_key(self, key: str) -> None:
+        self.keys.pop(key, None)
+
+    def machine_value(self, key: str, name: str) -> str | None:
+        assert key == BIOS_KEY
+        return self.machine.get(name)

@@ -41,6 +41,7 @@ from sunroom_kiosk.schemas import (
     ScreenSunroomOut,
     ScreenUpdateOut,
 )
+from sunroom_kiosk.setup_files import Report
 from sunroom_kiosk.updater import UpdaterLike, newer
 from sunroom_kiosk.version import version
 
@@ -102,6 +103,7 @@ class Agent:
         fake: bool = False,
         dev_origins: tuple[str, ...] = (),
         local: LocalSunroom | None = None,
+        setup: Callable[[], Report] | None = None,
     ) -> None:
         self.port = port
         self.config_path = config_path
@@ -118,6 +120,10 @@ class Agent:
         # Sunroom run on this computer as a program (ADR 0038); None where it can't be (a
         # checkout, --fake: the pretend platform runs it itself).
         self.local = local
+        # Its own start-up files put in order at every start (setup_files.py, ADR 0044); None
+        # where they aren't its own to write (a checkout, --fake).
+        self.setup = setup
+        self.setup_report: Report | None = None
         self.reachable = False
         self.running_sunroom = False  # one run at a time (POST /run-sunroom)
         self.known = Known()
@@ -255,6 +261,7 @@ class Agent:
     # ------------------------------------------------------------------ running
 
     async def start(self) -> None:
+        await self.own_setup()
         await self.refresh_network()
         if self.config.url:
             self.reachable = await self.healthy(self.config.url)
@@ -276,6 +283,26 @@ class Agent:
             self.own_origin,
             self.config.url or "its own setup pages",
         )
+
+    async def own_setup(self) -> None:
+        """This version's start-up files and settings, rewritten where they differ (a file that
+        got broken heals itself); root's part that differs is kept for the update to apply."""
+        if self.setup is None:
+            return
+        try:
+            report = await asyncio.to_thread(self.setup)
+        except Exception as error:  # the screen comes up whatever its setup says
+            log.exception("Couldn't look at this screen's setup: %r", error)
+            return
+        self.setup_report = report
+        if report.changed:
+            log.info("Set up again: %s.", ", ".join(report.changed))
+        for failed in report.failed:
+            log.info("Couldn't set up %s", failed)
+        if "settings" in report.changed:
+            self.config = settings_file.load(self.config_path)
+        if report.needs_root:
+            log.info("Root's part differs: %s.", ", ".join(report.needs_root))
 
     def spawn(self, work: Awaitable[Any]) -> None:
         async def guarded() -> None:

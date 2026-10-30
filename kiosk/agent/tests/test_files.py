@@ -17,9 +17,11 @@ from typing import Any
 import pytest
 
 from sunroom_kiosk import cli, policy
+from sunroom_kiosk.files import files_dir
 from sunroom_kiosk.platform import linux
 
-FILES = Path(__file__).resolve().parents[2] / "files"
+# The package's copy when the wheel carries it, the checkout's otherwise (ADR 0044).
+FILES = files_dir()
 URL = "http://192.168.1.20:8080"
 
 

@@ -190,6 +190,11 @@ size limit.
   on it too. The page moves itself; the agent only navigates (DevTools) where no page chose, and
   its policy no longer names the Sunroom, so nothing needs a restart (ADR 0042).
 
+- Every file of the screen's setup names the version that wrote it, so a plain comparison
+  rewrote labwc's autostart after every update and asked a Pi to restart each time.
+  `setup_files.comparable` drops the "Written by" line and turns every version into a mark:
+  a version-only difference is rewritten quietly, and only a real change asks for a restart.
+
 ## The board
 
 - A plugin's setting reached the wall minutes late: `plugins.changed` refreshed only the plugin
