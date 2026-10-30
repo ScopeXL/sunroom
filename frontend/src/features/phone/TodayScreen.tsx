@@ -110,7 +110,7 @@ export function TodayScreen() {
                     ? // The time stays whole when the narrow column wraps: "until / 4:15 PM".
                       {
                         when: t("phone.today.until", {
-                          time: formatWallTime(occurrence.end_local).replace(" ", "\u00a0"),
+                          time: formatWallTime(occurrence.end_local).replaceAll(" ", "\u00a0"),
                         }),
                       }
                     : {})}

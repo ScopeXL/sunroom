@@ -21,6 +21,7 @@ import { createElement, Fragment, useCallback, useEffect, type ReactNode } from 
 import en from "../../../lang/en.json";
 import registry from "../../../lang/languages.json";
 import { createStore, useStore } from "./store";
+import { refreshMinute } from "./time";
 
 export type Key = keyof typeof en;
 export type LanguageCode = keyof typeof registry;
@@ -109,6 +110,37 @@ export function languageName(language: PageLanguage): string {
 /** The `Intl` locale for the page's language. */
 export function pageLocale(language: PageLanguage = languageStore.get()): string {
   return language === "pseudo" ? LANGUAGES.en.locale : LANGUAGES[language].locale;
+}
+
+const latinLocales = new Map<string, string>();
+
+/**
+ * The page's locale for dates, times and numbers: the language's own words and order, with every
+ * digit Latin (`-u-nu-latn`), as the digit boxes draw them (ADR 0021). `en-US-u-nu-latn` for
+ * English, which writes exactly what `en-US` does.
+ */
+export function intlLocale(language: PageLanguage = languageStore.get()): string {
+  const locale = pageLocale(language);
+  let found = latinLocales.get(locale);
+  if (!found) {
+    found = new Intl.Locale(locale, { numberingSystem: "latn" }).toString();
+    latinLocales.set(locale, found);
+  }
+  return found;
+}
+
+const numberFormats = new Map<string, Intl.NumberFormat>();
+
+/** A number as the page's language writes it, digits Latin: "1,000" and "4.2", or "4,2". */
+export function formatNumber(value: number, options: Intl.NumberFormatOptions = {}): string {
+  const locale = intlLocale();
+  const id = `${locale}\u0000${JSON.stringify(options)}`;
+  let format = numberFormats.get(id);
+  if (!format) {
+    format = new Intl.NumberFormat(locale, options);
+    numberFormats.set(id, format);
+  }
+  return format.format(value);
 }
 
 // prettier-ignore
@@ -224,6 +256,18 @@ export function tRich(key: Key, values: Record<string, RichValue>): ReactNode {
   }
 }
 
+/**
+ * A grammar's words (quick add's `quickadd.words.*`, docs/LANGUAGES.md): the message's words
+ * joined by `|`, each trimmed, lowercase, its spaces as one, in the language's file or English's
+ * where it has none. Never pseudo: the pseudo language types English.
+ */
+export function wordList(key: Key, language: PageLanguage = languageStore.get()): string[] {
+  return format(language === "pseudo" ? "en" : language, key)
+    .split("|")
+    .map((word) => word.trim().replace(/\s+/g, " ").toLowerCase())
+    .filter(Boolean);
+}
+
 function read(name: string): string | null {
   try {
     return localStorage.getItem(name);
@@ -248,8 +292,9 @@ export function languageOverride(): PageLanguage | null {
 
 /**
  * Switch the page to a language: its chunk loaded, `<html lang>` and `dir` set, every `useT`
- * drawn again. `remember` keeps it as the household's for the next paint (setup's and Choose a
- * Language's choice, the household's setting); a code Sunroom doesn't have is English.
+ * drawn again, and every clock and date with it (`useMinute`). `remember` keeps it as the
+ * household's for the next paint (setup's and Choose a Language's choice, the household's
+ * setting); a code Sunroom doesn't have is English.
  */
 export async function setLanguage(code: string, { remember = true } = {}): Promise<void> {
   const language = known(code) ?? "en";
@@ -262,6 +307,7 @@ export async function setLanguage(code: string, { remember = true } = {}): Promi
   root.lang = language === "pseudo" ? "en-XA" : language;
   root.dir = language === "pseudo" ? "ltr" : LANGUAGES[language].dir;
   languageStore.set(language);
+  refreshMinute();
 }
 
 /** The page's language at its start, before the first paint (main.tsx, screen.tsx). */

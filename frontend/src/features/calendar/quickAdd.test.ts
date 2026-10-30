@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { setLanguage } from "../../lib/lang";
 import { parseQuickAdd, type QuickAddContext, type QuickAddDraft } from "./quickAdd";
 import type { Repeat } from "./repeat";
 
@@ -695,5 +696,54 @@ describe("time zones", () => {
     // The device's zone really did change: Kiritimati is 14 hours ahead of UTC.
     vi.stubEnv("TZ", "Pacific/Kiritimati");
     expect(new Date(2026, 9, 7).getTimezoneOffset()).toBe(-14 * 60);
+  });
+});
+
+describe("in the page's language (ADR 0043)", () => {
+  afterEach(async () => {
+    await setLanguage("en", { remember: false });
+  });
+
+  it("reads its words from lang/: the language's own lists, English's where it has none", async () => {
+    await setLanguage("es", { remember: false });
+    // "mañana" and "pasado mañana" are lang/es.json's; "every" is still English's.
+    expect(parse("Dentista mañana")).toEqual({
+      ...BLANK,
+      title: "Dentista",
+      day: "2026-10-08",
+      understood: [{ kind: "day", start: 9, end: 15 }],
+    });
+    expect(parse("Dentista pasado mañana").day).toBe("2026-10-09");
+    expect(parse("Natación every Tue").repeat).toEqual(weekly(1, [1]));
+  });
+
+  it("reads dates and times with chrono's locale for the language", async () => {
+    await setLanguage("es", { remember: false });
+    expect(parse("Dentista 9 de octubre")).toMatchObject({ title: "Dentista", day: "2026-10-09" });
+    expect(parse("Dentista jueves 15:30")).toMatchObject({
+      title: "Dentista",
+      day: "2026-10-08",
+      allDay: false,
+      start: "15:30",
+    });
+    // Spanish writes the day first: 10/9 is the 10th of September, next year's by now.
+    expect(parse("Dentista 10/9").day).toBe("2027-09-10");
+  });
+
+  it("types English in the pseudo language", async () => {
+    const english = parse("Dentist Thu 2:30pm Mia");
+    await setLanguage("pseudo", { remember: false });
+    expect(parse("Dentist Thu 2:30pm Mia")).toEqual(english);
+  });
+});
+
+describe("a page that runs for days", () => {
+  it("still reads ’ after thousands of lines (V8 14.6 cut it from a pattern, docs/GOTCHAS.md)", () => {
+    let wrong: string | null = null;
+    for (let n = 0; n < 6000 && wrong === null; n += 1) {
+      const { title } = parse("Mia’s recital");
+      if (title !== "Mia’s recital") wrong = `line ${String(n)} read "${title}"`;
+    }
+    expect(wrong).toBeNull();
   });
 });

@@ -3,10 +3,11 @@
 //
 // Checks: every language file is a flat JSON object of strings, sorted, two-space, with no key
 // twice; every message parses as ICU; the server's and Sunroom Screen's messages (`api.*`,
-// `agent.*`) are plain `{name}` substitutions; an apostrophe never quotes by accident; every
-// other language has only English's keys, and only English's placeholders and tags; every key the
-// code names exists in English, and every English key is named by the code (a family by the
-// members it is built from); the registry is sane; a complete language has every key.
+// `agent.*`) are plain `{name}` substitutions; quick add's word lists (`quickadd.words.*`) are
+// plain words joined by `|`; an apostrophe never quotes by accident; every other language has
+// only English's keys, and only English's placeholders and tags; every key the code names exists
+// in English, and every English key is named by the code (a family by the members it is built
+// from); the registry is sane; a complete language has every key.
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -162,6 +163,15 @@ for (const [code, words] of Object.entries(languages)) {
     if (/^(api|agent)\./.test(key) && !plain) {
       problem(`lang/${code}.json: ${key}: the server's and the agent's words are plain {name}s.`);
     }
+    // Quick add's grammar reads these as lists, not sentences: no case rules, no ICU.
+    if (key.startsWith("quickadd.words.")) {
+      const list = message.split("|");
+      if (!plain || /[{}<>]/.test(message) || list.some((word) => !word || word !== word.trim())) {
+        problem(
+          `lang/${code}.json: ${key} is a word list: plain words joined by |, no empty word, no space around a |.`,
+        );
+      }
+    }
   }
 }
 
@@ -188,7 +198,7 @@ for (const [code, words] of Object.entries(languages)) {
 
 const where = (path) => relative(REPO, path);
 for (const { path, text } of pageSources) {
-  for (const match of text.matchAll(/\b(?:t|tRich)\(\s*(["'`])([^"'`$]+)\1/g)) {
+  for (const match of text.matchAll(/\b(?:t|tRich|wordList)\(\s*(["'`])([^"'`$]+)\1/g)) {
     if (!(match[2] in english)) problem(`${where(path)} names ${match[2]}, which English lacks.`);
   }
 }

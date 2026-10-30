@@ -4,7 +4,7 @@
  */
 import type { components } from "../../api/schema";
 import { formatTime, monthDay, shortDate, zonedParts } from "../../lib/dates";
-import { t, type Key } from "../../lib/lang";
+import { formatNumber, t, type Key } from "../../lib/lang";
 
 export type BackupCopy = components["schemas"]["BackupFileOut"];
 
@@ -26,13 +26,22 @@ export function copyDay(iso: string): string {
   return monthDay(zonedParts(new Date(iso)).day);
 }
 
+/** One decimal, as the page's language writes it ("4.2", "4,2"), never grouped ("1023.9"). */
+export function oneDecimal(value: number): string {
+  return formatNumber(value, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+    useGrouping: false,
+  });
+}
+
 /** "820 KB", "4.2 MB", "1.3 GB". */
 export function sizeWords(bytes: number): string {
   if (bytes < 1024 ** 2) {
     return t("settings.backup.size.kb", { n: String(Math.max(1, Math.round(bytes / 1024))) });
   }
-  if (bytes < 1024 ** 3) return t("settings.backup.size.mb", { n: (bytes / 1024 ** 2).toFixed(1) });
-  return t("settings.backup.size.gb", { n: (bytes / 1024 ** 3).toFixed(1) });
+  if (bytes < 1024 ** 3) return t("settings.backup.size.mb", { n: oneDecimal(bytes / 1024 ** 2) });
+  return t("settings.backup.size.gb", { n: oneDecimal(bytes / 1024 ** 3) });
 }
 
 /** "Nightly · 4.2 MB", "Before an upgrade · 4.1 MB". */

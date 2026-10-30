@@ -4,6 +4,11 @@
  * lengths, people, "all day" and the casual words (today, tomorrow, noon). Each finding is a span
  * of the text, so the editor can show which words were understood.
  *
+ * The grammars' words are the page's language's (ADR 0043): `quickadd.words.*` in lang/, each a
+ * list of words joined by `|` (docs/LANGUAGES.md "Quick add's words"), and chrono reads with the
+ * registry's `chrono` locale. The shapes are English's ("every other week on Tue"), each filled
+ * with the language's words; a language without a list reads English's.
+ *
  * Everything is the household's wall time. chrono gets a reference made from the household's
  * today, and none of its own day or year guesses are used, only what it read in the text (a
  * month and day, a weekday, an hour and minute), so the device's time zone never moves a result.
@@ -11,6 +16,7 @@
 import * as chrono from "chrono-node";
 
 import { addDays, weekOf, weekdayOf, zonedParts } from "../../lib/dates";
+import { getLanguage, LANGUAGES, wordList, type Key, type LanguageCode } from "../../lib/lang";
 import type { Repeat } from "./repeat";
 
 export interface QuickAddMember {
@@ -145,66 +151,146 @@ function nextOnDate(today: string, date: number): string | null {
   return null;
 }
 
-/* Numbers and weekdays as words */
+/* The language's words */
 
-const NUMBER_WORDS = "one two three four five six seven eight nine ten eleven twelve".split(" ");
-const ORDINAL_WORDS = ["", "", "second", "third", "fourth", "fifth", "sixth"];
-
-/** 2 for "2", "two", "2nd" or "second" (and 1 for "a"); null for anything else. */
-function numberOf(word: string | undefined): number | null {
-  const lower = word?.toLowerCase() ?? "";
-  if (/^\d/.test(lower)) return parseInt(lower, 10);
-  if (lower === "a" || lower === "an") return 1;
-  if (NUMBER_WORDS.includes(lower)) return NUMBER_WORDS.indexOf(lower) + 1;
-  return ORDINAL_WORDS.indexOf(lower) > 0 ? ORDINAL_WORDS.indexOf(lower) : null;
+/**
+ * Words or a name as a pattern: the pattern characters escaped, a space as any run of spaces,
+ * and every character past ASCII as `\u{…}`. A pattern made while the page runs stays ASCII
+ * (the fixed ones write ’ as `\u2019` too): V8 14.6 (Node 26) cut ’ in such a pattern to one
+ * byte after some thousands of parses, and "Mia’s" stopped being read (docs/GOTCHAS.md).
+ */
+function escape(words: string): string {
+  return words
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/[^\p{ASCII}]/gu, (char) => `\\u{${(char.codePointAt(0) ?? 0).toString(16)}}`)
+    .replace(/ /g, "\\s+");
 }
 
-const DAY =
-  "mon(?:day)?|tue(?:s(?:day)?)?|wed(?:s|nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?";
-const DAYS = "(?:mon|tues|wednes|thurs|fri|satur|sun)days";
-const ANY_DAY = `(?:${DAYS}|${DAY})`;
-const AND = "\\s*,\\s*(?:and\\s+)?|\\s*[&/+]\\s*|\\s+and\\s+";
-const DAY_LIST = `${ANY_DAY}(?:(?:${AND}|\\s+)${ANY_DAY})*`;
-const DAY_WORD = new RegExp(ANY_DAY, "giu");
-const DAY_PREFIXES = ["mo", "tu", "we", "th", "fr", "sa", "su"];
+/** A list of words as one group of a pattern, the longest first ("tues" before "tue"). A list
+ * with no words matches nothing. */
+function anyOf(list: readonly string[]): string {
+  if (!list.length) return "(?!)";
+  return `(?:${[...list]
+    .sort((a, b) => b.length - a.length)
+    .map(escape)
+    .join("|")})`;
+}
+
+/** Each weekday's words, 0 Monday … 6 Sunday: as one day ("Tue"), and as every one ("Tuesdays"). */
+const WEEKDAY_WORDS: readonly (readonly [Key, Key])[] = [
+  ["quickadd.words.monday", "quickadd.words.mondays"],
+  ["quickadd.words.tuesday", "quickadd.words.tuesdays"],
+  ["quickadd.words.wednesday", "quickadd.words.wednesdays"],
+  ["quickadd.words.thursday", "quickadd.words.thursdays"],
+  ["quickadd.words.friday", "quickadd.words.fridays"],
+  ["quickadd.words.saturday", "quickadd.words.saturdays"],
+  ["quickadd.words.sunday", "quickadd.words.sundays"],
+];
+
+/** chrono, as Sunroom reads with it, for each of the registry's `chrono` locales it has. */
+interface ChronoLocale {
+  /** Its parsers without the casual words ("tonight", "this evening"); `dayFirst` reads 10/9 as
+   * the 10th of September. */
+  parsers: (dayFirst: boolean) => chrono.Parser[];
+  /** What "@" before a time becomes ("soccer @ 4"): the word its time parser reads there, at
+   * most two letters long. */
+  at: string;
+  /** Words it doesn't know, respelled as ones it does, never longer: English's has no "tues". */
+  respell: readonly [RegExp, (word: string) => string][];
+}
+
+const ENGLISH_CHRONO: ChronoLocale = {
+  parsers: (dayFirst) => chrono.en.configuration.createConfiguration(false, dayFirst).parsers,
+  at: "at",
+  respell: [[words("tues|weds"), (word) => word.slice(0, 3)]],
+};
+
+/** A language whose `chrono` isn't here reads with English's, which knows every way of writing
+ * a date or a time in numbers ("10/9", "16:30", "4pm") and English's words. */
+const CHRONO: Readonly<Record<string, ChronoLocale>> = {
+  en: ENGLISH_CHRONO,
+  es: {
+    parsers: (dayFirst) => chrono.es.createConfiguration(false, dayFirst).parsers,
+    at: "a",
+    respell: [],
+  },
+};
+
+/** Whether the language writes the day before the month ("9/10" for the 9th of October). */
+function dayFirst(locale: string): boolean {
+  const parts = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "numeric",
+    timeZone: "UTC",
+  }).formatToParts(new Date(Date.UTC(2026, 9, 9)));
+  const at = (type: string) => parts.findIndex((part) => part.type === type);
+  return at("day") < at("month");
+}
+
+/** Every pattern and word quick add reads, in one language (made once per language). */
+interface Grammar {
+  /** A number said as a word ("two", "second", "a"), to its value. */
+  values: Map<string, number>;
+  /** A weekday's word, one or every ("tue", "tuesdays"), to 0 Monday … 6 Sunday. */
+  weekdays: Map<string, number>;
+  weekdayWord: RegExp;
+  allDay: RegExp;
+  repeats: [RegExp, (groups: Groups) => RepeatWords | null][];
+  lengths: [RegExp, (groups: Groups) => number][];
+  whenBefore: RegExp;
+  whenAfter: RegExp;
+  /** The words around people's names, folded as their names are matched: "with", "and". */
+  with: string;
+  and: string;
+  /** Months' names (folded), and what comes before one in a date: "5th of May". */
+  months: Set<string>;
+  dateBefore: RegExp;
+  dayWords: RegExp;
+  today: Set<string>;
+  dayAfterTomorrow: Set<string>;
+  nthDay: RegExp;
+  reader: chrono.Chrono;
+  respell: [RegExp, (word: string) => string][];
+  weekParts: RegExp;
+  notAStartTime: RegExp;
+  next: RegExp;
+  last: RegExp;
+  shortWeekday: RegExp;
+  afterThe: RegExp;
+  notAStartDay: RegExp;
+  betweenDays: RegExp;
+  dangling: Set<string>;
+  joins: Set<string>;
+}
+
+/* Numbers and weekdays as words */
+
+/** 2 for "2", "two", "2nd" or "second" (and 1 for "a"); null for anything else. */
+function numberOf(g: Grammar, word: string | undefined): number | null {
+  const lower = word?.toLowerCase() ?? "";
+  if (/^\d/.test(lower)) return parseInt(lower, 10);
+  return g.values.get(lower) ?? null;
+}
 
 /** The weekdays a list names ("Tue and Thu"), sorted. */
-function weekdaysIn(list: string): number[] {
-  const days = Array.from(list.matchAll(DAY_WORD), (match) =>
-    DAY_PREFIXES.indexOf(match[0].slice(0, 2).toLowerCase()),
+function weekdaysIn(g: Grammar, list: string): number[] {
+  const days = matches(g.weekdayWord, list).map(
+    ({ start, end }) => g.weekdays.get(list.slice(start, end).toLowerCase()) ?? -1,
   );
   return [...new Set(days)].filter((day) => day >= 0).sort((a, b) => a - b);
 }
 
-/* "all day" */
-
-const ALL_DAY = words("all[\\s-]?day");
-
-function readAllDay(reading: Reading): void {
-  for (const { start, end } of matches(ALL_DAY, reading.masked)) {
-    claim(reading, { kind: "allDay", start, end });
-  }
-}
-
 /* Repeats */
 
-const EVERY = "(?:every|each)\\s+";
-// "every Tue and Thu", also "every Tue and every Thu".
-const EVERY_DAY_LIST = `${ANY_DAY}(?:(?:${AND}|\\s+)(?:${EVERY})?${ANY_DAY})*`;
-const ORDINALS = ["2nd", "3rd", "4th", "5th", "6th", ...ORDINAL_WORDS.slice(2)].join("|");
-const INTERVAL = `(?:(other)\\s+|(\\d{1,2}|${NUMBER_WORDS.join("|")})\\s+|(${ORDINALS})\\s+)?`;
-const ON_DAYS = `(?:\\s+on\\s+(${DAY_LIST}))?`;
-const ON_DATE = "(?:\\s+on\\s+the\\s+(\\d{1,2})(?:st|nd|rd|th)?)?";
-
-function intervalOf([other, count, nth]: Groups): number | null {
+function intervalOf(g: Grammar, [other, count, nth]: Groups): number | null {
   if (other) return 2;
-  const number = numberOf(count ?? nth) ?? 1;
+  const number = numberOf(g, count ?? nth) ?? 1;
   return number >= 1 && number <= 99 ? number : null;
 }
 
-function weekly(interval: number | null, list: string | undefined): RepeatWords | null {
+function weekly(g: Grammar, interval: number | null, list: string | undefined): RepeatWords | null {
   if (interval === null) return null;
-  const weekdays = list ? weekdaysIn(list) : [];
+  const weekdays = list ? weekdaysIn(g, list) : [];
   return weekdays.length ? { freq: "weekly", interval, weekdays } : { freq: "weekly", interval };
 }
 
@@ -219,36 +305,226 @@ function every(freq: "daily" | "yearly", interval: number | null): RepeatWords |
   return interval === null ? null : { freq, interval };
 }
 
-// In this order: the words one pattern found are hidden from the ones after it.
-const REPEATS: [RegExp, (groups: Groups) => RepeatWords | null][] = [
-  [words(`${EVERY}${INTERVAL}weeks?${ON_DAYS}`), (g) => weekly(intervalOf(g), g[3])],
-  [words(`${EVERY}${INTERVAL}months?${ON_DATE}`), (g) => monthly(intervalOf(g), g[3])],
-  [words(`${EVERY}${INTERVAL}days?`), (g) => every("daily", intervalOf(g))],
-  [words(`${EVERY}${INTERVAL}years?`), (g) => every("yearly", intervalOf(g))],
-  [
-    words(`${EVERY}weekdays?|(?:on\\s+)?weekdays`),
-    () => ({ freq: "weekly", interval: 1, weekdays: WORKWEEK }),
-  ],
-  [
-    words(`${EVERY}weekends?|(?:on\\s+)?weekends`),
-    () => ({ freq: "weekly", interval: 1, weekdays: WEEKEND }),
-  ],
-  [
-    words(`${EVERY}(other\\s+)?(${EVERY_DAY_LIST})`),
-    ([other, list]) => weekly(other ? 2 : 1, list),
-  ],
-  [words(`(?:on\\s+)?(${DAYS}(?:(?:${AND}|\\s+)${DAYS})*)`), ([list]) => weekly(1, list)],
-  [
-    words(`(weekly|fortnightly)${ON_DAYS}`),
-    ([word, list]) => weekly(word?.toLowerCase() === "weekly" ? 1 : 2, list),
-  ],
-  [words(`monthly${ON_DATE}`), ([date]) => monthly(1, date)],
-  [words("daily"), () => every("daily", 1)],
-  [words("yearly|annually"), () => every("yearly", 1)],
-];
+/* Lengths */
 
-function readRepeats(reading: Reading): void {
-  for (const [pattern, read] of REPEATS) {
+function hoursOf(text: string | undefined): number {
+  const whole = text?.replace("½", "").trim();
+  return (whole ? Number(whole) : 0) + (text?.includes("½") ? 0.5 : 0);
+}
+
+/** The language's grammar: English's shapes, its words. */
+function grammarOf(language: LanguageCode): Grammar {
+  const list = (...keys: Key[]): string[] => keys.flatMap((key) => wordList(key, language));
+  const any = (...keys: Key[]): string => anyOf(list(...keys));
+  const lookup = (...entries: [readonly string[], number][]): Map<string, number> => {
+    const found = new Map<string, number>();
+    for (const [said, value] of entries)
+      for (const word of said) if (!found.has(word)) found.set(word, value);
+    return found;
+  };
+
+  const numbers = list("quickadd.words.numbers");
+  const ones = WEEKDAY_WORDS.map(([one]) => list(one));
+  const everies = WEEKDAY_WORDS.map(([, many]) => list(many));
+  const values = lookup(
+    [list("quickadd.words.a"), 1],
+    ...numbers.map((word, index): [string[], number] => [[word], index + 1]),
+    ...list("quickadd.words.ordinals").map((word, index): [string[], number] => [
+      [word],
+      index + 2,
+    ]),
+  );
+  const weekdays = lookup(
+    ...[...ones, ...everies].map((said, index): [string[], number] => [said, index % 7]),
+  );
+
+  // People are matched without accents (`fold`), so the words around their names are folded too.
+  const anyFolded = (...keys: Key[]): string => anyOf(list(...keys).map(fold));
+  const andOf = (word: string): string => `\\s*,\\s*(?:${word}\\s+)?|\\s*[&/+]\\s*|\\s+${word}\\s+`;
+
+  const AND_WORD = any("quickadd.words.and");
+  const ON = any("quickadd.words.on");
+  const THE = any("quickadd.words.the");
+  const OF = any("quickadd.words.of");
+  const SUFFIX = any("quickadd.words.ordinal_suffixes");
+  const DAYS = anyOf(everies.flat());
+  const ANY_DAY = anyOf([...everies.flat(), ...ones.flat()]);
+  const AND = andOf(AND_WORD);
+  const DAY_LIST = `${ANY_DAY}(?:(?:${AND}|\\s+)${ANY_DAY})*`;
+
+  // Repeats. "every Tue and Thu", also "every Tue and every Thu".
+  const EVERY = `${any("quickadd.words.every")}\\s+`;
+  const EVERY_DAY_LIST = `${ANY_DAY}(?:(?:${AND}|\\s+)(?:${EVERY})?${ANY_DAY})*`;
+  const OTHER = any("quickadd.words.other");
+  const ORDINALS = any("quickadd.words.ordinal_numbers", "quickadd.words.ordinals");
+  const INTERVAL = `(?:(${OTHER})\\s+|(\\d{1,2}|${anyOf(numbers)})\\s+|(${ORDINALS})\\s+)?`;
+  const ON_DAYS = `(?:\\s+${ON}\\s+(${DAY_LIST}))?`;
+  const ON_DATE = `(?:\\s+${ON}\\s+${THE}\\s+(\\d{1,2})${SUFFIX}?)?`;
+  const weeklyWords = new Set(list("quickadd.words.weekly"));
+
+  // Lengths. Each pattern's first group is "for", which only some may leave out.
+  const FOR = any("quickadd.words.for");
+  const ABOUT = `(?:${any("quickadd.words.about")}\\s+)?`;
+  const HOURS = any("quickadd.words.hour_short", "quickadd.words.hour");
+  const MINUTES = any("quickadd.words.minute_short", "quickadd.words.minute");
+  const hourWords = new Set(list("quickadd.words.hour"));
+
+  const MONTHS = any("quickadd.words.months");
+  const chronoLocale = CHRONO[LANGUAGES[language].chrono] ?? ENGLISH_CHRONO;
+  const shortest = ones.map((said) => [...said].sort((a, b) => a.length - b.length)[0] ?? "");
+  const boundedBy = (key: Key) => new RegExp(`${LEFT}${any(key)}${RIGHT}`, "iu");
+  const ending = (key: Key) => new RegExp(`(?:^|[^\\p{L}\\p{N}_])${any(key)}\\s*$`, "iu");
+
+  const g: Grammar = {
+    values,
+    weekdays,
+    weekdayWord: words(ANY_DAY),
+    allDay: words(any("quickadd.words.all_day")),
+    // In this order: the words one pattern found are hidden from the ones after it.
+    repeats: [
+      [
+        words(`${EVERY}${INTERVAL}${any("quickadd.words.week")}${ON_DAYS}`),
+        (groups) => weekly(g, intervalOf(g, groups), groups[3]),
+      ],
+      [
+        words(`${EVERY}${INTERVAL}${any("quickadd.words.month")}${ON_DATE}`),
+        (groups) => monthly(intervalOf(g, groups), groups[3]),
+      ],
+      [
+        words(`${EVERY}${INTERVAL}${any("quickadd.words.day")}`),
+        (groups) => every("daily", intervalOf(g, groups)),
+      ],
+      [
+        words(`${EVERY}${INTERVAL}${any("quickadd.words.year")}`),
+        (groups) => every("yearly", intervalOf(g, groups)),
+      ],
+      [
+        words(
+          `${EVERY}${any("quickadd.words.weekday", "quickadd.words.weekdays")}|(?:${ON}\\s+)?${any("quickadd.words.weekdays")}`,
+        ),
+        () => ({ freq: "weekly", interval: 1, weekdays: WORKWEEK }),
+      ],
+      [
+        words(
+          `${EVERY}${any("quickadd.words.weekend", "quickadd.words.weekends")}|(?:${ON}\\s+)?${any("quickadd.words.weekends")}`,
+        ),
+        () => ({ freq: "weekly", interval: 1, weekdays: WEEKEND }),
+      ],
+      [
+        words(`${EVERY}(${OTHER}\\s+)?(${EVERY_DAY_LIST})`),
+        ([other, days]) => weekly(g, other ? 2 : 1, days),
+      ],
+      [words(`(?:${ON}\\s+)?(${DAYS}(?:(?:${AND}|\\s+)${DAYS})*)`), ([days]) => weekly(g, 1, days)],
+      [
+        words(`(${any("quickadd.words.weekly", "quickadd.words.fortnightly")})${ON_DAYS}`),
+        ([word, days]) => weekly(g, weeklyWords.has(word?.toLowerCase() ?? "") ? 1 : 2, days),
+      ],
+      [words(`${any("quickadd.words.monthly")}${ON_DATE}`), ([date]) => monthly(1, date)],
+      [words(any("quickadd.words.daily")), () => every("daily", 1)],
+      [words(any("quickadd.words.yearly")), () => every("yearly", 1)],
+    ],
+    lengths: [
+      [words(`(${FOR}\\s+)${ABOUT}${any("quickadd.words.hour_and_a_half")}`), () => 90],
+      [words(`(${FOR}\\s+)${ABOUT}${any("quickadd.words.half_hour")}`), () => 30],
+      [
+        words(
+          `(${FOR}\\s+)${ABOUT}(${any("quickadd.words.a", "quickadd.words.numbers")})\\s+(${any("quickadd.words.hour", "quickadd.words.minute")})`,
+        ),
+        ([, count, unit]) =>
+          (numberOf(g, count) ?? 0) * (hourWords.has(unit?.toLowerCase() ?? "") ? 60 : 1),
+      ],
+      [
+        words(
+          `(${FOR}\\s+${ABOUT})?(\\d+(?:\\.\\d+)?\\s*\\u00bd?|\\u00bd)\\s*${HOURS}(?:\\s*(?:${AND_WORD}\\s+)?(\\d{1,2})\\s*${MINUTES}|(\\d{2}))?`,
+        ),
+        ([, hours, minutes, attached]) => hoursOf(hours) * 60 + Number(minutes ?? attached ?? 0),
+      ],
+      [words(`(${FOR}\\s+${ABOUT})?(\\d+)\\s*${MINUTES}`), ([, minutes]) => Number(minutes)],
+    ],
+    // Without "for", "in 30 min" and "2 hours later" say when, not how long.
+    whenBefore: ending("quickadd.words.when_before"),
+    whenAfter: new RegExp(`^\\s*${any("quickadd.words.when_after")}${RIGHT}`, "iu"),
+    with: anyFolded("quickadd.words.with"),
+    and: andOf(anyFolded("quickadd.words.and")),
+    months: new Set(list("quickadd.words.months").map(fold)),
+    // "5th of May": a month's name after a date.
+    dateBefore: new RegExp(
+      `\\d${anyFolded("quickadd.words.ordinal_suffixes")}?\\s+(?:${anyFolded("quickadd.words.of")}\\s+)?$`,
+      "iu",
+    ),
+    dayWords: words(
+      any("quickadd.words.day_after_tomorrow", "quickadd.words.today", "quickadd.words.tomorrow"),
+    ),
+    today: new Set(list("quickadd.words.today")),
+    dayAfterTomorrow: new Set(list("quickadd.words.day_after_tomorrow")),
+    // "on the 9th", but not "the 4th of July", which chrono reads whole.
+    nthDay: words(`(?:${ON}\\s+)?${THE}\\s+(\\d{1,2})${SUFFIX}(?!\\s+(?:${OF}\\s+)?${MONTHS})`),
+    // chrono's parsers without its casual words ("tonight", "this evening") or its refiners:
+    // which day a weekday means, the year of a date and how results combine are decided here.
+    reader: new chrono.Chrono({
+      parsers: chronoLocale.parsers(dayFirst(LANGUAGES[language].locale)),
+      refiners: [],
+    }),
+    // Words chrono reads once respelled, at the same length so every offset still holds.
+    respell: [
+      [words(`(?:12\\s*)?${any("quickadd.words.noon")}`), () => "12pm"],
+      [words(`(?:12\\s*)?${any("quickadd.words.midnight")}`), () => "12am"],
+      ...chronoLocale.respell,
+      [/()@\s/gu, () => chronoLocale.at], // "soccer @ 4"
+    ],
+    weekParts: words(
+      any(
+        "quickadd.words.weekday",
+        "quickadd.words.weekdays",
+        "quickadd.words.weekend",
+        "quickadd.words.weekends",
+      ),
+    ),
+    // A time after these ends something rather than starting it: "Library until 5pm".
+    notAStartTime: ending("quickadd.words.ends_time"),
+    next: boundedBy("quickadd.words.next"),
+    last: boundedBy("quickadd.words.last"),
+    // A weekday's shortest word, as an acronym looks: "SAT prep".
+    shortWeekday: new RegExp(`${LEFT}(${anyOf(shortest)})${RIGHT}`, "iu"),
+    afterThe: new RegExp(`(?:^|[^\\p{L}\\p{N}_])${THE}\\s+$`, "iu"),
+    // A day after these ends something rather than starting it: "every Tue until Dec 31".
+    notAStartDay: ending("quickadd.words.ends_day"),
+    // What joins the days of a list or a range: "Mon/Wed/Fri", "Sat and Sun", "Oct 20 - Oct 23".
+    betweenDays: new RegExp(
+      `^\\s*(?:,\\s*)?(?:${any("quickadd.words.between_days")}|&|\\/|\\+|-|\\u2013|\\u2014)?\\s*$`,
+      "iu",
+    ),
+    // Words that only join a title to what was taken out of it: "Dentist on [Oct 9]".
+    dangling: new Set(list("quickadd.words.joining")),
+    joins: new Set(list("quickadd.words.and")),
+  };
+  return g;
+}
+
+const grammars = new Map<LanguageCode, Grammar>();
+
+/** The page's language's grammar (the pseudo language types English). */
+function grammar(): Grammar {
+  const page = getLanguage();
+  const language = page === "pseudo" ? "en" : page;
+  let found = grammars.get(language);
+  if (!found) {
+    found = grammarOf(language);
+    grammars.set(language, found);
+  }
+  return found;
+}
+
+/* "all day" */
+
+function readAllDay(g: Grammar, reading: Reading): void {
+  for (const { start, end } of matches(g.allDay, reading.masked)) {
+    claim(reading, { kind: "allDay", start, end });
+  }
+}
+
+function readRepeats(g: Grammar, reading: Reading): void {
+  for (const [pattern, read] of g.repeats) {
     for (const { start, end, groups } of matches(pattern, reading.masked)) {
       const repeat = read(groups);
       if (repeat) claim(reading, { kind: "repeat", start, end, words: repeat });
@@ -256,61 +532,20 @@ function readRepeats(reading: Reading): void {
   }
 }
 
-/* Lengths */
-
-const ABOUT = "(?:(?:about|around|roughly|approximately|approx\\.?)\\s+)?";
-const HOURS = "h|hrs?|hours?";
-const MINUTES = "m|mins?|minutes?";
-// Without "for", "in 30 min" and "2 hours later" say when, not how long.
-const WHEN_BEFORE =
-  /(?:^|[^\p{L}\p{N}_])(?:in|within|every|each|after|before|than|under|over)\s*$/iu;
-const WHEN_AFTER = /^\s*(?:ago|later|after|before|from\s+now|away|left)(?![\p{L}\p{N}_])/iu;
-
-function hoursOf(text: string | undefined): number {
-  const whole = text?.replace("½", "").trim();
-  return (whole ? Number(whole) : 0) + (text?.includes("½") ? 0.5 : 0);
-}
-
-// Each pattern's first group is "for", which only some may leave out.
-const LENGTHS: [RegExp, (groups: Groups) => number][] = [
-  [words(`(for\\s+)${ABOUT}(?:(?:an?|one)\\s+)?hour\\s+and\\s+a\\s+half`), () => 90],
-  [words(`(for\\s+)${ABOUT}(?:half\\s+an?\\s+hour|an?\\s+half\\s+hour|half\\s+hour)`), () => 30],
-  [
-    words(`(for\\s+)${ABOUT}(an?|${NUMBER_WORDS.join("|")})\\s+(hours?|minutes?)`),
-    ([, count, unit]) => (numberOf(count) ?? 0) * (unit?.toLowerCase().startsWith("h") ? 60 : 1),
-  ],
-  [
-    words(
-      `(for\\s+${ABOUT})?(\\d+(?:\\.\\d+)?\\s*½?|½)\\s*(?:${HOURS})(?:\\s*(?:and\\s+)?(\\d{1,2})\\s*(?:${MINUTES})|(\\d{2}))?`,
-    ),
-    ([, hours, minutes, attached]) => hoursOf(hours) * 60 + Number(minutes ?? attached ?? 0),
-  ],
-  [words(`(for\\s+${ABOUT})?(\\d+)\\s*(?:${MINUTES})`), ([, minutes]) => Number(minutes)],
-];
-
-function readLengths(reading: Reading): void {
-  for (const [pattern, read] of LENGTHS) {
+function readLengths(g: Grammar, reading: Reading): void {
+  for (const [pattern, read] of g.lengths) {
     for (const { start, end, groups } of matches(pattern, reading.masked)) {
       const minutes = Math.round(read(groups));
       if (!(minutes >= 1 && minutes <= DAY_MINUTES)) continue;
       const loose = !groups[0];
-      if (loose && WHEN_BEFORE.test(reading.masked.slice(0, start))) continue;
-      if (loose && WHEN_AFTER.test(reading.masked.slice(end))) continue;
+      if (loose && g.whenBefore.test(reading.masked.slice(0, start))) continue;
+      if (loose && g.whenAfter.test(reading.masked.slice(end))) continue;
       claim(reading, { kind: "length", start, end, minutes });
     }
   }
 }
 
 /* People */
-
-const MONTH_WORDS = new Set(
-  [
-    "january february march april may june july august september october november december",
-    "jan feb mar apr jun jul aug sep sept oct nov dec",
-  ]
-    .join(" ")
-    .split(" "),
-);
 
 /**
  * Lowercase without accents, one character for each one given, so positions in what was typed
@@ -324,8 +559,6 @@ function fold(text: string): string {
 }
 
 const folded = (name: string): string => fold(name.trim()).replace(/\s+/g, " ");
-const escaped = (name: string): string =>
-  name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+");
 
 /**
  * What each person can be called (ADR 0034, as `domain/people.py`): their full name, and for a
@@ -351,27 +584,27 @@ function callNames(members: readonly QuickAddMember[]): Map<string, string> {
   return names;
 }
 
-function readPeople(reading: Reading, members: readonly QuickAddMember[]): void {
+function readPeople(g: Grammar, reading: Reading, members: readonly QuickAddMember[]): void {
   const called = callNames(members);
   if (!called.size) return;
   // Longest first, so "Ana Sofia" wins over "Ana".
   const names = [...called.keys()]
     .sort((a, b) => b.length - a.length)
-    .map(escaped)
+    .map(escape)
     .join("|");
-  const name = `(?:${names})(?:['’]s)?`;
-  const group = words(`((?:with|w/)\\s*)?(${name}(?:(?:${AND})${name})*)`);
-  const one = words(`(${names})(['’]s)?`);
+  const name = `(?:${names})(?:['\\u2019]s)?`;
+  const group = words(`(${g.with}\\s*)?(${name}(?:(?:${g.and})${name})*)`);
+  const one = words(`(${names})(['\\u2019]s)?`);
   // Matched without accents; the positions are the typed text's.
   const text = fold(reading.masked);
   for (const { start, end, groups } of matches(group, text)) {
     const said = matches(one, groups[1] ?? "");
     const first = folded(said[0]?.groups[0] ?? "");
     // A month's name beside a number is a date: "May 5", "5 May".
-    if (said.length === 1 && MONTH_WORDS.has(first)) {
+    if (said.length === 1 && g.months.has(first)) {
       const after = text.slice(end);
       const before = text.slice(0, start);
-      if (/^\s*\d/.test(after) || /\d(?:st|nd|rd|th)?\s+(?:of\s+)?$/i.test(before)) continue;
+      if (/^\s*\d/.test(after) || g.dateBefore.test(before)) continue;
     }
     const spoken = new Set(said.map((match) => called.get(folded(match.groups[0] ?? ""))));
     const ids = members.filter((member) => spoken.has(member.id)).map(({ id }) => id);
@@ -382,21 +615,13 @@ function readPeople(reading: Reading, members: readonly QuickAddMember[]): void 
 
 /* Casual day words */
 
-const DAY_WORDS = words(
-  "(?:the\\s+)?day\\s+after\\s+(?:tomorrow|tmrw)|today|tonight|tomorrow|tmrw|tmr",
-);
-// "on the 9th", but not "the 4th of July", which chrono reads whole.
-const NTH_DAY = words(
-  "(?:on\\s+)?the\\s+(\\d{1,2})(?:st|nd|rd|th)(?!\\s+(?:of\\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))",
-);
-
-function readDayWords(reading: Reading, today: string): void {
-  for (const { start, end } of matches(DAY_WORDS, reading.masked)) {
-    const word = reading.text.slice(start, end).toLowerCase();
-    const ahead = word.includes("after") ? 2 : word === "today" || word === "tonight" ? 0 : 1;
+function readDayWords(g: Grammar, reading: Reading, today: string): void {
+  for (const { start, end } of matches(g.dayWords, reading.masked)) {
+    const word = reading.text.slice(start, end).toLowerCase().replace(/\s+/g, " ");
+    const ahead = g.dayAfterTomorrow.has(word) ? 2 : g.today.has(word) ? 0 : 1;
     claim(reading, { kind: "day", start, end, day: addDays(today, ahead), source: "word" });
   }
-  for (const { start, end, groups } of matches(NTH_DAY, reading.masked)) {
+  for (const { start, end, groups } of matches(g.nthDay, reading.masked)) {
     const day = nextOnDate(today, Number(groups[0]));
     if (day) claim(reading, { kind: "day", start, end, day, source: "date" });
   }
@@ -404,35 +629,22 @@ function readDayWords(reading: Reading, today: string): void {
 
 /* Dates and times, read by chrono */
 
-// chrono's parsers without its casual words ("tonight", "this evening") or its refiners: which
-// day a weekday means, the year of a date and how results combine are decided here instead.
-const reader = new chrono.Chrono({
-  parsers: chrono.en.configuration.createConfiguration(false, false).parsers,
-  refiners: [],
-});
-
-// Words chrono reads once respelled, at the same length so every offset still holds.
-const RESPELL: [RegExp, (word: string) => string][] = [
-  [words("(?:12\\s*)?(?:noon|midday)"), () => "12pm"],
-  [words("(?:12\\s*)?midnight"), () => "12am"],
-  [words("tues|weds"), (word) => word.slice(0, 3)],
-  [/()@\s/gu, () => "at"], // "soccer @ 4"
-];
-const WEEK_PARTS = words("week(?:end|day)s?");
-// A time after these ends something rather than starting it: "Library until 5pm".
-const NOT_A_START_TIME = /(?:^|[^\p{L}\p{N}_])(?:until|till|til|before|after)\s*$/iu;
 const DATE_PARTS: chrono.Component[] = ["day", "month", "weekday", "year"];
-const AFTER_THE = /(?:^|[^\p{L}\p{N}_])the\s+$/iu;
 
 /** "Thu" is the next Thursday on or after today; "next Thu" the one in the following week. */
-function weekdayDay(result: chrono.ParsedResult, today: string, weekStartsOn: number): string {
+function weekdayDay(
+  g: Grammar,
+  result: chrono.ParsedResult,
+  today: string,
+  weekStartsOn: number,
+): string {
   const weekday = ((result.start.get("weekday") ?? 1) + 6) % 7; // chrono counts from Sunday
   const ahead = (weekday - weekdayOf(today) + 7) % 7;
-  if (/\bnext\b/i.test(result.text)) {
+  if (g.next.test(result.text)) {
     const nextWeek = addDays(weekOf(today, weekStartsOn)[0] ?? today, 7);
     return addDays(nextWeek, (weekday - weekStartsOn + 7) % 7);
   }
-  if (/\b(?:last|past)\b/i.test(result.text)) return addDays(today, ahead - 7);
+  if (g.last.test(result.text)) return addDays(today, ahead - 7);
   return addDays(today, ahead);
 }
 
@@ -480,24 +692,26 @@ function readClock(result: chrono.ParsedResult): { from: number; to: number | nu
   return { from, to: to === from ? null : to };
 }
 
-function readChrono(reading: Reading, today: string, weekStartsOn: number): void {
+function readChrono(g: Grammar, reading: Reading, today: string, weekStartsOn: number): void {
   let text = reading.masked;
   const respelled: Span[] = [];
-  for (const [pattern, spell] of RESPELL) {
+  for (const [pattern, spell] of g.respell) {
     for (const { start, end } of matches(pattern, text)) {
       const word = text.slice(start, end);
-      text = text.slice(0, start) + spell(word).padEnd(word.length) + text.slice(end);
+      const spelled = spell(word);
+      if (spelled.length > word.length) continue; // it would move every offset after it
+      text = text.slice(0, start) + spelled.padEnd(word.length) + text.slice(end);
       respelled.push({ start, end });
     }
   }
   // "weekend" and "weekday" on their own stay in the title rather than meaning a Saturday.
-  for (const span of matches(WEEK_PARTS, text)) text = hide(text, span);
+  for (const span of matches(g.weekParts, text)) text = hide(text, span);
 
   const [year = 1970, month = 1, date = 1] = today.split("-").map(Number);
   // Noon on the household's today in the device's zone: chrono only takes the date from it.
   const reference = new Date(year, month - 1, date, 12);
   const kept: chrono.ParsedResult[] = [];
-  for (const result of reader.parse(text, reference)) {
+  for (const result of g.reader.parse(text, reference)) {
     if (result.text.includes(HIDDEN) || result.start.tags().has("result/relativeDate")) continue;
     if (/^\d*(?:\.\d*)?$/.test(result.text.replace(/\s/g, ""))) continue; // a bare "20"
     // Of two readings that overlap, keep the longer, as chrono's own refiner does.
@@ -521,15 +735,15 @@ function readChrono(reading: Reading, today: string, weekStartsOn: number): void
     const parts = result.start;
     const hasDate = DATE_PARTS.some((part) => parts.isCertain(part));
     if (parts.isCertain("hour")) {
-      if (hasDate || NOT_A_START_TIME.test(before)) continue;
+      if (hasDate || g.notAStartTime.test(before)) continue;
       claim(reading, { kind: "time", ...span, ...readClock(result) });
     } else if (hasDate && !result.end) {
       if (parts.isCertain("weekday") && !parts.isCertain("day")) {
         // "Fun in the sun" and "SAT prep" don't name days.
-        const short = /\b(?:mon|tue|wed|thu|fri|sat|sun)\b/i.exec(result.text)?.[0];
+        const short = g.shortWeekday.exec(result.text)?.[2];
         const acronym = short === short?.toUpperCase() && /\p{Ll}/u.test(reading.text);
-        if ((short !== undefined && acronym) || AFTER_THE.test(before)) continue;
-        const day = weekdayDay(result, today, weekStartsOn);
+        if ((short !== undefined && acronym) || g.afterThe.test(before)) continue;
+        const day = weekdayDay(g, result, today, weekStartsOn);
         claim(reading, { kind: "day", ...span, day, source: "weekday" });
       } else if (parts.isCertain("day") && parts.isCertain("month")) {
         // A month alone ("March 2027") names no day.
@@ -543,19 +757,14 @@ function readChrono(reading: Reading, today: string, weekStartsOn: number): void
 
 /* Settling the days */
 
-// A day after these ends something rather than starting it: "every Tue until Dec 31".
-const NOT_A_START_DAY =
-  /(?:^|[^\p{L}\p{N}_])(?:until|till|til|through|thru|ending|ends|before|after)\s*$/iu;
 const BESIDE = /^[\s,]*$/;
-// What joins the days of a list or a range: "Mon/Wed/Fri", "Sat and Sun", "Oct 20 - Oct 23".
-const BETWEEN_DAYS = /^\s*(?:,\s*)?(?:and|or|&|\/|\+|-|–|—|to|through|thru|until|till)?\s*$/i;
 
 /**
  * Days said together become one: "Thu, Oct 9" is the date and its weekday, "tomorrow Thu" the
  * same day twice. Several different days ("Mon/Wed/Fri", "Sat and Sun", "Oct 20 - Oct 23") are
  * no single day, so they stay in the title, as does a day that ends something.
  */
-function settleDays(reading: Reading): void {
+function settleDays(g: Grammar, reading: Reading): void {
   const { text } = reading;
   const days: Extract<Finding, { kind: "day" }>[] = [];
   for (const finding of reading.findings) if (finding.kind === "day") days.push(finding);
@@ -585,18 +794,16 @@ function settleDays(reading: Reading): void {
   const settled = joined.filter((day, index) => {
     const previous = joined[index - 1];
     const next = joined[index + 1];
-    if (previous && BETWEEN_DAYS.test(text.slice(previous.end, day.start))) return false;
-    if (next && BETWEEN_DAYS.test(text.slice(day.end, next.start))) return false;
-    return !NOT_A_START_DAY.test(text.slice(0, day.start));
+    if (previous && g.betweenDays.test(text.slice(previous.end, day.start))) return false;
+    if (next && g.betweenDays.test(text.slice(day.end, next.start))) return false;
+    return !g.notAStartDay.test(text.slice(0, day.start));
   });
   reading.findings = [...reading.findings.filter((finding) => finding.kind !== "day"), ...settled];
 }
 
 /* The draft */
 
-// Words that only join a title to what was taken out of it: "Dentist on [Oct 9]".
-const DANGLING = new Set("at on for with and from every each starting beginning the".split(" "));
-const CONNECTORS = "[\\s,;:&+@/\\-–—]+";
+const CONNECTORS = "[\\s,;:&+@/\\-\\u2013\\u2014]+";
 const LEADING_MARKS = new RegExp(`^${CONNECTORS}`, "u");
 const TRAILING_MARKS = new RegExp(`${CONNECTORS}$`, "u");
 const FIRST_WORD = /^[\p{L}\p{N}'’]+/u;
@@ -605,26 +812,26 @@ const LAST_WORD = /[\p{L}\p{N}'’]+$/u;
 const tidy = (text: string): string => text.replace(/\s+/g, " ").trim();
 
 /** A piece of the title between found words, without joining words left hanging at its ends. */
-function trimPiece(piece: string): string {
+function trimPiece(g: Grammar, piece: string): string {
   let rest = piece;
   let previous: string;
   do {
     previous = rest;
     rest = rest.replace(TRAILING_MARKS, "");
     const last = LAST_WORD.exec(rest)?.[0];
-    if (last && DANGLING.has(last.toLowerCase())) rest = rest.slice(0, -last.length);
+    if (last && g.dangling.has(last.toLowerCase())) rest = rest.slice(0, -last.length);
   } while (rest !== previous);
   do {
     previous = rest;
     rest = rest.replace(LEADING_MARKS, "");
     const first = FIRST_WORD.exec(rest)?.[0];
-    if (first?.toLowerCase() === "and") rest = rest.slice(first.length);
+    if (first && g.joins.has(first.toLowerCase())) rest = rest.slice(first.length);
   } while (rest !== previous);
   // A lone "!" or "." left from "Party Sat!" goes too.
   return /[\p{L}\p{N}]/u.test(rest) ? rest : "";
 }
 
-function titleOf(text: string, cuts: readonly Span[]): string {
+function titleOf(g: Grammar, text: string, cuts: readonly Span[]): string {
   const pieces: string[] = [];
   let at = 0;
   for (const cut of cuts) {
@@ -632,25 +839,25 @@ function titleOf(text: string, cuts: readonly Span[]): string {
     at = cut.end;
   }
   pieces.push(text.slice(at));
-  return tidy(pieces.map(trimPiece).join(" "));
+  return tidy(pieces.map((piece) => trimPiece(g, piece)).join(" "));
 }
 
-function hasTitleWord(text: string): boolean {
+function hasTitleWord(g: Grammar, text: string): boolean {
   const found = text.match(/[\p{L}\p{N}][\p{L}\p{N}'’]*/gu) ?? [];
-  return found.some((word) => !DANGLING.has(word.toLowerCase()));
+  return found.some((word) => !g.dangling.has(word.toLowerCase()));
 }
 
 /** "Mia's recital", "Take Leo to soccer": the name is part of the title too. */
-function inTitle(text: string, used: readonly Finding[], index: number): boolean {
+function inTitle(g: Grammar, text: string, used: readonly Finding[], index: number): boolean {
   const finding = used[index];
   if (finding?.kind !== "who") return false;
   if (finding.possessive) return true;
   const before = text.slice(used[index - 1]?.end ?? 0, finding.start);
   const after = text.slice(finding.end, used[index + 1]?.start ?? text.length);
-  return hasTitleWord(before) && hasTitleWord(after);
+  return hasTitleWord(g, before) && hasTitleWord(g, after);
 }
 
-function draftOf(reading: Reading, ctx: QuickAddContext, today: string): QuickAddDraft {
+function draftOf(g: Grammar, reading: Reading, ctx: QuickAddContext, today: string): QuickAddDraft {
   const { text } = reading;
   const ordered = [...reading.findings].sort((a, b) => a.start - b.start);
   const first = <K extends UnderstoodKind>(kind: K) =>
@@ -715,9 +922,9 @@ function draftOf(reading: Reading, ctx: QuickAddContext, today: string): QuickAd
   }
 
   const named = new Set(used.flatMap((finding) => (finding.kind === "who" ? finding.ids : [])));
-  const cuts = used.filter((_, index) => !inTitle(text, used, index));
+  const cuts = used.filter((_, index) => !inTitle(g, text, used, index));
   return {
-    title: titleOf(text, cuts),
+    title: titleOf(g, text, cuts),
     day,
     allDay: !time,
     start: time ? clock(time.from) : null,
@@ -733,15 +940,17 @@ function draftOf(reading: Reading, ctx: QuickAddContext, today: string): QuickAd
   };
 }
 
+/** The line read as a draft, with the page's language's words. */
 export function parseQuickAdd(text: string, ctx: QuickAddContext): QuickAddDraft {
+  const g = grammar();
   const today = zonedParts(ctx.now, ctx.zone).day;
   const reading: Reading = { text, masked: text, findings: [] };
-  readAllDay(reading);
-  readRepeats(reading);
-  readLengths(reading);
-  readPeople(reading, ctx.members);
-  readDayWords(reading, today);
-  readChrono(reading, today, ctx.weekStartsOn);
-  settleDays(reading);
-  return draftOf(reading, ctx, today);
+  readAllDay(g, reading);
+  readRepeats(g, reading);
+  readLengths(g, reading);
+  readPeople(g, reading, ctx.members);
+  readDayWords(g, reading, today);
+  readChrono(g, reading, today, ctx.weekStartsOn);
+  settleDays(g, reading);
+  return draftOf(g, reading, ctx, today);
 }

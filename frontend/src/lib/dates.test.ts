@@ -3,12 +3,24 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   addDays,
   clockSuffix,
+  dayNumber,
   formatClock,
   formatTime,
+  formatWallRange,
+  formatWallTime,
+  longDate,
+  longMonthDay,
+  longWeekday,
+  monthDay,
+  monthDayYear,
   monthGrid,
+  monthYear,
   orderedWeekdays,
   rollingWeek,
   setDatePreferences,
+  shortDate,
+  shortMonth,
+  shortWeekday,
   weekOf,
   weekSpan,
   weekdayLong,
@@ -16,9 +28,11 @@ import {
   weekdayShort,
   zonedParts,
 } from "./dates";
+import { setLanguage } from "./lang";
 
-afterEach(() => {
+afterEach(async () => {
   setDatePreferences({ timezone: "UTC", timeFormat: "12h" });
+  await setLanguage("en", { remember: false });
 });
 
 describe("calendar days", () => {
@@ -116,6 +130,115 @@ describe("weekdays in the household's order", () => {
     ]);
     expect([0, 3, 6].map(weekdayLong)).toEqual(["Monday", "Thursday", "Sunday"]);
     expect(weekdayShort(weekdayOf("2026-10-07"))).toBe("Wed");
+  });
+});
+
+describe("the words for days and times, in English (UX §2)", () => {
+  it("names a day as it always has", () => {
+    const day = "2026-10-07";
+    expect([shortWeekday(day), longWeekday(day), dayNumber(day)]).toEqual([
+      "Wed",
+      "Wednesday",
+      "7",
+    ]);
+    expect([monthDay(day), longMonthDay(day), shortMonth(day)]).toEqual([
+      "Oct 7",
+      "October 7",
+      "Oct",
+    ]);
+    expect([shortDate(day), longDate(day), monthYear(day)]).toEqual([
+      "Wed, Oct 7",
+      "Wednesday, October 7",
+      "October 2026",
+    ]);
+    expect(monthDayYear("2027-01-15")).toBe("Jan 15, 2027");
+    // Across a new year the span names no years.
+    expect(weekSpan(weekOf("2026-12-30", 0))).toBe("Dec 28 – Jan 3");
+  });
+
+  it("writes a wall time and a range as it always has", () => {
+    setDatePreferences({ timezone: "America/New_York", timeFormat: "12h" });
+    expect(formatWallTime("2026-10-08T14:30:00")).toBe("2:30 PM");
+    expect(formatWallTime("2026-10-08T00:05:00")).toBe("12:05 AM");
+    expect(formatWallTime("2026-10-08T16:00:00", { compact: true })).toBe("4 PM");
+    expect(formatWallTime("2026-10-08T16:30:00", { compact: true })).toBe("4:30 PM");
+    expect(formatWallTime("2026-10-08T09:41:00", { period: false })).toBe("9:41");
+    expect(formatWallRange("2026-10-08T16:00:00", "2026-10-08T17:00:00")).toBe("4:00–5:00 PM");
+    expect(formatWallRange("2026-10-08T11:30:00", "2026-10-08T12:30:00")).toBe(
+      "11:30 AM – 12:30 PM",
+    );
+    // No length, and past midnight: both times, sharing PM when they can.
+    expect(formatWallRange("2026-10-08T16:00:00", "2026-10-08T16:00:00")).toBe("4:00–4:00 PM");
+    expect(formatWallRange("2026-10-08T23:00:00", "2026-10-09T01:00:00")).toBe(
+      "11:00 PM – 1:00 AM",
+    );
+    setDatePreferences({ timezone: "America/New_York", timeFormat: "24h" });
+    expect(formatWallTime("2026-10-08T09:05:00")).toBe("09:05");
+    expect(formatWallTime("2026-10-08T16:00:00", { compact: true })).toBe("16:00");
+    expect(formatWallRange("2026-10-08T16:00:00", "2026-10-08T17:00:00")).toBe("16:00–17:00");
+    expect(formatWallRange("2026-10-08T23:00:00", "2026-10-09T01:00:00")).toBe("23:00–01:00");
+  });
+});
+
+describe("the words for days and times, in another language (ADR 0043)", () => {
+  it("names a day as Intl does in Spanish", async () => {
+    await setLanguage("es", { remember: false });
+    const day = "2026-10-07";
+    expect([shortWeekday(day), longWeekday(day), dayNumber(day)]).toEqual([
+      "mié",
+      "miércoles",
+      "7",
+    ]);
+    expect([monthDay(day), longMonthDay(day), shortMonth(day)]).toEqual([
+      "7 oct",
+      "7 de octubre",
+      "oct",
+    ]);
+    expect([shortDate(day), longDate(day), monthYear(day)]).toEqual([
+      "mié, 7 oct",
+      "miércoles, 7 de octubre",
+      "octubre de 2026",
+    ]);
+    expect(monthDayYear("2027-01-15")).toBe("15 ene 2027");
+    expect([0, 1, 2, 3, 4, 5, 6].map(weekdayShort)).toEqual([
+      "lun",
+      "mar",
+      "mié",
+      "jue",
+      "vie",
+      "sáb",
+      "dom",
+    ]);
+    expect(weekdayLong(6)).toBe("domingo");
+    // The month where Spanish puts it, and the dash as UX §2 writes one.
+    expect(weekSpan(weekOf("2026-10-07", 6))).toBe("4–10 oct");
+    expect(weekSpan(weekOf("2026-10-30", 0))).toBe("26 oct – 1 nov");
+  });
+
+  it("writes times in Spanish, on the household's clock, with Latin digits", async () => {
+    await setLanguage("es", { remember: false });
+    setDatePreferences({ timezone: "America/New_York", timeFormat: "12h" });
+    const moment = new Date(Date.UTC(2026, 9, 7, 20, 41));
+    expect([formatTime(moment), formatClock(moment), clockSuffix(moment)]).toEqual([
+      "4:41 p. m.",
+      "4:41",
+      "p. m.",
+    ]);
+    expect(formatWallTime("2026-10-08T16:00:00", { compact: true })).toBe("4 p. m.");
+    expect(formatWallTime("2026-10-08T09:41:00", { period: false })).toBe("9:41");
+    expect(formatWallRange("2026-10-08T16:00:00", "2026-10-08T17:00:00")).toBe("4:00–5:00 p. m.");
+    expect(formatWallRange("2026-10-08T11:30:00", "2026-10-08T12:30:00")).toBe(
+      "11:30 a. m. – 12:30 p. m.",
+    );
+    setDatePreferences({ timezone: "Europe/Lisbon", timeFormat: "24h" });
+    const later = new Date(Date.UTC(2026, 9, 7, 20, 5));
+    expect([formatTime(later), formatClock(later), clockSuffix(later)]).toEqual([
+      "21:05",
+      "21:05",
+      "",
+    ]);
+    expect(formatWallTime("2026-10-08T09:05:00")).toBe("9:05");
+    expect(formatWallRange("2026-10-08T16:00:00", "2026-10-08T17:00:00")).toBe("16:00–17:00");
   });
 });
 

@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   completeLanguages,
+  formatNumber,
   getLanguage,
   HOUSEHOLD_KEY,
+  intlLocale,
   isKey,
   OVERRIDE_KEY,
   setLanguage,
@@ -13,6 +15,7 @@ import {
   t,
   tRich,
   useT,
+  wordList,
   type Key,
 } from "./lang";
 
@@ -127,6 +130,28 @@ describe("the page's language", () => {
     expect(result.current("app.action.done")).toBe("Done");
     await act(() => setLanguage("es"));
     expect(result.current("app.action.done")).toBe("Listo");
+  });
+});
+
+describe("dates, numbers and word lists (T7)", () => {
+  it("writes numbers in the page's language, with Latin digits", async () => {
+    expect(intlLocale()).toBe("en-US-u-nu-latn");
+    expect(formatNumber(1234.5)).toBe("1,234.5");
+    await setLanguage("es");
+    expect(intlLocale()).toBe("es-ES-u-nu-latn");
+    expect(formatNumber(1234.5)).toBe("1234,5");
+    expect(formatNumber(12345)).toBe("12.345");
+  });
+
+  it("reads a grammar's word list from the language's file, English where it has none", async () => {
+    expect(wordList("quickadd.words.every")).toEqual(["every", "each"]);
+    expect(wordList("quickadd.words.when_after")).toContain("from now");
+    await setLanguage("es");
+    expect(wordList("quickadd.words.today")).toEqual(["hoy", "esta noche"]);
+    expect(wordList("quickadd.words.every")).toEqual(["every", "each"]);
+    // The pseudo language types English, not its own accented words.
+    await setLanguage("pseudo");
+    expect(wordList("quickadd.words.today")).toEqual(["today", "tonight"]);
   });
 });
 

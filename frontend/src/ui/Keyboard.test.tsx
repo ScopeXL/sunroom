@@ -3,6 +3,8 @@ import { useState } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { keyboard, watchKeyboardFields } from "../lib/keyboard";
+import { KEYBOARDS } from "../lib/keyboards";
+import { LANGUAGES, setLanguage } from "../lib/lang";
 import { KeyboardHost } from "./Keyboard";
 
 function Field({ onSubmit = () => undefined }: { onSubmit?: () => void }) {
@@ -189,6 +191,41 @@ describe("the on-screen keyboard (UX §1)", () => {
     press("Delete");
     press("Delete");
     expect(box.value).toBe("Hi");
+  });
+
+  it("lays out the page's language's keys: Spanish has ñ after l, and ¿ ¡ (ADR 0043)", async () => {
+    await act(() => setLanguage("es", { remember: false }));
+    try {
+      render(
+        <>
+          <Field />
+          <KeyboardHost rail="left" />
+        </>,
+      );
+      const input = screen.getByLabelText<HTMLInputElement>("Name");
+      act(() => {
+        input.focus();
+      });
+      const keys = screen.getByRole("group", { name: "On-screen keyboard" });
+      const labels = [...keys.querySelectorAll("button")].map((key) =>
+        key.getAttribute("aria-label"),
+      );
+      expect(labels.slice(10, 20)).toEqual(["A", "S", "D", "F", "G", "H", "J", "K", "L", "Ñ"]);
+      press("Ñ");
+      press("o");
+      press("Numbers and symbols");
+      press("¿");
+      press("¡");
+      expect(input.value).toBe("Ño¿¡");
+    } finally {
+      await act(() => setLanguage("en", { remember: false }));
+    }
+  });
+
+  it("has a layout for every language's keyboard in the registry", () => {
+    for (const { keyboard: layout } of Object.values(LANGUAGES)) {
+      expect(KEYBOARDS, layout).toHaveProperty([layout]);
+    }
   });
 
   it("stays down while a physical keyboard is in use", () => {

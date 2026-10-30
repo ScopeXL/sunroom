@@ -122,7 +122,7 @@ export function DayView({
               <span />
               <div className="flex items-center gap-3">
                 <span className="now-label font-semibold whitespace-nowrap text-sun-ink">
-                  {t("calendar.board.now", { time: formatWallTime(now).replace(/ [AP]M$/, "") })}
+                  {t("calendar.board.now", { time: formatWallTime(now, { period: false }) })}
                 </span>
                 <span className="now-glow h-0.5 flex-1 rounded-full bg-sun-ink" />
               </div>

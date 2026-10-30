@@ -15,6 +15,7 @@
 import type { components } from "../../api/schema";
 import {
   monthDay,
+  monthDayYear,
   orderedWeekdays,
   shortMonth,
   weekdayLong,
@@ -279,8 +280,7 @@ export function sameRepeat(a: Repeat | null, b: Repeat | null): boolean {
 
 /** "Dec 31", or "Jan 15, 2027" in another year than the start day's: the day a repeat ends. */
 function untilDate(until: string, startDay: string): string {
-  const sameYear = until.slice(0, 4) === startDay.slice(0, 4);
-  return `${monthDay(until)}${sameYear ? "" : `, ${until.slice(0, 4)}`}`;
+  return until.slice(0, 4) === startDay.slice(0, 4) ? monthDay(until) : monthDayYear(until);
 }
 
 /** The start day's place among its weekdays in its month, as the messages' select says it:

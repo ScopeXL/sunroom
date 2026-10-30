@@ -10,10 +10,11 @@ import { Button } from "../../ui/Button";
 import { LiveStatusIcon } from "../../ui/LiveStatus";
 import { useShell } from "../../ui/shell";
 import { Switch } from "../../ui/Switch";
+import { oneDecimal } from "./backupWords";
 import { Group, Row, Text } from "./parts";
 
 function gigabytes(bytes: number): string {
-  return t("settings.about.size.gb", { n: (bytes / 1024 ** 3).toFixed(1) });
+  return t("settings.about.size.gb", { n: oneDecimal(bytes / 1024 ** 3) });
 }
 
 /** Settings → About (UX §4): version, storage, how this device reaches Sunroom, and the rest. */

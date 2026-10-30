@@ -184,7 +184,7 @@ backend/src/sunroom/
 frontend/src/
   main.tsx router.tsx sw.ts
   api/         openapi.json, schema.d.ts (generated), client.ts, keys.ts
-  lib/         lang (t, useT, the page's language: ADR 0043), events, eventRouter, store, toast, motion (helpers over `motion`), wakeLock, platform, idle (screensaver timer), theme (data-theme + auto schedule), keyboard (on-screen keyboard context), time (a ticking `now` store), night (sleep and the evening dim), dimmer (who dims: the page or the Pi's helper), fly ("+2" to the person's avatar), longPress
+  lib/         lang (t, useT, the page's language: ADR 0043), dates (days and times, written by `Intl` in the page's language), events, eventRouter, store, toast, motion (helpers over `motion`), wakeLock, platform, idle (screensaver timer), theme (data-theme + auto schedule), keyboard (on-screen keyboard context), keyboards (its layouts, one per language), time (a ticking `now` store), night (sleep and the evening dim), dimmer (who dims: the page or the Pi's helper), fly ("+2" to the person's avatar), longPress
   ui/          Button, IconButton, Sheet (native dialog), Chip, PersonBadge, Avatar, Segmented, Skeleton, EmptyState, Toast, Keyboard, Celebration (canvas), ProgressRing, DatePicker, TimePicker, ColorPicker
   shell/       DisplayShell (kiosk: rail + header + board + today panel), Header + roomHeader (the room's name and controls, a store: ADR 0029; a rail room's name is for screen readers only, ADR 0030), PhoneShell (tab bar), nav.ts (built from the plugin registry), Screensaver
   features/
@@ -345,6 +345,13 @@ The display's panel order lives in `kiosk_panels` rows (seeded with `calendar.we
 | Timed | UTC instants + `tzid` | The rule runs on naive local datetimes in `tzid` (RFC 5545: "9:00 every day" stays 9:00 across DST); each occurrence is re-localized to UTC; the duration is an absolute delta | In the household zone |
 | All-day | ISO dates, end exclusive | On dates, no zone | The same dates in any zone; multi-day spans never shift |
 | Floating (from ICS) | `tzid` = the household zone at import, `floating = 1` | As timed | Re-imported on a full sync if the household zone changes |
+
+**Shown** in the household zone and its 12- or 24-hour choice, written by `Intl` in the page's
+language (the registry's locale, ADR 0043; `en-US` for English) with every digit Latin, so the
+digit boxes hold (ADR 0021): `lib/dates.ts` is the only place a day or a time becomes words.
+Reading stays English's: `zonedParts` takes a moment apart with an `en-US` formatter whatever the
+language. Quick add reads the language too: its grammar's words are `quickadd.words.*` in
+`lang/`, and chrono reads with the registry's `chrono` locale (UX §4, docs/LANGUAGES.md).
 
 Validation on write: end after start; `tzid` loads in `zoneinfo`; `rrule` parses strictly with `FREQ` in daily/weekly/monthly/yearly, `INTERVAL ≥ 1`, `COUNT ≤ 1000`, `UNTIL ≥ DTSTART`; secondly/minutely/hourly rules are refused (422 `rrule_unsupported`).
 

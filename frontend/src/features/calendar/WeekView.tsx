@@ -304,7 +304,7 @@ function NowLine({ now, slot }: { now: string; slot: number }) {
       }`}
     >
       <span className="now-label font-semibold whitespace-nowrap text-sun-ink">
-        {t("calendar.board.now", { time: formatWallTime(now).replace(/ [AP]M$/, "") })}
+        {t("calendar.board.now", { time: formatWallTime(now, { period: false }) })}
       </span>
       <span className="now-glow h-0.5 w-full rounded-full bg-sun-ink portrait:h-auto portrait:w-0.5 portrait:self-stretch" />
     </div>

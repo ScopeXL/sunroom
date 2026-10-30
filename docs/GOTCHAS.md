@@ -347,4 +347,16 @@ size limit.
   wait with `settled()`, never `networkidle`.
 - Sentences outside JSX (`lib/upload.ts`'s refusals) slip past the JSX-only lint; the pseudo check
   or a grep for `"[A-Z][a-z]+ ` in `.ts` finds them.
+- `Intl`'s `formatRange` puts thin spaces around its dash ("Oct 4 – 10") and both years across a
+  new year's: `lib/dates`' `range()` writes UX §2's dash itself, and `weekSpan` joins two months'
+  ends as two `monthDay`s. `formatRange` also drops an equal end and spells out the dates of an
+  end on another day, so `formatWallRange` writes those two cases itself.
+- A grammar's words can't come through `t()`: the pseudo language would accent them. `wordList`
+  reads a list as written, and the pseudo language reads English's.
+- Quick add stopped reading "Mia’s" after a few thousand parses in one page, even with every JIT
+  tier off: V8 14.6 (Node 26.10) had cut the ’ in a `new RegExp` pattern built at run time to one
+  byte (0x19), while the same pattern built again at that moment was right. Build such patterns
+  from ASCII: quick add's `escape` writes every character past ASCII as `\u{…}`, and its fixed
+  patterns write ’ as `\u2019`. A test that loops a parser thousands of times finds it; one parse
+  doesn't.
 

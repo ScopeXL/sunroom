@@ -534,7 +534,7 @@ function NowMinute({ y, now }: { y: number; now: string }) {
           y < 32 ? "top-1.5" : "bottom-1.5"
         }`}
       >
-        {t("calendar.board.now", { time: formatWallTime(now).replace(/ [AP]M$/, "") })}
+        {t("calendar.board.now", { time: formatWallTime(now, { period: false }) })}
       </span>
     </div>
   );

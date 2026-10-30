@@ -2,5 +2,8 @@
   "app.action.cancel": "Cancelar",
   "app.action.done": "Listo",
   "app.action.next": "Siguiente",
+  "quickadd.words.day_after_tomorrow": "pasado mañana",
+  "quickadd.words.today": "hoy|esta noche",
+  "quickadd.words.tomorrow": "mañana",
   "settings.household.language.label": "Idioma"
 }

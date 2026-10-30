@@ -4,7 +4,7 @@
  * are lang/en.json's (ADR 0043).
  */
 import { formatTime } from "../../lib/dates";
-import { t } from "../../lib/lang";
+import { formatNumber, t } from "../../lib/lang";
 
 interface Choice {
   id: string;
@@ -23,9 +23,9 @@ interface Choices {
   tags: readonly Choice[];
 }
 
-/** "1,000" */
+/** "1,000", as the page's language writes it. */
 export function count(value: number): string {
-  return value.toLocaleString("en-US");
+  return formatNumber(value);
 }
 
 /** "Mia", "Mia or Leo", "Mia, Leo or Sam". */
