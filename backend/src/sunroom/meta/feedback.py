@@ -21,10 +21,11 @@ from sunroom.core.netguard import OutboundError
 from sunroom.core.version import build_info
 from sunroom.state import StateDep
 
-FEEDBACK_URL = ""
-"""The project's relay, filled in by the owner before a release, as `support.ts`'s Patreon link
-is. Empty: Send Feedback opens GitHub's new-issue page instead. ``SUNROOM_FEEDBACK_URL`` wins
-when it's set, and set empty it turns feedback off."""
+FEEDBACK_URL = "https://feedback.sunroom.day/"
+"""The project's relay (the website's repo keeps it): it checks the message, posts it in a private
+channel of the Sunroom Discord, and holds the webhook. Public by design, as `support.ts`'s Patreon
+link is. ``SUNROOM_FEEDBACK_URL`` wins when it's set, and set empty it turns feedback off, which
+makes Send Feedback open GitHub's new-issue page instead."""
 
 ANSWER_MAX_BYTES = 64 * 1024
 

@@ -254,13 +254,23 @@ async def test_an_address_at_home_is_never_posted_to(
     assert relay.requests == []
 
 
-@pytest.mark.parametrize("configured", ["", None])
-async def test_off_without_an_address(
-    data_dir: Path, clock: FakeClock, relay: FakeRelay, configured: str | None
+async def test_unset_means_the_projects_relay(
+    data_dir: Path, clock: FakeClock, relay: FakeRelay
 ) -> None:
-    """Empty turns it off; unset is the project's relay, which this build doesn't name yet."""
-    assert meta_feedback.FEEDBACK_URL == ""
-    app = build(data_dir, clock, relay, sunroom_feedback_url=configured)
+    assert meta_feedback.FEEDBACK_URL == "https://feedback.sunroom.day/"
+    app = build(data_dir, clock, relay, sunroom_feedback_url=None)
+    async with app.router.lifespan_context(app), client(app) as phone:
+        await run_setup(phone)
+        assert (await phone.get("/api/admin/diagnostics")).json()["feedback"] is True
+        sent = await phone.post("/api/feedback", json=IDEA, headers=CSRF)
+        assert sent.status_code == 204, sent.text
+    [request] = relay.requests
+    assert str(request.url).startswith(f"https://{PUBLIC}")  # pinned to the checked address
+    assert request.headers["host"] == "feedback.sunroom.day"
+
+
+async def test_off_when_set_empty(data_dir: Path, clock: FakeClock, relay: FakeRelay) -> None:
+    app = build(data_dir, clock, relay, sunroom_feedback_url="")
     async with app.router.lifespan_context(app), client(app) as phone:
         await run_setup(phone)
         off = await phone.post("/api/feedback", json=IDEA, headers=CSRF)

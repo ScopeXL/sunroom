@@ -6,6 +6,15 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Send Feedback goes to the people who make Sunroom again, with no account: what you write posts
+  to the project's relay (feedback.sunroom.day), which puts it in a private channel of the
+  Sunroom Discord that only the people who make Sunroom read, with Sunroom's version and nothing
+  from your calendar (PRIVACY.md). 0.17.0 opened GitHub instead, because the relay wasn't up
+  yet. Self-hosters can still turn it off with `SUNROOM_FEEDBACK_URL=` or point it at an address
+  of their own.
+
 ## [0.17.0] - 2026-10-29
 
 ### Added
