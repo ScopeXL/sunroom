@@ -308,6 +308,10 @@ size limit.
 - `getByRole("button", { name: "Eggs" })` on a phone also found the swiped row's hidden
   "Remove Eggs": Playwright's role queries don't skip `inert`. `ui/SwipeRow`'s hidden action is
   `aria-hidden` too.
+- Three laptop tests failed from November 1: `signInPhone` picked `/^Ana/`, and Coming Up beside
+  Who's using this now showed "Ana's surprise party · 40 days". The seed's countdowns move with
+  today, but Halloween stays on October 31, and Coming Up shows three. Match the whole name
+  (`^Ana(\s|$)`).
 
 ## Languages
 

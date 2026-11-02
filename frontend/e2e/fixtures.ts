@@ -119,9 +119,10 @@ export async function signInPhone(page: Page, name = "Ana"): Promise<void> {
   await page.getByLabel("Household password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign In" }).click();
   await expect(page.getByRole("heading", { name: "Who’s using this device?" })).toBeVisible();
-  // Anchored: on a laptop the Today panel beside it can name the person too ("Pizza night Ana
-  // cooks" on the seed's Fridays).
-  await page.getByRole("button", { name: new RegExp(`^${name}`) }).click();
+  // Anchored, as a whole word: on a laptop the Today panel beside it can name the person too
+  // ("Pizza night Ana cooks" on the seed's Fridays; "Ana's surprise party" in Coming Up once
+  // Halloween has gone by).
+  await page.getByRole("button", { name: new RegExp(`^${name}(\\s|$)`) }).click();
   // On a laptop the Today panel shows beside Who's using this, too: wait for the address, then
   // for the question to go. Not for "Up next", which only shows while events are still to come.
   await page.waitForURL((url) => url.pathname === "/");
