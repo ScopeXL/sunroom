@@ -6,6 +6,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-02
+
 ### Added
 
 - Settings → Household → Language: Sunroom can be shown in another language once someone
@@ -19,8 +21,6 @@ Everything that changes in Sunroom, written in plain English. The format follows
   to teach their helper this; the screen says so under Software.
 - Reinstall… under Software puts Sunroom Screen back the way the installer sets it up, for a
   screen that misbehaves; the pairing and the settings stay.
-- Behind the scenes: every word the app shows now comes from one English file, so Sunroom can be
-  translated (docs/LANGUAGES.md).
 
 ### Changed
 
@@ -29,8 +29,6 @@ Everything that changes in Sunroom, written in plain English. The format follows
   it's doing step by step, restarts the computer only when it must, and says Updated when it's
   back. If the new version doesn't start, the one before comes back. Update Now asks first, and
   the Update Sunroom Too button is gone: the update brings Sunroom along.
-- Behind the scenes: the installers let Sunroom Screen write its own start-up entries, the same
-  way an update does.
 - Holidays are named in the household's language when Sunroom has them in it for that country,
   so a family whose Sunroom speaks English sees another country's holidays in English (Spain's
   "Año Nuevo" becomes "New Year's Day"). They change at the next sync. The town search in
@@ -41,6 +39,15 @@ Everything that changes in Sunroom, written in plain English. The format follows
   from your calendar (PRIVACY.md). 0.17.0 opened GitHub instead, because the relay wasn't up
   yet. Self-hosters can still turn it off with `SUNROOM_FEEDBACK_URL=` or point it at an address
   of their own.
+- Behind the scenes: every word the app shows now comes from one English file, so Sunroom can be
+  translated; the installers let Sunroom Screen write its own start-up entries, the same way an
+  update does; and the end-to-end tests no longer trip over the sample family's countdowns once
+  Halloween has passed.
+
+### Fixed
+
+- This Screen's "Running for" says "1 hour" where it said "1 hours", and counts of a thousand or
+  more have their comma (1,000).
 
 ## [0.17.0] - 2026-10-29
 
@@ -823,5 +830,7 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 [0.16.1]: https://github.com/ScopeXL/sunroom/compare/v0.16.0...v0.16.1
 
-[Unreleased]: https://github.com/ScopeXL/sunroom/compare/v0.17.0...HEAD
 [0.17.0]: https://github.com/ScopeXL/sunroom/compare/v0.16.1...v0.17.0
+
+[Unreleased]: https://github.com/ScopeXL/sunroom/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/ScopeXL/sunroom/compare/v0.17.0...v0.18.0
