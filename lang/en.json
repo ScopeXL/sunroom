@@ -356,7 +356,7 @@
   "api.tasks.give_or_take": "Give or take at least one star.",
   "api.tasks.not_due": "It isn't due that day.",
   "api.tasks.not_enough": "{name} has {have} of {cost} stars.",
-  "api.tasks.not_enough_them": "They has {have} of {cost} stars.",
+  "api.tasks.not_enough_them": "They have {have} of {cost} stars.",
   "api.tasks.not_their_routine": "That isn't {name}'s routine.",
   "api.tasks.not_their_task": "That isn't {name}'s task.",
   "api.tasks.not_waiting": "That task isn't waiting any more.",

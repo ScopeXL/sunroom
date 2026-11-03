@@ -12,6 +12,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
   Update Now under This Screen (it named Update Sunroom Too, which went in 0.18.0).
 - Behind the scenes: Sunroom Screen's checks run on Windows again (a test couldn't load the root
   helper there), and a backend test no longer races the start-up backup.
+- A reward a child can't afford yet, asked for by several children, says "They have…" where it said
+  "They has…".
 
 ## [0.18.0] - 2026-11-02
 
