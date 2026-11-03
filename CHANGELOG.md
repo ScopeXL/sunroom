@@ -6,18 +6,17 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-11-03
+
 ### Fixed
 
 - Settings → About, on a screen that runs Sunroom itself: the line about a new version says to use
   Update Now under This Screen (it named Update Sunroom Too, which went in 0.18.0).
-- Behind the scenes: Sunroom Screen's checks run on Windows again (a test couldn't load the root
-  helper there), and a backend test no longer races the start-up backup.
 - A reward a child can't afford yet, asked for by several children, says "They have…" where it said
   "They has…".
-- Behind the scenes: a screen waiting to pair no longer writes its one-time pairing secret into the
-  server's log while it waits.
+- A screen waiting to pair no longer writes its one-time pairing secret into the server's log.
 - Behind the scenes: a new version's GitHub Release now comes last, once its image is on Docker Hub
-  and checked, so a failed upload can't leave a Release for a version Docker can't download.
+  and checked, and two automated checks were fixed.
 
 ## [0.18.0] - 2026-11-02
 
@@ -845,5 +844,7 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 [0.17.0]: https://github.com/ScopeXL/sunroom/compare/v0.16.1...v0.17.0
 
-[Unreleased]: https://github.com/ScopeXL/sunroom/compare/v0.18.0...HEAD
 [0.18.0]: https://github.com/ScopeXL/sunroom/compare/v0.17.0...v0.18.0
+
+[Unreleased]: https://github.com/ScopeXL/sunroom/compare/v0.18.1...HEAD
+[0.18.1]: https://github.com/ScopeXL/sunroom/compare/v0.18.0...v0.18.1
