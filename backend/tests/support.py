@@ -199,3 +199,16 @@ class StreamProbe:
                 await asyncio.wait_for(self._task, timeout=2.0)
             except TimeoutError:
                 self._task.cancel()
+
+
+async def startup_backup_done(app: FastAPI) -> None:
+    """Wait for the copy the app's first nightly-backup tick writes (the FakeClock's 14:00 UTC is
+    past 03:30 in the household's zone and a fresh data dir has no copy yet), which runs in a thread
+    and, when it finishes, sets ``last_success_at`` and clears ``last_error``: a test that sets
+    either first can see them overwritten mid-test."""
+    backups = state_of(app).backups
+    deadline = asyncio.get_running_loop().time() + 10.0
+    while backups.status()["busy"] or (backups.last_success_at is None and backups.due()):
+        if asyncio.get_running_loop().time() > deadline:
+            raise AssertionError("the startup backup never finished")
+        await asyncio.sleep(0.01)

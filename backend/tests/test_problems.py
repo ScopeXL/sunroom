@@ -20,7 +20,15 @@ from sunroom.plugins.context import PluginContext
 from sunroom.plugins.registry import REGISTRY
 from tests.plugins.sample import SamplePlugin
 from tests.plugins.test_manager import eventually
-from tests.support import BASE_URL, CSRF, PASSWORD, run_setup, set_pin, state_of
+from tests.support import (
+    BASE_URL,
+    CSRF,
+    PASSWORD,
+    run_setup,
+    set_pin,
+    startup_backup_done,
+    state_of,
+)
 
 PAGES = {
     "family",
@@ -67,6 +75,7 @@ async def test_a_new_household_needs_nothing(parent: httpx.AsyncClient) -> None:
 async def test_a_backup_a_week_old_and_one_that_failed(
     app: FastAPI, parent: httpx.AsyncClient, other: httpx.AsyncClient, clock: FakeClock
 ) -> None:
+    await startup_backup_done(app)
     backups = state_of(app).backups
     backups.last_success_at = clock.now() - timedelta(days=8)
     [stale] = await problems(parent)
