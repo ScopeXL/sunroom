@@ -42,14 +42,37 @@ does the rest. This page explains the pieces, and how to release without Claude.
 | Gate | `just preflight` | Not on main, uncommitted changes, behind origin, a dry-run push to GitHub fails, the newest migration has no fixture database, any check/e2e/scan failure, smoke-test failure, Docker not ready |
 | Version | `just bump <level>` | `[Unreleased]` is empty |
 | Tag | `just release-tag ["Co-Authored-By: …"]` | Anything besides `VERSION`, `CHANGELOG.md`, `released.lock`, the installers (`kiosk/install.sh`, `kiosk/install.ps1`) and Sunroom Screen's `pyproject.toml` and `uv.lock` changed since preflight. If only the push fails, run it again: it resumes |
-| GitHub Release | `just github-release` | The tag isn't on GitHub, or `gh` isn't signed in. It makes the Release (or publishes the draft the workflow made) and prints its URL; run it again any time |
 | Smoke | `just smoke-image vX.Y.Z` | The image from the tag doesn't start healthy on an empty volume with no settings, fails a probe or setup through the API, or starts on a bad volume |
 | Push | `just image` | The version already exists on Docker Hub |
 | Verify | `just image-verify` | Platforms missing, tags disagree, the pulled image fails a probe or setup on either architecture, or the image scan finds a private term |
+| GitHub Release | `just github-release` | The tag isn't on GitHub, or `gh` isn't signed in. It makes the Release (or publishes the draft the workflow made) and prints its URL; run it again any time after Verify |
 | CI | `gh run watch` on the run the push started | Never: the release is out by then. Its result goes in the report, green or the failing jobs with the run's link, and a red run is fixed in a working session, never from the deploy |
-| The Release's files | `gh run watch` on the tag's release-assets run, then `gh release view` | Never, as CI. It waits up to 10 minutes for the Release, then makes a draft of its own; until its files are up, installers and screens can't install or update to this version |
+| The Release's files | `gh run watch` on the tag's release-assets run, then `gh release view` | Never, as CI. It waits up to 10 minutes for the Release, then makes a draft of its own; until the Release is public with its files, installers and screens can't install or update to this version |
 
 Without Claude: `just release patch` runs all of it.
+
+## The GitHub Release comes last
+
+A public Release always means its image is on Docker Hub and verified, so a push or a check that
+fails never leaves a public Release for a version `docker compose pull` can't get. The image's
+build and checks don't read the Release. `release-assets.yml` doesn't depend on the order: it adds
+the files when the Release turns up, or, after ten minutes without one, to a draft of its own,
+which `just github-release` publishes.
+
+While a pushed tag has no public Release:
+
+- **Screens wait.** Sunroom Screen offers a version only when the Release's `SHA256SUMS` lists its
+  wheel.
+- **Fresh installs stop.** The one-line installers come from main, which names the new version
+  from the moment the tag is pushed, and they don't fall back to an older one: they stop at
+  "Couldn't download Sunroom Screen X.Y.Z's checksums" and say to try again in a little while.
+- **About can already name it.** Its daily check, when it's turned on, reads tags (ADR 0032).
+
+When all goes well that lasts a few minutes: the smoke test, the push and the checks. If `just
+image` or `just image-verify` stops the release, it lasts until there is a Release. Once the cause
+is fixed, run what's left by hand (`just image`, `just image-verify`, `just github-release`), not
+`just release`. A version that is on Docker Hub but fails its checks can't be pushed again, so its
+fix is the next patch release.
 
 ## GitHub's checks
 

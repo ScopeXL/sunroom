@@ -16,6 +16,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
   "They has…".
 - Behind the scenes: a screen waiting to pair no longer writes its one-time pairing secret into the
   server's log while it waits.
+- Behind the scenes: a new version's GitHub Release now comes last, once its image is on Docker Hub
+  and checked, so a failed upload can't leave a Release for a version Docker can't download.
 
 ## [0.18.0] - 2026-11-02
 

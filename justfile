@@ -288,10 +288,6 @@ bump LEVEL:
 release-tag TRAILER="":
     {{py}} scripts/release.py tag --trailer {{quote(TRAILER)}}
 
-# The tag's GitHub Release, its CHANGELOG section as the notes (release-assets.yml adds the files)
-github-release:
-    {{py}} scripts/release.py github
-
 # Build and push the multi-arch image for the current VERSION's tag
 image:
     scripts/image_build.sh
@@ -300,15 +296,19 @@ image:
 image-verify:
     scripts/image_verify.sh
 
-# The whole release without Claude: preflight, bump, tag, the GitHub Release, smoke, push, verify
+# Last, once the image is verified: the tag's GitHub Release, its CHANGELOG section as the notes
+github-release:
+    {{py}} scripts/release.py github
+
+# The whole release without Claude: preflight, bump, tag, smoke, push, verify, the GitHub Release
 release LEVEL:
     just preflight
     just bump {{LEVEL}}
     just release-tag
-    just github-release
     just smoke-image "v$(cat VERSION)"
     just image
     just image-verify
+    just github-release
 
 # ---- helpers ----------------------------------------------------------------------------------
 
