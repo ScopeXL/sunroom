@@ -27,7 +27,6 @@ import hashlib
 import io
 import json
 import os
-import pwd
 import re
 import shlex
 import shutil
@@ -288,6 +287,8 @@ def apply_system(wheel):
         return refuse("That isn't a Sunroom Screen wheel.")
     release = matched.group(1)
     user = os.environ.get("SUDO_USER", "")
+    import pwd  # here, not at the top: the tests load this file on Windows too, which has no pwd
+
     try:
         account = pwd.getpwnam(user)
     except KeyError:
