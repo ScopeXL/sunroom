@@ -169,14 +169,6 @@ for it.
 **If Portainer manages it instead** (a stack pasted from the example): update the stack with
 **Re-pull image and redeploy** switched on.
 
-**If your `docker-compose.yml` says `8080:8080`** (from before 7867 became Sunroom's port, ADR 0045),
-there's nothing to do: the image still answers on the container's old port, so the file, your
-addresses and any proxy keep working. To move when it suits you, change the line to `"7867:7867"`,
-run `docker compose up -d`, and give your devices and screens the new address. A phone's installed
-app is added again, because the port is part of its address, and a proxy pointed at `sunroom:8080`
-changes to `sunroom:7867`. A new screen looks for Sunroom on 7867, so until you move, type the
-address into it.
-
 ## Backups
 
 - A verified copy is written every night at 03:30 (household time) into `/data/backups/`,

@@ -56,15 +56,12 @@ COPY VERSION /app/VERSION
 RUN test -n "$VERSION" && test "$VERSION" = "$(cat /app/VERSION)" \
  && printf '{"version":"%s","revision":"%s","created":"%s"}\n' "$VERSION" "$REVISION" "$CREATED" \
     > /app/build-info.json
-# SUNROOM_OLD_PORT: compose files and proxies from before the port moved to 7867 keep working on the
-# container's old one (ADR 0045). Delete it, and nothing else names that port.
 ENV PATH=/app/.venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     HOME=/tmp \
     DATA_DIR=/data \
     PORT=7867 \
-    SUNROOM_OLD_PORT=8080 \
     SUNROOM_STATIC_DIR=/app/static \
     SUNROOM_CONTAINER=1 \
     SUNROOM_BUILD_INFO=/app/build-info.json

@@ -8,9 +8,9 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
-- New installs use port 7867 instead of 8080, which many other programs want too. A Sunroom you
-  already run keeps working at the address it has, and docs/DEPLOY.md says how to move it if you'd
-  like to. A new screen looks for Sunroom on 7867, so type in the address of one still on 8080.
+- Sunroom's port is now 7867, so it no longer competes for a port many other programs want. A
+  Sunroom already running: before you update, change the `ports:` line in its docker-compose.yml to
+  `"7867:7867"` and point any proxy at 7867, then give your devices and screens the new address.
 
 ### Fixed
 
@@ -769,7 +769,7 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 - The instructions for running Sunroom on a server now start from a `docker-compose.yml` in a
   folder of its own, started with `docker compose up -d` (a Portainer stack still works). They
-  also cover running it next to another app that already uses port 8080, and using a host folder
+  also cover running it next to another app that already uses its port, and using a host folder
   instead of the `sunroom_data` volume.
 
 ## [0.1.0] - 2026-10-08

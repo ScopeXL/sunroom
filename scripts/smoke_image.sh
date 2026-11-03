@@ -8,7 +8,7 @@ REF="${1:-HEAD}"
 image_args "$REF"
 TAG="sunroom:smoke"
 NAME="sunroom-smoke"
-PORT=18080
+PORT=17867
 JAR="$(mktemp)"
 
 cleanup() {
@@ -29,12 +29,9 @@ run_app() {
 }
 
 docker volume create "$NAME" >/dev/null
-run_app "$NAME" -p "127.0.0.1:$PORT:7867" -p "127.0.0.1:$((PORT + 2)):8080" -v "$NAME:/data"
+run_app "$NAME" -p "127.0.0.1:$PORT:7867" -v "$NAME:/data"
 wait_healthy "$NAME" 90
 probe "$PORT" "$V"
-# A compose file from before the port moved publishes the container's old one (ADR 0045).
-curl -fsS "http://127.0.0.1:$((PORT + 2))/api/health" | grep -q '"ok"' \
-  || fail "the container's old port didn't answer, which compose files from before 7867 rely on"
 [ "$(docker exec "$NAME" id -u)" = 10001 ] || fail "not running as uid 10001"
 set_up "$PORT" "$JAR"
 [ "$(docker exec "$NAME" stat -c %a /data/secret.key)" = 600 ] || fail "the secret key isn't 0600"

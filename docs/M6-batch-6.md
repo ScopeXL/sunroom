@@ -54,7 +54,7 @@ parent PIN relocks** (T5).
 |---|---|
 | Assign an event to the people its title names, on import and on add; keep the calendar's owner; several colors on a chip | T10, and "Answers" |
 | Reminders don't save, or don't show when the event is reopened; a Default reminder setting | T11, and "Answers" |
-| Remove TRUSTED_PROXIES; APP_ALLOWED_HOSTS defaults to any host; set up at `http://<HOST>:8080` with nothing to configure | T13, and "Answers" |
+| Remove TRUSTED_PROXIES; APP_ALLOWED_HOSTS defaults to any host; set up at `http://<HOST>:7867` with nothing to configure | T13, and "Answers" |
 | A "Support Sunroom" section with a fun emoji: not for profit, donations welcome, crypto addresses, Patreon, a Feedback button that posts to GitHub | T9, and "Answers" |
 | Refreshing the page after an update still shows the old version | T14, and "Answers" |
 | Backup: the description; a switch, on by default, with how many daily and weekly copies to keep | T15 |
@@ -145,7 +145,7 @@ whenever the server answers within three seconds; the cached copy only when it d
 the one change that makes a refresh honest, and keeps the waiting-worker rule so an open old page
 never loses its lazily loaded chunks.
 
-**TRUSTED_PROXIES and APP_ALLOWED_HOSTS.** First a correction to the premise: `http://<HOST>:8080`
+**TRUSTED_PROXIES and APP_ALLOWED_HOSTS.** First a correction to the premise: `http://<HOST>:7867`
 already works with nothing set for every numbered address, `sunroom.local` and the other LAN
 suffixes, a bare name like `nas`, the container's own name and Tailscale's `.ts.net` names
 (`web/hosts.py:27, 60-69`). What needs the two settings today is a public domain name through a
@@ -1415,7 +1415,7 @@ tap lists what's wrong and opens the settings that fix it. The pill above the da
 **Owner's note.** "Remove TRUSTED_PROXIES from the app. The goal is to be easy for anyone to set
 up and use. They shouldn't have to set up a proxy address allowlist. And APP_ALLOWED_HOSTS should
 default to any host unless the setting is specified. That way as soon as the docker container is
-started, they can go to http://<HOST>:8080 and set up the app." The owner chose the recommended
+started, they can go to http://<HOST>:7867 and set up the app." The owner chose the recommended
 design ("Answers").
 
 **What exists.** `core/config.py:57-59` (`app_allowed_hosts`, `trusted_proxies`; `_split_list`

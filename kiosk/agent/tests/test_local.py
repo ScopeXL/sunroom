@@ -160,7 +160,7 @@ async def test_phones_get_a_name_where_its_sure_and_the_ip_elsewhere(tmp_path: P
     assert windows.calls == []
 
 
-def test_the_port_is_8080_or_the_next_free_one(tmp_path: Path) -> None:
+def test_the_port_is_7867_or_the_next_free_one(tmp_path: Path) -> None:
     taken = {7867, 7868}
     here = sunroom(tmp_path, Shell(), free=lambda port: port not in taken)
     assert here._port() == 7869  # pyright: ignore[reportPrivateUsage]

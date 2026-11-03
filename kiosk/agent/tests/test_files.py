@@ -270,7 +270,7 @@ def test_the_root_helper_and_the_uninstaller_name_the_same_files() -> None:
     ("compose", "kept"),
     [
         ('    ports:\n      - "9000:7867"\n    volumes:\n      - sunroom_data:/data\n', "9000"),
-        ('    ports:\n      - "8080:8080"\n    volumes:\n      - sunroom_data:/data\n', "8080"),
+        ("    ports:\n      - 9001:9002\n    volumes:\n      - sunroom_data:/data\n", "9001"),
         ("    volumes:\n      - sunroom_data:/data\n", ""),
         (None, ""),  # no earlier install
     ],
@@ -278,7 +278,7 @@ def test_the_root_helper_and_the_uninstaller_name_the_same_files() -> None:
 def test_running_the_installer_again_finds_the_port_devices_have_saved(
     tmp_path: Path, compose: str | None, kept: str
 ) -> None:
-    """Whatever the container's own port was then (ADR 0045)."""
+    """Whatever the container's own port was then, so a rerun never moves that address."""
     import shlex
     import subprocess
 

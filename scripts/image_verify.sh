@@ -14,7 +14,7 @@ for tag in "${V%.*}" latest; do
   [ "$(digest "$IMAGE:$tag")" = "$D" ] || { echo "$IMAGE:$tag does not point at $D" >&2; exit 1; }
 done
 NAME="sunroom-verify"
-PORT=18081
+PORT=17868
 JAR="$(mktemp)"
 trap 'docker rm -f "$NAME" >/dev/null 2>&1 || true; docker volume rm "$NAME" >/dev/null 2>&1 || true; rm -f "$JAR"' EXIT
 for arch in amd64 arm64; do

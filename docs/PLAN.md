@@ -725,7 +725,6 @@ Infrastructure settings come from the environment only (pydantic-settings, `env_
 | `SUNROOM_FEEDBACK_URL` | unset | **New (ADR 0042):** where Send Feedback posts (Discord's webhook body, so a Discord webhook of the household's own works). Unset, `meta/feedback.py`'s `FEEDBACK_URL`: the project's relay since 0.18.0 (feedback.sunroom.day); empty, feedback is off and the sheet is ADR 0034's GitHub page. A secret: redacted from logs, since it may hold a webhook's token |
 | `TZ` | unset | Optional override; the household time zone is chosen in the wizard and stored in the DB. Validated as IANA |
 | `PORT` | `7867` | |
-| `SUNROOM_OLD_PORT` | unset; the image sets `8080` | **New (ADR 0045):** a second port the image answers on, for compose files and proxies from before 7867 |
 | `DATA_DIR` | `/data` | SQLite, backups, photos, secret key |
 | `LOG_LEVEL` | `INFO` | structlog JSON in the container, console in dev |
 | `SUNROOM_STATIC_DIR`, `SUNROOM_CONTAINER`, `SUNROOM_TEST_MODE` | | Build and test flags, as Dinner Bell's `DINNERBELL_*` |
