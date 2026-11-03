@@ -216,6 +216,9 @@ size limit.
 - The pretend agent's restart can't answer 503: an `EventSource` never retries after a refusal,
   only after a dropped connection. `Agent.go_away` ends the streams and the Guard holds requests
   until it's back.
+- A test errored only on Windows, at setup and teardown, before its body ran: pytest puts a test's
+  id in `PYTEST_CURRENT_TEST`, a parametrized value goes in the id, and Windows refuses a variable
+  over 32,767 characters. Give long values `ids=`.
 
 ## The board
 
@@ -368,3 +371,12 @@ size limit.
   patterns write ’ as `\u2019`. A test that loops a parser thousands of times finds it; one parse
   doesn't.
 
+## The session's own tools
+
+- A CI log read with `gh run view --log` or `--log-failed` ended at pytest's ERRORS header with no
+  failures in it, and `gh api` refused the log for its terminal escape codes. All of it comes with
+  `gh api --allow-escape-sequences repos/ScopeXL/sunroom/actions/jobs/<id>/logs` into a file, with
+  the codes stripped before reading.
+- A loop over `$LIST`, or a `$command` holding its arguments, quietly did the wrong thing: the
+  sessions' shell is zsh, which doesn't split a variable into words. Write the list out, or put the
+  script in a file that bash runs.

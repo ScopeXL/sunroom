@@ -514,10 +514,10 @@ def test_the_test_routes_exist_only_with_fake(make_agent: Callable[..., Agent]) 
     assert not any(path.startswith("/api/screen/_test") for path in paths)
 
 
-async def test_the_schema_has_every_route(app: FastAPI) -> None:
+async def test_the_schema_has_every_route(app: FastAPI, tmp_path: Path) -> None:
     from sunroom_kiosk.cli import main
 
-    assert main(["openapi", "--out", "/dev/null"]) == 0
+    assert main(["openapi", "--out", str(tmp_path / "schema.json")]) == 0
     from fastapi.openapi.utils import get_openapi
 
     from sunroom_kiosk.app import router

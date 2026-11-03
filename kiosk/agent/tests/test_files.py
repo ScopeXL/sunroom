@@ -76,6 +76,8 @@ def test_the_root_helper_writes_a_policy(tmp_path: Path, monkeypatch: pytest.Mon
         ("not json", "JSON"),
         ('{"TranslateEnabled": false, "x": "' + "y" * 70_000 + '"}', "too big"),
     ],
+    # Not the values: pytest puts a test's id in an environment variable, and Windows limits those.
+    ids=["keys", "values", "not-json", "too-big"],
 )
 def test_the_root_helper_refuses_any_other_policy(
     tmp_path: Path,
@@ -428,6 +430,7 @@ def test_the_helper_says_its_version() -> None:
     assert root_helper.VERSION == "@VERSION@"  # the installer stamps it, as apply-system does
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="apply-system is Linux's: it needs pwd")
 def test_apply_system_refuses_a_wheel_github_doesnt_list(
     tmp_path: Path, system: System, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -451,6 +454,7 @@ def test_apply_system_refuses_a_wheel_github_doesnt_list(
     assert root_helper.apply_system(str(other)) == 2
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="apply-system is Linux's: it needs pwd")
 def test_apply_system_puts_the_releases_system_part_in_place(
     tmp_path: Path,
     system: System,

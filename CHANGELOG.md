@@ -16,6 +16,7 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 - Running the installer again on a Raspberry Pi keeps the port Sunroom has (it went back to the
   default).
+- Behind the scenes: Sunroom Screen's tests no longer assume a Linux computer or a Mac.
 
 ## [0.18.1] - 2026-11-03
 

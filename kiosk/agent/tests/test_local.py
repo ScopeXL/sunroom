@@ -384,7 +384,8 @@ async def test_a_run_here_installs_starts_and_remembers_it(tmp_path: Path) -> No
         "release": RELEASE,
     }
     unit = here.places.unit.read_text(encoding="utf-8")
-    assert f'Environment="DATA_DIR={here.places.data}"' in unit
+    data = str(here.places.data).replace("\\", "\\\\")  # a unit's quoting, for Windows' tmp_path
+    assert f'Environment="DATA_DIR={data}"' in unit
     assert 'Environment="SUNROOM_INSTALL_KIND=computer"' in unit
     assert 'Environment="SUNROOM_ADVERTISED_URL=http://kitchen.local:7867"' in unit
     assert any(line.startswith("/home/ana/.local/bin/uv tool install") for line in shell.lines())

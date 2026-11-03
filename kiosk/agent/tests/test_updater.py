@@ -277,6 +277,7 @@ async def test_install_downloads_then_hands_over_to_the_apply_step(paths: Paths)
         spawn=spawn,
         port=7800,
         backup=lambda: happened.append("backup"),
+        system="linux",  # Windows' own command has its test below
     )
     await check.check_now()
     agent = StubAgent(happened)
@@ -308,7 +309,7 @@ async def test_reinstall_runs_the_installed_version_again_with_its_setup_rewritt
         return True
 
     (kept,) = wheels(paths, "0.12.0")
-    check = Updater(http=github.client, paths=paths, current="0.12.0", spawn=spawn)
+    check = Updater(http=github.client, paths=paths, current="0.12.0", spawn=spawn, system="linux")
     await check.reinstall(StubAgent())  # type: ignore[arg-type]
     assert github.asked == []
     assert spawned[0][5] == str(kept)
