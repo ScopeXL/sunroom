@@ -68,12 +68,12 @@ set_tag() {
 
 host_port() {
 	local line
-	line=$(compose port sunroom 8080 2>/dev/null | head -n 1 || true)
+	line=$(compose port sunroom 7867 2>/dev/null | head -n 1 || true)
 	if [[ $line =~ :([0-9]+)$ ]]; then
 		printf '%s\n' "${BASH_REMATCH[1]}"
 		return
 	fi
-	line=$(grep -Eo '[0-9]+:8080' "$COMPOSE_FILE" | head -n 1 || true)
+	line=$(grep -Eo '[0-9]+:7867' "$COMPOSE_FILE" | head -n 1 || true)
 	printf '%s\n' "${line%%:*}"
 }
 
@@ -162,7 +162,7 @@ main() {
 	old_tag=$(current_tag)
 	old_tag=${old_tag:-latest}
 	port=$(host_port)
-	port=${port:-8080}
+	port=${port:-7867}
 	old_version=$(running_version "$port")
 	old_image=$(docker inspect --format '{{.Image}}' sunroom 2>/dev/null || true)
 
@@ -182,7 +182,7 @@ main() {
 	say "Restarting Sunroom..."
 	compose up -d || show_logs_and_fail "$old_version"
 	port=$(host_port)
-	port=${port:-8080}
+	port=${port:-7867}
 	wait_healthy "$port" || show_logs_and_fail "$old_version"
 
 	new_version=$(running_version "$port")

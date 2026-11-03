@@ -12,8 +12,9 @@ services:
       TZ: "@TZ@"
       SUNROOM_ADVERTISED_URL: "@ADVERTISED@"
       SUNROOM_INSTALL_KIND: "pi"
+      PORT: "7867" # said here so an older version, which update.sh can go back to, listens on it too
     ports:
-      - "@PORT@:8080"
+      - "@PORT@:7867"
     volumes:
       - sunroom_data:/data
     read_only: true

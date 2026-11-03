@@ -75,13 +75,13 @@ everything in the `sunroom_data` volume.
 - **Docker Compose:** in a folder of its own on the server (for example `/opt/sunroom`), save
   [docker-compose.example.yml](docker-compose.example.yml) as `docker-compose.yml`, then run
   `docker compose up -d`. Keep the `volumes:` block at the end: it creates the `sunroom_data`
-  volume. Port 8080 already taken? Change only the left number, for example `"8081:8080"`.
+  volume. Port 7867 already taken? Change only the left number, for example `"7868:7867"`.
 - **Portainer:** Stacks → Add stack → Web editor, paste the same file, Deploy.
 - **Unraid, CasaOS, Synology:** add a container from the image `scopexl/sunroom:latest`, port
-  8080, and a volume (or folder) for `/data`. If you map a folder, it must be writable by the
+  7867, and a volume (or folder) for `/data`. If you map a folder, it must be writable by the
   container's user (`--user 99:100` on Unraid's appdata).
 
-Open `http://<server>:8080` on a phone or computer and set up the household: there is nothing to
+Open `http://<server>:7867` on a phone or computer and set up the household: there is nothing to
 configure first. Your own HTTPS proxy, Tailscale or Cloudflare work with nothing to set;
 [docs/REMOTE-ACCESS.md](docs/REMOTE-ACCESS.md) shows each way, and when to lock Sunroom to a name
 with `APP_ALLOWED_HOSTS`.
@@ -103,10 +103,10 @@ Devices → Pair a Display** (under **More** on a phone) and type it.
 ### c. Any computer, no Pi
 
 ```sh
-docker run -d --name sunroom --restart unless-stopped -p 8080:8080 -v sunroom_data:/data scopexl/sunroom:latest
+docker run -d --name sunroom --restart unless-stopped -p 7867:7867 -v sunroom_data:/data scopexl/sunroom:latest
 ```
 
-Open `http://<computer>:8080` on a phone or computer. Any browser shows the wall screen at
+Open `http://<computer>:7867` on a phone or computer. Any browser shows the wall screen at
 `/display`; an old tablet works as one (Android: Fully Kiosk Browser; iPad: Safari with Guided
 Access; see [docs/HARDWARE.md](docs/HARDWARE.md#an-old-tablet-instead)).
 

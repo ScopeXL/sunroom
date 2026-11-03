@@ -101,7 +101,7 @@ def installer_script(tmp_path: Path, home: Path) -> Path:
         f"KIOSK_VERSION={RELEASE}\nSRC_DIR='{KIOSK}'\nTMP_DIR='{tmp_path / 'tmp'}'\n"
         f"HOME='{home}'\nLABWC_DIR=\"$HOME/.config/labwc\"\n"
         'STATE_DIR="$HOME/.local/state/sunroom-kiosk"\nSTATE_FILE="$STATE_DIR/install-state"\n'
-        "SUNROOM_IMAGE=scopexl/sunroom\nIMAGE_TAG=latest\nPORT=8080\n"
+        "SUNROOM_IMAGE=scopexl/sunroom\nIMAGE_TAG=latest\nPORT=7867\n"
         "TEMPLATE_TZ=Etc/UTC\nTEMPLATE_ADVERTISED=\n"
         "note() { :; }\ntidy() { printf '%s' \"$1\"; }\nid() { printf 'ana\\n'; }\n"
         + "".join(bodies),
@@ -389,12 +389,12 @@ def test_the_settings_file_is_brought_to_this_versions_keys(
     linux = machine(tmp_path)
     linux.config_path.parent.mkdir(parents=True)
     linux.config_path.write_text(
-        "# set by hand\nSUNROOM_URL=http://192.168.1.20:8080\nSUNROOM_OLD=yes\nLATER=1\n",
+        "# set by hand\nSUNROOM_URL=http://192.168.1.20:7867\nSUNROOM_OLD=yes\nLATER=1\n",
         encoding="utf-8",
     )
     assert "settings" not in setup_files.run(linux).changed  # only its version, quietly
     assert text(linux.config_path) == (
-        "# set by hand\nSUNROOM_URL=http://192.168.1.20:8080\nSUNROOM_OLD=yes\nLATER=1\n"
+        "# set by hand\nSUNROOM_URL=http://192.168.1.20:7867\nSUNROOM_OLD=yes\nLATER=1\n"
         "SUNROOM_CONFIG_VERSION=1\n"
     )
 
@@ -406,7 +406,7 @@ def test_the_settings_file_is_brought_to_this_versions_keys(
     monkeypatch.setattr(settings_file, "CONFIG_VERSION", 2)
     assert "settings" in setup_files.run(linux).changed
     assert text(linux.config_path) == (
-        "# set by hand\nSUNROOM_URL=http://192.168.1.20:8080\nLATER=1\n"
+        "# set by hand\nSUNROOM_URL=http://192.168.1.20:7867\nLATER=1\n"
         "SUNROOM_CONFIG_VERSION=2\nSUNROOM_NEW=yes\n"
     )
 
@@ -452,13 +452,13 @@ def test_sunroom_run_here_gets_its_service_back(tmp_path: Path) -> None:
     assert places is not None
     places.state.parent.mkdir(parents=True)
     places.state.write_text(
-        json.dumps({"port": 8080, "advertised": "http://screen.local:8080"}), encoding="utf-8"
+        json.dumps({"port": 7867, "advertised": "http://screen.local:7867"}), encoding="utf-8"
     )
     places.unit.parent.mkdir(parents=True)
     places.unit.write_text("[Unit]\nDescription=broken\n", encoding="utf-8")
     assert "sunroom-service" in setup_files.run(linux).changed
     unit = text(places.unit)
-    assert "SUNROOM_ADVERTISED_URL=http://screen.local:8080" in unit
+    assert "SUNROOM_ADVERTISED_URL=http://screen.local:7867" in unit
     assert "ExecStart=" in unit and "serve" in unit
 
 
@@ -489,7 +489,7 @@ def test_the_small_files_are_copied_aside_and_three_versions_kept(tmp_path: Path
     for patch in range(4):
         linux = machine(tmp_path, release=f"9.9.{patch}")
         linux.config_path.parent.mkdir(parents=True, exist_ok=True)
-        linux.config_path.write_text(f"SUNROOM_URL=http://192.168.1.{patch}:8080\n", "utf-8")
+        linux.config_path.write_text(f"SUNROOM_URL=http://192.168.1.{patch}:7867\n", "utf-8")
         setup_files.run(linux, force=True)
     backups = linux.state_dir / "backup"
     assert sorted(entry.name for entry in backups.iterdir()) == ["9.9.1", "9.9.2", "9.9.3"]

@@ -142,7 +142,7 @@ async def test_a_desktops_policy_follows_the_address_through_the_root_helper(
     helper.write_text("#!/bin/sh\n")
     shell = Shell()
     platform = LinuxPlatform(shell, tmp_path, which=tools("google-chrome"))
-    allowed = {"LocalNetworkAccessAllowedForUrls": ["http://192.168.1.20:8080"]}
+    allowed = {"LocalNetworkAccessAllowedForUrls": ["http://192.168.1.20:7867"]}
     assert await platform.write_policy("chrome", allowed)
     argv, stdin = shell.calls[0]
     policy = "/etc/opt/chrome/policies/managed/sunroom-kiosk.json"

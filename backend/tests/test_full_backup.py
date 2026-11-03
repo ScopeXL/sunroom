@@ -208,9 +208,9 @@ class StalledPhone:
             "raw_path": FULL_ZIP.encode(),
             "query_string": b"",
             "root_path": "",
-            "headers": [(b"host", b"localhost:8080"), (b"cookie", self.cookie.encode())],
+            "headers": [(b"host", b"localhost:7867"), (b"cookie", self.cookie.encode())],
             "client": ("127.0.0.1", 50000),
-            "server": ("localhost", 8080),
+            "server": ("localhost", 7867),
         }
         asked = False
         never = asyncio.Event()

@@ -28,7 +28,7 @@ from tests.support import FakeRegistry
 # The package's copy when the wheel carries it, the checkout's otherwise (ADR 0044).
 FILES = files_dir()
 KIOSK = Path(__file__).resolve().parents[2]  # the installers aren't in the wheel
-URL = "http://192.168.1.20:8080"
+URL = "http://192.168.1.20:7867"
 
 
 def _load(path: Path, name: str) -> ModuleType:
@@ -263,6 +263,39 @@ def test_the_root_helper_and_the_uninstaller_name_the_same_files() -> None:
     script = (FILES.parent / "uninstall.sh").read_text(encoding="utf-8")
     for path in [*root_helper.SCREEN_FILES, root_helper.SUDOERS_FILE, root_helper.SELF]:
         assert f'"{path}"' in script, path
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="install.sh is Linux's and macOS's")
+@pytest.mark.parametrize(
+    ("compose", "kept"),
+    [
+        ('    ports:\n      - "9000:7867"\n    volumes:\n      - sunroom_data:/data\n', "9000"),
+        ('    ports:\n      - "8080:8080"\n    volumes:\n      - sunroom_data:/data\n', "8080"),
+        ("    volumes:\n      - sunroom_data:/data\n", ""),
+        (None, ""),  # no earlier install
+    ],
+)
+def test_running_the_installer_again_finds_the_port_devices_have_saved(
+    tmp_path: Path, compose: str | None, kept: str
+) -> None:
+    """Whatever the container's own port was then (ADR 0045)."""
+    import shlex
+    import subprocess
+
+    if compose is not None:
+        (tmp_path / "docker-compose.yml").write_text(compose, encoding="utf-8")
+    installer = (FILES.parent / "install.sh").read_text(encoding="utf-8")
+    functions = installer[: installer.rindex('main "$@"')]  # nothing runs until that last line
+    pretend = f'sudo() {{ "$@"; }}\nSERVER_DIR={shlex.quote(str(tmp_path))}\n'
+    done = subprocess.run(  # noqa: S603 - our own script, on a pretend folder
+        ["/bin/bash", "-c", f"{functions}\n{pretend}existing_port\n"],
+        env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == kept
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="the uninstaller is Linux's and macOS's")

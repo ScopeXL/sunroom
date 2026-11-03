@@ -8,7 +8,7 @@ into this repository. Portainer, if you use it, can show the logs and stop or st
 it doesn't need to manage it.
 
 On a plain home network you can skip the proxy entirely: leave every variable empty and open
-`http://<server>:8080`. Sunroom answers to local names and addresses on its own.
+`http://<server>:7867`. Sunroom answers to local names and addresses on its own.
 
 ## What you need
 
@@ -44,8 +44,8 @@ On a plain home network you can skip the proxy entirely: leave every variable em
    `sunroom_data` volume, where the database, the nightly backups and the photos live, with the
    right ownership by itself (and the commands in RESTORE.md find it by that name). To use a host
    folder instead, see *Troubleshooting*.
-4. Another app already uses port 8080 on this server? Change only the left number of the
-   `ports:` line, for example `"8081:8080"`, and point the proxy at that port.
+4. Another app already uses port 7867 on this server? Change only the left number of the
+   `ports:` line, for example `"7868:7867"`, and point the proxy at that port.
 5. Start it:
 
    ```sh
@@ -59,7 +59,7 @@ On a plain home network you can skip the proxy entirely: leave every variable em
 
 - Forward your subdomain to the server on the host port from the `ports:` line (or put the
   container on the proxy's Docker network, remove the `ports:` lines, and forward to
-  `sunroom:8080`). The proxy must pass the `Host` header through unchanged and set
+  `sunroom:7867`). The proxy must pass the `Host` header through unchanged and set
   `X-Forwarded-Proto` (every common proxy does both by default).
 - Turn on **HTTP/2** for the host. Browsers allow only six HTTP/1.1 connections per site, and
   the live-update stream keeps one open on every device and screen.
@@ -133,10 +133,10 @@ under **Settings → Devices → Pair a Display** (under **More** on a phone). [
 the details.
 
 **Optional: let screens find this server by name.** A Sunroom screen looking for Sunroom checks
-every address on its network on port 8080, which finds this setup as it is. A server that runs
+every address on its network on port 7867, which finds this setup as it is. A server that runs
 avahi (most Linux machines do; `systemctl status avahi-daemon`) can also announce Sunroom, which
 a screen hears even when Sunroom is on another port. Put this in
-`/etc/avahi/services/sunroom.service` (change `8080` to the port you publish); avahi picks it up
+`/etc/avahi/services/sunroom.service` (change `7867` to the port you publish); avahi picks it up
 by itself:
 
 ```xml
@@ -144,7 +144,7 @@ by itself:
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
 <service-group>
   <name replace-wildcards="yes">Sunroom on %h</name>
-  <service><type>_sunroom._tcp</type><port>8080</port></service>
+  <service><type>_sunroom._tcp</type><port>7867</port></service>
 </service-group>
 ```
 
@@ -168,6 +168,14 @@ for it.
 
 **If Portainer manages it instead** (a stack pasted from the example): update the stack with
 **Re-pull image and redeploy** switched on.
+
+**If your `docker-compose.yml` says `8080:8080`** (from before 7867 became Sunroom's port, ADR 0045),
+there's nothing to do: the image still answers on the container's old port, so the file, your
+addresses and any proxy keep working. To move when it suits you, change the line to `"7867:7867"`,
+run `docker compose up -d`, and give your devices and screens the new address. A phone's installed
+app is added again, because the port is part of its address, and a proxy pointed at `sunroom:8080`
+changes to `sunroom:7867`. A new screen looks for Sunroom on 7867, so until you move, type the
+address into it.
 
 ## Backups
 

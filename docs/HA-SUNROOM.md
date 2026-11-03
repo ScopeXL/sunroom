@@ -491,7 +491,7 @@ the unique id is Sunroom's instance id.
   on a phone or the wall first"); then `title_placeholders = {"name": name or "Sunroom"}` and
   `discovery_confirm`, a form with the household password (`TextSelector(type=PASSWORD)`), which
   calls `connect` (below).
-- **`user`.** A form with the address (`TextSelector(type=URL)`, suggested `http://sunroom.local:8080`)
+- **`user`.** A form with the address (`TextSelector(type=URL)`, suggested `http://sunroom.local:7867`)
   and the household password; `GET /api/discover` on the address (errors: `cannot_connect`,
   `not_sunroom` when the answer has no `sunroom: true`, `not_set_up`), unique id from `id` with
   `raise_on_progress=False`, abort if configured, then `connect`.

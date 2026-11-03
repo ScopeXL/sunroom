@@ -97,7 +97,7 @@ async def test_mutations_need_the_csrf_header_and_a_matching_origin(
 ) -> None:
     body = {"name": "Mia", "role": "kid"}
     assert (await parent.post("/api/members", json=body)).status_code == 403
-    for origin in ("https://evil.example", "null", "https://localhost:8080"):
+    for origin in ("https://evil.example", "null", "https://localhost:7867"):
         response = await parent.post("/api/members", json=body, headers=CSRF | {"origin": origin})
         assert response.status_code == 403, origin
     cross_site = await parent.post(
@@ -105,7 +105,7 @@ async def test_mutations_need_the_csrf_header_and_a_matching_origin(
     )
     assert cross_site.status_code == 403
     ok = await parent.post(
-        "/api/members", json=body, headers=CSRF | {"origin": "http://localhost:8080"}
+        "/api/members", json=body, headers=CSRF | {"origin": "http://localhost:7867"}
     )
     assert ok.status_code == 201
 
@@ -118,14 +118,14 @@ async def test_https_the_proxy_didnt_mention_gets_a_useful_message(
     at_home = await parent.post(
         "/api/members",
         json={"name": "Mia"},
-        headers=CSRF | {"origin": "https://localhost:8080"},
+        headers=CSRF | {"origin": "https://localhost:7867"},
     )
     transport = httpx.ASGITransport(app=app, client=("203.0.113.9", 4000))
     async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as outside:
         far = await outside.post(
             "/api/members",
             json={"name": "Mia"},
-            headers=CSRF | {"origin": "https://localhost:8080", "x-forwarded-proto": "https"},
+            headers=CSRF | {"origin": "https://localhost:7867", "x-forwarded-proto": "https"},
         )
     for response in (at_home, far):
         error = response.json()["error"]

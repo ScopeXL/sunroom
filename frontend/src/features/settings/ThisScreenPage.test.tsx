@@ -34,7 +34,7 @@ function piState(overrides: Partial<ScreenState> = {}): ScreenState {
     session: "wayland",
     capabilities: ["restart", "shutdown", "update", "wifi", "rotate", "brightness"],
     sunroom: {
-      url: "http://192.168.1.20:8080",
+      url: "http://192.168.1.20:7867",
       id: "00000000-0000-7000-8000-0000000000e1",
       name: "The Sample Family",
       found: "discovered",
@@ -51,7 +51,7 @@ function piState(overrides: Partial<ScreenState> = {}): ScreenState {
       sunroom_outdated: false,
     },
     display: { rotation: 0, brightness_method: "ddc" },
-    open_url: "http://192.168.1.20:8080/display?dimmer=screen&screen=7800",
+    open_url: "http://192.168.1.20:7867/display?dimmer=screen&screen=7800",
     ...overrides,
   };
 }
@@ -153,7 +153,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
   it("says what this screen is on, shows, runs and can do", () => {
     draw();
     expect(screen.getByText("Wi-Fi: HomeNet, strong")).toBeTruthy();
-    expect(screen.getByText("http://192.168.1.20:8080 · on another computer")).toBeTruthy();
+    expect(screen.getByText("http://192.168.1.20:7867 · on another computer")).toBeTruthy();
     // Found on the network: the one way it still differs from a typed one (ADR 0042).
     expect(
       screen.getByText("Found on your network: this screen follows it if its address changes."),
@@ -324,7 +324,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
       piState({
         capabilities: ["restart", "shutdown", "update", "update_sunroom"],
         sunroom: {
-          url: "http://localhost:8080",
+          url: "http://localhost:7867",
           id: "00000000-0000-7000-8000-0000000000e1",
           name: "The Sample Family",
           found: "local",
@@ -342,7 +342,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
         },
       }),
     );
-    expect(screen.getByText("http://localhost:8080 · on this computer")).toBeTruthy();
+    expect(screen.getByText("http://localhost:7867 · on this computer")).toBeTruthy();
     expect(
       screen.getByText("Sunroom on this computer is 0.13.0; the update brings it to 0.14.0"),
     ).toBeTruthy();

@@ -115,11 +115,11 @@ decent card does.
 ## An old tablet instead
 
 A spare tablet can be the wall screen. Sunroom then runs on another computer (path b or c in
-the README), and the tablet opens `http://<server>:8080/display` in a browser. Pairing is the
+the README), and the tablet opens `http://<server>:7867/display` in a browser. Pairing is the
 same: the tablet shows a code, and you type it on a signed-in device under **Settings → Devices →
 Pair a Display** (under **More** on a phone).
 
-- **Android:** Fully Kiosk Browser, with `http://<server>:8080/display` as its Start URL and Keep
+- **Android:** Fully Kiosk Browser, with `http://<server>:7867/display` as its Start URL and Keep
   Screen On. Locking the tablet to Sunroom (its kiosk mode) and switching the screen off on a
   schedule ("Schedule Wakeup and Sleep") need the app's paid PLUS licence; without them,
   Sunroom's own Sleep setting still darkens the page at night.
@@ -154,9 +154,9 @@ an address or a photo of the family's own screen.
 | 7 | Wi-Fi only, no network cable | Live updates stay connected for a day; a change made on another device shows on the wall within a few seconds | Not tested yet |
 | 8 | Tap to wake with the panel off | With "While asleep" set to "Screen off", the panel goes dark at the sleep time, and a tap turns it on for 2 minutes | Not tested yet |
 | 9 | squeekboard (Raspberry Pi's on-screen keyboard) | Sunroom's own keyboard opens for its fields, and squeekboard doesn't pop up over it | Not tested yet |
-| 10 | `.local` from an iPhone | `http://sunroom.local:8080` opens | Not tested yet |
-| 11 | `.local` from an Android phone | `http://sunroom.local:8080` opens | Not tested yet |
-| 12 | `.local` from a Windows computer | `http://sunroom.local:8080` opens | Not tested yet |
+| 10 | `.local` from an iPhone | `http://sunroom.local:7867` opens | Not tested yet |
+| 11 | `.local` from an Android phone | `http://sunroom.local:7867` opens | Not tested yet |
+| 12 | `.local` from a Windows computer | `http://sunroom.local:7867` opens | Not tested yet |
 
 Sunroom Screen (0.13.0, [M7](M7.md) T10): the same installer, now with the program that runs the
 screen. Rows 13 to 23 are a Pi's and a Linux desktop's; macOS and Windows follow.

@@ -58,7 +58,7 @@ test("a fresh screen finds the Sunroom on its network and opens it", async ({ pa
   await expect(network.getByText(new RegExp(`^${SUNROOM} · version `))).toBeVisible();
   // An older Sunroom, from before /api/discover, by its version only.
   await expect(network.getByText("A Sunroom", { exact: true })).toBeVisible();
-  await expect(network.getByText("http://198.51.100.21:8080 · version 0.11.0")).toBeVisible();
+  await expect(network.getByText("http://198.51.100.21:7867 · version 0.11.0")).toBeVisible();
   await expect(network.getByRole("button", { name: "Look Again" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Somewhere Else" })).toBeVisible();
   await check(page, "Where Is Your Sunroom?");

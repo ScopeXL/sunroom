@@ -204,7 +204,7 @@ async function pretendAgent(page: Page, data: Set<string>): Promise<void> {
     session: "wayland",
     capabilities: ["restart", "shutdown", "update", "wifi", "rotate", "brightness"],
     sunroom: {
-      url: "http://192.168.1.20:8080",
+      url: "http://192.168.1.20:7867",
       id: "00000000-0000-7000-8000-0000000000e1",
       name: "The Sample Family",
       found: "discovered",
@@ -441,7 +441,7 @@ test("the screen's own pages in the pseudo language say only what lang/ holds", 
   }
   await request.post(`${screen}/api/screen/_test/fake`, {
     headers: change,
-    data: { sunroom: "http://198.51.100.20:8080" },
+    data: { sunroom: "http://198.51.100.20:7867" },
   });
   await page.goto(`${screen}/cant-reach`);
   await expect(page.getByRole("heading").first()).toBeVisible();

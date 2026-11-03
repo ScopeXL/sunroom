@@ -58,7 +58,7 @@ def _say(line: str) -> None:
     log.info(line)
 
 
-DEFAULT_URL = "http://localhost:8080"
+DEFAULT_URL = "http://localhost:7867"
 WAIT_S = 55  # the longest the server holds a poll
 TIMEOUT_S = 65  # a little over that
 BACKOFF_FIRST_S = 2

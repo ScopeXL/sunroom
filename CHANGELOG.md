@@ -6,6 +6,17 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- New installs use port 7867 instead of 8080, which many other programs want too. A Sunroom you
+  already run keeps working at the address it has, and docs/DEPLOY.md says how to move it if you'd
+  like to. A new screen looks for Sunroom on 7867, so type in the address of one still on 8080.
+
+### Fixed
+
+- Running the installer again on a Raspberry Pi keeps the port Sunroom has (it went back to the
+  default).
+
 ## [0.18.1] - 2026-11-03
 
 ### Fixed

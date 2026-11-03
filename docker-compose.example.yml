@@ -25,9 +25,9 @@ services:
     # With a host folder at /data instead of the volume: run as the folder's owner (id -u, id -g).
     # user: "1000:1000"
     ports:
-      # host:container. Another app on 8080? Change only the left number, e.g. "8081:8080".
+      # host:container. Another app on 7867? Change only the left number, e.g. "7868:7867".
       # Or remove these lines and put the container on your proxy's Docker network.
-      - "8080:8080"
+      - "7867:7867"
     read_only: true
     tmpfs:
       - /tmp

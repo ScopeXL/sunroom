@@ -125,7 +125,7 @@ async def test_another_page_gets_no_cors_and_changes_nothing(
 async def test_a_new_address_moves_the_allowed_origin(
     client: httpx.AsyncClient, agent: Agent
 ) -> None:
-    old = "http://192.168.1.21:8080"
+    old = "http://192.168.1.21:7867"
     agent.save(Config(url=old, found="typed"))
     assert (await client.get("/api/screen", headers={"Origin": old})).headers.get(
         "access-control-allow-origin"
@@ -276,16 +276,16 @@ async def test_an_address_is_checked_in_plain_words(
 ) -> None:
     found = (
         await client.post(
-            "/api/screen/sunroom/check", json={"url": "192.168.1.20:8080"}, headers=CHANGE
+            "/api/screen/sunroom/check", json={"url": "192.168.1.20:7867"}, headers=CHANGE
         )
     ).json()
     assert found["ok"] is True
     assert found["sunroom"]["url"] == SUNROOM  # a number: http first
     assert found["sunroom"]["name"] == "The Sample Family"
-    sunrooms.older["http://192.168.1.22:8080"] = "0.11.0"
+    sunrooms.older["http://192.168.1.22:7867"] = "0.11.0"
     older = (
         await client.post(
-            "/api/screen/sunroom/check", json={"url": "http://192.168.1.22:8080"}, headers=CHANGE
+            "/api/screen/sunroom/check", json={"url": "http://192.168.1.22:7867"}, headers=CHANGE
         )
     ).json()
     assert older["sunroom"]["older"] is True and older["sunroom"]["version"] == "0.11.0"
@@ -379,7 +379,7 @@ async def test_forgetting_the_address_keeps_the_rest(
 async def test_a_scan_streams_what_it_finds(
     client: httpx.AsyncClient, agent: Agent, sunrooms: FakeSunrooms
 ) -> None:
-    sunrooms.older["http://192.168.1.22:8080"] = "0.11.0"
+    sunrooms.older["http://192.168.1.22:7867"] = "0.11.0"
     seen: list[bytes] = []
 
     async def listen() -> None:
@@ -397,7 +397,7 @@ async def test_a_scan_streams_what_it_finds(
         for c in seen
         if c.startswith(b"event: discovery.found")
     ]
-    assert {f["url"] for f in found} == {SUNROOM, "http://192.168.1.22:8080"}
+    assert {f["url"] for f in found} == {SUNROOM, "http://192.168.1.22:7867"}
     listed = (await client.get("/api/screen/sunrooms")).json()
     assert listed["scanning"] is False and len(listed["found"]) == 2
 

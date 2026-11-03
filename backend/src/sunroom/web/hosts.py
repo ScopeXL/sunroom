@@ -1,6 +1,6 @@
 """The Host rule (PLAN §13.4, ADR 0017 and 0034), instead of a configured base URL.
 
-By default Sunroom answers to any Host, so ``http://<the server>:8080`` works the moment the
+By default Sunroom answers to any Host, so ``http://<the server>:7867`` works the moment the
 container starts, through any proxy, with nothing to set (ADR 0034).
 
 APP_ALLOWED_HOSTS is an optional lock. Set, every request's Host must be one a household would

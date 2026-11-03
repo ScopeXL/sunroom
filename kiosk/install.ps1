@@ -348,7 +348,7 @@ $Options = [pscustomobject]@{
         if ($Options.Url) {
             $ran = Invoke-Native $Agent @("config", "--url", $Options.Url)
             if ($ran.Code -ne 0) {
-                Exit-Install @($ran.Output, "Use the address you open on your other devices, for example http://192.168.1.20:8080")
+                Exit-Install @($ran.Output, "Use the address you open on your other devices, for example http://192.168.1.20:7867")
             }
             Write-Note "The screen will show Sunroom from $($Options.Url)."
         } else {

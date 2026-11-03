@@ -25,7 +25,7 @@ vi.mock("./route", async (original) => ({
 }));
 const { openSunroom } = await import("./route");
 
-const SUNROOM = "http://192.168.1.20:8080";
+const SUNROOM = "http://192.168.1.20:7867";
 
 function state(overrides: Partial<ScreenState> = {}): ScreenState {
   return {
@@ -246,7 +246,7 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
           older: false,
         },
         {
-          url: "http://192.168.1.21:8080",
+          url: "http://192.168.1.21:7867",
           id: null,
           name: null,
           version: "0.11.0",
@@ -309,7 +309,7 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
       expect(checks()).toHaveLength(2);
     });
     // Typing again puts the button back to rest.
-    fireEvent.change(field, { target: { value: "192.168.1.20:8080" } });
+    fireEvent.change(field, { target: { value: "192.168.1.20:7867" } });
     expect(within(elsewhere).getByRole("button", { name: "Check Address" })).toBeTruthy();
   });
 
@@ -329,7 +329,7 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
     draw(<FindPage state={state({ capabilities: ["restart"] })} />);
     const elsewhere = screen.getByRole("region", { name: "Somewhere Else" });
     const field = within(elsewhere).getByLabelText(/^Sunroom address/);
-    fireEvent.change(field, { target: { value: "192.168.1.20:8080" } });
+    fireEvent.change(field, { target: { value: "192.168.1.20:7867" } });
     fireEvent.submit(field); // ↵, or the wall keyboard's enter key
     const found = await within(elsewhere).findByRole("button", { name: "Found" });
     expect(within(elsewhere).getByRole("status").textContent).toBe(

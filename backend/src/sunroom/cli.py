@@ -11,6 +11,7 @@ import asyncio
 import getpass
 import json
 import shutil
+import socket
 import sqlite3
 import sys
 from datetime import UTC, datetime
@@ -48,12 +49,35 @@ def _boot_or_exit(settings: Settings) -> str:
         raise SystemExit(failure.exit_code) from None
 
 
+def _both_ports(host: str, settings: Settings) -> list[socket.socket] | None:
+    """The image's two sockets: its port, and the old one that compose files from before ADR 0045
+    still publish. None without an old port: uvicorn then binds the one port itself.
+
+    Made here, not with uvicorn's ``Config.bind_socket``: that makes a socket inheritable, and
+    ``boot.reexec`` needs them closed on exec, or the new process can't bind its own port."""
+    old = settings.sunroom_old_port
+    if old is None or old == settings.port:
+        return None
+    sockets: list[socket.socket] = []
+    for port in (settings.port, old):
+        sock = socket.socket(socket.AF_INET6 if ":" in host else socket.AF_INET)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind((host, port))
+        except OSError as exc:
+            log.error("serve.port_taken", port=port, reason=str(exc))
+            raise SystemExit(1) from None
+        sockets.append(sock)
+    return sockets
+
+
 def cmd_serve(args: argparse.Namespace) -> None:
     settings = _settings_or_exit()
     configure_logging(settings.log_level, secret_literals=settings.secret_literals())
     for warning in settings.warnings():
         log.warning("config.warning", detail=warning)
     import uvicorn
+    from uvicorn.config import STARTUP_FAILURE
 
     if args.reload:
         uvicorn.run(
@@ -71,19 +95,27 @@ def cmd_serve(args: argparse.Namespace) -> None:
     configure_logging(settings.log_level, secret_literals=[*settings.secret_literals(), secret])
     from sunroom.app import create_app
 
-    uvicorn.run(
-        create_app(settings, secret=secret, restart=reexec),
-        host=args.host,
-        port=settings.port,
-        # Forwarded headers are applied by the app itself, from private addresses only
-        # (web/forwarded.py): uvicorn's own handling would trust 127.0.0.1 alone and miss a
-        # proxy in Docker, and the Host rule needs to see the original Host too.
-        proxy_headers=False,
-        access_log=False,
-        server_header=False,
-        timeout_graceful_shutdown=10,
-        log_config=None,
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings, secret=secret, restart=reexec),
+            host=args.host,
+            port=settings.port,
+            # Forwarded headers are applied by the app itself, from private addresses only
+            # (web/forwarded.py): uvicorn's own handling would trust 127.0.0.1 alone and miss a
+            # proxy in Docker, and the Host rule needs to see the original Host too.
+            proxy_headers=False,
+            access_log=False,
+            server_header=False,
+            timeout_graceful_shutdown=10,
+            log_config=None,
+        )
     )
+    try:
+        server.run(sockets=_both_ports(args.host, settings))
+    except KeyboardInterrupt:
+        pass
+    if not server.started:
+        raise SystemExit(STARTUP_FAILURE)
 
 
 def cmd_check_config(args: argparse.Namespace) -> None:

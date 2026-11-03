@@ -39,7 +39,7 @@ def _networks() -> list[WifiNetwork]:
 
 
 class FakePlatform(Platform):
-    def __init__(self, kind: FakeKind = "pi", local_url: str = "http://localhost:8080") -> None:
+    def __init__(self, kind: FakeKind = "pi", local_url: str = "http://localhost:7867") -> None:
         super().__init__()
         self.kind: FakeKind = kind
         self.calls: list[str] = []  # what it was asked to do, in order

@@ -42,7 +42,7 @@ On the screen's first page, tap **Connect to a Sunroom**, then **Continue** (ADR
 screen looks for Sunroom on your network and lists what it finds: tap **Use This Sunroom**, or
 type the address you open on your other devices under **Sunroom address**; it's checked as soon as
 you leave the field (**Check Address** tries again), and **Use This Sunroom** shows beside it once
-it's found. `--url https://calendar.example.com` (or `http://192.168.1.20:8080`) gives it the
+it's found. `--url https://calendar.example.com` (or `http://192.168.1.20:7867`) gives it the
 address and skips the search. Then the screen shows a six-character code: on a device signed in to
 Sunroom, open **Settings → Devices → Pair a Display** (under **More** on a phone) and type it. A
 Sunroom that isn't set up yet shows **Set Up Sunroom** instead: **Set Up Here** sets the household
@@ -339,7 +339,7 @@ than a lit one. As soon as Sunroom answers again, the screen follows the schedul
 `journalctl --user -u sunroom-kiosk` has one line per change, for example:
 
 ```text
-Following the screen's sleep times from http://localhost:8080; brightness through DDC/CI on I2C bus 20.
+Following the screen's sleep times from http://localhost:7867; brightness through DDC/CI on I2C bus 20.
 Brightness 40%: evening dim.
 Screen off: sleep time.
 Screen on: tapped awake for 2 minutes.
@@ -375,8 +375,8 @@ with **Try Again**.
   from going to sleep while Sunroom runs, and the screen still sleeps on its schedule. A Linux
   desktop may refuse (Sunroom Screen's log says so): then turn off automatic suspend in its power
   settings, so your devices reach Sunroom at night.
-- **Your devices:** Sunroom answers on port 8080 (or the next free one), at
-  `http://<computer>.local:8080` on a Mac and on Linux with avahi, else at the computer's numbered
+- **Your devices:** Sunroom answers on port 7867 (or the next free one), at
+  `http://<computer>.local:7867` on a Mac and on Linux with avahi, else at the computer's numbered
   address; the QR codes on Set Up Sunroom and on setup's last page have it. Sunroom Screen
   announces it on the network, so other screens find it too. On a Mac or Windows the first start
   may ask whether Sunroom may accept connections: choose Allow, or your devices can't reach it.
@@ -393,7 +393,7 @@ with **Try Again**.
 ## Letting screens find a Sunroom on a NAS or server
 
 A Sunroom screen that isn't told an address looks for Sunroom on its network: it asks every
-address on its own network on ports 8080, 80 and 443, which finds a server set up as
+address on its own network on ports 7867, 80 and 443, which finds a server set up as
 [DEPLOY.md](DEPLOY.md) shows. It also listens for Sunrooms that announce themselves, which an
 all-in-one Pi does. To announce one on another Linux machine that runs avahi, put this in
 `/etc/avahi/services/sunroom.service` (with the port you publish); it's optional:
@@ -403,7 +403,7 @@ all-in-one Pi does. To announce one on another Linux machine that runs avahi, pu
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
 <service-group>
   <name replace-wildcards="yes">Sunroom on %h</name>
-  <service><type>_sunroom._tcp</type><port>8080</port></service>
+  <service><type>_sunroom._tcp</type><port>7867</port></service>
 </service-group>
 ```
 

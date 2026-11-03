@@ -33,7 +33,7 @@ function state(overrides: Record<string, unknown> = {}): Record<string, unknown>
     session: "wayland",
     capabilities: ["restart", "shutdown", "update", "wifi", "rotate", "brightness"],
     sunroom: {
-      url: "http://192.168.1.20:8080",
+      url: "http://192.168.1.20:7867",
       id: "00000000-0000-7000-8000-0000000000e1",
       name: "The Sample Family",
       found: "discovered",
@@ -175,8 +175,8 @@ class FakeAgent {
         hostname: "sunroom",
         ip: "192.168.1.30",
         uptime_s: 7200,
-        sunroom_url: "http://192.168.1.20:8080",
-        log: ["Oct 20 09:00:00 Sunroom at http://192.168.1.20:8080 answers."],
+        sunroom_url: "http://192.168.1.20:7867",
+        log: ["Oct 20 09:00:00 Sunroom at http://192.168.1.20:7867 answers."],
       });
     }
     return json(202, { ok: true });
@@ -218,7 +218,7 @@ test("This Screen restarts, shuts down, joins Wi-Fi, turns and updates the scree
   await openThisScreen(page);
 
   await expect(page.getByText("Wi-Fi: HomeNet, strong")).toBeVisible();
-  await expect(page.getByText("http://192.168.1.20:8080 · on another computer")).toBeVisible();
+  await expect(page.getByText("http://192.168.1.20:7867 · on another computer")).toBeVisible();
   await expect(page.getByText("0.14.0 is ready")).toBeVisible();
   await check(page, "This Screen");
 

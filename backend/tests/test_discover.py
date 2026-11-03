@@ -40,7 +40,7 @@ async def discover(app: FastAPI, host: str | None = None) -> httpx.Response:
 async def test_a_screen_learns_what_this_sunroom_is(
     parent: httpx.AsyncClient, app: FastAPI
 ) -> None:
-    response = await discover(app, "192.168.1.20:8080")
+    response = await discover(app, "192.168.1.20:7867")
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
     body = response.json()
@@ -57,15 +57,15 @@ async def test_a_screen_learns_what_this_sunroom_is(
 @pytest.mark.parametrize(
     ("host", "named"),
     [
-        ("192.168.1.20:8080", True),
-        ("[fd00::20]:8080", True),
+        ("192.168.1.20:7867", True),
+        ("[fd00::20]:7867", True),
         ("sunroom.local", True),
-        ("sunroom.local:8080", True),
+        ("sunroom.local:7867", True),
         ("nas", True),
-        ("localhost:8080", True),
+        ("localhost:7867", True),
         ("kitchen.home.arpa", True),
         ("calendar.example.com", False),
-        ("evil.example:8080", False),
+        ("evil.example:7867", False),
     ],
 )
 async def test_the_household_name_goes_only_to_a_local_address(
@@ -78,24 +78,24 @@ async def test_the_household_name_goes_only_to_a_local_address(
 
 
 async def test_before_setup_it_says_so_and_names_nobody(app: FastAPI) -> None:
-    body = (await discover(app, "192.168.1.20:8080")).json()
+    body = (await discover(app, "192.168.1.20:7867")).json()
     assert body["setup_complete"] is False
     assert body["name"] is None
     assert body["language"] is None  # no household has chosen yet: the screen keeps its own
 
 
 async def test_the_advertised_address_is_handed_on(data_dir: Path) -> None:
-    settings = make_settings(data_dir, sunroom_advertised_url="http://sunroom.local:8080")
+    settings = make_settings(data_dir, sunroom_advertised_url="http://sunroom.local:7867")
     app = create_app(settings, secret=SECRET)
     async with app.router.lifespan_context(app):
-        assert (await discover(app)).json()["url"] == "http://sunroom.local:8080"
+        assert (await discover(app)).json()["url"] == "http://sunroom.local:7867"
 
 
 async def test_it_needs_no_sign_in_and_is_not_a_recent_address(app: FastAPI) -> None:
-    response = await discover(app, "192.168.1.20:8080")
+    response = await discover(app, "192.168.1.20:7867")
     assert response.status_code == 200
     assert "set-cookie" not in response.headers
-    assert "192.168.1.20:8080" not in state_of(app).recent_hosts
+    assert "192.168.1.20:7867" not in state_of(app).recent_hosts
 
 
 def test_the_route_is_in_the_schema_as_a_get(data_dir: Path) -> None:

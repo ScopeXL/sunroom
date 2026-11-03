@@ -22,7 +22,7 @@ for arch in amd64 arm64; do
   docker volume rm "$NAME" >/dev/null 2>&1 || true
   docker pull --quiet --platform "linux/$arch" "$IMAGE@$D" >/dev/null
   docker volume create "$NAME" >/dev/null
-  docker run -d --name "$NAME" --platform "linux/$arch" -p "127.0.0.1:$PORT:8080" -v "$NAME:/data" \
+  docker run -d --name "$NAME" --platform "linux/$arch" -p "127.0.0.1:$PORT:7867" -v "$NAME:/data" \
     "$IMAGE@$D" >/dev/null
   wait_healthy "$NAME" 120
   probe "$PORT" "$V"

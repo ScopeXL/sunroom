@@ -40,7 +40,7 @@ dev:
     wait
 
 # Load the synthetic "Sample Family" into the running dev server (fake data only)
-seed PORT="8080":
+seed PORT="7867":
     curl -fsS -X POST "http://127.0.0.1:{{PORT}}/api/_test/seed" \
       -H 'X-Sunroom: 1' -H 'Content-Type: application/json' -d '{}' \
       && echo "Seeded the Sample Family. Household password: e2e-household-passphrase"
@@ -70,12 +70,12 @@ kiosk-lint:
     cd kiosk/agent && uv run --quiet ruff check . && uv run --quiet ruff format --check . && uv run --quiet pyright
 
 # Sunroom Screen's pages in development: the pretend agent on 7800 (finding `just dev`'s Sunroom on
-# 8080) and Vite's screen shell on http://127.0.0.1:5174
+# 7867) and Vite's screen shell on http://127.0.0.1:5174
 kiosk-dev:
     #!/usr/bin/env bash
     set -euo pipefail
     trap 'kill 0' EXIT
-    (cd kiosk/agent && uv run sunroom-kiosk run --fake pi --dev --fake-sunroom http://127.0.0.1:8080) &
+    (cd kiosk/agent && uv run sunroom-kiosk run --fake pi --dev --fake-sunroom http://127.0.0.1:7867) &
     (cd frontend && pnpm dev:screen) &
     wait
 

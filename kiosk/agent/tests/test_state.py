@@ -70,7 +70,7 @@ async def test_a_found_sunroom_that_moved_is_followed(
 ) -> None:
     agent = make_agent()
     agent.save(Config(url=SUNROOM, sunroom_id=SUNROOM_ID, found="discovered"))
-    moved = "http://192.168.1.44:8080"
+    moved = "http://192.168.1.44:7867"
     sunrooms.new[moved] = sunrooms.new.pop(SUNROOM)
     sunrooms.healthy = {moved}
     toasts: list[object] = []
@@ -96,7 +96,7 @@ async def test_a_typed_address_is_never_changed_by_itself(
 ) -> None:
     agent = make_agent()
     agent.save(Config(url=SUNROOM, sunroom_id=SUNROOM_ID, found="typed"))
-    sunrooms.new["http://192.168.1.44:8080"] = sunrooms.new.pop(SUNROOM)
+    sunrooms.new["http://192.168.1.44:7867"] = sunrooms.new.pop(SUNROOM)
     for _ in range(3):
         await agent.health_tick()
         clock.now += 300
@@ -186,7 +186,7 @@ async def test_reachability_is_published_when_it_changes(
     assert not agent.reachable and kinds == ["state", "state"]
 
 
-LOCAL = "http://localhost:8080"
+LOCAL = "http://localhost:7867"
 
 
 async def test_run_it_here_waits_for_the_new_sunroom_then_shows_it(
@@ -393,7 +393,7 @@ async def test_an_all_in_one_pis_own_sunroom_comes_up_to_this_version(
 ) -> None:
     platform = Helped("0.18.0")
     agent = make_agent(platform=platform, updater=updater_at(tmp_path))
-    agent.save(Config(url="http://localhost:8080", found="local", mode="all"))
+    agent.save(Config(url="http://localhost:7867", found="local", mode="all"))
     agent.known = agent_module.Known(version="0.1.0")
     said = heard(agent)
     await agent.finish_update()

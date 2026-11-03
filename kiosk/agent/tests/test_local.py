@@ -146,28 +146,28 @@ def test_a_checkout_with_no_release_version_cant(tmp_path: Path) -> None:
 
 async def test_phones_get_a_name_where_its_sure_and_the_ip_elsewhere(tmp_path: Path) -> None:
     mac = Shell(answers={"scutil --get LocalHostName": ok("Sample-Mac")})
-    assert await sunroom(tmp_path, mac, system="darwin").advertised(8080) == (
-        "http://Sample-Mac.local:8080"
+    assert await sunroom(tmp_path, mac, system="darwin").advertised(7867) == (
+        "http://Sample-Mac.local:7867"
     )
     avahi = Shell()  # systemctl is-active avahi-daemon: yes
-    assert await sunroom(tmp_path, avahi).advertised(8081) == "http://kitchen.local:8081"
+    assert await sunroom(tmp_path, avahi).advertised(7868) == "http://kitchen.local:7868"
     no_avahi = Shell(answers={"systemctl is-active": CommandResult(3, "inactive")})
-    assert await sunroom(tmp_path, no_avahi).advertised(8080) == "http://192.168.1.30:8080"
+    assert await sunroom(tmp_path, no_avahi).advertised(7867) == "http://192.168.1.30:7867"
     windows = Shell()
-    assert await sunroom(tmp_path, windows, system="win32", machine="AMD64").advertised(8080) == (
-        "http://192.168.1.30:8080"
+    assert await sunroom(tmp_path, windows, system="win32", machine="AMD64").advertised(7867) == (
+        "http://192.168.1.30:7867"
     )
     assert windows.calls == []
 
 
 def test_the_port_is_8080_or_the_next_free_one(tmp_path: Path) -> None:
-    taken = {8080, 8081}
+    taken = {7867, 7868}
     here = sunroom(tmp_path, Shell(), free=lambda port: port not in taken)
-    assert here._port() == 8082  # pyright: ignore[reportPrivateUsage]
-    here._remember(port=8090)  # pyright: ignore[reportPrivateUsage]
-    assert here._port() == 8090  # pyright: ignore[reportPrivateUsage] - kept, even if busy
+    assert here._port() == 7869  # pyright: ignore[reportPrivateUsage]
+    here._remember(port=7877)  # pyright: ignore[reportPrivateUsage]
+    assert here._port() == 7877  # pyright: ignore[reportPrivateUsage] - kept, even if busy
     full = sunroom(tmp_path / "full", Shell(), free=lambda port: False)
-    with pytest.raises(PlatformError, match=r"^Every port from 8080 to 8099 is in use"):
+    with pytest.raises(PlatformError, match=r"^Every port from 7867 to 7886 is in use"):
         full._port()  # pyright: ignore[reportPrivateUsage]
 
 
@@ -253,7 +253,7 @@ async def test_uv_installs_it_held_to_the_releases_versions(tmp_path: Path) -> N
 def test_the_user_service_quotes_what_it_runs_with() -> None:
     text = unit_text(
         ["/home/ana/.local/bin/sunroom", "serve", "--host", EVERYWHERE],
-        {"DATA_DIR": "/home/ana/my data", "SUNROOM_ADVERTISED_URL": "http://kitchen.local:8080"},
+        {"DATA_DIR": "/home/ana/my data", "SUNROOM_ADVERTISED_URL": "http://kitchen.local:7867"},
     )
     assert 'ExecStart="/home/ana/.local/bin/sunroom" "serve" "--host" "0.0.0.0"' in text
     assert 'Environment="DATA_DIR=/home/ana/my data"' in text
@@ -266,7 +266,7 @@ def test_the_user_service_quotes_what_it_runs_with() -> None:
 async def test_linux_runs_it_as_a_user_service_that_outlives_the_session(tmp_path: Path) -> None:
     shell = Shell()
     service = SystemdService(shell, places(tmp_path))
-    await service.install(["/home/ana/.local/bin/sunroom", "serve"], {"PORT": "8080"})
+    await service.install(["/home/ana/.local/bin/sunroom", "serve"], {"PORT": "7867"})
     assert service.present()
     assert shell.lines() == [
         "systemctl --user daemon-reload",
@@ -293,11 +293,11 @@ async def test_a_mac_runs_it_as_a_launch_agent_that_keeps_it_awake(tmp_path: Pat
     where = places(tmp_path, "darwin")
     service = LaunchdService(shell, where, uid=501)
     command = ["/Users/ana/.local/bin/sunroom", "serve", "--host", EVERYWHERE]
-    await service.install(command, {"PORT": "8080", "DATA_DIR": str(where.data)})
+    await service.install(command, {"PORT": "7867", "DATA_DIR": str(where.data)})
     plist: dict[str, Any] = plistlib.loads(where.launch_agent.read_bytes())
     assert plist["Label"] == LABEL
     assert plist["ProgramArguments"] == ["/usr/bin/caffeinate", "-i", *command]
-    assert plist["EnvironmentVariables"]["PORT"] == "8080"
+    assert plist["EnvironmentVariables"]["PORT"] == "7867"
     assert plist["KeepAlive"] == {"SuccessfulExit": False}
     assert plist["StandardOutPath"] == str(where.log)
     assert where.data.is_dir()
@@ -326,10 +326,10 @@ async def test_windows_starts_it_with_no_window_and_stops_its_whole_tree(tmp_pat
     started = Started()
     service = WindowsService(shell, where, popen=started)
     command = [str(where.bin / "sunroom.exe"), "serve", "--host", EVERYWHERE]
-    await service.install(command, {"PORT": "8080"})
+    await service.install(command, {"PORT": "7867"})
     ((argv, options),) = started.calls
     assert argv == command
-    assert options["env"]["PORT"] == "8080"
+    assert options["env"]["PORT"] == "7867"
     assert options["cwd"] == str(where.data)
     assert options["creationflags"] & local_module.DETACHED_PROCESS
     assert options["creationflags"] & local_module.CREATE_BREAKAWAY_FROM_JOB
@@ -376,17 +376,17 @@ async def test_a_run_here_installs_starts_and_remembers_it(tmp_path: Path) -> No
         said.append((percent, step))
 
     url = await here.run_here(progress)
-    assert url == "http://localhost:8080"
+    assert url == "http://localhost:7867"
     assert here.installed()
     assert here.remembered() == {
-        "port": 8080,
-        "advertised": "http://kitchen.local:8080",
+        "port": 7867,
+        "advertised": "http://kitchen.local:7867",
         "release": RELEASE,
     }
     unit = here.places.unit.read_text(encoding="utf-8")
     assert f'Environment="DATA_DIR={here.places.data}"' in unit
     assert 'Environment="SUNROOM_INSTALL_KIND=computer"' in unit
-    assert 'Environment="SUNROOM_ADVERTISED_URL=http://kitchen.local:8080"' in unit
+    assert 'Environment="SUNROOM_ADVERTISED_URL=http://kitchen.local:7867"' in unit
     assert any(line.startswith("/home/ana/.local/bin/uv tool install") for line in shell.lines())
     assert [step for _, step in said] == [
         "agent.local.step.downloading",
@@ -411,7 +411,7 @@ async def test_an_update_that_doesnt_answer_puts_the_last_one_back(
     (here.places.wheels / server_wheel("0.14.0")).write_bytes(b"the one before")
     here.places.unit.parent.mkdir(parents=True)
     here.places.unit.write_text("[Unit]\n")
-    here._remember(port=8080, advertised="http://kitchen.local:8080", release="0.14.0")  # pyright: ignore[reportPrivateUsage]
+    here._remember(port=7867, advertised="http://kitchen.local:7867", release="0.14.0")  # pyright: ignore[reportPrivateUsage]
     answers: list[bool] = [False]
 
     async def answers_as(release: str, within_s: float = 0) -> bool:
@@ -446,7 +446,7 @@ async def test_windows_starts_it_again_after_an_update_from_what_it_remembered(
     )
     where.wheels.mkdir(parents=True)
     (where.wheels / server_wheel(RELEASE)).write_bytes(WHEEL)
-    here._remember(port=8081, advertised="http://192.168.1.30:8081", release="0.14.0")  # pyright: ignore[reportPrivateUsage]
+    here._remember(port=7868, advertised="http://192.168.1.30:7868", release="0.14.0")  # pyright: ignore[reportPrivateUsage]
 
     async def answers_as(release: str, within_s: float = 0) -> bool:
         return True
@@ -455,7 +455,7 @@ async def test_windows_starts_it_again_after_an_update_from_what_it_remembered(
     assert await here.update(RELEASE)
     ((argv, options),) = started.calls
     assert argv == [str(where.bin / "sunroom.exe"), "serve", "--host", EVERYWHERE]
-    assert options["env"]["PORT"] == "8081"
+    assert options["env"]["PORT"] == "7868"
 
 
 async def test_removing_it_keeps_the_familys_data_unless_asked(tmp_path: Path) -> None:
@@ -463,7 +463,7 @@ async def test_removing_it_keeps_the_familys_data_unless_asked(tmp_path: Path) -
     here = sunroom(tmp_path, shell)
     here.places.unit.parent.mkdir(parents=True)
     here.places.unit.write_text("[Unit]\n")
-    here._remember(port=8080)  # pyright: ignore[reportPrivateUsage]
+    here._remember(port=7867)  # pyright: ignore[reportPrivateUsage]
     here.places.data.mkdir(parents=True)
     (here.places.data / "sunroom.db").write_bytes(b"the family's calendar")
     said = await here.remove()
@@ -521,7 +521,7 @@ async def test_the_agent_runs_sunroom_here_through_it_on_a_computer(
     from sunroom_kiosk import state as state_module
 
     monkeypatch.setattr(state_module, "RUN_SUNROOM_PAUSE_S", 0)
-    local = FakeLocal("http://localhost:8080")
+    local = FakeLocal("http://localhost:7867")
     sunrooms.new[local.url] = {**sunrooms.new[next(iter(sunrooms.new))], "setup_complete": False}
     sunrooms.healthy.add(local.url)
     agent = make_agent(platform=FakePlatform("desktop"), local=local)
@@ -541,7 +541,7 @@ async def test_uninstall_takes_sunroom_only_where_it_runs_here_then_quits(
     """This Screen's Uninstall (ADR 0042): the platform's uninstaller, with Sunroom only where
     it runs here as a program; then the agent quits (not the pretend one, in tests and e2e)."""
     platform = FakePlatform("desktop")
-    local = FakeLocal("http://localhost:8080")
+    local = FakeLocal("http://localhost:7867")
     agent = make_agent(platform=platform, local=local)
     assert "remove_sunroom" not in agent.capabilities()
     await agent.uninstall(sunroom=True)  # asked, but nothing runs here: Sunroom Screen alone

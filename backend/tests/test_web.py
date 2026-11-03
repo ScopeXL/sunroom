@@ -167,10 +167,10 @@ async def test_photos_need_a_session(spa_client: httpx.AsyncClient) -> None:
     "host",
     [
         "localhost",
-        "localhost:8080",
-        "127.0.0.1:8080",
-        "192.168.1.20:8080",
-        "[::1]:8080",
+        "localhost:7867",
+        "127.0.0.1:7867",
+        "192.168.1.20:7867",
+        "[::1]:7867",
         "sunroom",
         "sunroom.local",
         "kitchen.lan",
@@ -225,7 +225,7 @@ def test_any_name_passes_without_a_list() -> None:
 
 
 async def test_any_host_is_answered_by_default(parent: httpx.AsyncClient) -> None:
-    """ADR 0034: http://<the server>:8080 works with nothing set, through any proxy."""
+    """ADR 0034: http://<the server>:7867 works with nothing set, through any proxy."""
     found = await parent.get("/api/version", headers={"host": "evil.example"})
     assert found.status_code == 200
     diagnostics = (await parent.get("/api/admin/diagnostics")).json()
@@ -235,11 +235,11 @@ async def test_any_host_is_answered_by_default(parent: httpx.AsyncClient) -> Non
 async def test_addresses_this_server_was_reached_at_are_remembered(
     parent: httpx.AsyncClient,
 ) -> None:
-    await parent.get("/api/version", headers={"host": "sunroom.local:8080"})
-    await parent.get("/api/version", headers={"host": "127.0.0.1:8080"})
+    await parent.get("/api/version", headers={"host": "sunroom.local:7867"})
+    await parent.get("/api/version", headers={"host": "127.0.0.1:7867"})
     diagnostics = (await parent.get("/api/admin/diagnostics")).json()
     # Loopback names (this request's localhost too) only work on the server itself.
-    assert diagnostics["recent_addresses"] == ["sunroom.local:8080"]
+    assert diagnostics["recent_addresses"] == ["sunroom.local:7867"]
 
 
 # ---- forwarded headers (PLAN §13.4) --------------------------------------------------------
@@ -266,7 +266,7 @@ async def _through(
         "type": kind,
         "scheme": "http" if kind == "http" else "ws",
         "client": (peer, 4000),
-        "headers": [(b"host", b"sunroom:8080"), *headers],
+        "headers": [(b"host", b"sunroom:7867"), *headers],
     }
     await ForwardedHeaders(app)(scope, receive, send)
     return seen
@@ -295,7 +295,7 @@ async def test_a_connection_from_the_internet_is_never_believed() -> None:
     assert await _through("203.0.113.9", PROXY) == {
         "scheme": "http",
         "client": "203.0.113.9",
-        "host": "sunroom:8080",
+        "host": "sunroom:7867",
     }
 
 
@@ -318,7 +318,7 @@ async def test_a_proxy_at_home_sets_scheme_and_host(data_dir: Path) -> None:
         transport = httpx.ASGITransport(app=app, client=("127.0.0.1", 4000))
         async with httpx.AsyncClient(
             transport=transport,
-            base_url="http://sunroom:8080",
+            base_url="http://sunroom:7867",
             headers={
                 "x-forwarded-proto": "https",
                 "x-forwarded-for": "198.51.100.7",
@@ -340,7 +340,7 @@ async def test_the_same_headers_from_the_internet_change_nothing(data_dir: Path)
         transport = httpx.ASGITransport(app=app, client=("203.0.113.9", 4000))
         async with httpx.AsyncClient(
             transport=transport,
-            base_url="http://sunroom:8080",
+            base_url="http://sunroom:7867",
             headers={
                 "x-forwarded-proto": "https",
                 "x-forwarded-for": "198.51.100.7",
@@ -350,4 +350,4 @@ async def test_the_same_headers_from_the_internet_change_nothing(data_dir: Path)
             setup = await run_setup(client)
             assert setup.headers["set-cookie"].startswith("sunroom=")
             body = (await client.get("/api/admin/diagnostics")).json()
-    assert body["client"] == {"scheme": "http", "host": "sunroom:8080"}
+    assert body["client"] == {"scheme": "http", "host": "sunroom:7867"}

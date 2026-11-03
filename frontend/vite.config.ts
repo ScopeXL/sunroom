@@ -54,9 +54,9 @@ export default defineConfig({
     fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../lang"] },
     proxy: {
       // The Host rule accepts localhost:5173, and the CSRF check compares Origin with it.
-      "/api": { target: "http://127.0.0.1:8080", changeOrigin: false },
+      "/api": { target: "http://127.0.0.1:7867", changeOrigin: false },
       // The photo files only: /photos itself is the Photos room, which Vite serves.
-      "^/photos/": { target: "http://127.0.0.1:8080", changeOrigin: false },
+      "^/photos/": { target: "http://127.0.0.1:7867", changeOrigin: false },
     },
   },
   build: {

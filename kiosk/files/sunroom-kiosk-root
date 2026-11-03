@@ -343,7 +343,7 @@ def apply_system(wheel):
         with open(AVAHI_SERVICE, encoding="utf-8", errors="replace") as f:
             port = re.search(r"<port>(\d+)</port>", f.read())
         found = {
-            "PORT": port.group(1) if port else "8080",
+            "PORT": port.group(1) if port else "7867",
             "VERSION": release,
             "NOTE": header(release)[2:].rstrip("\n"),
         }

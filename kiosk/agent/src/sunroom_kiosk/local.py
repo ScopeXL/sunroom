@@ -10,7 +10,7 @@ computer's user, beside Sunroom Screen, when Welcome's On This Computer is chose
   wheel).
 * **Its data** is this user's: ``~/.local/share/sunroom`` on Linux, ``~/Library/Application
   Support/Sunroom`` on a Mac, ``%LOCALAPPDATA%\\Sunroom`` on Windows.
-* **Its address** is port 8080, or the next free one up to 8099. Devices open
+* **Its address** is port 7867, or the next free one up to 7886. Devices open
   ``http://<computer>.local:<port>`` where the computer surely answers to that name (a Mac, Linux
   with avahi), else ``http://<IP>:<port>``.
 * **What keeps it running**: on Linux a systemd user service, ``sunroom.service``, kept running
@@ -66,7 +66,7 @@ log = logs.get("local")
 
 UNIT = "sunroom.service"
 LABEL = "app.sunroom.server"
-PORTS = range(8080, 8100)
+PORTS = range(7867, 7887)
 KIND = "computer"
 INSTALL_LIMIT_S = 1800.0  # uv downloads a Python and Sunroom's libraries the first time
 ANSWERS_WITHIN_S = 300.0  # its first start makes the database: as long as the installer waits

@@ -58,7 +58,9 @@ class Settings(BaseSettings):
     # unset, any Host is answered.
     app_allowed_hosts: Annotated[tuple[str, ...], NoDecode] = ()
     tz: str | None = None
-    port: int = Field(default=8080, ge=1024, le=65535)
+    port: int = Field(default=7867, ge=1024, le=65535)
+    # The image answers here too (ADR 0045), for compose files from before the port moved.
+    sunroom_old_port: int | None = Field(default=None, ge=1024, le=65535)
     log_level: str = "INFO"
     data_dir: Path = Path("/data")
     data_dir_unsafe_fs_ok: bool = False
@@ -141,7 +143,7 @@ class Settings(BaseSettings):
             return None
         parts = urlsplit(value.strip())
         if parts.scheme not in {"http", "https"} or not parts.hostname:
-            raise ValueError("must be an address like http://sunroom.local:8080")
+            raise ValueError("must be an address like http://sunroom.local:7867")
         if parts.path not in {"", "/"} or parts.query or parts.fragment:
             raise ValueError("must be an address only, with no path, query or fragment")
         return f"{parts.scheme}://{parts.netloc}"

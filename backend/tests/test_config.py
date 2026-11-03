@@ -18,7 +18,7 @@ def test_nothing_is_required() -> None:
     assert settings.app_secret_key is None  # generated at first boot
     assert settings.app_password is None  # chosen in the setup wizard
     assert settings.tz is None
-    assert settings.port == 8080
+    assert settings.port == 7867
     assert str(settings.db_path) == "/data/sunroom.db"
     assert str(settings.secret_key_path) == "/data/secret.key"
     assert settings.sunroom_install_kind is InstallKind.DOCKER
@@ -87,8 +87,8 @@ def test_advertised_url_is_an_address(url: str) -> None:
 
 
 def test_advertised_url_is_trimmed_to_an_origin() -> None:
-    settings = load_settings({"SUNROOM_ADVERTISED_URL": "http://sunroom.local:8080/"})
-    assert settings.sunroom_advertised_url == "http://sunroom.local:8080"
+    settings = load_settings({"SUNROOM_ADVERTISED_URL": "http://sunroom.local:7867/"})
+    assert settings.sunroom_advertised_url == "http://sunroom.local:7867"
 
 
 def test_test_mode_is_refused_in_the_container() -> None:

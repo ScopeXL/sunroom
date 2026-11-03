@@ -93,7 +93,7 @@ WANT_SERVER_ONLY=0
 KEPT_MODE=0 # a Pi that runs Sunroom from an earlier install keeps it (no option given)
 URL=""
 VERSION=""
-PORT=8080
+PORT=7867
 PORT_GIVEN=0
 OUTPUT=""
 OUTPUT_GIVEN=0
@@ -264,7 +264,7 @@ What to set up (with no option: the screen, which finds Sunroom on your network
 itself, or asks for its address on the screen):
   --url URL                 The address of your Sunroom, so the screen doesn't look for it:
                             the one you open on your other devices, for example
-                            http://192.168.1.20:8080 or https://calendar.example.com
+                            http://192.168.1.20:7867 or https://calendar.example.com
   --with-sunroom            A Pi only: Sunroom on this Pi too, shown on its screen
   --server-only             A Pi only: Sunroom alone, no screen (Raspberry Pi OS Lite)
   --display-only            Only the screen, also on a Pi that runs Sunroom (a Pi
@@ -274,7 +274,8 @@ itself, or asks for its address on the screen):
 Options:
   --version X.Y.Z           With Sunroom on this Pi: run this version instead of the newest
                             (the screen's own software is always this installer's)
-  --port N                  With Sunroom on this Pi: the port your devices use (default 8080)
+  --port N                  With Sunroom on this Pi: the port your devices use (default 7867;
+                            running this again keeps the one it has)
   --output NAME             The screen's connector, for example HDMI-A-1
                             (default: the one with a screen plugged in)
   --rotate 0|90|180|270     Turn the picture for a screen mounted on its side
@@ -318,9 +319,9 @@ need_value() {
 
 example_for() {
 	case $1 in
-	--url) printf 'http://192.168.1.20:8080' ;;
+	--url) printf 'http://192.168.1.20:7867' ;;
 	--version) printf '0.1.0' ;;
-	--port) printf '8081' ;;
+	--port) printf '7868' ;;
 	--output) printf 'HDMI-A-1' ;;
 	--rotate) printf '90' ;;
 	--brightness) printf 'auto' ;;
@@ -487,7 +488,7 @@ validate_args() {
 		URL=$(lower "$URL")
 		if [[ ! $URL =~ ^https?://[a-z0-9.-]+(:[0-9]{1,5})?$ ]]; then
 			usage_error "\"$URL\" doesn't look like the address of Sunroom." \
-				"Use the address you open on your other devices, for example http://192.168.1.20:8080 or https://calendar.example.com"
+				"Use the address you open on your other devices, for example http://192.168.1.20:7867 or https://calendar.example.com"
 		fi
 	fi
 	if [[ -n $VERSION ]]; then
@@ -1235,8 +1236,19 @@ existing_tag() {
 		}' "$SERVER_DIR/docker-compose.yml"
 }
 
+# The port an earlier install publishes, whatever the container's own was; empty when there is none.
+existing_port() {
+	sudo test -f "$SERVER_DIR/docker-compose.yml" || return 0
+	sudo sed -nE 's/^[[:space:]]*-[[:space:]]*"?([0-9]+):[0-9]+"?[[:space:]]*$/\1/p' "$SERVER_DIR/docker-compose.yml" | head -n 1
+}
+
 write_stack() {
-	local tz host previous
+	local tz host previous kept
+	# Every device has saved this address, so running the installer again never moves it.
+	if ((!PORT_GIVEN)); then
+		kept=$(existing_port || true)
+		PORT=${kept:-$PORT}
+	fi
 	previous=$(existing_tag || true)
 	if [[ -n $VERSION ]]; then
 		IMAGE_TAG=$VERSION
@@ -1318,7 +1330,7 @@ start_stack() {
 		printf '%s\n' "$output"
 		if grep -qiE 'address already in use|port is already allocated' <<<"$output"; then
 			die "Another program on this Pi already uses port $PORT." \
-				"Run the installer again with another port, for example: --port 8081"
+				"Run the installer again with another port, for example: --port 7868"
 		fi
 		if grep -qi 'is already in use by container' <<<"$output"; then
 			die "A container called sunroom already exists, perhaps from an earlier docker run." \

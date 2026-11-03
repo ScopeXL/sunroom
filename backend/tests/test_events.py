@@ -133,7 +133,7 @@ async def test_revoking_the_device_ends_the_stream(
 ) -> None:
     await stream.wait_for(lambda f: "hello" in types(f))
     other = httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://localhost:8080"
+        transport=httpx.ASGITransport(app=app), base_url="http://localhost:7867"
     )
     async with other:
         await login(other)

@@ -15,7 +15,7 @@ from sunroom_kiosk.platform.windows import BIOS_KEY, RegistryKind
 
 PORT = 7800
 AGENT = f"http://127.0.0.1:{PORT}"
-SUNROOM = "http://192.168.1.20:8080"
+SUNROOM = "http://192.168.1.20:7867"
 SUNROOM_ID = "00000000-0000-7000-8000-0000000000e1"
 CHANGE = {"X-Sunroom-Screen": "1"}
 

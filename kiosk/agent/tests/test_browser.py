@@ -105,10 +105,10 @@ def test_macos_looks_in_the_accounts_own_applications_too() -> None:
 @pytest.mark.parametrize(
     ("url", "origin"),
     [
-        ("http://192.168.1.20:8080", "http://192.168.1.20:8080"),
-        ("http://sunroom.local:8080", "http://sunroom.local:8080"),
-        ("http://localhost:8080", None),
-        ("http://127.0.0.1:8080", None),
+        ("http://192.168.1.20:7867", "http://192.168.1.20:7867"),
+        ("http://sunroom.local:7867", "http://sunroom.local:7867"),
+        ("http://localhost:7867", None),
+        ("http://127.0.0.1:7867", None),
         ("https://calendar.example.com", None),
     ],
 )
@@ -121,14 +121,14 @@ def test_the_launchers_flags_on_wayland(tmp_path: Path) -> None:
         CHROMIUM,
         profile=tmp_path,
         session="wayland",
-        sunroom_url="http://192.168.1.20:8080",
+        sunroom_url="http://192.168.1.20:7867",
         system="linux",
     )
     assert argv[0] == f"--user-data-dir={tmp_path}"
     for flag in ("--kiosk", "--noerrdialogs", "--disable-pinch", "--remote-debugging-port=0"):
         assert flag in argv
     assert "--ozone-platform=wayland" in argv and "--password-store=basic" in argv
-    assert "--unsafely-treat-insecure-origin-as-secure=http://192.168.1.20:8080" in argv
+    assert "--unsafely-treat-insecure-origin-as-secure=http://192.168.1.20:7867" in argv
     assert not any(flag in argv for flag in ("--incognito", "--disable-gpu"))
 
 
@@ -225,7 +225,7 @@ async def test_the_supervisor_starts_it_again_after_it_exits(
     script = tmp_path / "browser.sh"
     script.write_text(f'#!/bin/sh\necho "$@" >> "{started}"\nexit 1\n')
     script.chmod(0o755)
-    pages = iter(["http://127.0.0.1:7800/", "http://192.168.1.20:8080/display", "x", "y", "z"])
+    pages = iter(["http://127.0.0.1:7800/", "http://192.168.1.20:7867/display", "x", "y", "z"])
     supervisor = Supervisor(
         Browser("chromium", str(script), "Pretend"),
         profile=tmp_path / "profile",
@@ -242,7 +242,7 @@ async def test_the_supervisor_starts_it_again_after_it_exits(
     lines = started.read_text().splitlines()
     assert lines[:2] == [
         "--kiosk http://127.0.0.1:7800/",
-        "--kiosk http://192.168.1.20:8080/display",
+        "--kiosk http://192.168.1.20:7867/display",
     ]
     assert (tmp_path / "profile").is_dir()
 
@@ -411,11 +411,11 @@ async def test_navigating_goes_through_devtools_and_restarts_only_when_that_fail
 
     supervisor = Supervisor(CHROMIUM, profile=tmp_path, argv=list, page=lambda: "x")
     supervisor.devtools = Answering(answers=True)
-    await supervisor.navigate("http://192.168.1.44:8080/display")
-    assert asked == ["http://192.168.1.44:8080/display"]
+    await supervisor.navigate("http://192.168.1.44:7867/display")
+    assert asked == ["http://192.168.1.44:7867/display"]
     assert supervisor.next_page is None
     assert not supervisor._restart.is_set()  # pyright: ignore[reportPrivateUsage]
     supervisor.devtools = Answering(answers=False)
-    await supervisor.navigate("http://192.168.1.45:8080/display")
-    assert supervisor.next_page == "http://192.168.1.45:8080/display"
+    await supervisor.navigate("http://192.168.1.45:7867/display")
+    assert supervisor.next_page == "http://192.168.1.45:7867/display"
     assert supervisor._restart.is_set()  # pyright: ignore[reportPrivateUsage]
