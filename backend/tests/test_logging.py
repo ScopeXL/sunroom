@@ -69,3 +69,14 @@ def test_no_secret_reaches_captured_output(capsys: pytest.CaptureFixture[str]) -
     assert "login.attempt" in captured
     assert "stdlib message" in captured
     assert SECRET not in captured
+
+
+def test_the_request_log_masks_a_pairing_poll_token() -> None:
+    from sunroom.app import RequestLog
+
+    masked = RequestLog.logged_path("/api/auth/kiosk/pairings/Qx7-secret-poll-token_0123456789")
+    assert masked == "/api/auth/kiosk/pairings/…"
+    assert "secret" not in masked
+    # The route itself, and every other path, stay readable.
+    assert RequestLog.logged_path("/api/auth/kiosk/pairings") == "/api/auth/kiosk/pairings"
+    assert RequestLog.logged_path("/api/calendar/events/abc") == "/api/calendar/events/abc"

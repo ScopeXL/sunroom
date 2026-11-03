@@ -14,6 +14,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
   helper there), and a backend test no longer races the start-up backup.
 - A reward a child can't afford yet, asked for by several children, says "They have…" where it said
   "They has…".
+- Behind the scenes: a screen waiting to pair no longer writes its one-time pairing secret into the
+  server's log while it waits.
 
 ## [0.18.0] - 2026-11-02
 

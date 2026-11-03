@@ -77,6 +77,16 @@ PHOTO_KEEP_REMOVED = timedelta(days=7)
 class RequestLog:
     """Logs method, path (never the query string), status and duration."""
 
+    # A screen waiting to pair polls with its secret in the path (``/api/auth/kiosk/pairings/<poll
+    # token>``): the log keeps the route and masks the token.
+    MASKED_PREFIX = "/api/auth/kiosk/pairings/"
+
+    @classmethod
+    def logged_path(cls, path: str) -> str:
+        if path.startswith(cls.MASKED_PREFIX) and len(path) > len(cls.MASKED_PREFIX):
+            return cls.MASKED_PREFIX + "…"
+        return path
+
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
@@ -100,7 +110,7 @@ class RequestLog:
                 log.info(
                     "http.request",
                     method=scope["method"],
-                    path=scope["path"],
+                    path=self.logged_path(str(scope["path"])),
                     status=status,
                     ms=round((time.perf_counter() - started) * 1000, 1),
                 )
