@@ -35,7 +35,8 @@ HOW: dict[InstallKind, str] = {
     InstallKind.PORTAINER: "In Portainer, pull Sunroom's newest image and redeploy its stack",
     InstallKind.HA: "Update it in Home Assistant, under Settings, then Add-ons",
     InstallKind.COMPUTER: (
-        "On the screen that runs it, open Settings, then This Screen, then Update Sunroom Too"
+        "The screen that runs it installs updates overnight, or at once with Settings, then"
+        " This Screen, then Update Now"
     ),
 }
 

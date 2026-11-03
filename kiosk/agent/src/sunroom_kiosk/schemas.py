@@ -94,7 +94,7 @@ class ScreenUpdateOut(BaseModel):
     message_key: str | None = None  # its key in lang/en.json, and its values (ADR 0043)
     message_params: dict[str, str] = Field(default_factory=dict[str, str])
     # An all-in-one Pi: the Sunroom running on this screen is older than the newest release, and
-    # this screen can update it (Update Sunroom Too).
+    # this screen brings it along with its own update (ADR 0044).
     sunroom_outdated: bool = False
     last_result: ScreenUpdateResultOut | None = None
     # The installer's one line, when root's part can't be finished from here (ADR 0044): a

@@ -255,4 +255,4 @@ def test_every_install_kind_says_how_to_update() -> None:
     from sunroom.core.updates import HOW
 
     assert set(HOW) == set(InstallKind)
-    assert "Update Sunroom Too" in HOW[InstallKind.COMPUTER]
+    assert "Update Now" in HOW[InstallKind.COMPUTER]

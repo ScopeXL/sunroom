@@ -20,8 +20,8 @@ computer's user, beside Sunroom Screen, when Welcome's On This Computer is chose
   again whenever it stops answering, and the computer kept awake meanwhile. A Linux screen holds a
   sleep inhibitor while it has Sunroom. Sunroom Screen announces it on the network
   (``_sunroom._tcp``), so other screens find it on any port.
-* **Updates**: Sunroom Screen keeps it at its own version; This Screen's Update Sunroom Too installs
-  the newest; a version that doesn't answer within five minutes is put back.
+* **Updates**: Sunroom Screen keeps it at its own version: Update Now and the overnight update
+  bring it along (ADR 0044); a version that doesn't answer within five minutes is put back.
 * **Removing it**: ``sunroom-kiosk sunroom remove`` (the uninstallers), the data kept unless asked.
 
 Not on an Intel Mac: ``cryptography`` 49 and later ship no wheel for one (``supported()``).
