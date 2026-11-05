@@ -16,18 +16,17 @@ length from a wall screen.
 **Status:** M0 to M5 are built (docs/PLAN.md §15): the foundation; the calendar core (our own
 recurrence engine, ADR 0023); synced calendars (ADR 0024, docs/SYNC.md); lists and chores
 (ADR 0025); meals, countdowns, photos and weather (ADR 0026); the wall, polished (ADR 0027).
-M6 batch 1 (the owner's notes: docs/M6.md, ADR 0028) is built in 0.7.0, batch 2
-(docs/M6-batch-2.md, ADR 0029) in 0.8.0, batch 3 (docs/M6-batch-3.md, ADR 0030) in 0.9.0,
-batch 4 (docs/M6-batch-4.md, ADR 0032) in 0.10.0, batch 5 (docs/M6-batch-5.md, ADR 0033) in
-0.11.0, batch 6 (docs/M6-batch-6.md, ADR 0034) in 0.12.0, and batch 8 (docs/M6-batch-8.md,
-ADR 0036) for 0.14.0; more M6 comes from use.
+M6, the owner's notes in batches (docs/M6*.md, ADRs 0028 to 0034 and 0036), is built in 0.7.0 to
+0.14.0; more comes from use.
 M7 (docs/M7.md, ADR 0035) is Sunroom Screen: batch 0 (two wall fixes) released as 0.12.1;
 batch 1 (the agent, This Screen, discovery, the installer, GitHub Releases) and batch 2 (Windows,
 macOS, Run It on This Screen, the Sunroom OS image, retired in M9) released as 0.13.0.
 M8 (docs/M8.md, ADR 0038), Sunroom on this computer, released as 0.15.0; M8 batch 2
 (docs/M8-batch-2.md, ADR 0039: setting up on the screen) as 0.16.0, Windows fixes as 0.16.1.
 M9 (docs/M9.md, ADR 0042: the owner's notes of 2026-10-28) released as 0.17.0. M10 (docs/M10.md:
-languages, ADR 0043; the screen setting itself up again, ADR 0044) is built for 0.18.0.
+languages, ADR 0043; the screen setting itself up again, ADR 0044) released as 0.18.0.
+**Building now:** 1.0, from docs/V1.md: follow its "The order of work". The Home Assistant
+integration's plan is `../ha-sunroom/docs/PLAN.md`, one sequence with it.
 
 **Read first:**
 - [`docs/PLAN.md`](docs/PLAN.md): what we're building and how, plus milestones. It's long, so
@@ -109,6 +108,7 @@ Keep this file under 15 KB; detail belongs in `docs/`.
 | `just lang [--fix]` | The words in `lang/` and the code naming them, in step; `--fix` sorts |
 | `just db-revision "msg"` | Create a new migration |
 | `just scan` | gitleaks plus the private-terms scan (tree and history) |
+| `just audit` | Known vulnerabilities in what ships; weekly in CI, never blocks a release |
 | `just smoke-image [REF]` | Build the image from git, boot it with no settings, set it up through the API, probe it |
 | `just smoke-caldav` | The CalDAV client against Radicale in Docker, with the ICS fixtures (opt-in; network) |
 | `just kiosk-test` / `kiosk-dev` / `kiosk-build` / `kiosk-serve` | Sunroom Screen: its tests; its pages on 5174 with a pretend agent; its wheel; the installers for a VM |
