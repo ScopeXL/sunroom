@@ -613,10 +613,17 @@ export interface components {
             needs_terminal?: string | null;
             state: components["schemas"]["ScreenUpdateState"];
             /**
+             * Sunroom Can Update
+             * @default false
+             */
+            sunroom_can_update: boolean;
+            /**
              * Sunroom Outdated
              * @default false
              */
             sunroom_outdated: boolean;
+            /** Sunroom Pinned */
+            sunroom_pinned?: string | null;
         };
         /** ScreenUpdatePolicyIn */
         ScreenUpdatePolicyIn: {

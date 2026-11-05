@@ -31,9 +31,7 @@ root; it asks for `sudo` itself.
 
 | You want | Command |
 |---|---|
-| The screen on this Pi; Sunroom runs elsewhere | `curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh \| bash` |
-| Sunroom and the screen, both on this Pi | the same, ending `\| bash -s -- --with-sunroom` |
-| Only Sunroom, no screen (Pi OS Lite) | the same, ending `\| bash -s -- --server-only` |
+| The screen, with Sunroom on this computer or elsewhere | `curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh \| bash` |
 
 The installer finishes by saying what's next (with Sunroom on the Pi, the address your devices
 open and a QR code), then offers to restart.
@@ -170,6 +168,28 @@ Run the installer again with the options you used the first time (for example `-
 --url …`), then let it restart the Pi. It replaces the old launcher, the screen helper and their
 services with Sunroom Screen (the log says so), and keeps the address and the pairing. `update.sh`
 alone doesn't do this: it updates Sunroom, not the Pi's screen setup.
+
+## Advanced: Sunroom in Docker on the Pi
+
+These two still work, and are left out of the README: **On This Computer** does the same with
+less to keep up.
+
+| You want | Command |
+|---|---|
+| Sunroom in Docker and the screen, both on this Pi | the install line, ending `\| bash -s -- --with-sunroom` |
+| Only Sunroom in Docker, no screen (Pi OS Lite) | the same, ending `\| bash -s -- --server-only` |
+
+**They keep themselves up to date.** With a screen, the screen brings Sunroom along overnight, tries
+a failed download again within the hour, and This Screen shows **Update Sunroom** while it's behind.
+Sunroom alone gets a timer, every morning at about 5:00 (`--no-auto-update` leaves it out). Either way
+runs `sudo /opt/sunroom/update.sh`:
+
+- A new version that never turns healthy goes back by itself to the one before, restoring the
+  database copy if it had changed the database, and stays there until something newer is out. The
+  wall says "Sunroom 1.1.0 didn't start, so 1.0.0 is back."
+- A Pi installed with `--version X.Y.Z` stays on that version, and This Screen says so. `sudo
+  /opt/sunroom/update.sh latest` follows the newest again, and `sudo /opt/sunroom/update.sh 1.0.0`
+  moves the pin.
 
 ## Another Linux computer
 

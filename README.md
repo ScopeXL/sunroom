@@ -59,10 +59,8 @@ Rather set up on another device? Scan the QR code beside **Set Up Here**, or ope
 shows. The screen then shows a six-character code: on a signed-in device, open **Settings →
 Devices → Pair a Display** (under **More** on a phone) and type it.
 
-Keep that computer on and connected: your devices open Sunroom from it. On a Pi,
-`… | bash -s -- --with-sunroom` instead runs Sunroom in Docker, set up by the installer, which
-prints the address and QR code at the end. If a `.local` address doesn't open, use the numbered
-one: a device on a VPN, or a phone on mobile data, can't see `.local` names.
+Keep that computer on and connected: your devices open Sunroom from it. If a `.local` address
+doesn't open, use the numbered one: a device on a VPN, or a phone on mobile data, can't see `.local` names.
 The screen updates itself overnight, the whole way, or at once with Settings → This Screen →
 Update Now; [docs/KIOSK.md](docs/KIOSK.md) covers that, rotation, screens that stay blank and
 removal (on the screen itself: Settings → This Screen → Uninstall Sunroom Screen…).
@@ -118,8 +116,6 @@ Access; see [docs/HARDWARE.md](docs/HARDWARE.md#an-old-tablet-instead)).
 |---|---|
 | A Pi, a Linux computer or a Mac: the screen | `curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh \| bash` |
 | Windows: the screen | `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 \| iex`, in a PowerShell window |
-| A Pi: Sunroom (in Docker) and the screen | the first, ending `\| bash -s -- --with-sunroom` |
-| A Pi: only Sunroom, no screen | the first, ending `\| bash -s -- --server-only` |
 
 Each installs what the screen needs (a browser too, when there's none) and starts it. The screen
 then asks where your family's Sunroom will run: **On This Computer** sets it up right there, and

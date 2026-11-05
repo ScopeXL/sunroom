@@ -280,6 +280,15 @@ class Platform:
         """Update the Sunroom that runs on this machine (an all-in-one Pi)."""
         return False
 
+    def sunroom_update_outcome(self) -> list[str]:
+        """How the last update of an all-in-one Pi's Sunroom ended (update.sh's last-update):
+        ["went-back", new, old], ["left-alone", version], ["updated", version] or ["failed"]."""
+        return []
+
+    def sunroom_pinned(self) -> str | None:
+        """The version an all-in-one Pi's own Sunroom is pinned to, if the family pinned one."""
+        return None
+
     # ------------------------------------------------------------------ the system's part
 
     async def root_helper_version(self) -> str | None:

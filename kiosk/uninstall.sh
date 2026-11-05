@@ -513,6 +513,9 @@ purge_server() {
 		sudo docker rm -f sunroom >/dev/null 2>&1 || true
 		sudo docker volume rm sunroom_data >/dev/null 2>&1 || true
 	fi
+	sudo systemctl disable --now sunroom-update.timer >/dev/null 2>&1 || true
+	sudo rm -f /etc/systemd/system/sunroom-update.service /etc/systemd/system/sunroom-update.timer
+	sudo systemctl daemon-reload >/dev/null 2>&1 || true
 	sudo rm -rf "$SERVER_DIR"
 	sudo rm -f "$AVAHI_SERVICE"
 	note "Deleted Sunroom, its data and $SERVER_DIR. Docker itself is still installed."

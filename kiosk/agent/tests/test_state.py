@@ -5,7 +5,9 @@ new version's start (ADR 0044). Synthetic data only."""
 
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
@@ -332,6 +334,20 @@ def updater_at(tmp_path: Path, **saved: object) -> Updater:
     return Updater(paths=paths, current=version())
 
 
+def toasts(agent: Agent) -> list[str]:
+    """The keys of what the wall is told, as it's told them."""
+    said: list[str] = []
+    publish = agent.hub.publish
+
+    def spy(event_type: str, payload: dict[str, object] | None = None) -> None:
+        if event_type == "toast" and payload:
+            said.append(str(payload.get("key")))
+        publish(event_type, payload)
+
+    agent.hub.publish = spy  # type: ignore[method-assign]
+    return said
+
+
 def heard(agent: Agent) -> list[str]:
     """The steps and toasts the wall is told, by key."""
     said: list[str] = []
@@ -386,6 +402,54 @@ async def test_the_computer_restarts_once_for_a_version_that_asks(
     assert updater.rebooted_for() == version()
     await agent.finish_update()  # back after the restart: never a loop
     assert platform.calls == ["restart"]
+
+
+async def test_an_all_in_one_pi_tries_a_failed_pull_again_quietly_within_the_hour(
+    make_agent: Callable[..., Agent], tmp_path: Path
+) -> None:
+    platform = Helped("0.18.0")
+    agent = make_agent(platform=platform, updater=updater_at(tmp_path))
+    agent.save(Config(url="http://localhost:7867", found="local", mode="all"))
+    agent.known = agent_module.Known(version="0.1.0", asked_at=time.monotonic())
+
+    async def answers(_url: str) -> bool:
+        return True
+
+    agent.healthy = answers  # type: ignore[method-assign]
+    await agent.health_tick()
+    assert platform.calls == []  # not before the hour is up
+    agent._behind_looked_at = -agent_module.BEHIND_EVERY_S
+    said = toasts(agent)
+    await agent.health_tick()
+    await asyncio.sleep(0)
+    assert platform.calls == ["update_sunroom"]
+    assert said == []  # on its own, a failed try or a good one says nothing
+
+
+async def test_a_version_that_went_back_says_so(
+    make_agent: Callable[..., Agent], tmp_path: Path
+) -> None:
+    platform = Helped("0.18.0")
+    platform.sunroom_outcome = ["went-back", "0.19.0", "0.18.0"]
+    platform.sunroom_updates = False
+    agent = make_agent(platform=platform, updater=updater_at(tmp_path))
+    agent.save(Config(url="http://localhost:7867", found="local", mode="all"))
+    said = toasts(agent)
+    await agent.update_sunroom(quiet=True)
+    assert said == ["agent.toast.sunroom_went_back"]
+
+
+async def test_a_pinned_pi_is_left_alone(make_agent: Callable[..., Agent], tmp_path: Path) -> None:
+    platform = Helped("0.18.0")
+    platform.pinned_to = "0.18.0"
+    agent = make_agent(platform=platform, updater=updater_at(tmp_path))
+    agent.save(Config(url="http://localhost:7867", found="local", mode="all"))
+    agent.known = agent_module.Known(version="0.1.0")
+    assert agent._docker_sunroom_behind() is False
+    await agent.finish_update()
+    assert "update_sunroom" not in platform.calls
+    update = agent.snapshot().update
+    assert (update.sunroom_pinned, update.sunroom_can_update) == ("0.18.0", False)
 
 
 async def test_an_all_in_one_pis_own_sunroom_comes_up_to_this_version(

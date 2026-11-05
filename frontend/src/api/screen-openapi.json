@@ -724,10 +724,26 @@
           "state": {
             "$ref": "#/components/schemas/ScreenUpdateState"
           },
+          "sunroom_can_update": {
+            "default": false,
+            "title": "Sunroom Can Update",
+            "type": "boolean"
+          },
           "sunroom_outdated": {
             "default": false,
             "title": "Sunroom Outdated",
             "type": "boolean"
+          },
+          "sunroom_pinned": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sunroom Pinned"
           }
         },
         "required": [

@@ -55,6 +55,14 @@
   change it, and it reads `TZ`, which may be unset.
 - **Images gain a major tag from 1.0**, so a household can pin how far an update goes.
 
+- **A Pi with Sunroom in Docker looks after itself** (`update.sh`, kept for `--with-sunroom` and
+  `--server-only`, which leave the README): a failed pull is tried again within the hour; a version
+  that never turns healthy goes back by itself, restoring the pre-migration copy when the old version
+  refuses the database, and is held until something newer than what failed is out, so it doesn't
+  fail nightly or stay stuck. A version the family pinned stays. `--server-only` gets a morning timer.
+  `update.sh` says how it ended in a file beside it, so the screen can say so without touching the
+  root helper.
+
 ## Consequences
 
 - One request a day from each install, which GitHub can see. The tests keep the check off unless they

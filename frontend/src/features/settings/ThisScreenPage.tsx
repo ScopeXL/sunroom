@@ -136,6 +136,17 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
       showToast(t("settings.this_screen.rotation.error", { why: refusal(error) }));
     },
   });
+  const updateSunroom = useMutation({
+    mutationFn: async () => {
+      answer(await agent().POST("/api/screen/update-sunroom"));
+    },
+    onSuccess: () => {
+      showToast(t("settings.this_screen.software.update_sunroom.toast"));
+    },
+    onError: (error) => {
+      showToast(refusal(error));
+    },
+  });
   const policy = useMutation({
     mutationFn: async (check: "nightly" | "off") => {
       answer(await agent().PUT("/api/screen/update-policy", { body: { check } }));
@@ -184,8 +195,9 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
             percent,
           })
         : tRich("settings.this_screen.software.updating", { percent });
-  const behind =
-    update.sunroom_outdated && state.sunroom?.version
+  const behind = update.sunroom_pinned
+    ? t("settings.this_screen.software.sunroom_pinned", { version: update.sunroom_pinned })
+    : update.sunroom_outdated && state.sunroom?.version
       ? t("settings.this_screen.software.sunroom_behind", {
           sunroom: state.sunroom.version,
           version: update.latest ?? update.installed,
@@ -258,6 +270,18 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
               }}
             >
               {t("settings.this_screen.update.action")}
+            </Button>
+          ) : null}
+          {/* An all-in-one Pi's Sunroom, left behind by a pull that failed (ADR 0046). */}
+          {update.sunroom_can_update && !installing ? (
+            <Button
+              variant="secondary"
+              pending={updateSunroom.isPending}
+              onClick={() => {
+                updateSunroom.mutate();
+              }}
+            >
+              {t("settings.this_screen.software.update_sunroom.action")}
             </Button>
           ) : null}
           {/* For a screen that misbehaves: the version it runs, set up again (ADR 0044). An

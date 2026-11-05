@@ -49,6 +49,8 @@ function piState(overrides: Partial<ScreenState> = {}): ScreenState {
       checked_at: null,
       message: null,
       sunroom_outdated: false,
+      sunroom_can_update: false,
+      sunroom_pinned: null,
     },
     display: { rotation: 0, brightness_method: "ddc" },
     open_url: "http://192.168.1.20:7867/display?dimmer=screen&screen=7800",
@@ -265,6 +267,8 @@ describe("Settings → This Screen (ADR 0035)", () => {
           checked_at: null,
           message: null,
           sunroom_outdated: false,
+          sunroom_can_update: false,
+          sunroom_pinned: null,
         },
       }),
     );
@@ -319,6 +323,46 @@ describe("Settings → This Screen (ADR 0035)", () => {
     ]);
   });
 
+  it("offers Update Sunroom on a Pi left behind by a pull that failed, and says when it's pinned", () => {
+    const update = {
+      check: "nightly",
+      state: "up_to_date",
+      installed: "0.14.0",
+      latest: "0.14.0",
+      checked_at: null,
+      message: null,
+      sunroom_outdated: true,
+      sunroom_can_update: false,
+      sunroom_pinned: null,
+    } as const;
+    const sunroom = {
+      url: "http://localhost:7867",
+      id: "00000000-0000-7000-8000-0000000000e1",
+      name: "The Sample Family",
+      found: "local",
+      reachable: true,
+      version: "0.13.0",
+    } as const;
+    draw(
+      piState({
+        capabilities: ["restart", "shutdown", "update", "update_sunroom"],
+        sunroom,
+        update: { ...update, sunroom_can_update: true },
+      }),
+    );
+    expect(screen.getByRole("button", { name: "Update Sunroom" })).toBeTruthy();
+    cleanup();
+    draw(
+      piState({
+        capabilities: ["restart", "shutdown", "update", "update_sunroom"],
+        sunroom,
+        update: { ...update, sunroom_outdated: false, sunroom_pinned: "0.13.0" },
+      }),
+    );
+    expect(screen.queryByRole("button", { name: "Update Sunroom" })).toBeNull();
+    expect(screen.getByText("Sunroom here is pinned to 0.13.0.")).toBeTruthy();
+  });
+
   it("says when Sunroom on this computer is behind; the update brings it along", () => {
     draw(
       piState({
@@ -339,6 +383,8 @@ describe("Settings → This Screen (ADR 0035)", () => {
           checked_at: null,
           message: null,
           sunroom_outdated: true,
+          sunroom_can_update: false,
+          sunroom_pinned: null,
         },
       }),
     );

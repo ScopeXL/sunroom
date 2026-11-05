@@ -90,6 +90,7 @@ MODE="display" # display | all | server
 WANT_DISPLAY_ONLY=0
 WANT_WITH_SUNROOM=0
 WANT_SERVER_ONLY=0
+NO_AUTO_UPDATE=0
 KEPT_MODE=0 # a Pi that runs Sunroom from an earlier install keeps it (no option given)
 URL=""
 VERSION=""
@@ -266,7 +267,9 @@ itself, or asks for its address on the screen):
                             the one you open on your other devices, for example
                             http://192.168.1.20:7867 or https://calendar.example.com
   --with-sunroom            A Pi only: Sunroom on this Pi too, shown on its screen
-  --server-only             A Pi only: Sunroom alone, no screen (Raspberry Pi OS Lite)
+  --server-only             A Pi only: Sunroom alone, no screen (Raspberry Pi OS Lite); it
+                            updates itself every morning
+  --no-auto-update          With --server-only: leave out the morning update
   --display-only            Only the screen, also on a Pi that runs Sunroom (a Pi
                             set up with --with-sunroom or --server-only keeps it when the
                             installer runs again with no option)
@@ -338,6 +341,7 @@ parse_args() {
 		--display-only) WANT_DISPLAY_ONLY=1 ;;
 		--with-sunroom) WANT_WITH_SUNROOM=1 ;;
 		--server-only) WANT_SERVER_ONLY=1 ;;
+		--no-auto-update) NO_AUTO_UPDATE=1 ;;
 		--url)
 			need_value "$@"
 			URL=$2
@@ -1048,7 +1052,8 @@ has_kiosk_files() {
 		files/systemd/sunroom-kiosk.service files/labwc/autostart-block files/xdg/sunroom-kiosk.desktop \
 		files/udev/90-sunroom-kiosk-backlight.rules files/modules-load/sunroom-kiosk-i2c.conf \
 		files/NetworkManager/zz-sunroom-kiosk-wifi.conf files/sunroom/docker-compose.yml \
-		files/sunroom/env files/sudoers/sunroom-kiosk files/sunroom-kiosk-root \
+		files/sunroom/env files/sunroom/sunroom-update.service files/sunroom/sunroom-update.timer \
+		files/sudoers/sunroom-kiosk files/sunroom-kiosk-root \
 		files/launchd/app.sunroom.kiosk.plist; do
 		[[ -f $dir/$file ]] || return 1
 	done
@@ -1363,6 +1368,22 @@ write_avahi_service() {
 # the summary names is the installer's to keep here; with a screen, Sunroom Screen's setup keeps it.
 keep_uninstaller() {
 	install_stamped "$SRC_DIR/uninstall.sh" "$SHARE_DIR/uninstall.sh" 0755
+}
+
+# Sunroom alone has no Sunroom Screen to bring it along, so a timer does (ADR 0046), with
+# update.sh's own way back from a version that doesn't start.
+install_update_timer() {
+	if ((NO_AUTO_UPDATE)); then
+		note "Leaving out the morning update, as asked. To update: sudo /opt/sunroom/update.sh"
+		return 0
+	fi
+	sudo install -m 0644 -o root -g root "$SRC_DIR/files/sunroom/sunroom-update.service" \
+		/etc/systemd/system/sunroom-update.service
+	sudo install -m 0644 -o root -g root "$SRC_DIR/files/sunroom/sunroom-update.timer" \
+		/etc/systemd/system/sunroom-update.timer
+	sudo systemctl daemon-reload
+	sudo systemctl enable --now sunroom-update.timer >/dev/null 2>&1 ||
+		warn "The morning update didn't switch on. To update: sudo /opt/sunroom/update.sh"
 }
 
 # ---------------------------------------------------------------------------- step 4: the screen, Sunroom Screen
@@ -2564,6 +2585,7 @@ install_on_pi() {
 
 	if [[ $MODE == server ]]; then
 		keep_uninstaller
+		install_update_timer
 	else
 		step "Setting up the screen" "setting up the screen"
 		setup_kiosk

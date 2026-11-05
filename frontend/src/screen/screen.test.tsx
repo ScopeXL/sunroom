@@ -44,6 +44,8 @@ function state(overrides: Partial<ScreenState> = {}): ScreenState {
       checked_at: null,
       message: null,
       sunroom_outdated: false,
+      sunroom_can_update: false,
+      sunroom_pinned: null,
     },
     display: { rotation: 0, brightness_method: "none" },
     open_url: null,

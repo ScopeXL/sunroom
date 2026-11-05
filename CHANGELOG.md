@@ -15,6 +15,11 @@ Everything that changes in Sunroom, written in plain English. The format follows
   with Update Now in About. The updater in the compose example does it: add it to your own file, or
   leave it out and update as before (docs/DEPLOY.md). Every page says "Sunroom is updating. Back in a
   minute." and comes back by itself.
+- A Raspberry Pi running Sunroom in Docker now looks after itself: a download that fails is tried
+  again, a version that doesn't start puts the one before back by itself and says so on the wall, a
+  version you pinned stays, and This Screen has Update Sunroom while it's behind. A Pi with only
+  Sunroom updates itself each morning. These two install options leave the README for
+  docs/KIOSK.md, where they keep working.
 - Sunroom now tells you when a new version is out: Needs Attention says so, and About says how to
   update. It asks GitHub once a day, which lets GitHub see your server's address; turn it off in
   Settings → About → Tell me about new versions. This is on for every household from this version.
