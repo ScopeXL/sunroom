@@ -80,16 +80,28 @@ compose logs sunroom-updater 2>/dev/null | grep -q 'Next scheduled run' || {
 }
 echo "The updater keeps its schedule."
 
-# Sunroom's own Update Now when this release has it, and the companion's API when it doesn't.
+# Sunroom's own Update Now when this release has it, and the companion's API when it doesn't. A
+# release that has it must find the updater: it looks once at start, then every minute until it does.
+ASKED="the updater directly ($STANDS_IN has no Update Now)"
 answer="$(curl -fsS -b "$JAR" "$BASE/api/admin/update")"
-if [ "$(jq -r '.updater // false' <<<"$answer")" = true ]; then
-  curl -fsS -b "$JAR" "${CSRF[@]}" -X POST "$BASE/api/admin/update/check" >/dev/null || true
+if [ "$(jq -r 'has("updater")' <<<"$answer")" = true ]; then
+  for _ in $(seq 1 90); do
+    [ "$(jq -r .updater <<<"$answer")" = true ] && break
+    sleep 1
+    answer="$(curl -fsS -b "$JAR" "$BASE/api/admin/update")"
+  done
+  [ "$(jq -r .updater <<<"$answer")" = true ] || {
+    docker logs --tail 20 "$APP" >&2
+    fail "Sunroom never found the updater"
+  }
+  echo "Sunroom found the updater."
+  curl -fsS -b "$JAR" "${CSRF[@]}" -X POST "$BASE/api/admin/update/check" >/dev/null
   answer="$(curl -fsS -b "$JAR" "$BASE/api/admin/update")"
   jq -c '{current, latest, available, updater, update_now, how}' <<<"$answer"
   [ "$(jq -r .update_now <<<"$answer")" = true ] || fail "Update Now isn't on offer"
   [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "${CSRF[@]}" -X POST \
     "$BASE/api/admin/update")" = 202 ] || fail "Update Now was refused"
-  echo "Asked through Update Now."
+  ASKED="Update Now in Sunroom"
 else
   docker exec "$APP" python -c '
 import os, urllib.request
@@ -100,8 +112,8 @@ request = urllib.request.Request(
 )
 assert urllib.request.urlopen(request).status == 202
 ' || fail "the updater refused the update"
-  echo "Asked the updater directly ($STANDS_IN has no Update Now)."
 fi
+echo "Asked $ASKED."
 
 # The swap: a new container under the same name, from a newer image.
 for _ in $(seq 1 300); do
@@ -123,7 +135,7 @@ docker inspect -f '{{json .Config.Env}}' "$APP" | grep -q 'SUNROOM_UPDATER_URL' 
 
 if [ "$STANDS_IN" != "$OLD" ]; then
   echo "Stopping at the swap: the newest release can't open a database this checkout migrated."
-  echo "Update Now works from $STANDS_IN."
+  echo "Asked $ASKED, and the updater replaced Sunroom on the same volume."
   exit 0
 fi
 wait_healthy "$APP" 180

@@ -18,9 +18,7 @@ recurrence engine, ADR 0023); synced calendars (ADR 0024, docs/SYNC.md); lists a
 (ADR 0025); meals, countdowns, photos and weather (ADR 0026); the wall, polished (ADR 0027).
 M6, the owner's notes in batches (docs/M6*.md, ADRs 0028 to 0034 and 0036), is built in 0.7.0 to
 0.14.0; more comes from use.
-M7 (docs/M7.md, ADR 0035) is Sunroom Screen: batch 0 (two wall fixes) released as 0.12.1;
-batch 1 (the agent, This Screen, discovery, the installer, GitHub Releases) and batch 2 (Windows,
-macOS, Run It on This Screen, the Sunroom OS image, retired in M9) released as 0.13.0.
+M7 (docs/M7.md, ADR 0035) is Sunroom Screen, released as 0.12.1 and 0.13.0.
 M8 (docs/M8.md, ADR 0038), Sunroom on this computer, released as 0.15.0; M8 batch 2
 (docs/M8-batch-2.md, ADR 0039: setting up on the screen) as 0.16.0, Windows fixes as 0.16.1.
 M9 (docs/M9.md, ADR 0042: the owner's notes of 2026-10-28) released as 0.17.0. M10 (docs/M10.md:
@@ -110,6 +108,7 @@ Keep this file under 15 KB; detail belongs in `docs/`.
 | `just scan` | gitleaks plus the private-terms scan (tree and history) |
 | `just audit` | Known vulnerabilities in what ships; weekly in CI, never blocks a release |
 | `just smoke-image [REF]` | Build the image from git, boot it with no settings, set it up through the API, probe it |
+| `just smoke-compose [OLD]` | The compose example with its updater: a real update on one volume (opt-in; network) |
 | `just smoke-caldav` | The CalDAV client against Radicale in Docker, with the ICS fixtures (opt-in; network) |
 | `just kiosk-test` / `kiosk-dev` / `kiosk-build` / `kiosk-serve` | Sunroom Screen: its tests; its pages on 5174 with a pretend agent; its wheel; the installers for a VM |
 | `just server-build` | The server wheel and its constraints, for Sunroom on a computer |

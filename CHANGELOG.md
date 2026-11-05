@@ -11,6 +11,10 @@ Everything that changes in Sunroom, written in plain English. The format follows
 - Sunroom's port is now 7867, so it no longer competes for a port many other programs want. A
   Sunroom already running: before you update, change the `ports:` line in its docker-compose.yml to
   `"7867:7867"` and point any proxy at 7867, then give your devices and screens the new address.
+- With Docker Compose, new versions now install themselves overnight, a day after they come out, or
+  with Update Now in About. The updater in the compose example does it: add it to your own file, or
+  leave it out and update as before (docs/DEPLOY.md). Every page says "Sunroom is updating. Back in a
+  minute." and comes back by itself.
 - Sunroom now tells you when a new version is out: Needs Attention says so, and About says how to
   update. It asks GitHub once a day, which lets GitHub see your server's address; turn it off in
   Settings → About → Tell me about new versions. This is on for every household from this version.

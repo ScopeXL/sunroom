@@ -75,7 +75,9 @@ everything in the `sunroom_data` volume.
 - **Docker Compose:** in a folder of its own on the server (for example `/opt/sunroom`), save
   [docker-compose.example.yml](docker-compose.example.yml) as `docker-compose.yml`, then run
   `docker compose up -d`. Keep the `volumes:` block at the end: it creates the `sunroom_data`
-  volume. Port 7867 already taken? Change only the left number, for example `"7868:7867"`.
+  volume. Port 7867 already taken? Change only the left number, for example `"7868:7867"`. New
+  versions install themselves overnight, a day after they come out, or with Update Now in About;
+  [docs/DEPLOY.md](docs/DEPLOY.md) says how that works and how to leave it out.
 - **Portainer:** Stacks → Add stack → Web editor, paste the same file, Deploy.
 - **Unraid, CasaOS, Synology:** add a container from the image `scopexl/sunroom:latest`, port
   7867, and a volume (or folder) for `/data`. If you map a folder, it must be writable by the

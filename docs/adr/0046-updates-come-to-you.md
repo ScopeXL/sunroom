@@ -35,6 +35,26 @@
   Portainer, Unraid, CasaOS, Synology, any other app, a Pi, a computer, and Home Assistant's add-on
   to come. The compose example sets `SUNROOM_INSTALL_KIND` from a variable, so a Portainer stack can.
 
+- **The updater companion in the compose example** (Watchtower's maintained continuation, pinned by
+  digest) installs new versions overnight, a day after they come out. It's the only thing that
+  touches Docker, watches Sunroom alone by its label, and publishes no port. From its source at 1.24.0:
+  `HTTP_API_ENDPOINTS` replaces the deprecated `HTTP_API_UPDATE`, and `HTTP_API_PERIODIC_POLLS` must be
+  on, because the HTTP API alone turns the schedule off: a compose file without it would never install
+  anything overnight, and say nothing.
+- **Update Now waits out a version's first day, as the companion does.** Its cooldown gates `/v1/update`
+  as well as the schedule, and no request can ask it not to. A button there would do nothing, so About
+  says "It installs itself overnight, a day after it comes out." instead. The day is the point: a bad
+  release can be pulled back before any household takes it. By hand, `docker compose pull` still works.
+- **Sunroom asks before it promises** (`/readyz`, hourly, every minute while it's missing). About and
+  Needs Attention say "It installs itself tonight" only while the companion answers and can reach
+  Docker: it may have been deleted from the file, or have stopped.
+- **The call doesn't wait** (`?async=true`). Waiting would hold a request open in Sunroom while the
+  companion is trying to stop Sunroom. Every page hears `server.updating`, shows the quiet pill, and
+  reloads when the server is back; if it never goes (a failed pull), the pill goes after three minutes.
+- **About says "overnight", not the hour.** The hour is in the compose file, where a household can
+  change it, and it reads `TZ`, which may be unset.
+- **Images gain a major tag from 1.0**, so a household can pin how far an update goes.
+
 ## Consequences
 
 - One request a day from each install, which GitHub can see. The tests keep the check off unless they

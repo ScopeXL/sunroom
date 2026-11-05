@@ -34,8 +34,8 @@ does the rest. This page explains the pieces, and how to release without Claude.
   bumps `SYSTEM_PART_SINCE` in `kiosk/agent/src/sunroom_kiosk/setup_files.py` to the release it
   ships in: a screen whose root helper is older can't apply it by itself, and This Screen asks for
   the install command once more.
-- A multi-arch image (`linux/amd64`, `linux/arm64`), `scopexl/sunroom:X.Y.Z`, also tagged `X.Y`
-  and `latest`. Version tags are immutable on Docker Hub.
+- A multi-arch image (`linux/amd64`, `linux/arm64`), `scopexl/sunroom:X.Y.Z`, also tagged `X.Y`,
+  `latest`, and from 1.0 `X`. Version tags are immutable on Docker Hub.
 
 ## The pipeline
 
@@ -127,7 +127,9 @@ Preflight checks this with a dry-run push before anything is tagged.
 ## Rolling back
 
 - **If the release didn't change the database** (no new migration), set the previous version
-  in `docker-compose.yml` (`image: scopexl/sunroom:X.Y.Z`) and run `docker compose up -d`.
+  in `docker-compose.yml` (`image: scopexl/sunroom:X.Y.Z`) and run `docker compose up -d`. A household
+  with the updater holds there too: it never moves a tag that doesn't move. The updater waits a day
+  before installing a new version, so pulling a bad release back within the day stops it reaching them.
 - **If it did,** restore the pre-upgrade copy ([RESTORE.md](RESTORE.md)), then deploy the
   previous tag.
 

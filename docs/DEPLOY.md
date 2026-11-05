@@ -150,18 +150,44 @@ by itself:
 
 ## Updating
 
-Each release prints these steps. In Sunroom's folder on the server:
+With the compose example, you don't: **the updater** in that file installs new versions overnight,
+at about 4:30 AM, a day after they come out, so a bad one can be pulled back before it reaches you.
+**Update Now** in Settings → About does it at once, from a version's second day on. Every open page
+says "Sunroom is updating. Back in a minute." and comes back by itself.
 
-1. `docker compose pull && docker compose up -d` (if you pinned a version in `image:`, change it
-   to the new one first).
+The updater is [Watchtower](https://watchtower.nickfedor.com/), the maintained continuation, watching
+Sunroom alone (the label on its service). It's the one part that touches Docker, so it has the Docker
+socket; Sunroom never does. It publishes no port, and only Sunroom can reach it. It talks to Docker Hub.
+To change the hour, edit `WATCHTOWER_SCHEDULE` (seconds first). To go without it, delete the
+`sunroom-updater` service, the two `SUNROOM_UPDATER` lines and the label, and update by hand:
+
+1. In Sunroom's folder on the server: `docker compose pull && docker compose up -d` (if you pinned a
+   version in `image:`, change it to the new one first).
 2. Wait for **healthy** (`docker compose ps`), then check `<your address>/api/version` shows the
    new version.
+
+For a stricter setup, put [docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy)
+between the updater and the socket: replace the updater's `volumes:` with `DOCKER_HOST:
+tcp://docker-socket-proxy:2375` in its environment, and add this service, joined to the updater on an
+internal network of their own (`just smoke-compose` was run through exactly this):
+
+```yaml
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    restart: unless-stopped
+    environment: { POST: 1, CONTAINERS: 1, IMAGES: 1, NETWORKS: 1 }
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+```
+
+How far an update goes is yours to choose in `image:`: `scopexl/sunroom:1` takes every 1.x, `:1.0`
+takes only fixes, and `:1.0.0` never moves. The updater follows whichever you write.
 
 Sunroom tells you about new versions by itself: once a day it asks sunroom.day for its latest
 version, or GitHub if that doesn't answer (they see your server's address; `SUNROOM_UPDATE_URL`
 points it at your own copy of `version.json`), and Needs Attention and About say when one is out, with
-these steps. To stop it, turn off **Settings → About → Tell me about new versions**, or keep it off for
-the whole server with `SUNROOM_UPDATE_CHECK=0`.
+how it will arrive. To stop it, turn off **Settings → About → Tell me about new versions**, or keep
+it off for the whole server with `SUNROOM_UPDATE_CHECK=0`.
 
 Before migrating, Sunroom copies the database into `/data/backups/pre-migrate/`. If a migration
 fails, it refuses to start and the data is left exactly as it was. Every open wall screen and
