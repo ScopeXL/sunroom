@@ -470,6 +470,10 @@ part of its setup on a Pi or a Linux computer, and Sunroom where it runs on that
   data.
 - **Reinstall…** (quiet, under Software, when there's no update to offer) runs the installed
   version's setup again, whole, for a screen that misbehaves; the pairing and the settings stay.
+- **Go Back to 0.17.0…** (quiet, beside it, for a week after an update) puts the version that update
+  replaced back, with its own setup, for a version that starts but misbehaves: "Went back to Sunroom
+  Screen 0.17.0". The overnight update then leaves the version you went back from alone until the
+  one after it; **Update Now** still offers it. Only Sunroom Screen goes back: Sunroom stays as it is.
   `sunroom-kiosk setup --check` in a terminal says what differs from this version's setup.
 - **A Pi or a Linux screen set up before 0.18.0** has a root helper that can't take an update's
   system part yet: after its first update, Software says "To finish updates on this computer, run

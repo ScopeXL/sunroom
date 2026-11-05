@@ -10,7 +10,7 @@ import json
 import subprocess
 import sys
 from collections.abc import Coroutine
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -379,6 +379,186 @@ def test_a_reinstall_that_fails_offers_nothing_new(paths: Paths) -> None:
     )
     after = Updater(http=GitHub([]).client, paths=paths, current="0.12.0")
     assert (after.current.state, after.current.latest) == ("available", "0.13.0")
+
+
+def updated(paths: Paths, older: Path, new: Path, *, version: str = "0.13.0") -> Updater:
+    """A real apply of ``new`` over ``older``, and the updater of the version that comes up."""
+    code = apply(
+        new,
+        older,
+        7800,
+        install=lambda path: True,
+        stop=lambda: True,
+        setup=lambda force: {"changed": []},
+        restart=lambda report: True,
+        answers=lambda port, release, within: True,
+        paths=paths,
+    )
+    assert code == 0
+    return Updater(http=GitHub([]).client, paths=paths, current=version)
+
+
+def go_back_applied(paths: Paths, older: Path, new: Path) -> list[str]:
+    happened: list[str] = []
+    code = apply(
+        older,
+        new,
+        7800,
+        back=True,
+        install=lambda path: happened.append(f"install {path.name}") or True,
+        stop=lambda: True,
+        setup=lambda force: happened.append(f"setup force={force}") or {"changed": []},
+        restart=lambda report: True,
+        answers=lambda port, release, within: release == "0.12.0",
+        paths=paths,
+    )
+    assert code == 0
+    return happened
+
+
+def test_an_update_offers_the_version_it_replaced_for_a_week(paths: Paths) -> None:
+    older, new = wheels(paths, "0.12.0", "0.13.0")
+    after = updated(paths, older, new)
+    assert after.go_back_to() == "0.12.0"
+    assert after.status("nightly")["go_back_to"] == "0.12.0"
+
+    saved = json.loads(paths.state.read_text())
+    saved["replaced"]["at"] = (datetime.now(UTC) - timedelta(days=8)).isoformat()
+    paths.state.write_text(json.dumps(saved))
+    assert after.go_back_to() is None  # a week later it's this version's
+
+    saved["replaced"]["at"] = (datetime.now(UTC) - timedelta(days=6)).isoformat()
+    paths.state.write_text(json.dumps(saved))
+    assert after.go_back_to() == "0.12.0"
+    older.unlink()
+    assert after.go_back_to() is None  # its wheel gone: nothing to go back with
+
+
+def test_a_reinstall_keeps_the_way_back(paths: Paths) -> None:
+    older, new = wheels(paths, "0.12.0", "0.13.0")
+    after = updated(paths, older, new)
+    code = apply(
+        new,
+        new,
+        7800,
+        force=True,
+        install=lambda path: True,
+        stop=lambda: True,
+        setup=lambda force: {"changed": []},
+        restart=lambda report: True,
+        answers=lambda port, release, within: True,
+        paths=paths,
+    )
+    assert code == 0
+    assert older.exists()
+    assert after.go_back_to() == "0.12.0"
+
+
+async def test_going_back_runs_the_apply_step_with_the_kept_wheel(paths: Paths) -> None:
+    older, new = wheels(paths, "0.12.0", "0.13.0")
+    updated(paths, older, new)
+    github = GitHub(["v0.13.0"])
+    spawned: list[list[str]] = []
+
+    async def spawn(argv: list[str]) -> bool:
+        spawned.append(argv)
+        return True
+
+    check = Updater(http=github.client, paths=paths, current="0.13.0", spawn=spawn, system="linux")
+    await check.go_back(StubAgent())  # type: ignore[arg-type]
+    assert github.asked == []  # kept when it came, and checked then
+    assert spawned[0][5] == str(older)
+    assert spawned[0][-3:] == ["--previous", str(new), "--back"]
+
+
+async def test_nothing_to_go_back_to_says_so(paths: Paths) -> None:
+    spawned: list[list[str]] = []
+
+    async def spawn(argv: list[str]) -> bool:
+        spawned.append(argv)
+        return True
+
+    check = Updater(http=GitHub([]).client, paths=paths, current="0.13.0", spawn=spawn)
+    agent = StubAgent()
+    await check.go_back(agent)  # type: ignore[arg-type]
+    assert spawned == []
+    assert agent.happened == ["toast agent.update.cant_go_back"]
+
+
+def test_going_back_says_so_once_and_offers_no_way_forward_by_going_back(paths: Paths) -> None:
+    older, new = wheels(paths, "0.12.0", "0.13.0")
+    updated(paths, older, new)
+    happened = go_back_applied(paths, older, new)
+    assert happened == [f"install {older.name}", "setup force=False"]  # that version's own setup
+    assert new.exists()  # kept: Update Now needn't download it again
+    after = Updater(http=GitHub([]).client, paths=paths, current="0.12.0")
+    result = after.last_result()
+    assert result is not None and result["ok"] is True
+    assert result["message"] == "Went back to Sunroom Screen 0.12.0"
+    assert result["message_key"] == "agent.update.went_back"
+    assert after.go_back_to() is None
+
+
+def test_going_back_that_fails_puts_the_version_back_and_offers_nothing_new(paths: Paths) -> None:
+    older, new = wheels(paths, "0.12.0", "0.13.0")
+    after = updated(paths, older, new)
+    installed: list[str] = []
+    code = apply(
+        older,
+        new,
+        7800,
+        back=True,
+        install=lambda path: installed.append(path.name) or True,
+        stop=lambda: True,
+        setup=lambda force: {"changed": []},
+        restart=lambda report: True,
+        answers=lambda port, release, within: False,
+        paths=paths,
+    )
+    assert code == 1
+    assert installed == [older.name, new.name]
+    saved = json.loads(paths.state.read_text())
+    assert saved.get("failed") is None  # it isn't an update that failed
+    assert saved.get("went_back_from") is None
+    assert after.go_back_to() == "0.12.0"  # it can still be tried
+
+
+class NightlyAgent(StubAgent):
+    def update_check(self) -> str:
+        return "nightly"
+
+
+async def test_the_overnight_update_leaves_a_version_gone_back_from_until_the_one_after(
+    paths: Paths,
+) -> None:
+    older, new = wheels(paths, "0.12.0", "0.13.0")
+    updated(paths, older, new)
+    go_back_applied(paths, older, new)
+    spawned: list[list[str]] = []
+
+    async def spawn(argv: list[str]) -> bool:
+        spawned.append(argv)
+        return True
+
+    github = GitHub(["v0.13.0"], release("0.13.0"))
+    check = Updater(http=github.client, paths=paths, current="0.12.0", spawn=spawn, system="linux")
+    await check.nightly(NightlyAgent())  # type: ignore[arg-type]
+    assert spawned == []
+    assert check.current.state == "available"  # Update Now still offers it
+
+    github.tags.append("v0.13.1")
+    github.files = release("0.13.1")
+    await check.nightly(NightlyAgent())  # type: ignore[arg-type]
+    assert len(spawned) == 1
+    assert updater.wheel_name("0.13.1") in spawned[0][5]
+
+
+async def test_the_overnight_update_comes_back_to_it_after_update_now(paths: Paths) -> None:
+    older, new = wheels(paths, "0.12.0", "0.13.0")
+    updated(paths, older, new)
+    go_back_applied(paths, older, new)
+    updated(paths, older, new)  # the family asked for it after all
+    assert json.loads(paths.state.read_text())["went_back_from"] is None
 
 
 async def test_the_apply_steps_own_steps_reach_the_wall_once_each(paths: Paths) -> None:

@@ -42,3 +42,9 @@ export function agent() {
 export async function reinstall(): Promise<void> {
   answer(await agent().POST("/api/screen/reinstall"));
 }
+
+/** Go Back…: the version an update replaced, for one that starts but misbehaves (ADR 0046); its
+ * steps and how it ended arrive like an update's. */
+export async function goBack(): Promise<void> {
+  answer(await agent().POST("/api/screen/go-back"));
+}

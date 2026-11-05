@@ -469,6 +469,27 @@ async def test_reinstall_starts_and_says_how_it_ended_once(
     assert (await client.get("/api/screen")).json()["update"]["last_result"] is None
 
 
+async def test_go_back_is_there_after_an_update_and_says_how_it_ended(
+    client: httpx.AsyncClient, agent: Agent
+) -> None:
+    refused = await client.post("/api/screen/go-back", headers=CHANGE)
+    assert refused.status_code == 409
+    assert refused.json()["error"]["key"] == "agent.update.cant_go_back"
+
+    before = (await client.get("/api/screen")).json()["update"]["installed"]
+    await client.get("/api/screen/update")
+    assert (await client.post("/api/screen/update", headers=CHANGE)).status_code == 202
+    update = await update_when(client, lambda update: update["last_result"] is not None)
+    assert update["go_back_to"] == before
+    await client.post("/api/screen/update/seen", headers=CHANGE)
+
+    assert (await client.post("/api/screen/go-back", headers=CHANGE)).status_code == 202
+    update = await update_when(client, lambda update: update["last_result"] is not None)
+    assert update["last_result"]["message"] == f"Went back to Sunroom Screen {before}"
+    assert update["go_back_to"] is None
+    assert update["state"] == "available"
+
+
 async def test_the_update_policy_is_kept(client: httpx.AsyncClient, config_path: Path) -> None:
     body = (
         await client.put("/api/screen/update-policy", json={"check": "off"}, headers=CHANGE)
@@ -525,7 +546,8 @@ async def test_the_schema_has_every_route(app: FastAPI, tmp_path: Path) -> None:
 
     paths = get_openapi(title="t", version="0", routes=router.routes)["paths"]
     # 0.17.0: no open-network-settings, and uninstall (ADR 0042); 0.18.0: reinstall and
-    # update/seen (ADR 0044); sunroom/updating (ADR 0046).
-    assert len(paths) == 22
+    # update/seen (ADR 0044); sunroom/updating and go-back (ADR 0046).
+    assert len(paths) == 23
     assert "/api/screen/reinstall" in paths and "/api/screen/update/seen" in paths
+    assert "/api/screen/go-back" in paths
     assert not any("_test" in path for path in paths)

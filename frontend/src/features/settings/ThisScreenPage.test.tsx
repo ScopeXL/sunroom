@@ -52,6 +52,7 @@ function piState(overrides: Partial<ScreenState> = {}): ScreenState {
       sunroom_outdated: false,
       sunroom_can_update: false,
       sunroom_pinned: null,
+      go_back_to: null,
     },
     display: { rotation: 0, brightness_method: "ddc" },
     open_url: "http://192.168.1.20:7867/display?dimmer=screen&screen=7800",
@@ -271,6 +272,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
           sunroom_outdated: false,
           sunroom_can_update: false,
           sunroom_pinned: null,
+          go_back_to: null,
         },
       }),
     );
@@ -325,6 +327,40 @@ describe("Settings → This Screen (ADR 0035)", () => {
     ]);
   });
 
+  it("goes back to the version an update replaced, after asking, for a week", async () => {
+    const update = piState().update;
+    draw(piState({ update: { ...update, go_back_to: "0.12.0" } }));
+    fireEvent.click(screen.getByRole("button", { name: "Go Back to 0.12.0…" }));
+    const asking = screen.getByRole("dialog", { name: "Go Back to 0.12.0?" });
+    expect(asking.textContent).toContain(
+      "For a version that misbehaves. Sunroom Screen goes back to 0.12.0 and starts again, and " +
+        "0.13.0 isn't installed again by itself. The pairing, the settings and your family's " +
+        "data stay.",
+    );
+    fireEvent.click(within(asking).getByRole("button", { name: "Cancel" }));
+    expect(calls).toEqual([]);
+    fireEvent.click(screen.getByRole("button", { name: "Go Back to 0.12.0…" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Go Back to 0.12.0?" })).getByRole("button", {
+        name: "Go Back",
+      }),
+    );
+    await waitFor(() => {
+      expect(said()).toEqual(["Going back… this takes a few minutes"]);
+    });
+    expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual([
+      "POST /api/screen/go-back",
+    ]);
+  });
+
+  it("has no Go Back with nothing to go back to, or mid-update", () => {
+    draw();
+    expect(screen.queryByRole("button", { name: /Go Back/ })).toBeNull();
+    const update = piState().update;
+    draw(piState({ update: { ...update, state: "installing", go_back_to: "0.12.0" } }));
+    expect(screen.queryByRole("button", { name: /Go Back/ })).toBeNull();
+  });
+
   it("offers Update Sunroom on a Pi left behind by a pull that failed, and says when it's pinned", () => {
     const update = {
       check: "nightly",
@@ -336,6 +372,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
       sunroom_outdated: true,
       sunroom_can_update: false,
       sunroom_pinned: null,
+      go_back_to: null,
     } as const;
     const sunroom = {
       url: "http://localhost:7867",
@@ -389,6 +426,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
           sunroom_outdated: true,
           sunroom_can_update: false,
           sunroom_pinned: null,
+          go_back_to: null,
         },
       }),
     );

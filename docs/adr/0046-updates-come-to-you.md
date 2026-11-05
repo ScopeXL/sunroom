@@ -96,6 +96,13 @@
   first can't leave it behind (the plan's `health_tick` idea wasn't needed); a download that failed is
   tried again within the hour, and the wall shows **Updating Sunroom…** for it, as on a Pi.
 
+- **Sunroom Screen can go back by hand.** Its updates already undo a version that doesn't start; **Go
+  Back to {version}…** in This Screen, for a week after an update, is for one that starts but
+  misbehaves. It runs the same apply step with the wheel kept beside the running one and that version's
+  own setup, leaves Sunroom as it is, and the overnight update skips the version gone back from until
+  the one after. Update Now still offers it: the family's word beats the night's. A Reinstall… keeps
+  both the wheel and the offer.
+
 ## Consequences
 
 - One request a day from each install, which GitHub can see. The tests keep the check off unless they

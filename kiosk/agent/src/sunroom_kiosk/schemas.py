@@ -103,6 +103,8 @@ class ScreenUpdateOut(BaseModel):
     sunroom_can_update: bool = False
     sunroom_pinned: str | None = None
     last_result: ScreenUpdateResultOut | None = None
+    # Go Back…'s version: the one an update replaced, for a week after it (ADR 0046).
+    go_back_to: str | None = None
     # The installer's one line, when root's part can't be finished from here (ADR 0044): a
     # Linux or Pi screen whose root helper is from before 0.18.0.
     needs_terminal: str | None = None

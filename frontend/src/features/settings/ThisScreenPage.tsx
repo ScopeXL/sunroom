@@ -22,7 +22,7 @@ import { Digits } from "../../ui/Digits";
 import { Segmented } from "../../ui/Segmented";
 import { Sheet } from "../../ui/Sheet";
 import { TextField } from "../../ui/TextField";
-import { agent, answer, refusal, reinstall } from "./agentCalls";
+import { agent, answer, goBack, refusal, reinstall } from "./agentCalls";
 import { Group, Row, Text } from "./parts";
 import { UninstallSheet } from "./UninstallSheet";
 
@@ -96,7 +96,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
   const [wifiOpen, setWifiOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [asking, setAsking] = useState<
-    "shutdown" | "address" | "uninstall" | "update" | "reinstall" | null
+    "shutdown" | "address" | "uninstall" | "update" | "reinstall" | "go_back" | null
   >(null);
 
   const refresh = async () => {
@@ -120,6 +120,16 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
     onSuccess: () => {
       setAsking(null);
       showToast(t("settings.this_screen.reinstall.toast"));
+    },
+    onError: (error) => {
+      showToast(refusal(error));
+    },
+  });
+  const back = useMutation({
+    mutationFn: goBack,
+    onSuccess: () => {
+      setAsking(null);
+      showToast(t("settings.this_screen.go_back.toast"));
     },
     onError: (error) => {
       showToast(refusal(error));
@@ -296,6 +306,17 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
               {t("settings.this_screen.reinstall.open.action")}
             </Button>
           ) : null}
+          {/* For a version that starts but misbehaves: for a week, the one it replaced (ADR 0046). */}
+          {can("update") && update.go_back_to && !installing ? (
+            <Button
+              variant="quiet"
+              onClick={() => {
+                setAsking("go_back");
+              }}
+            >
+              {t("settings.this_screen.go_back.open.action", { version: update.go_back_to })}
+            </Button>
+          ) : null}
         </Row>
         {update.needs_terminal ? <InstallCommand command={update.needs_terminal} /> : null}
         {can("update") ? (
@@ -438,6 +459,30 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
           pending={again.isPending}
           onAct={() => {
             again.mutate();
+          }}
+          onKeep={() => {
+            setAsking(null);
+          }}
+        />
+      </Sheet>
+      <Sheet
+        open={asking === "go_back"}
+        title={t("settings.this_screen.go_back.title", { version: update.go_back_to ?? "" })}
+        onClose={() => {
+          setAsking(null);
+        }}
+      >
+        <Confirm
+          tone="primary"
+          text={t("settings.this_screen.go_back.body", {
+            version: update.go_back_to ?? "",
+            installed: update.installed,
+          })}
+          act={t("settings.this_screen.go_back.action")}
+          keep={t("app.action.cancel")}
+          pending={back.isPending}
+          onAct={() => {
+            back.mutate();
           }}
           onKeep={() => {
             setAsking(null);

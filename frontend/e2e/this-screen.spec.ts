@@ -98,6 +98,7 @@ class FakeAgent {
         latest: version,
         checked_at: null,
         message: null,
+        go_back_to: "0.13.0",
         last_result: {
           version,
           ok: true,
@@ -289,6 +290,15 @@ test("This Screen restarts, shuts down, joins Wi-Fi, turns and updates the scree
   await expect(page.getByText("Sunroom Screen 0.14.0 · up to date")).toBeVisible();
   expect(agent.calls).toContain("POST /api/screen/update/seen");
   await expect(page.getByRole("button", { name: "Reinstall…" })).toBeVisible();
+
+  // A version that starts but misbehaves can go back, for a week (ADR 0046): asked, then asked for.
+  await page.getByRole("button", { name: "Go Back to 0.13.0…" }).click();
+  const goingBack = page.getByRole("dialog", { name: "Go Back to 0.13.0?" });
+  await expect(goingBack).toContainText("0.14.0 isn't installed again by itself.");
+  await check(page, "This Screen's Go Back sheet");
+  await goingBack.getByRole("button", { name: "Go Back", exact: true }).click();
+  await expect(toast(page, "Going back… this takes a few minutes")).toBeVisible();
+  expect(agent.calls).toContain("POST /api/screen/go-back");
 
   // Help: what the screen runs, for whoever helps the family.
   await page.getByRole("button", { name: "Help", exact: true }).click();

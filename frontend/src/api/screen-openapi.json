@@ -661,6 +661,17 @@
             ],
             "title": "Checked At"
           },
+          "go_back_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Go Back To"
+          },
           "installed": {
             "title": "Installed",
             "type": "string"
@@ -1081,6 +1092,58 @@
           }
         },
         "summary": "Display",
+        "tags": [
+          "screen"
+        ]
+      }
+    },
+    "/api/screen/go-back": {
+      "post": {
+        "description": "Go Back\u2026: the version an update replaced, for a week after it (ADR 0046).",
+        "operationId": "go_back_api_screen_go_back_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenAcceptedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Go Back",
         "tags": [
           "screen"
         ]

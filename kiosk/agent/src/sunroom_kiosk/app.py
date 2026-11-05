@@ -263,6 +263,16 @@ async def reinstall(agent: AgentDep) -> ScreenAcceptedOut:
     return ScreenAcceptedOut()
 
 
+@router.post("/go-back", status_code=202)
+async def go_back(agent: AgentDep) -> ScreenAcceptedOut:
+    """Go Back…: the version an update replaced, for a week after it (ADR 0046)."""
+    need(agent, "update", "agent.unsupported.update")
+    if agent.updater.status(agent.update_check()).get("go_back_to") is None:
+        raise AppError(409, "nothing_to_go_back_to", "agent.update.cant_go_back")
+    agent.spawn(agent.updater.go_back(agent))
+    return ScreenAcceptedOut()
+
+
 @router.post("/update/seen", status_code=202)
 async def update_seen(agent: AgentDep) -> ScreenAcceptedOut:
     """A page has shown how the last update ended: it's cleared, said once."""

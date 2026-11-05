@@ -1155,6 +1155,16 @@ test("Settings → This Screen on a wall run by Sunroom Screen (ADR 0035)", asyn
     await expect(page.locator("[data-toast]").filter({ hasText: "Updated to" })).toBeVisible({
       timeout: 15_000,
     });
+    // After an update, for a week: Go Back… and its question (ADR 0046).
+    const goBack = page.getByRole("button", { name: /^Go Back to / });
+    await expect(goBack).toBeVisible();
+    await shot(page, `settings-this-screen-updated-${theme}`);
+    await goBack.click();
+    const goingBack = page.getByRole("dialog", { name: /^Go Back to / });
+    await expect(goingBack).toBeVisible();
+    await shot(page, `settings-this-screen-go-back-${theme}`);
+    await goingBack.getByRole("button", { name: "Cancel" }).click();
+    await expect(goingBack).toBeHidden();
     // As it was, for the next theme's shots.
     const again = await page.request.post(`${agent}/api/screen/_test/reset`, {
       headers: screenChange,

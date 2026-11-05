@@ -8,6 +8,9 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- A screen whose update starts but misbehaves can go back: for a week after an update, This Screen has
+  Go Back to the version before, and the overnight update then leaves the newer one alone until the
+  one after it.
 - Sunroom on This Computer now updates as dependably as the rest: a slow update on a Raspberry Pi
   gets ten minutes instead of being undone, a version that never starts puts the one before back, with
   your data as it was, and says so on the wall, and a restart in the middle of an update can't leave
