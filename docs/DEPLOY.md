@@ -122,7 +122,7 @@ or a Mac (Windows: [KIOSK.md](KIOSK.md#windows)), one command sets up the screen
 included:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
+curl -fsSL https://sunroom.day/install.sh | bash
 ```
 
 Then (on a Pi, after its restart) the screen looks for Sunroom on its network and lists what it

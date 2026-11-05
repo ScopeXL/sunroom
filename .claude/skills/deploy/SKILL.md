@@ -82,7 +82,7 @@ Requested level: "$level" (empty means you choose, below).
    files: `gh run list --workflow release-assets.yml --branch vX.Y.Z --json databaseId,url
    --limit 1`, `gh run watch <databaseId> --exit-status`, and `gh release view vX.Y.Z --json
    assets --jq '.assets[].name'`, which lists `sunroom_kiosk-X.Y.Z-py3-none-any.whl`,
-   `sunroom-X.Y.Z-py3-none-any.whl`, `sunroom-X.Y.Z-constraints.txt`, `install.sh`,
+   `sunroom-X.Y.Z-py3-none-any.whl`, `sunroom-X.Y.Z-constraints.txt`, `kiosk-X.Y.Z.tar.gz`, `install.sh`,
    `install.ps1` and `SHA256SUMS`. Missing or red: say which in the report, with the run's link
    (installers and screens can't install or update to this version, nor run Sunroom on a
    computer, until they're there).

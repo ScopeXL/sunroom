@@ -183,6 +183,7 @@ STATE_VARIABLES = (
     "CMDLINE_KEYS",
     "BACKLIGHT_RULE_WRITTEN",
     "I2C_MODULES_WRITTEN",
+    "NO_AUTO_UPDATE",
 )
 
 
@@ -235,6 +236,7 @@ def test_the_installer_and_setup_keep_each_others_keys_in_the_install_state(
         "STATE_CMDLINE_KEYS": "video=HDMI-A-1: vc4.force_hotplug=",
         "STATE_BACKLIGHT_RULE": "",
         "STATE_I2C_MODULES": "",
+        "STATE_NO_AUTO_UPDATE": "",
         "STATE_LABWC_AUTOSTART_CREATED": "1",  # setup made labwc's autostart: its word stands
         "STATE_SETUP_VERSION": RELEASE,
     }

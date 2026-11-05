@@ -56,8 +56,9 @@ Settings → Features stops it.
 
 Holidays calendars are made on the server from a built-in list; nothing is sent for them.
 
-Installing and updating download Sunroom from Docker Hub and GitHub (and, on a Raspberry Pi,
-software from Raspberry Pi OS's own servers), as any software install does.
+Installing and updating download Sunroom from Docker Hub and GitHub (the install line asks
+sunroom.day, which sends it on to GitHub), uv from its makers' site when a computer has none (and, on
+a Raspberry Pi, software from Raspberry Pi OS's own servers), as any software install does.
 
 If you reach Sunroom through a service such as Cloudflare Tunnel, that service decrypts the
 traffic on its way through and can see everything that passes, including the household password

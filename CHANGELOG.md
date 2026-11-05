@@ -8,6 +8,10 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- The install line is now `curl -fsSL https://sunroom.day/install.sh | bash` (on Windows, `irm
+  https://sunroom.day/install.ps1 | iex`) and stays that, always the newest release. Running it again
+  now keeps everything the screen has: its rotation, connector, dimming and screen helper stay unless
+  you give an option to change them. Everything it downloads is checked before it's used.
 - Sunroom's port is now 7867, so it no longer competes for a port many other programs want. A
   Sunroom already running: before you update, change the `ports:` line in its docker-compose.yml to
   `"7867:7867"` and point any proxy at 7867, then give your devices and screens the new address.

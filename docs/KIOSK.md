@@ -31,7 +31,11 @@ root; it asks for `sudo` itself.
 
 | You want | Command |
 |---|---|
-| The screen, with Sunroom on this computer or elsewhere | `curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh \| bash` |
+| The screen, with Sunroom on this computer or elsewhere | `curl -fsSL https://sunroom.day/install.sh \| bash` |
+
+The address is the newest Release's own installer, so the line never changes. Should sunroom.day be
+away, the same file is at `https://github.com/ScopeXL/sunroom/releases/latest/download/install.sh`
+(and `install.ps1`, for Windows).
 
 The installer finishes by saying what's next (with Sunroom on the Pi, the address your devices
 open and a QR code), then offers to restart.
@@ -68,7 +72,8 @@ Other options (`--help` lists them all):
 - `--brightness auto|ddc|sysfs|none` picks how the screen is dimmed in the evening (see "Sleep
   and dimming" below); `auto` is right for most screens.
 - `--no-screen-helper` leaves the screen itself on all night; the page still goes black or dim.
-  It's for monitors whose touch stops working while the screen is off.
+  It's for monitors whose touch stops working while the screen is off. `--screen-helper` brings
+  it back.
 - `--version X.Y.Z` runs that Sunroom version on the Pi (with `--with-sunroom`) instead of the
   newest. The screen's own software is always the installer's version.
 - `--x11` uses the older X11 desktop instead of labwc.
@@ -82,8 +87,11 @@ Wi-Fi, brightness and start-up settings). Last it notes what it changed, for the
 and starts the screen: a Pi offers to restart; another Linux computer offers only when Sunroom
 Screen's setup says what the desktop starts has changed (its report's `needs_reboot`).
 
-Running the installer again is safe: it keeps what is already right (the address the screen
-found, its pairing, its Updates choice) and replaces only its own files. Its log is
+Running the installer again is always safe, and needs no option: what the screen has stays (the
+address it found, its pairing, its Updates choice, and the rotation, connector, dimming and screen
+helper that the wall chose or an earlier run was told). An option given this time changes that one
+thing, and only the installer's own files are replaced. A connector stays while a screen is plugged
+in there; a cable moved to the other socket moves it. Its log is
 `~/.local/state/sunroom-kiosk/install.log`.
 
 ## What it changes
@@ -97,8 +105,9 @@ found, its pairing, its Updates choice) and replaces only its own files. Its log
   `/etc/avahi/services/sunroom.service`, which lets Sunroom screens on the network find this Pi
   by themselves (`--purge` removes it with Sunroom).
 - **Sunroom Screen:** `uv` in `~/.local/bin` when there is no uv yet (a pinned version, from its
-  makers' site), then Sunroom Screen itself with uv, from the same Sunroom release as the
-  installer on GitHub, checked against the release's `SHA256SUMS` before anything installs it.
+  makers' site, its installer checked against a pinned checksum before it runs), then Sunroom
+  Screen itself with uv, from the same Sunroom release as the installer on GitHub, checked against
+  the release's `SHA256SUMS` before anything installs it.
   uv gives it its own Python, apart from the system's. Its command is `~/.local/bin/sunroom-kiosk`;
   the copy it was installed from stays in `~/.local/share/sunroom-kiosk/wheels`, for updates to
   fall back on.
@@ -164,8 +173,7 @@ keeping the other's. The files the installer and Sunroom Screen's setup copy are
 
 ### A Pi set up before Sunroom 0.13.0
 
-Run the installer again with the options you used the first time (for example `--display-only
---url …`), then let it restart the Pi. It replaces the old launcher, the screen helper and their
+Run the installer again, with no option, then let it restart the Pi. It replaces the old launcher, the screen helper and their
 services with Sunroom Screen (the log says so), and keeps the address and the pairing. `update.sh`
 alone doesn't do this: it updates Sunroom, not the Pi's screen setup.
 
@@ -197,7 +205,7 @@ On a Linux computer that isn't a Raspberry Pi, sign in to its desktop as the per
 runs for, and in a terminal run the same command:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
+curl -fsSL https://sunroom.day/install.sh | bash
 ```
 
 It sets up the screen only, and needs systemd and a desktop. **The browser:** it uses Chromium,
@@ -228,7 +236,7 @@ On Windows 10 or 11, sign in as the person the screen runs for, open PowerShell 
 PowerShell), and run this in its window:
 
 ```powershell
-irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex
+irm https://sunroom.day/install.ps1 | iex
 ```
 
 Type it in the window itself. Wrapped in a second PowerShell (`powershell -c "…"`), or typed in
@@ -264,7 +272,7 @@ With options (`-Url https://calendar.example.com`, `-DryRun`, `-AgentWheel FILE`
 run the same download as a script block, in the PowerShell window too:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1))) -Url https://calendar.example.com
+& ([scriptblock]::Create((irm https://sunroom.day/install.ps1))) -Url https://calendar.example.com
 ```
 
 or save the file and run `powershell -ExecutionPolicy Bypass -File install.ps1 -Url …`.
@@ -278,7 +286,7 @@ Uninstall Sunroom Screen…** does the same without a terminal (ADR 0042).
 On a Mac, sign in as the person the screen runs for, and in Terminal run the same command:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
+curl -fsSL https://sunroom.day/install.sh | bash
 ```
 
 It needs no administrator. With no Google Chrome, Chromium or Microsoft Edge in `/Applications`
@@ -344,7 +352,7 @@ missing; a tap may not wake the screen then, so install it with `sudo apt instal
 ### When touch stops working while the screen is off
 
 A few monitors switch their touch off together with the picture, so a tap can't wake them before
-the morning. Run the installer again with `--no-screen-helper`: at night the page still goes black
+the morning. Run the installer once with `--no-screen-helper`: at night the page still goes black
 or shows the dim clock, and the screen itself stays on (**Dim clock** suits these screens best).
 
 ### If Sunroom can't be reached

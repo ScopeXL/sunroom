@@ -2,10 +2,15 @@
 # screen for the person signed in to it, with no administrator rights and no service
 # (docs/KIOSK.md, docs/M7.md T14). In a PowerShell window (Start, then type PowerShell):
 #
-#   irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex
+#   irm https://sunroom.day/install.ps1 | iex
+#
+# That address is the newest Release's copy of this file; so is its fallback, should the site be
+# away: https://github.com/ScopeXL/sunroom/releases/latest/download/install.ps1 (ADR 0046). A
+# Release serves it with no charset, which Windows PowerShell reads as Latin-1, so this file stays
+# plain ASCII (a test holds it to that).
 #
 # With options (iex takes none; a script block made from the same download does), in the window:
-#   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1))) -Url https://calendar.example.com
+#   & ([scriptblock]::Create((irm https://sunroom.day/install.ps1))) -Url https://calendar.example.com
 # or with a copy of this file:
 #   powershell -ExecutionPolicy Bypass -File install.ps1 [-Url https://calendar.example.com]
 #       [-DryRun] [-AgentWheel FILE] [-ServerWheel FILE] [-Uninstall] [-Yes]
@@ -83,7 +88,7 @@ $Options = [pscustomobject]@{
     $Shortcut = Join-Path ([Environment]::GetFolderPath("Startup")) "Sunroom Screen.lnk"
     $ReleaseBase = "https://github.com/$SunroomRepo/releases/download/v$KioskVersion"
     $WheelName = "sunroom_kiosk-$KioskVersion-py3-none-any.whl"
-    $InstallerUrl = "https://raw.githubusercontent.com/$SunroomRepo/main/kiosk/install.ps1"
+    $InstallerUrl = "https://sunroom.day/install.ps1"
 
     # ---------------------------------------------------------------------------- messages
 

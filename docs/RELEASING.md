@@ -8,7 +8,7 @@ does the rest. This page explains the pieces, and how to release without Claude.
 - A version bump in `VERSION`: patch by default, minor when the household can see something new,
   major only when the owner asks. Each milestone is a minor release.
 - The same version in the installers (`KIOSK_VERSION` in `kiosk/install.sh`, `$KioskVersion` in
-  `kiosk/install.ps1`), which are fetched from main, and in Sunroom Screen (`kiosk/agent/pyproject.toml` and its entry in
+  `kiosk/install.ps1`), which each name their own Release's files, and in Sunroom Screen (`kiosk/agent/pyproject.toml` and its entry in
   `kiosk/agent/uv.lock`), whose wheel is named for it.
 - A plain-English `CHANGELOG.md` section.
 - An annotated git tag `vX.Y.Z` that is never moved.
@@ -18,9 +18,11 @@ does the rest. This page explains the pieces, and how to release without Claude.
   wheel (`sunroom-X.Y.Z-py3-none-any.whl`, the app built in and the version stamped in by
   `scripts/server_wheel.py`, as `just server-build` does) with its constraints
   (`sunroom-X.Y.Z-constraints.txt`, from `backend/uv.lock`) for Sunroom run as a program on a
-  computer (ADR 0038), `install.sh` and `install.ps1`, and `SHA256SUMS`, uploaded last. The
-  installers and Sunroom Screen's own updates take the wheels from there and check them against
-  `SHA256SUMS`; nothing is uploaded from the Mac. Sunroom's own update check reads `sunroom.day/version.json`, which
+  computer (ADR 0038), `install.sh` and `install.ps1`, the tag's `kiosk/` folder as
+  `kiosk-X.Y.Z.tar.gz`, and `SHA256SUMS`, uploaded last. The install lines fetch the newest
+  Release's installer (`sunroom.day/install.sh` and `/install.ps1` redirect to it, ADR 0046); it
+  takes the wheels and the kiosk files from its own Release and checks them against `SHA256SUMS`,
+  as Sunroom Screen's own updates do; nothing is uploaded from the Mac. Sunroom's own update check reads `sunroom.day/version.json`, which
   the site writes when a Release is published, or the latest Release when that doesn't answer (ADR 0046),
   so a version counts once its Release is out.
 - **Sunroom Screen's wheel carries its setup** (ADR 0044): `kiosk/files/`, with `uninstall.sh`,
@@ -65,9 +67,11 @@ While a pushed tag has no public Release:
 
 - **Screens wait.** Sunroom Screen offers a version only when the Release's `SHA256SUMS` lists its
   wheel.
-- **Fresh installs stop.** The one-line installers come from main, which names the new version
-  from the moment the tag is pushed, and they don't fall back to an older one: they stop at
-  "Couldn't download Sunroom Screen X.Y.Z's checksums" and say to try again in a little while.
+- **Fresh installs carry on with the version before.** The install lines take the newest public
+  Release's installer, and it names its own files. From the moment a Release is public until its
+  files are on it, a minute at most when the Release came first, the line gets a 404: `curl` says
+  so and nothing runs. Once the files are on a draft that `just github-release` publishes, there's
+  no such minute.
 - **About can already name it.** Its daily check, when it's turned on, reads tags (ADR 0032).
 
 When all goes well that lasts a few minutes: the smoke test, the push and the checks. If `just

@@ -218,8 +218,7 @@ async function pretendAgent(page: Page, data: Set<string>): Promise<void> {
       latest: "0.18.1",
       checked_at: null,
       message: null,
-      needs_terminal:
-        "curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash",
+      needs_terminal: "curl -fsSL https://sunroom.day/install.sh | bash",
     },
     display: { rotation: 0, brightness_method: "ddc" },
     open_url: `${ORIGIN}/display?dimmer=screen&screen=7800`,

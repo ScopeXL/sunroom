@@ -322,7 +322,7 @@ remove_root_files_from_screen() {
 		fi
 	done
 	warn "the root helper couldn't take its files off, so it emptied the browser's policy." \
-		"The rest goes with:  curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash -s -- --uninstall"
+		"The rest goes with:  curl -fsSL https://sunroom.day/install.sh | bash -s -- --uninstall"
 }
 
 # The screen helper's system files: the udev rule that lets the video group switch the

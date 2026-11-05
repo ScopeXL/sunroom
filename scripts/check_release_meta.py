@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """VERSION is the only version (PLAN §14.5, after Dinner Bell's ADR 0019); everything else stays
-0.0.0, except what must carry it: the installers (install.sh and install.ps1), fetched from
-main, and Sunroom Screen's package, whose wheel is named for it and whose updates compare it
+0.0.0, except what must carry it: the installers (install.sh and install.ps1), each
+naming its own Release, and Sunroom Screen's package, whose wheel is named for it and whose updates compare it
 (docs/M7.md T11, T14).
 `release.py bump` writes all of them.
 """

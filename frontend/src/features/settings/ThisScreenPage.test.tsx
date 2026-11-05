@@ -400,8 +400,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
   });
 
   it("shows the install command when this screen's helper can't finish an update", () => {
-    const command =
-      "curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash";
+    const command = "curl -fsSL https://sunroom.day/install.sh | bash";
     draw(piState({ update: { ...piState().update, needs_terminal: command } }));
     expect(
       screen.getByText(

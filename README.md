@@ -39,11 +39,11 @@ choose), or a Linux computer, a Mac with Apple silicon or a Windows computer.
 2. Open a terminal (on a Pi you can `ssh` in), and run the one command for it:
 
    ```sh
-   curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
+   curl -fsSL https://sunroom.day/install.sh | bash
    ```
 
    On Windows, open PowerShell (Start, then type PowerShell) and run this in its window:
-   `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex`.
+   `irm https://sunroom.day/install.ps1 | iex`.
    It installs what the screen needs and starts it (a Pi restarts first).
 3. **The screen asks where your family's Sunroom will run:** **On This Computer** is chosen; tap
    **Continue**. Setting Up Sunroom takes a few minutes. (On a Mac or Windows, if the computer asks
@@ -95,7 +95,7 @@ with `APP_ALLOWED_HOSTS`.
 Then set up the screen with one command. On the Pi (or another Linux computer, or a Mac):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
+curl -fsSL https://sunroom.day/install.sh | bash
 ```
 
 It installs what the screen needs, a browser too, and starts it (a Pi restarts first). On the
@@ -120,13 +120,15 @@ Access; see [docs/HARDWARE.md](docs/HARDWARE.md#an-old-tablet-instead)).
 
 | On | Command |
 |---|---|
-| A Pi, a Linux computer or a Mac: the screen | `curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh \| bash` |
-| Windows: the screen | `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 \| iex`, in a PowerShell window |
+| A Pi, a Linux computer or a Mac: the screen | `curl -fsSL https://sunroom.day/install.sh \| bash` |
+| Windows: the screen | `irm https://sunroom.day/install.ps1 \| iex`, in a PowerShell window |
 
 Each installs what the screen needs (a browser too, when there's none) and starts it. The screen
 then asks where your family's Sunroom will run: **On This Computer** sets it up right there, and
 **Connect to a Sunroom** finds the one you have on your network by itself. `--url <address>` skips
-the search, and `--dry-run` (`-DryRun` on Windows) says what it would do first.
+the search, and `--dry-run` (`-DryRun` on Windows) says what it would do first. Running it again is
+always safe: whatever the screen has stays. Should sunroom.day be away, the same files are at
+`https://github.com/ScopeXL/sunroom/releases/latest/download/install.sh` and `install.ps1`.
 [docs/KIOSK.md](docs/KIOSK.md) has every option.
 
 ## Languages

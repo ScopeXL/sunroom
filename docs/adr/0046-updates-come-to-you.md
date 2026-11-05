@@ -74,6 +74,18 @@
   by itself." for five minutes after it hears so, from the wall's page (`server.updating`) or its own
   update, and otherwise "The computer that runs Sunroom may be off or restarting."
 
+- **The install line never changes.** `curl -fsSL https://sunroom.day/install.sh | bash` and `irm
+  https://sunroom.day/install.ps1 | iex`: the site redirects them to the newest Release's own copies,
+  so nobody runs a branch and the line outlives every release. `github.com/…/releases/latest/download/`
+  is the fallback, and the same files. A Release serves them with no charset, which Windows PowerShell
+  reads as Latin-1, so install.ps1 stays plain ASCII. **Running it again keeps what the screen has:**
+  an option given this time wins, and whatever's left out stays: rotation, connector, dimming, the
+  screen helper, the morning update (so those last two got their way back, `--screen-helper` and
+  `--auto-update`). A kept connector gives way only when a screen is plugged in elsewhere and none is
+  on it. **What the installer downloads is checked before it's used:** the kiosk folder is now a file
+  of the Release (`kiosk-X.Y.Z.tar.gz`, in `SHA256SUMS`, instead of GitHub's generated archive, whose
+  bytes GitHub doesn't promise), and uv's installer against a pinned sum.
+
 ## Consequences
 
 - One request a day from each install, which GitHub can see. The tests keep the check off unless they

@@ -1,6 +1,6 @@
 # A GitHub Release's files (docs/RELEASING.md, docs/M7.md T11): Sunroom Screen's wheel with its
-# pages built in, the installers, and SHA256SUMS, which the installers and Sunroom Screen's own
-# updates check every download against. The deploy skill makes the Release from the CHANGELOG
+# pages built in, the installers and the rest of the kiosk folder, and SHA256SUMS, which the
+# installers and Sunroom Screen's own updates check every download against. The deploy skill makes the Release from the CHANGELOG
 # (`just github-release`); this fills it, so nothing is uploaded from a Mac.
 name: Release assets
 
@@ -74,6 +74,10 @@ jobs:
           mkdir assets
           cp "$wheel" "$server" "backend/dist/sunroom-$version-constraints.txt" kiosk/install.sh assets/
           if [ -f kiosk/install.ps1 ]; then cp kiosk/install.ps1 assets/; fi
+          # What install.sh needs from beside it when it's piped from a Release (ADR 0046).
+          git archive --format=tar.gz -o "assets/kiosk-$version.tar.gz" HEAD kiosk
+          tar -tzf "assets/kiosk-$version.tar.gz" | grep -q '^kiosk/files/sunroom-kiosk-root$' ||
+            { echo "The kiosk files have no setup files in them."; exit 1; }
           (cd assets && sha256sum -- * >SHA256SUMS && cat SHA256SUMS)
       - name: Wait for the Release, or make a draft
         run: |
