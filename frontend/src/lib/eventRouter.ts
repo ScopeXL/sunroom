@@ -116,6 +116,10 @@ export function createEventHandler(queryClient: QueryClient, handlers: EventHand
         invalidate(["calendar-sync"]);
         invalidate(qk.problems());
         break;
+      case "update.available":
+        invalidate(qk.update());
+        invalidate(qk.problems());
+        break;
       case "lists.changed":
         invalidate(["lists"]);
         break;

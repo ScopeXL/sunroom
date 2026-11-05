@@ -31,6 +31,8 @@ def make_settings(data_dir: Path, **overrides: Any) -> Settings:
         "app_secret_key": SECRET,
         "tz": "America/New_York",
         "data_dir": str(data_dir),
+        # A restart with a household set up would ask GitHub: the tests of that say None.
+        "sunroom_update_check": False,
     }
     values.update(overrides)
     return Settings.model_validate(values)

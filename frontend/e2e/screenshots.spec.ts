@@ -380,7 +380,7 @@ test("the wall screen", async ({ page }) => {
     .getByRole("navigation", { name: "Settings" })
     .getByRole("link", { name: "About", exact: true })
     .click();
-  await page.getByRole("switch", { name: /^Check for updates daily/ }).scrollIntoViewIfNeeded();
+  await page.getByRole("switch", { name: /^Tell me about new versions/ }).scrollIntoViewIfNeeded();
   await shot(page, "settings-about-versions");
   await page
     .getByRole("navigation", { name: "Settings" })

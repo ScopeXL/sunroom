@@ -1,6 +1,6 @@
-"""The opt-in daily update check (PLAN §13.6, core/updates.py, meta/updates.py): nothing asks
-GitHub until the household turns it on; then once a day, with a plain line about how to update
-this server. A stand-in GitHub answers through MockTransport; no socket is opened."""
+"""The daily update check (PLAN §13.6, ADR 0046, core/updates.py, meta/updates.py): on by default
+for a household that's set up, once a day, with a plain line about how to update this server, and
+a switch to turn it off. A stand-in GitHub answers through MockTransport; no socket is opened."""
 
 from __future__ import annotations
 
@@ -27,8 +27,7 @@ PUBLIC = "140.82.112.6"  # a made-up public address for api.github.com in these 
 class FakeGitHub:
     def __init__(self) -> None:
         self.requests: list[httpx.Request] = []
-        # The repository's tags, as GitHub lists them (a stray one that isn't a version too).
-        self.tags: list[str] = ["v0.9.1", "v99.0.0", "nightly"]
+        self.release = "v99.0.0"  # the latest Release's tag
         self.body: object | None = None  # an answer of another shape
         self.status = 200
 
@@ -39,7 +38,7 @@ class FakeGitHub:
         if self.body is not None:
             return httpx.Response(200, json=self.body)
         return httpx.Response(
-            200, json=[{"name": tag, "commit": {"sha": "0" * 40}} for tag in self.tags]
+            200, json={"tag_name": self.release, "draft": False, "prerelease": False}
         )
 
     def transport(self) -> Callable[[], httpx.AsyncBaseTransport]:
@@ -57,7 +56,7 @@ def github() -> FakeGitHub:
 
 def build(data_dir: Path, clock: FakeClock, github: FakeGitHub, **settings: Any) -> FastAPI:
     return create_app(
-        make_settings(data_dir, **settings),
+        make_settings(data_dir, **{"sunroom_update_check": None, **settings}),
         clock=clock,
         resolver=resolve,
         http_transport=github.transport(),
@@ -96,57 +95,61 @@ def test_versions_compare_by_number() -> None:
     assert not newer("nonsense", "0.5.0")
 
 
-async def test_nothing_asks_github_until_the_household_says_so(
-    server: FastAPI, phone: httpx.AsyncClient, github: FakeGitHub
+async def test_nothing_goes_out_before_a_household_is_set_up(
+    server: FastAPI, github: FakeGitHub
 ) -> None:
     await updates.tick(state_of(server))
     assert github.requests == []
-    body = await status(phone)
-    assert (body["enabled"], body["locked"], body["latest"], body["available"]) == (
-        False,
-        False,
-        None,
-        False,
-    )
-    assert body["current"] == build_info().version
-    assert body["how"] == (
-        "In Sunroom's folder on the server, run docker compose pull, then docker compose up -d"
-    )
-    refused = await phone.post("/api/admin/update/check", headers=CSRF)
-    assert refused.status_code == 409
-    assert refused.json()["error"]["message"] == "Turn on Check for updates daily first."
 
 
-async def test_once_on_it_asks_once_a_day_and_says_a_newer_one_is_out(
+async def test_it_is_on_by_default_and_asks_once_a_day(
     server: FastAPI, phone: httpx.AsyncClient, github: FakeGitHub, clock: FakeClock
 ) -> None:
-    on = await phone.patch("/api/settings", json={"update_check": True}, headers=CSRF)
-    assert on.json()["update_check"] is True
     state = state_of(server)
     await updates.tick(state)
     assert len(github.requests) == 1
     sent = github.requests[0]
     # Pinned to the address the guard checked, with GitHub's name in the Host header.
     assert sent.headers["host"] == "api.github.com"
-    assert sent.url.path == "/repos/ScopeXL/sunroom/tags"
-    assert sent.url.params["per_page"] == "100"
+    assert sent.url.path == "/repos/ScopeXL/sunroom/releases/latest"
     assert sent.headers["user-agent"] == f"Sunroom/{build_info().version}"
     body = await status(phone)
-    assert (body["enabled"], body["latest"], body["available"]) == (True, "99.0.0", True)
+    assert (body["enabled"], body["locked"], body["latest"], body["available"]) == (
+        True,
+        False,
+        "99.0.0",
+        True,
+    )
+    assert body["current"] == build_info().version
+    assert body["how"] == (
+        "In Sunroom's folder on the server, run docker compose pull, then docker compose up -d"
+    )
 
     await updates.tick(state)  # not again the same day
     assert len(github.requests) == 1
     clock.advance(hours=24)
-    github.tags = [f"v{build_info().version}", "v0.1.0"]
+    github.release = f"v{build_info().version}"
     await updates.tick(state)
     assert len(github.requests) == 2
     assert (await status(phone))["available"] is False
 
 
+async def test_a_household_can_turn_it_off(
+    server: FastAPI, phone: httpx.AsyncClient, github: FakeGitHub
+) -> None:
+    off = await phone.patch("/api/settings", json={"update_check": False}, headers=CSRF)
+    assert off.json()["update_check"] is False
+    await updates.tick(state_of(server))
+    assert github.requests == []
+    assert (await status(phone))["enabled"] is False
+    refused = await phone.post("/api/admin/update/check", headers=CSRF)
+    assert refused.status_code == 409
+    assert refused.json()["error"]["message"] == "Turn on Tell me about new versions first."
+
+
 async def test_a_failed_check_says_so_and_check_now_waits_a_minute(
     phone: httpx.AsyncClient, github: FakeGitHub, clock: FakeClock
 ) -> None:
-    await phone.patch("/api/settings", json={"update_check": True}, headers=CSRF)
     github.status = 500
     checked = await phone.post("/api/admin/update/check", headers=CSRF)
     assert checked.status_code == 200, checked.text
@@ -163,36 +166,32 @@ async def test_a_failed_check_says_so_and_check_now_waits_a_minute(
     assert later.json()["available"] is True
 
 
-async def test_it_reads_the_tags_and_takes_the_highest_version(
+async def test_it_reads_the_latest_release(
     phone: httpx.AsyncClient, github: FakeGitHub, clock: FakeClock
 ) -> None:
-    """Sunroom's versions on GitHub are tags; there are no Releases (ADR 0032). 0.10.0 is above
-    0.9.1 as numbers, though not as words; a tag that isn't a version is skipped."""
-    await phone.patch("/api/settings", json={"update_check": True}, headers=CSRF)
-    github.tags = ["v0.9.1", "v0.10.0", "test-tag", "v0.2.0"]
+    """A version counts once its Release exists. A pre-release isn't one, nor is an answer that
+    isn't a version, and each failure says so in its own words."""
+    github.release = "v0.10.0"
     checked = await phone.post("/api/admin/update/check", headers=CSRF)
     assert (checked.json()["latest"], checked.json()["problem"]) == ("0.10.0", None)
 
-    # A 404 (no such repository, or a tags list GitHub won't give) and an answer it can't read
-    # each say so in their own words.
-    for status, body, said in [
+    unreadable = "GitHub's answer wasn't one Sunroom could read. It will try again tomorrow."
+    answers: list[tuple[int, object, str]] = [
         (404, None, "GitHub couldn't find Sunroom's versions. It will try again tomorrow."),
-        (200, [], "GitHub's answer wasn't one Sunroom could read. It will try again tomorrow."),
-        (
-            200,
-            [{"name": "nightly"}],
-            "GitHub's answer wasn't one Sunroom could read. It will try again tomorrow.",
-        ),
-        (
-            200,
-            {"tag_name": "v1.0.0"},
-            "GitHub's answer wasn't one Sunroom could read. It will try again tomorrow.",
-        ),
-    ]:
+        (200, [], unreadable),
+        (200, {"name": "nothing we know"}, unreadable),
+        (200, {"tag_name": "nightly"}, unreadable),
+        (200, {"tag_name": "v1.0.0-rc.1"}, unreadable),
+        (200, {"tag_name": "v1.0.0", "prerelease": True}, unreadable),
+        (200, {"tag_name": "v1.0.0", "draft": True}, unreadable),
+    ]
+    for status_code, body, said in answers:
         clock.advance(minutes=1, seconds=1)
-        github.status, github.body = status, body
+        github.status, github.body = status_code, body
         answer = await phone.post("/api/admin/update/check", headers=CSRF)
-        assert answer.json()["problem"] == said, (status, body)
+        assert answer.json()["problem"] == said, (status_code, body)
+        # What it knew stays: a bad day at GitHub doesn't forget the version that's out.
+        assert answer.json()["latest"] == "0.10.0"
 
 
 async def test_the_server_can_keep_it_off_and_say_how_to_update_a_pi(
@@ -237,7 +236,8 @@ async def test_the_test_server_makes_up_its_answer_and_sends_nothing(
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as http:
             assert (await run_setup(http)).status_code == 201
-            await http.patch("/api/settings", json={"update_check": True}, headers=CSRF)
+            await updates.tick(state_of(app))
+            assert state_of(app).updates.checked_at is None  # only when a test asks
             checked = await http.post("/api/admin/update/check", headers=CSRF)
             assert checked.status_code == 200, checked.text
             body = checked.json()

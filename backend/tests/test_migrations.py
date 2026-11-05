@@ -456,3 +456,19 @@ def test_a_household_from_0_17_0_speaks_english(tmp_path: Path) -> None:
         assert conn.execute("SELECT language FROM household").fetchall() == [("en",)]
     finally:
         conn.close()
+
+
+def test_a_household_from_0_18_0_hears_about_new_versions(tmp_path: Path) -> None:
+    """ADR 0046: the check is on by default, for a household from before as well."""
+    db = tmp_path / "sunroom.db"
+    conn = sqlite3.connect(db)
+    conn.executescript((FIXTURE_DBS / "202610301744.sql").read_text())
+    conn.execute("UPDATE household SET update_check = 0")
+    conn.commit()
+    conn.close()
+    assert migrate.upgrade(db) == migrate.head_revision()
+    conn = sqlite3.connect(db)
+    try:
+        assert conn.execute("SELECT update_check FROM household").fetchall() == [(1,)]
+    finally:
+        conn.close()

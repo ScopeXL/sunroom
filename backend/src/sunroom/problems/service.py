@@ -1,7 +1,8 @@
 """Collecting what needs a parent (ADR 0034).
 
 In order: a feature that stopped; each feature's own problems (an account that stopped syncing,
-a photo source that fails); a backup that failed or is a week old; a server running out of room.
+a photo source that fails); a backup that failed or is a week old; a server running out of room;
+a new version that's out (ADR 0046).
 Everything is read on request, from what's already in memory or one quick query per feature, so
 the list is never stale for long: the frontend asks again when a live event says something
 changed, and every 5 minutes for the two causes no event announces (a 3:30 AM backup, the disk).
@@ -14,6 +15,7 @@ from datetime import datetime
 
 from sunroom.auth.deps import Actor
 from sunroom.core.lang import t_en
+from sunroom.meta.updates import update_out
 from sunroom.plugins.base import PluginStatus
 from sunroom.problems.schemas import ProblemOut
 from sunroom.state import AppState
@@ -97,6 +99,21 @@ async def collect(state: AppState, actor: Actor) -> list[ProblemOut]:
                 key="api.problems.storage_low",
                 params=params,
                 detail=None,
+                since=None,
+                page="about",
+                source="core",
+            )
+        )
+    update = await update_out(state)
+    if update.enabled and update.available and update.latest is not None:
+        params = {"version": update.latest}
+        found.append(
+            ProblemOut(
+                id="update:available",
+                title=t_en("api.problems.update_available", **params),
+                key="api.problems.update_available",
+                params=params,
+                detail=update.how,
                 since=None,
                 page="about",
                 source="core",

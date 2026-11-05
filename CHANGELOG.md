@@ -11,6 +11,9 @@ Everything that changes in Sunroom, written in plain English. The format follows
 - Sunroom's port is now 7867, so it no longer competes for a port many other programs want. A
   Sunroom already running: before you update, change the `ports:` line in its docker-compose.yml to
   `"7867:7867"` and point any proxy at 7867, then give your devices and screens the new address.
+- Sunroom now tells you when a new version is out: Needs Attention says so, and About says how to
+  update. It asks GitHub once a day, which lets GitHub see your server's address; turn it off in
+  Settings → About → Tell me about new versions. This is on for every household from this version.
 - With a screen reader or voice control, buttons now start with what they show, so you can say what
   you see: an event is "4:00 PM Soccer practice, Mia, until 5:00 PM, Thursday October 9", a day is
   "Thu 8, October", a row is "Edit Mia, Child, Pink", and the wall keyboard's key is "123, numbers

@@ -77,8 +77,8 @@ export function AboutPage() {
   );
 }
 
-/** Updates (PLAN §13.6): off until a parent turns it on, because it asks GitHub. */
-function UpdatesGroup() {
+/** Updates (PLAN §13.6, ADR 0046): on by default, with a switch, because it asks GitHub. */
+export function UpdatesGroup() {
   const t = useT();
   const display = useShell() === "display";
   const queryClient = useQueryClient();
@@ -92,6 +92,7 @@ function UpdatesGroup() {
     mutationFn: async () => asParent(async () => unwrap(await api.POST("/api/admin/update/check"))),
     onSuccess: (fresh) => {
       queryClient.setQueryData(qk.update(), fresh);
+      void queryClient.invalidateQueries({ queryKey: qk.problems() });
     },
   });
   if (!settings || !status) return null;
@@ -113,6 +114,7 @@ function UpdatesGroup() {
     >
       <Switch
         label={t("settings.about.updates.daily.label")}
+        hint={t("settings.about.updates.daily.hint")}
         checked={settings.update_check}
         disabled={status.locked}
         onChange={(value) => {
@@ -121,6 +123,7 @@ function UpdatesGroup() {
             {
               onSuccess: () => {
                 void queryClient.invalidateQueries({ queryKey: qk.update() });
+                void queryClient.invalidateQueries({ queryKey: qk.problems() });
               },
             },
           );
