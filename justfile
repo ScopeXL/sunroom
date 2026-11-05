@@ -233,6 +233,22 @@ scan:
     {{py}} scripts/private_scan.py tree
     {{py}} scripts/private_scan.py history
 
+# Known vulnerabilities in what ships: both Python lockfiles and the frontend's production packages.
+# Not in `check`: weekly in CI, where a finding opens an issue, not a red release (audit.yml)
+audit:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    status=0
+    tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+    for project in backend kiosk/agent; do
+      echo "== $project"
+      (cd "$project" && uv export --quiet --frozen --no-dev --no-emit-project --no-hashes --output-file "$tmp/requirements.txt") || status=1
+      uvx --quiet pip-audit --requirement "$tmp/requirements.txt" --no-deps --disable-pip --progress-spinner off || status=1
+    done
+    echo "== frontend"
+    (cd frontend && pnpm audit --prod) || status=1
+    exit "$status"
+
 hook-pre-commit:
     gitleaks git --pre-commit --staged --redact --no-banner .
     {{py}} scripts/private_scan.py staged

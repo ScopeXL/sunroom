@@ -1,0 +1,52 @@
+# Known vulnerabilities in what ships, once a week. A finding opens an issue, not a red release:
+# nothing here blocks anything by itself (docs/RELEASING.md "GitHub's checks").
+name: Audit
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/.node-version
+      - name: Audit
+        id: audit
+        continue-on-error: true
+        shell: bash
+        run: just audit 2>&1 | tee audit.txt
+      # One open issue at most: a finding that's still there next week doesn't open another.
+      - name: Open an issue
+        if: steps.audit.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: Known vulnerabilities in what Sunroom ships
+        run: |
+          open="$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq 'length')"
+          if [ "$open" = 0 ]; then
+            {
+              echo "This week's \`just audit\` found something. Details in [the run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
+              echo
+              echo '```'
+              tail -n 60 audit.txt
+              echo '```'
+            } > issue.md
+            gh issue create --title "$TITLE" --body-file issue.md
+          fi

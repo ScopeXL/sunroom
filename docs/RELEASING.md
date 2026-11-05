@@ -81,7 +81,11 @@ same checks as jobs when the release is pushed, plus the end-to-end suite on Lin
 a secrets scan. Its e2e job failed on every release from 0.5.0 to 0.9.1 without anyone seeing
 it: the two long accessibility journeys took longer than Playwright's default 30 seconds on
 GitHub's 4-CPU runner. They have the time they need now (ADR 0032), the job caches its browsers
-and stops after 45 minutes, and the deploy skill waits for the run and reports it.
+and stops after 45 minutes, and the deploy skill waits for the run and reports it. There are no
+retries: a test that fails once gets fixed.
+
+Once a week `audit.yml` runs `just audit` (`pip-audit` on both lockfiles, `pnpm audit --prod`). A
+finding opens one issue and never turns a release red; it's weighed like any other bug.
 
 ## One-time setup on the build Mac
 
