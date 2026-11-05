@@ -4,7 +4,7 @@ talk to (httpx.MockTransport, by base address), and the addresses they use. Synt
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -80,12 +80,20 @@ class Shell:
     calls: list[tuple[list[str], str | None]] = field(
         default_factory=list[tuple[list[str], str | None]]
     )
+    environments: dict[str, Mapping[str, str]] = field(default_factory=dict[str, Mapping[str, str]])
 
     async def __call__(
-        self, argv: Sequence[str], *, limit: float = 20.0, stdin: str | None = None
+        self,
+        argv: Sequence[str],
+        *,
+        limit: float = 20.0,
+        stdin: str | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> CommandResult:
         line = " ".join(argv)
         self.calls.append((list(argv), stdin))
+        if env is not None:
+            self.environments[line] = env
         for start, result in self.answers.items():
             if line.startswith(start):
                 return result

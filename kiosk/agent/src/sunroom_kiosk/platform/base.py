@@ -15,7 +15,7 @@ import socket
 import subprocess
 import sys
 import time
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -45,12 +45,21 @@ class CommandResult:
 
 class Runner(Protocol):
     async def __call__(
-        self, argv: Sequence[str], *, limit: float = COMMAND_TIMEOUT_S, stdin: str | None = None
+        self,
+        argv: Sequence[str],
+        *,
+        limit: float = COMMAND_TIMEOUT_S,
+        stdin: str | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> CommandResult: ...
 
 
 async def run_command(
-    argv: Sequence[str], *, limit: float = COMMAND_TIMEOUT_S, stdin: str | None = None
+    argv: Sequence[str],
+    *,
+    limit: float = COMMAND_TIMEOUT_S,
+    stdin: str | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> CommandResult:
     """Run a command without a shell: its exit status (127: not installed, 124: too slow) and
     what it printed."""
@@ -61,6 +70,7 @@ async def run_command(
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             creationflags=NO_WINDOW,
+            env={**os.environ, **env} if env is not None else None,
         )
     except FileNotFoundError:
         return CommandResult(127, f"{argv[0]} isn't installed")

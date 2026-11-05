@@ -86,6 +86,16 @@
   of the Release (`kiosk-X.Y.Z.tar.gz`, in `SHA256SUMS`, instead of GitHub's generated archive, whose
   bytes GitHub doesn't promise), and uv's installer against a pinned sum.
 
+- **Sunroom run as a program goes back as a Pi's Docker Sunroom does.** It's kept once it answers as
+  the new version; one that never does, within ten minutes on a Pi and five elsewhere because a long
+  migration isn't a failure, goes. The version before comes back with `sunroom restore` of its
+  pre-migrate copy when the database's revision moved (each migration run is one transaction, and the
+  server never answered, so nothing can be lost), without which it would refuse to start (exit 65);
+  that version isn't tried again by itself. What Sunroom is at comes from what Sunroom Screen
+  remembered it installing, not from asking it, so a computer's restart that starts Sunroom Screen
+  first can't leave it behind (the plan's `health_tick` idea wasn't needed); a download that failed is
+  tried again within the hour, and the wall shows **Updating Sunroom…** for it, as on a Pi.
+
 ## Consequences
 
 - One request a day from each install, which GitHub can see. The tests keep the check off unless they

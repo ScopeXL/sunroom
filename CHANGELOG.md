@@ -8,6 +8,10 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ### Changed
 
+- Sunroom on This Computer now updates as dependably as the rest: a slow update on a Raspberry Pi
+  gets ten minutes instead of being undone, a version that never starts puts the one before back, with
+  your data as it was, and says so on the wall, and a restart in the middle of an update can't leave
+  Sunroom behind.
 - The install line is now `curl -fsSL https://sunroom.day/install.sh | bash` (on Windows, `irm
   https://sunroom.day/install.ps1 | iex`) and stays that, always the newest release. Running it again
   now keeps everything the screen has: its rotation, connector, dimming and screen helper stay unless

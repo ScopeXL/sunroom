@@ -410,7 +410,10 @@ with **Try Again**.
   may ask whether Sunroom may accept connections: choose Allow, or your devices can't reach it.
 - **Updates:** it stays at Sunroom Screen's version: when Sunroom Screen updates itself (Update
   Now, or overnight), Sunroom follows, and This Screen says under Software when it's behind; a
-  version that doesn't answer within five minutes is put back.
+  version that never answers, within ten minutes on a Pi and five elsewhere, goes by itself: the one
+  before comes back, with the database as it was if a migration ran, the wall says so, and that
+  version isn't tried again until a newer one is out (**Update Sunroom** still can). A download that
+  failed is tried again within the hour, and a computer's restart can't leave Sunroom behind.
 - **The household password, lost:** `DATA_DIR=~/.local/share/sunroom ~/.local/bin/sunroom
   reset-password` (the data folder above for a Mac or Windows).
 - **Removing it:** This Screen's **Uninstall Sunroom Screen…** takes Sunroom and its data too
