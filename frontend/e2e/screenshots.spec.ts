@@ -224,7 +224,7 @@ test("the wall screen", async ({ page }) => {
   await change(page, { show_tips: false });
   await page.reload();
   await expect(board).toBeVisible();
-  await board.getByRole("button", { name: /^Soccer practice, .*Thursday/ }).click();
+  await board.getByRole("button", { name: /\bSoccer practice, .*Thursday/ }).click();
   const sheet = page.getByRole("dialog", { name: "Soccer practice" });
   await expect(sheet).toBeVisible();
   await shot(page, "event-sheet");
@@ -682,7 +682,7 @@ test("a phone's calendar", async ({ page, isMobile }) => {
       await shot(page, `calendar-${mode.toLowerCase()}-${scheme}`);
     }
     await page.getByRole("button", { name: "Week", exact: true }).click();
-    await page.getByRole("button", { name: /^Soccer practice, .*Thursday October 8/ }).click();
+    await page.getByRole("button", { name: /\bSoccer practice, .*Thursday October 8/ }).click();
     await expect(page.getByRole("dialog", { name: "Soccer practice" })).toBeVisible();
     await shot(page, `calendar-event-${scheme}`);
     await page
@@ -992,7 +992,7 @@ test("the wall's meals, countdowns, photos and screensaver", async ({ page }, te
     await expect(saver).toHaveCount(0);
     await page.goto("/display");
     await page
-      .getByRole("button", { name: /^The weather:/ })
+      .getByRole("button", { name: /^The weather/ })
       .first()
       .click();
     await shot(page, `weather-${theme}`);
@@ -1104,7 +1104,7 @@ test("Settings → This Screen on a wall run by Sunroom Screen (ADR 0035)", asyn
     await page.getByRole("button", { name: "Settings" }).click();
     await page
       .getByRole("navigation", { name: "Settings" })
-      .getByRole("link", { name: "This Screen", exact: true })
+      .getByRole("link", { name: /^This Screen,/ })
       .click();
     await expect(page.getByRole("heading", { name: "This Screen", level: 2 })).toBeVisible();
     await expect(page.getByRole("button", { name: "Restart" })).toBeVisible();

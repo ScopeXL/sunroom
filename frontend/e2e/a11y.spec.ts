@@ -125,7 +125,7 @@ for (const scheme of ["light", "dark"] as const) {
       await page.getByRole("link", { name: "Calendar" }).click();
       await expect(page.getByRole("group", { name: "Days" })).toBeVisible();
       await check(page, "calendar");
-      await page.getByRole("button", { name: /^Vet, / }).click();
+      await page.getByRole("button", { name: /\bVet, / }).click();
       await expect(page.getByRole("dialog", { name: "Vet" })).toBeVisible();
       await check(page, "calendar: event");
       await page
@@ -285,7 +285,7 @@ for (const scheme of ["light", "dark"] as const) {
       expect(tips.ok()).toBe(true);
       await expect(page.locator("[data-tips]")).toBeVisible();
       await check(page, "display: board with a tip");
-      await board.getByRole("button", { name: /^Soccer practice, .*Thursday/ }).click();
+      await board.getByRole("button", { name: /\bSoccer practice, .*Thursday/ }).click();
       await expect(page.getByRole("dialog", { name: "Soccer practice" })).toBeVisible();
       await check(page, "display: event");
       await page

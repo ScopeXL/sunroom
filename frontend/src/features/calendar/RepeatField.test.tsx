@@ -116,9 +116,9 @@ describe("how something repeats (ADR 0029, 0030)", () => {
     expect(checked()).toEqual(["Custom…"]);
     // The weekdays are in the household's order: Sunday first here.
     const days = within(screen.getByRole("group", { name: "On" })).getAllByRole("button");
-    expect(days.map((day) => day.getAttribute("aria-label"))[0]).toBe("Sunday");
+    expect(days.map((day) => day.getAttribute("aria-label"))[0]).toBe("Sun, Sunday");
     fireEvent.click(screen.getByRole("button", { name: "Every: more" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tuesday" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tue, Tuesday" }));
     expect(onRule.mock.lastCall?.[0]).toBe("FREQ=WEEKLY;INTERVAL=2;BYDAY=TU,TH");
     expect(said()).toBe("Every 2 weeks on Tue and Thu");
     // No preset says this, so only Custom is checked.
@@ -176,7 +176,7 @@ describe("how something repeats (ADR 0029, 0030)", () => {
     open();
     expect(checked()).toEqual(["Custom…"]);
     expect(screen.getByRole("status").textContent).toContain("3");
-    expect(screen.getByRole("button", { name: "Monday" }).getAttribute("aria-pressed")).toBe(
+    expect(screen.getByRole("button", { name: "Mon, Monday" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
   });

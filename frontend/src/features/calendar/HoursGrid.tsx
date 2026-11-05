@@ -492,7 +492,7 @@ function HoursChip({
                 {time}
               </span>
               <PeopleMarks people={people} />
-            </span>
+            </span>{" "}
             <span
               className={`${titleLines === 2 ? "line-clamp-2" : "line-clamp-1"} text-d-body font-semibold break-words`}
             >
@@ -501,11 +501,12 @@ function HoursChip({
           </>
         ) : tier === "line" ? (
           <>
+            {/* At the end to the eye, first in the page: the name says the time first. */}
+            <span className="order-last shrink-0 text-d-secondary font-semibold @max-[10rem]:hidden">
+              {time}
+            </span>{" "}
             <span className="min-w-0 flex-1 truncate text-d-body font-semibold">
               {occurrence.title}
-            </span>
-            <span className="shrink-0 text-d-secondary font-semibold @max-[10rem]:hidden">
-              {time}
             </span>
           </>
         ) : tier === "title" ? (

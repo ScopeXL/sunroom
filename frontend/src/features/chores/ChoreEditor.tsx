@@ -217,7 +217,9 @@ export function ChoreEditor({
                 <Chip
                   key={count}
                   on={points === count}
-                  label={t("tasks.stars.count", { n: count })}
+                  label={
+                    count === 0 ? t("tasks.stars.none.aria") : t("tasks.stars.count", { n: count })
+                  }
                   onClick={() => {
                     setPoints(count);
                   }}

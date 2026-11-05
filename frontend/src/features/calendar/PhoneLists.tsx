@@ -13,6 +13,7 @@ import {
 import type { Member } from "../../lib/household";
 import { t, useT } from "../../lib/lang";
 import { useMinute } from "../../lib/time";
+import { cellDate } from "../../ui/WeekStrip";
 import { arrivalKey, occurrenceLabel, PeopleEdge, peopleOf } from "./EventChip";
 import { coreOverlayOf, useOverlayOf } from "./overlays";
 import { byDay, isPast, shownFor } from "./layout";
@@ -26,10 +27,10 @@ function dayTitle(day: string, today: string): string {
   return shortDate(day);
 }
 
-/** A day cell's name: "Thu, Oct 8, today, 2 events". */
+/** A day cell's name: "Thu 8, October, today, 2 events". */
 function dayCellLabel(day: string, today: string, count: number): string {
   return t("calendar.phone.day.aria", {
-    date: shortDate(day),
+    date: cellDate(day),
     today: day === today ? "yes" : "no",
     n: count,
   });
@@ -71,13 +72,13 @@ export function PhoneRow({
       type="button"
       data-person={color}
       data-arrive={arrived ? "" : undefined}
-      aria-label={occurrenceLabel(occurrence, people, day)}
+      aria-label={occurrenceLabel(occurrence, people, day, { when, location: true })}
       onClick={onOpen}
       className={`press-row flex min-h-14 w-full items-start gap-3 rounded-chip px-2 py-2 text-left ${
         dim ? "text-ink-soft" : ""
       }`}
     >
-      <span className="w-[4.75rem] shrink-0 pt-0.5 text-secondary font-semibold">{time}</span>
+      <span className="w-[4.75rem] shrink-0 pt-0.5 text-secondary font-semibold">{time}</span>{" "}
       {Mark ? (
         <Mark aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-ink-soft" />
       ) : !occurrence.color && people.length > 1 ? (
@@ -105,7 +106,7 @@ export function PhoneRow({
               {people.map((p) => p.name).join(", ")}
             </span>
           ) : null}
-        </span>
+        </span>{" "}
         {occurrence.location ? (
           <span className="text-secondary text-ink-soft">{occurrence.location}</span>
         ) : null}
@@ -281,7 +282,7 @@ export function WeekStrip({
             }}
             className="press flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-chip border-2 border-transparent aria-pressed:border-ink"
           >
-            <span className="text-caption text-ink-soft">{shortWeekday(day)}</span>
+            <span className="text-caption text-ink-soft">{shortWeekday(day)}</span>{" "}
             <span
               className={`flex size-7 items-center justify-center rounded-full text-secondary font-bold ${
                 isToday ? "bg-sun text-on-sun" : ""

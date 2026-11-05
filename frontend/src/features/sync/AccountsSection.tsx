@@ -146,9 +146,10 @@ function AccountRow({ account, onOpen }: { account: Account; onOpen: () => void 
     <ListRow
       label={t("sync.accounts.edit.aria", { name: account.label })}
       title={account.label}
-      subtitle={
+      subtitle={[account.address, statusLine(account)].filter(Boolean).join(", ")}
+      subtitleShown={
         <>
-          {account.address ? <span className="block break-all">{account.address}</span> : null}
+          {account.address ? <span className="block break-all">{account.address}</span> : null}{" "}
           <span className={`block ${trouble ? "font-semibold text-alert" : ""}`}>
             {statusLine(account)}
           </span>

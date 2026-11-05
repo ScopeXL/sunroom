@@ -206,6 +206,8 @@ export const monthDay = dayFormat({ month: "short", day: "numeric" });
 
 /** "October 9", for what a screen reader says (UX §10). */
 export const longMonthDay = dayFormat({ month: "long", day: "numeric" });
+/** "October". */
+export const longMonth = dayFormat({ month: "long" });
 /** "Tue, Oct 7" */
 export const shortDate = dayFormat({ weekday: "short", month: "short", day: "numeric" });
 /** "Tuesday, October 7": the caption over the Day and People views, where a weekday is written out. */

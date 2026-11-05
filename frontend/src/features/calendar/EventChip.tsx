@@ -2,7 +2,7 @@ import { ArrowRight } from "lucide-react";
 import type { CSSProperties } from "react";
 
 import { useArrived } from "../../lib/arrivals";
-import { formatWallRange, formatWallTime, longMonthDay, longWeekday } from "../../lib/dates";
+import { formatWallTime, longMonthDay, longWeekday } from "../../lib/dates";
 import type { Member } from "../../lib/household";
 import { t } from "../../lib/lang";
 import { Avatar } from "../../ui/Avatar";
@@ -11,24 +11,38 @@ import { isOn, isPast } from "./layout";
 import { coreOverlayOf, useOverlayOf } from "./overlays";
 import type { Occurrence, PersonColor } from "./types";
 
-/** "4:00 to 5:00 PM": a range as a screen reader says it, the dash in words. */
-function spokenRange(range: string): string {
-  const dash = range.indexOf("–");
-  if (dash === -1) return range;
-  return t("calendar.chip.range.aria", { start: range.slice(0, dash), end: range.slice(dash + 1) });
-}
-
-/** "Soccer practice, 4:00 to 5:00 PM, Mia, Thursday October 9" (UX §10). */
-export function occurrenceLabel(occurrence: Occurrence, people: Member[], day?: string): string {
-  const when = occurrence.all_day
-    ? t("calendar.board.all_day")
-    : occurrence.start_local && occurrence.end_local
-      ? spokenRange(formatWallRange(occurrence.start_local, occurrence.end_local))
+/**
+ * An event's name on a chip or a row (UX §10): what it shows, in the order it shows it, then what
+ * only the ear gets: "4:00 PM Soccer practice, Mia, until 5:00 PM, Thursday October 9". Voice control
+ * goes by what's on the screen, so all of that has to be in the name, unbroken (WCAG 2.5.3).
+ * `when` is a row's own first words ("until 4:15 PM"); `location` says the row shows its place.
+ */
+export function occurrenceLabel(
+  occurrence: Occurrence,
+  people: Member[],
+  day?: string,
+  { when, location = false }: { when?: string | undefined; location?: boolean } = {},
+): string {
+  const start = !occurrence.all_day && occurrence.start_local ? occurrence.start_local : null;
+  const first =
+    when ?? (start ? formatWallTime(start) : occurrence.all_day ? t("calendar.board.all_day") : "");
+  const until =
+    !when && start && occurrence.end_local && occurrence.end_local !== start
+      ? t("calendar.today.until", { time: formatWallTime(occurrence.end_local) })
       : "";
-  const who = people.length ? people.map((p) => p.name).join(", ") : t("calendar.everyone");
+  const names = people.map((p) => p.name).join(", ");
   const onDay = day ?? occurrence.start_date ?? occurrence.start_local?.slice(0, 10) ?? "";
   const date = onDay ? `${longWeekday(onDay)} ${longMonthDay(onDay)}` : "";
-  return [occurrence.title, when, who, date].filter(Boolean).join(", ");
+  return [
+    [first, occurrence.title].filter(Boolean).join(" "),
+    names,
+    location ? occurrence.location : "",
+    names ? "" : t("calendar.everyone"),
+    until,
+    date,
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 /** What makes a chip a newcomer (lib/arrivals): the event, where it now starts. Moved to
@@ -203,7 +217,7 @@ export function EventChip({
             >
               {time}
             </span>
-          ) : null}
+          ) : null}{" "}
           {Mark ? (
             <Mark
               aria-hidden="true"
@@ -229,7 +243,7 @@ export function EventChip({
               {time}
             </span>
             <PeopleMarks people={people} />
-          </span>
+          </span>{" "}
           <span
             className={`line-clamp-2 ${display ? "text-d-body" : "text-body"} font-semibold break-words`}
           >

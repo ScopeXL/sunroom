@@ -137,7 +137,7 @@ test("first run on a phone, the wall paired, Settings behind the PIN, then sign 
   await expect(pin).toBeHidden();
   await expect(page.getByRole("heading", { name: "Family", level: 2 })).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit Mia" })).toBeVisible();
-  await page.getByRole("button", { name: "Lock" }).click();
+  await page.getByRole("button", { name: "Lock", exact: true }).click();
   await expect(board).toBeVisible();
   // Locked again: Settings asks for the PIN once more.
   await page.getByRole("button", { name: "Settings" }).click();

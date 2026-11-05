@@ -38,17 +38,18 @@ export function Avatar({
     );
   }
   const initial = member.name.trim().charAt(0).toUpperCase() || "?";
+  // The initial is CSS content, not text: it's decoration beside a name written out elsewhere, and
+  // text would count as part of the label of any button an avatar sits in (WCAG 2.5.3).
   return (
     <span
       aria-hidden="true"
       data-person={member.color}
-      className={`inline-flex ${SIZES[size]} shrink-0 items-center justify-center overflow-hidden rounded-full border-p bg-p font-bold text-on-ink`}
+      data-initial={member.avatar_url ? undefined : initial}
+      className={`inline-flex ${SIZES[size]} shrink-0 items-center justify-center overflow-hidden rounded-full border-p bg-p font-bold text-on-ink before:content-[attr(data-initial)]`}
     >
       {member.avatar_url ? (
         <img src={member.avatar_url} alt="" className="size-full object-cover" />
-      ) : (
-        initial
-      )}
+      ) : null}
     </span>
   );
 }

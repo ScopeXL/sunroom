@@ -2,7 +2,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { Member } from "../../lib/household";
-import { chipTone, PeopleEdge } from "./EventChip";
+import { chipTone, occurrenceLabel, PeopleEdge } from "./EventChip";
 import type { Occurrence, PersonColor } from "./types";
 
 afterEach(cleanup);
@@ -78,5 +78,50 @@ describe("a chip for several people (ADR 0034)", () => {
     expect(edge?.style.getPropertyValue("--seg-3")).toBe(
       "light-dark(var(--copper-l), var(--copper-d))",
     );
+  });
+});
+
+describe("an event's name says what its chip shows first (UX §10, WCAG 2.5.3)", () => {
+  const DAY = "2026-10-08";
+
+  it("starts with the time and the title, then who, until when and the day", () => {
+    expect(occurrenceLabel(swim({ title: "Soccer practice" }), [MIA], DAY)).toBe(
+      "4:00 PM Soccer practice, Mia, until 5:00 PM, Thursday October 8",
+    );
+    expect(occurrenceLabel(swim({ title: "Swim" }), [MIA, LEO], DAY)).toBe(
+      "4:00 PM Swim, Mia, Leo, until 5:00 PM, Thursday October 8",
+    );
+  });
+
+  it("says all day first, and Everyone when no one is named", () => {
+    const allDay = swim({ title: "Field day", all_day: true, start_local: null, end_local: null });
+    expect(occurrenceLabel(allDay, [], DAY)).toBe(
+      "all day Field day, Everyone, Thursday October 8",
+    );
+  });
+
+  it("keeps a row's title, people and place together, as the row shows them", () => {
+    const swimAt = swim({ title: "Swim", location: "Sample Street" });
+    expect(occurrenceLabel(swimAt, [MIA], DAY, { location: true })).toBe(
+      "4:00 PM Swim, Mia, Sample Street, until 5:00 PM, Thursday October 8",
+    );
+    expect(occurrenceLabel(swimAt, [], DAY, { location: true })).toBe(
+      "4:00 PM Swim, Sample Street, Everyone, until 5:00 PM, Thursday October 8",
+    );
+    // Only a row asks for it: a chip on the wall doesn't show its place.
+    expect(occurrenceLabel(swimAt, [MIA], DAY)).toBe(
+      "4:00 PM Swim, Mia, until 5:00 PM, Thursday October 8",
+    );
+  });
+
+  it("takes a row's own first words, and doesn't say until twice", () => {
+    expect(occurrenceLabel(swim({ title: "Swim" }), [MIA], DAY, { when: "until 5:00 PM" })).toBe(
+      "until 5:00 PM Swim, Mia, Thursday October 8",
+    );
+  });
+
+  it("leaves out until when an event has no length", () => {
+    const moment = swim({ title: "Swim", end_local: "2026-10-08T16:00:00" });
+    expect(occurrenceLabel(moment, [MIA], DAY)).toBe("4:00 PM Swim, Mia, Thursday October 8");
   });
 });

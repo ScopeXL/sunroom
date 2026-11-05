@@ -193,10 +193,11 @@ async function openThisScreen(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { name: "This Screen", level: 2 })).toBeVisible();
   await expect(page.getByText("These settings are for this screen only")).toBeVisible();
   const nav = page.getByRole("navigation", { name: "Settings" });
-  const link = nav.getByRole("link", { name: "This Screen", exact: true });
-  await expect(nav.getByRole("link").first()).toHaveAccessibleName("This Screen");
+  const link = nav.getByRole("link", { name: /^This Screen,/ });
+  await expect(nav.getByRole("link").first()).toHaveAccessibleName(
+    "This Screen, Network, updates and power",
+  );
   await expect(link).toHaveAttribute("aria-current", "page");
-  await expect(link).toHaveAccessibleDescription("Network, updates and power");
   await expect(nav.getByText("Sample Family’s Sunroom")).toBeVisible();
 }
 
@@ -374,7 +375,7 @@ test("a wall opened without ?screen= has no This Screen, and asks no agent", asy
   for (const digit of PIN) await pin.getByRole("button", { name: digit, exact: true }).click();
   const pages = page.getByRole("navigation", { name: "Settings" });
   await expect(pages.getByRole("link", { name: "Display", exact: true })).toBeVisible();
-  await expect(pages.getByRole("link", { name: "This Screen", exact: true })).toHaveCount(0);
+  await expect(pages.getByRole("link", { name: /^This Screen,/ })).toHaveCount(0);
   // Settings opens on Family, with no device box and no caption over the household's pages.
   await expect(page.getByRole("heading", { name: "Family", level: 2 })).toBeVisible();
   await expect(pages.getByText("Sample Family’s Sunroom")).toHaveCount(0);

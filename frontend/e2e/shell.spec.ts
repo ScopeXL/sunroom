@@ -428,7 +428,7 @@ test.describe("the wall screen", () => {
       data: { title: "Library day", start_date: "2026-10-08" },
     });
     expect(added.status()).toBe(201);
-    await expect(board.getByRole("button", { name: /^Library day/ })).toBeVisible({
+    await expect(board.getByRole("button", { name: /\bLibrary day/ })).toBeVisible({
       timeout: 3_000,
     });
   });
@@ -920,7 +920,7 @@ test.describe("the wall screen", () => {
 
     // Letters only (ADR 0035): 123 reaches the numbers. The keys at their size and 8 px apart.
     await expect(keyboard.getByRole("button", { name: "1", exact: true })).toHaveCount(0);
-    await expect(keyboard.getByRole("button", { name: "Numbers and symbols" })).toBeVisible();
+    await expect(keyboard.getByRole("button", { name: "123, numbers and symbols" })).toBeVisible();
     const q = await keyboard.getByRole("button", { name: /^q$/i }).boundingBox();
     const w = await keyboard.getByRole("button", { name: /^w$/i }).boundingBox();
     if (!q || !w) throw new Error("no keys");

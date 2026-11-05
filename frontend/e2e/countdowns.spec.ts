@@ -88,7 +88,7 @@ test("an event's sheet adds a countdown to it", async ({ page, request }) => {
   await pairWall(page);
   await page.goto("/display");
   await page
-    .getByRole("button", { name: /^Pajama day/ })
+    .getByRole("button", { name: /\bPajama day/ })
     .first()
     .click();
   await page.getByRole("button", { name: "Add a Countdown" }).click();

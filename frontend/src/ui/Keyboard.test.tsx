@@ -91,10 +91,10 @@ describe("the on-screen keyboard (UX §1)", () => {
     expect(labels.slice(0, 10)).toEqual(["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"]);
     expect(screen.queryByRole("button", { name: "1" })).toBeNull();
     // 123 is the way to the numbers: one row of them, typed as they are.
-    press("Numbers and symbols");
+    press("123, numbers and symbols");
     expect(screen.getAllByRole("button", { name: "1" })).toHaveLength(1);
     press("2");
-    press("Letters");
+    press("ABC, letters");
     press("b");
     expect(input.value).toBe("2b");
     // The number pad has its digits, and no row above them.
@@ -213,7 +213,7 @@ describe("the on-screen keyboard (UX §1)", () => {
       expect(labels.slice(10, 20)).toEqual(["A", "S", "D", "F", "G", "H", "J", "K", "L", "Ñ"]);
       press("Ñ");
       press("o");
-      press("Numbers and symbols");
+      press("123, numbers and symbols");
       press("¿");
       press("¡");
       expect(input.value).toBe("Ño¿¡");

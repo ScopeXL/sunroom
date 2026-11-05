@@ -315,7 +315,7 @@ test("the wall in the pseudo language says only what lang/ holds", async ({
   await expect(page.getByRole("dialog")).toBeHidden();
 
   await page
-    .getByRole("button", { name: /^Vet, / })
+    .getByRole("button", { name: /\bVet, / })
     .first()
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();

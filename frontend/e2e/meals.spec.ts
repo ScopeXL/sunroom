@@ -136,7 +136,7 @@ test("each meal the family plans has a switch that shows it on the calendar", as
     await page.goto("/display");
     const tacos = page
       .getByRole("region", { name: "This Week" })
-      .getByRole("button", { name: /Tacos, all day/ });
+      .getByRole("button", { name: /Tacos, / });
     await expect(tacos).toHaveAttribute("data-overlay", "meals");
   } finally {
     await set({ slots: ["dinner"], calendar_slots: [] });

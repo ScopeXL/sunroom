@@ -54,7 +54,7 @@ describe("Settings → Support Sunroom (ADR 0034)", () => {
     // The heart is beside the heading, hidden from screen readers.
     expect(screen.getByRole("heading", { name: "Support Sunroom" })).toBeTruthy();
     expect(screen.getByText(/not for profit/)).toBeTruthy();
-    const patreon = screen.getByRole("link", { name: "Open Patreon" });
+    const patreon = screen.getByRole("link", { name: /^Open Patreon/ });
     expect(patreon.getAttribute("href")).toBe("https://www.patreon.com/sample");
     expect(patreon.getAttribute("target")).toBe("_blank");
     expect(screen.getByText("bc1qsampleaddress0000000000000000000000000")).toBeTruthy();
@@ -66,14 +66,14 @@ describe("Settings → Support Sunroom (ADR 0034)", () => {
 
   it("gives a paired screen codes to scan instead of links, and no Copy", () => {
     draw("kiosk", "display");
-    expect(screen.queryByRole("link", { name: "Open Patreon" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Open Patreon/ })).toBeNull();
     expect(screen.getByRole("img", { name: "A code that opens Patreon" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Copy" })).toBeNull();
   });
 
   it("opens the Sunroom Discord first, in a new tab, or as a code on a screen (ADR 0042)", () => {
     draw("phone");
-    const discord = screen.getByRole("link", { name: "Open Discord" });
+    const discord = screen.getByRole("link", { name: /^Open Discord/ });
     expect(discord.getAttribute("href")).toBe("https://discord.gg/y6AeQRpsPQ");
     expect(discord.getAttribute("target")).toBe("_blank");
     expect(discord.getAttribute("rel")).toBe("noreferrer noopener");
@@ -82,10 +82,11 @@ describe("Settings → Support Sunroom (ADR 0034)", () => {
     );
     // The first of the group's rows, before Patreon.
     const links = screen.getAllByRole("link").map((link) => link.getAttribute("aria-label"));
-    expect(links.slice(0, 2)).toEqual(["Open Discord", "Open Patreon"]);
+    expect(links[0]).toMatch(/^Open Discord, Join the Sunroom Discord/);
+    expect(links[1]).toMatch(/^Open Patreon/);
     cleanup();
     draw("kiosk", "display");
-    expect(screen.queryByRole("link", { name: "Open Discord" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Open Discord/ })).toBeNull();
     expect(screen.getByText("discord.gg/y6AeQRpsPQ")).toBeTruthy();
     expect(screen.getByRole("img", { name: "A code that opens the Sunroom Discord" })).toBeTruthy();
   });
