@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "store_id": "day.sunroom.store",
+  "name": { "en_US": "Sunroom" },
+  "description": { "en_US": "Sunroom, a family wall calendar for a shared screen at home." },
+  "maintainer": "ScopeXL",
+  "url": "https://sunroom.day"
+}

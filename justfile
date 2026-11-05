@@ -166,7 +166,11 @@ release-meta-check:
     {{py}} scripts/check_release_meta.py
 
 # Everything a commit must pass
-check: lint typecheck lang test kiosk-test api-types-check migrations-check release-meta-check
+check: lint typecheck lang test kiosk-test api-types-check migrations-check release-meta-check deploy-check
+
+# The files people install from say the same thing, and the updater keeps its schedule
+deploy-check:
+    uv run --quiet --no-project --python 3.14 --with pyyaml scripts/check_deploy_files.py
 
 # ---- build, end-to-end, screenshots ------------------------------------------------------------
 

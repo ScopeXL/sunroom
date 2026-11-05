@@ -194,6 +194,12 @@ fails, it refuses to start and the data is left exactly as it was. Every open wa
 device refreshes itself within a minute of the update; a screen in the middle of an edit waits
 for it.
 
+**On a NAS,** its own app keeps Sunroom up to date. CasaOS and ZimaOS: the store in `deploy/casaos` is
+rebuilt with each release, and their Update mark shows when the image has moved. Synology: the
+updater works in a Container Manager project; without it, the Image tab's Update available, then
+rebuild the project. Unraid: Check for Updates on the Docker tab. The Unraid template is
+`deploy/unraid/sunroom.xml`, until it's listed in Community Applications.
+
 **If Portainer manages it instead** (a stack pasted from the example): update the stack with
 **Re-pull image and redeploy** switched on. Add `SUNROOM_INSTALL_KIND=portainer` to the stack's
 environment variables, so About words it that way (`unraid`, `casaos`, `synology` and `other` do the

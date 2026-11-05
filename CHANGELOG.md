@@ -15,6 +15,8 @@ Everything that changes in Sunroom, written in plain English. The format follows
   with Update Now in About. The updater in the compose example does it: add it to your own file, or
   leave it out and update as before (docs/DEPLOY.md). Every page says "Sunroom is updating. Back in a
   minute." and comes back by itself.
+- Sunroom can now be added to CasaOS and ZimaOS from its own app store, and its Unraid template is
+  ready for Community Applications; README says how on each, and on Synology.
 - A Raspberry Pi running Sunroom in Docker now looks after itself: a download that fails is tried
   again, a version that doesn't start puts the one before back by itself and says so on the wall, a
   version you pinned stays, and This Screen has Update Sunroom while it's behind. A Pi with only

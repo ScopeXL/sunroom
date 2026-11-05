@@ -77,9 +77,15 @@ everything in the `sunroom_data` volume.
   versions install themselves overnight, a day after they come out, or with Update Now in About;
   [docs/DEPLOY.md](docs/DEPLOY.md) says how that works and how to leave it out.
 - **Portainer:** Stacks → Add stack → Web editor, paste the same file, Deploy.
-- **Unraid, CasaOS, Synology:** add a container from the image `scopexl/sunroom:latest`, port
-  7867, and a volume (or folder) for `/data`. If you map a folder, it must be writable by the
-  container's user (`--user 99:100` on Unraid's appdata).
+- **CasaOS:** App Store → Add Source → paste
+  `https://scopexl.github.io/sunroom/casaos/store/main.zip`, then install Sunroom. CasaOS shows its own
+  Update mark when a new version is out. (On ZimaOS, the source is
+  `https://scopexl.github.io/sunroom/casaos`.)
+- **Synology:** Container Manager → Project → Create, and paste the same file, changing
+  `SUNROOM_INSTALL_KIND` to `synology`. The updater works there too.
+- **Unraid:** the same file in a Compose Manager stack, or a container from the image
+  `scopexl/sunroom:latest` with port 7867, `/data` mapped to `appdata/sunroom` and `--user 99:100`,
+  and `SUNROOM_INSTALL_KIND=unraid`. Check for Updates on the Docker tab brings new versions.
 
 Open `http://<server>:7867` on a phone or computer and set up the household: there is nothing to
 configure first. Your own HTTPS proxy, Tailscale or Cloudflare work with nothing to set;

@@ -63,6 +63,13 @@
   `update.sh` says how it ended in a file beside it, so the screen can say so without touching the
   root helper.
 
+- **A NAS's own app keeps it up to date.** A CasaOS and ZimaOS store (`deploy/casaos`, their v2 format,
+  built by their own action and published to GitHub Pages with each release, with the `main.zip` older
+  clients read), an Unraid template for Community Applications (`deploy/unraid`), and the compose file
+  in Synology's Container Manager. CasaOS gets a named volume rather than an AppData folder: Sunroom's
+  user must be able to write there. `just deploy-check` keeps them all saying the same thing, and fails
+  a compose file whose updater would lose its schedule.
+
 ## Consequences
 
 - One request a day from each install, which GitHub can see. The tests keep the check off unless they

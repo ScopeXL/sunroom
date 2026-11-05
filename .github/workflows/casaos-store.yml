@@ -1,0 +1,47 @@
+# Sunroom's store for CasaOS and ZimaOS (deploy/casaos), built by their own action and published to
+# GitHub Pages with each release, so their Update mark shows when the image has moved. A pull request
+# that touches it only builds it, as a check.
+name: CasaOS store
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - deploy/casaos/**
+      - .github/workflows/casaos-store.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The release's version
+        run: |
+          version="$(cat VERSION)"
+          sed -i "s/^  version: \"0.0.0\"/  version: \"$version\"/" deploy/casaos/Apps/Sunroom/docker-compose.yml
+          grep -q "version: \"$version\"" deploy/casaos/Apps/Sunroom/docker-compose.yml
+      - uses: IceWhaleTech/build-appstore-action@c9bb47fad5b32d7928a07978fad68801f52e910f # v1.1.3
+        with:
+          source: deploy/casaos
+          output: _site/casaos
+          base-url: https://scopexl.github.io/sunroom/casaos
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  publish:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
