@@ -24,7 +24,7 @@ export const test = base.extend<{
 }>({
   cspGuard: [true, { option: true }],
   watch: [
-    async ({ cspGuard }, use) => {
+    async ({ cspGuard, browserName }, use) => {
       const problems: string[] = [];
       await use(async (page: Page) => {
         page.on("pageerror", (error) => problems.push(`page error: ${error.message}`));
@@ -35,11 +35,22 @@ export const test = base.extend<{
         // Awaited: a test that skips itself at once ended under the pending call ("Test ended.").
         await page.addInitScript(() => {
           document.addEventListener("securitypolicyviolation", (event) => {
-            console.error(`CSP violation: ${event.violatedDirective} ${event.blockedURI}`);
+            const where = `${event.sourceFile}:${String(event.lineNumber)}:${String(event.columnNumber)}`;
+            const on = event.target instanceof Element ? event.target.outerHTML.slice(0, 200) : "";
+            console.error(
+              `CSP violation: ${event.violatedDirective} ${event.blockedURI} at ${where} on ${on}`,
+            );
           });
         });
         page.on("console", (message) => {
-          if (cspGuard && message.text().startsWith("CSP violation")) problems.push(message.text());
+          const text = message.text();
+          if (!cspGuard || !text.startsWith("CSP violation")) return;
+          // Playwright 1.64's WebKit reports a <select>'s own insides under a strict CSP: a blank
+          // page of ours and no app does it, with the same pixels either way (docs/GOTCHAS.md).
+          // Chromium's projects still watch every <select>, so nothing of ours can hide here.
+          const aSelect = /^CSP violation: style-src-attr inline .* on <select\b/.test(text);
+          if (browserName === "webkit" && aSelect) return;
+          problems.push(text);
         });
       });
       expect(problems, "no CSP violations, page errors or dialogs").toEqual([]);

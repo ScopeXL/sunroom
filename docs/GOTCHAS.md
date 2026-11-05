@@ -239,6 +239,17 @@ size limit.
 
 ## End-to-end tests
 
+- axe (`label-content-name-mismatch`, WCAG 2.5.3, on since 4.14) failed buttons whose names plainly
+  held their words: it reads on-screen text with no spaces between elements ("7:00 PMBook club"),
+  `aria-hidden` included, and wants all of it unbroken inside the `aria-label`. So: a `{" "}` between
+  neighbouring text elements (flex ignores it), names that start with what shows, and decoration as
+  CSS content (`Avatar`'s initial), never text. Its stops at the first failure hide the rest of a
+  journey: `expect.soft` in `checks.ts`, for one run, lists them all.
+- Playwright 1.64's WebKit (27.2) fails the CSP guard on any `<select>`: `style-src-attr inline`, the
+  moment one exists. It's the browser's own insides: a blank page with none of our scripts does it,
+  1.63's WebKit and Chromium don't, and the pixels match with and without the CSP (tried 2026-11-05;
+  opening a phone's native picker can't be tried here). `fixtures.ts` lets that one through on
+  WebKit only, since Chromium still watches every `<select>`. Take it out when a later WebKit stops.
 - A run in one worktree tested another's build: every checkout's `just e2e` uses ports 4173 and
   4174, and `reuseExistingServer` quietly takes a server that's already up. With sessions working
   side by side, run `CI=1 just e2e …`, which refuses a busy port instead.

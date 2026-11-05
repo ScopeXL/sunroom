@@ -11,12 +11,18 @@ Everything that changes in Sunroom, written in plain English. The format follows
 - Sunroom's port is now 7867, so it no longer competes for a port many other programs want. A
   Sunroom already running: before you update, change the `ports:` line in its docker-compose.yml to
   `"7867:7867"` and point any proxy at 7867, then give your devices and screens the new address.
+- With a screen reader or voice control, buttons now start with what they show, so you can say what
+  you see: an event is "4:00 PM Soccer practice, Mia, until 5:00 PM, Thursday October 9", a day is
+  "Thu 8, October", a row is "Edit Mia, Child, Pink", and the wall keyboard's key is "123, numbers
+  and symbols".
 
 ### Fixed
 
 - Running the installer again on a Raspberry Pi keeps the port Sunroom has (it went back to the
   default).
 - Behind the scenes: Sunroom Screen's tests no longer assume a Linux computer or a Mac.
+- Behind the scenes: every library Sunroom is built on is up to date, including security fixes for
+  reading photos, and GitHub now checks them for known problems once a week.
 
 ## [0.18.1] - 2026-11-03
 
