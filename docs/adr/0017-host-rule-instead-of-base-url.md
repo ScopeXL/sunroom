@@ -5,7 +5,7 @@
 
 ## Context
 
-- One Sunroom is reached under several names at once: `http://sunroom.local:8080` from phones, an IP address such as `http://192.168.1.20:8080` when `.local` fails, `http://localhost:8080` on a Pi that runs both server and display, and perhaps an HTTPS name through a proxy or Tailscale.
+- One Sunroom is reached under several names at once: `http://sunroom.local:7867` from phones, an IP address such as `http://192.168.1.20:7867` when `.local` fails, `http://localhost:7867` on a Pi that runs both server and display, and perhaps an HTTPS name through a proxy or Tailscale.
 - Dinner Bell has one required `APP_BASE_URL`. Its CSRF check compares `Origin` to that one origin, and its session cookie is always `__Host-` with `Secure`. A single base URL would make a non-technical self-hoster configure one, and a `Secure` cookie is never sent over plain HTTP.
 
 ## Decision
@@ -19,7 +19,7 @@
   Anything else gets 421, with the fix in the body.
 - **CSRF** on every mutating request: `X-Sunroom: 1` must be present, and an `Origin`, when sent, must equal exactly `scheme://Host` (`null` is refused). Without an `Origin`, `Sec-Fetch-Site` must be `same-origin` or `none`. The scheme counts as `https` only when a proxy in `TRUSTED_PROXIES` says so.
 - **Cookies by scheme.** Over plain HTTP the session cookie is `sunroom`, without `Secure` or the `__Host-` prefix. Over HTTPS it is `__Host-sunroom` with `Secure`. The two can coexist, so an HTTP cookie never shadows an HTTPS one. HSTS is sent only over HTTPS.
-- **Addresses for people.** QR codes use `SUNROOM_ADVERTISED_URL` when the request came from `localhost`; the Pi installer sets it to `http://<hostname>.local:8080`. Settings → Connection lists every address the server has recently been reached on.
+- **Addresses for people.** QR codes use `SUNROOM_ADVERTISED_URL` when the request came from `localhost`; the Pi installer sets it to `http://<hostname>.local:7867`. Settings → Connection lists every address the server has recently been reached on.
 
 ## Consequences
 

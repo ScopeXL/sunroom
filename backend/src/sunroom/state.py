@@ -98,7 +98,7 @@ class AppState:
     recent_hosts: OrderedDict[str, datetime] = field(default_factory=OrderedDict[str, datetime])
     # The wall screen's wake and its state's long polls (household/screen.py).
     screen: ScreenWatch = field(default_factory=ScreenWatch)
-    # The newest release GitHub named, when the household opted in (core/updates.py).
+    # The newest release, once it has been asked for (core/updates.py).
     updates: UpdateCheck = field(default_factory=UpdateCheck)
     # Send Feedback's sends this hour, and on the test server what it kept (core/feedback.py).
     feedback: Outbox = field(default_factory=Outbox)

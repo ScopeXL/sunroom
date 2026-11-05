@@ -20,7 +20,7 @@ from sunroom.state import AppState
 PASSWORD = "test-household-passphrase"
 SECRET = "test-secret-key-" + "0" * 32
 CSRF = {"x-sunroom": "1"}
-BASE_URL = "http://localhost:8080"
+BASE_URL = "http://localhost:7867"
 ENV_PREFIXES = ("APP_", "SUNROOM_", "DATA_DIR")
 ENV_NAMES = {"TZ", "PORT", "LOG_LEVEL"}
 PIN = "2468"
@@ -31,6 +31,8 @@ def make_settings(data_dir: Path, **overrides: Any) -> Settings:
         "app_secret_key": SECRET,
         "tz": "America/New_York",
         "data_dir": str(data_dir),
+        # A restart with a household set up would ask GitHub: the tests of that say None.
+        "sunroom_update_check": False,
     }
     values.update(overrides)
     return Settings.model_validate(values)
@@ -104,7 +106,7 @@ class StreamProbe:
     _task: asyncio.Task[None] | None = None
 
     def start(self) -> StreamProbe:
-        headers = [(b"host", b"localhost:8080"), *self.extra_headers]
+        headers = [(b"host", b"localhost:7867"), *self.extra_headers]
         if self.cookie:
             headers.append((b"cookie", self.cookie.encode()))
         scope: dict[str, Any] = {
@@ -119,7 +121,7 @@ class StreamProbe:
             "root_path": "",
             "headers": headers,
             "client": ("127.0.0.1", 50000),
-            "server": ("localhost", 8080),
+            "server": ("localhost", 7867),
         }
 
         async def receive() -> dict[str, Any]:

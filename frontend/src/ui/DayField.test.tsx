@@ -29,12 +29,12 @@ describe("a day, picked by touch (ADR 0029)", () => {
     render(<Field start={TODAY} onDay={onDay} />);
     expect(screen.getByText("Oct 4–10")).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Wed, Oct 7, today" }).getAttribute("aria-pressed"),
+      screen.getByRole("button", { name: "Wed 7, October, today" }).getAttribute("aria-pressed"),
     ).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Next week" }));
     expect(screen.getByText("Oct 11–17")).toBeTruthy();
     expect(onDay).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Tue, Oct 13" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tue 13, October" }));
     expect(onDay).toHaveBeenLastCalledWith("2026-10-13");
     // Today comes back to this week and picks today.
     fireEvent.click(screen.getByRole("button", { name: "Today" }));
@@ -54,9 +54,9 @@ describe("a day, picked by touch (ADR 0029)", () => {
     fireEvent.click(screen.getByRole("button", { name: "November 20" }));
     expect(onDay).toHaveBeenLastCalledWith("2026-11-20");
     expect(screen.getByText("Nov 15–21")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Fri, Nov 20" }).getAttribute("aria-pressed")).toBe(
-      "true",
-    );
+    expect(
+      screen.getByRole("button", { name: "Fri 20, November" }).getAttribute("aria-pressed"),
+    ).toBe("true");
   });
 
   it("offers no day at all when the day is optional", () => {

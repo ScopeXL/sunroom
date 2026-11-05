@@ -6,6 +6,7 @@ import { receiveKioskCommand } from "../shell/kioskCommands";
 import { createEventHandler } from "./eventRouter";
 import { LiveUpdates, liveStatus } from "./events";
 import { announceRestart } from "./restart";
+import { tellAgentUpdating } from "./screenAgent";
 import { probeSession } from "./session";
 
 let onSignedOut: () => void = () => undefined;
@@ -32,6 +33,7 @@ export function useLiveUpdates(enabled = true): void {
         onKioskCommand: receiveKioskCommand,
         onRestarting: (reason) => {
           announceRestart(reason);
+          if (reason === "update") tellAgentUpdating();
         },
       }),
       onPoll: () => {

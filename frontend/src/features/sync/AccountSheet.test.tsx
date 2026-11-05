@@ -136,7 +136,7 @@ describe("an account's sheet (UX §4 Calendars & Accounts)", () => {
 
   it("lists its calendars under Sync, and the synced ones under Show on the screen's name", () => {
     draw(account());
-    const sheet = screen.getByRole("dialog", { name: "Edit Apple" });
+    const sheet = screen.getByRole("dialog", { name: /^Edit Apple/ });
     expect(within(sheet).getByText("ana@example.com")).toBeTruthy();
     expect(within(sheet).getByRole("button", { name: "Refresh Now" })).toBeTruthy();
     expect(within(sheet).getByRole("heading", { name: "Sync" })).toBeTruthy();
@@ -147,8 +147,8 @@ describe("an account's sheet (UX §4 Calendars & Accounts)", () => {
       false,
     );
     // Only a synced calendar opens a page of its own.
-    expect(within(sheet).getByRole("button", { name: "Edit School" })).toBeTruthy();
-    expect(within(sheet).queryByRole("button", { name: "Edit Work" })).toBeNull();
+    expect(within(sheet).getByRole("button", { name: /^Edit School/ })).toBeTruthy();
+    expect(within(sheet).queryByRole("button", { name: /^Edit Work/ })).toBeNull();
     expect(within(sheet).getByRole("heading", { name: "Show on Kitchen" })).toBeTruthy();
     expect(
       within(sheet)
@@ -185,8 +185,8 @@ describe("an account's sheet (UX §4 Calendars & Accounts)", () => {
 
   it("opens a synced calendar's page: whose it is, and the free colors first", async () => {
     const { sent } = draw(account());
-    fireEvent.click(screen.getByRole("button", { name: "Edit School" }));
-    const page = screen.getByRole("dialog", { name: "Edit School" });
+    fireEvent.click(screen.getByRole("button", { name: /^Edit School/ }));
+    const page = screen.getByRole("dialog", { name: /^Edit School/ });
     const whose = within(page).getByRole("group", { name: "Whose is School" });
     expect(
       within(whose).getByRole("button", { name: "Everyone" }).getAttribute("aria-pressed"),
@@ -219,7 +219,7 @@ describe("an account's sheet (UX §4 Calendars & Accounts)", () => {
       { clear_owner: false, owner_member_id: "m" },
     ]);
     fireEvent.click(within(page).getByRole("button", { name: "Back to Apple" }));
-    expect(screen.getByRole("dialog", { name: "Edit Apple" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /^Edit Apple/ })).toBeTruthy();
   });
 
   it("removes the account only after asking", async () => {
@@ -227,7 +227,7 @@ describe("an account's sheet (UX §4 Calendars & Accounts)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove Account" }));
     const asking = screen.getByRole("dialog", { name: "Remove Apple?" });
     fireEvent.click(within(asking).getByRole("button", { name: "Keep It" }));
-    expect(screen.getByRole("dialog", { name: "Edit Apple" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /^Edit Apple/ })).toBeTruthy();
     expect(sent).toEqual([]);
     fireEvent.click(screen.getByRole("button", { name: "Remove Account" }));
     fireEvent.click(screen.getByRole("button", { name: "Remove Apple" }));

@@ -1,6 +1,6 @@
 import { createLink } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
-import { useId, type ComponentPropsWithRef, type ReactNode } from "react";
+import type { ComponentPropsWithRef, ReactNode } from "react";
 
 import { useShell } from "./shell";
 
@@ -10,9 +10,19 @@ interface RowParts {
   /** An avatar, a color dot or an icon at the left. */
   leading?: ReactNode;
   title: ReactNode;
-  subtitle?: ReactNode;
+  subtitle?: string | null | undefined;
+  /** The same line when it's more than words (trouble in its color): this shows, `subtitle` names. */
+  subtitleShown?: ReactNode;
   /** A quiet word at the right, before the chevron: "On", "3 calendars". */
-  value?: ReactNode;
+  value?: string | null | undefined;
+}
+
+/**
+ * A row's name: what a tap does, then what else it shows ("Edit Mia, Child, Pink"). Voice control
+ * goes by what's on the screen, so those are in the name, not only read after it (WCAG 2.5.3).
+ */
+function rowName({ label, subtitle, value }: Pick<RowParts, "label" | "subtitle" | "value">) {
+  return [label, subtitle, value].filter(Boolean).join(", ");
 }
 
 function rowClass(display: boolean): string {
@@ -21,13 +31,7 @@ function rowClass(display: boolean): string {
   }`;
 }
 
-function RowBody({
-  leading,
-  title,
-  subtitle,
-  value,
-  subtitleId,
-}: Omit<RowParts, "label"> & { subtitleId: string }) {
+function RowBody({ leading, title, subtitle, subtitleShown, value }: Omit<RowParts, "label">) {
   const display = useShell() === "display";
   const soft = display ? "text-d-secondary text-ink-soft" : "text-secondary text-ink-soft";
   return (
@@ -36,13 +40,9 @@ function RowBody({
       <span className="flex min-w-0 flex-1 flex-col">
         <span className={`truncate font-semibold ${display ? "text-d-body" : "text-row"}`}>
           {title}
-        </span>
-        {subtitle ? (
-          <span id={subtitleId} className={soft}>
-            {subtitle}
-          </span>
-        ) : null}
-      </span>
+        </span>{" "}
+        {subtitle ? <span className={soft}>{subtitleShown ?? subtitle}</span> : null}
+      </span>{" "}
       {value ? <span className={`shrink-0 ${soft}`}>{value}</span> : null}
       <ChevronRight
         aria-hidden="true"
@@ -55,23 +55,22 @@ function RowBody({
 /**
  * A row you tap to open what it names (UX §4 Settings): the whole row is the button, 64 px on
  * the wall and 56 on phones, with a chevron at its right. Its name says what the tap does ("Edit
- * Mia"); the line under the title is read after it.
+ * Mia"), then what else it shows.
  */
 export function ListRow({
   label,
   leading,
   title,
   subtitle,
+  subtitleShown,
   value,
   ...props
 }: RowParts & Omit<ComponentPropsWithRef<"button">, "title" | "children" | "className">) {
   const display = useShell() === "display";
-  const subtitleId = useId();
   return (
     <button
       type="button"
-      aria-label={label}
-      aria-describedby={subtitle ? subtitleId : undefined}
+      aria-label={rowName({ label, subtitle, value })}
       className={rowClass(display)}
       {...props}
     >
@@ -79,8 +78,8 @@ export function ListRow({
         leading={leading}
         title={title}
         subtitle={subtitle}
+        subtitleShown={subtitleShown}
         value={value}
-        subtitleId={subtitleId}
       />
     </button>
   );
@@ -91,26 +90,25 @@ function RowAnchor({
   leading,
   title,
   subtitle,
+  subtitleShown,
   value,
   className,
   ...props
 }: RowParts & Omit<ComponentPropsWithRef<"a">, "title" | "children">) {
   const display = useShell() === "display";
-  const subtitleId = useId();
   return (
     // The router's Link hands its own className down: merged after the spread, not replaced.
     <a
       {...props}
-      aria-label={label}
-      aria-describedby={subtitle ? subtitleId : undefined}
+      aria-label={rowName({ label, subtitle, value })}
       className={`${rowClass(display)} ${className ?? ""}`}
     >
       <RowBody
         leading={leading}
         title={title}
         subtitle={subtitle}
+        subtitleShown={subtitleShown}
         value={value}
-        subtitleId={subtitleId}
       />
     </a>
   );

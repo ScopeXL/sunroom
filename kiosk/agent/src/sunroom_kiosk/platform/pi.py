@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import sys
 from collections.abc import Callable, Mapping
@@ -45,6 +46,10 @@ def is_pi(root: Path = Path("/")) -> bool:
     return "raspberry pi" in model.lower()
 
 
+# The compose file's image with a version written in it, which is how a Pi is pinned.
+PINNED_IMAGE = re.compile(r"""^\s*image:\s*["']?scopexl/sunroom:(\d+\.\d+\.\d+)["']?\s*$""", re.M)
+
+
 class PiPlatform(LinuxPlatform):
     def __init__(
         self,
@@ -63,6 +68,7 @@ class PiPlatform(LinuxPlatform):
         )
         self.labwc_rule = labwc_rule
         self.version = version
+        self.sunroom_dir = root / "opt" / "sunroom"
 
     # ------------------------------------------------------------------ what it is
 
@@ -113,3 +119,25 @@ class PiPlatform(LinuxPlatform):
     async def update_sunroom(self) -> bool:
         """An all-in-one Pi's own Sunroom, through /opt/sunroom/update.sh."""
         return await self._as_root("update-sunroom", limit=900.0)
+
+    def sunroom_update_outcome(self) -> list[str]:
+        try:
+            return (self.sunroom_dir / "last-update").read_text(encoding="utf-8").split()
+        except OSError:
+            return []
+
+    def sunroom_pinned(self) -> str | None:
+        """A version written in the compose file, unless update.sh is holding it there after a
+        version that didn't start (that one moves on by itself)."""
+        try:
+            compose = (self.sunroom_dir / "docker-compose.yml").read_text(encoding="utf-8")
+        except OSError:
+            return None
+        found = PINNED_IMAGE.search(compose)
+        if found is None:
+            return None
+        try:
+            held = (self.sunroom_dir / "held-back").read_text(encoding="utf-8").split()
+        except OSError:
+            held = []
+        return None if held[:1] == [found[1]] else found[1]

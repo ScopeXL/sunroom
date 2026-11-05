@@ -10,7 +10,7 @@ computer's user, beside Sunroom Screen, when Welcome's On This Computer is chose
   wheel).
 * **Its data** is this user's: ``~/.local/share/sunroom`` on Linux, ``~/Library/Application
   Support/Sunroom`` on a Mac, ``%LOCALAPPDATA%\\Sunroom`` on Windows.
-* **Its address** is port 8080, or the next free one up to 8099. Devices open
+* **Its address** is port 7867, or the next free one up to 7886. Devices open
   ``http://<computer>.local:<port>`` where the computer surely answers to that name (a Mac, Linux
   with avahi), else ``http://<IP>:<port>``.
 * **What keeps it running**: on Linux a systemd user service, ``sunroom.service``, kept running
@@ -21,7 +21,9 @@ computer's user, beside Sunroom Screen, when Welcome's On This Computer is chose
   sleep inhibitor while it has Sunroom. Sunroom Screen announces it on the network
   (``_sunroom._tcp``), so other screens find it on any port.
 * **Updates**: Sunroom Screen keeps it at its own version: Update Now and the overnight update
-  bring it along (ADR 0044); a version that doesn't answer within five minutes is put back.
+  bring it along (ADR 0044). A version that never answers, within ten minutes on a Pi and five
+  elsewhere, goes: the one before comes back, with the database as it was if a migration ran, and
+  that version isn't tried again by itself (ADR 0046).
 * **Removing it**: ``sunroom-kiosk sunroom remove`` (the uninstallers), the data kept unless asked.
 
 Not on an Intel Mac: ``cryptography`` 49 and later ship no wheel for one (``supported()``).
@@ -38,6 +40,7 @@ import platform as host
 import plistlib
 import shutil
 import socket
+import sqlite3
 import subprocess
 import sys
 import time
@@ -59,17 +62,20 @@ from sunroom_kiosk.platform.base import (
     run_command,
     user_id,
 )
-from sunroom_kiosk.updater import DOWNLOAD, parse, sums_from
+from sunroom_kiosk.platform.pi import is_pi
+from sunroom_kiosk.updater import DOWNLOAD, newer, parse, sums_from
 from sunroom_kiosk.version import version
 
 log = logs.get("local")
 
 UNIT = "sunroom.service"
 LABEL = "app.sunroom.server"
-PORTS = range(8080, 8100)
+PORTS = range(7867, 7887)
 KIND = "computer"
 INSTALL_LIMIT_S = 1800.0  # uv downloads a Python and Sunroom's libraries the first time
 ANSWERS_WITHIN_S = 300.0  # its first start makes the database: as long as the installer waits
+ANSWERS_WITHIN_ON_A_PI_S = 600.0  # an update's migration, from a Pi's card, may take that long
+RESTORE_LIMIT_S = 600.0  # a family's database with its photos' records, on a slow disk
 LOG_KEEP_BYTES = 10 * 1024 * 1024
 WINDOWS_ARM_PYTHON = "cpython-3.14-windows-x86_64-none"
 # Windows' process flags (subprocess has them only there).
@@ -87,6 +93,18 @@ def server_wheel(release: str) -> str:
 
 def constraints_name(release: str) -> str:
     return f"sunroom-{release}-constraints.txt"
+
+
+def database_revision(path: Path) -> str | None:
+    """The migration a database is at, read without changing it; None when it can't say."""
+    if not path.is_file():
+        return None
+    try:
+        with contextlib.closing(sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True)) as db:
+            row = db.execute("SELECT version_num FROM alembic_version").fetchone()
+    except sqlite3.Error:
+        return None
+    return str(row[0]) if row else None
 
 
 def port_free(port: int) -> bool:
@@ -407,6 +425,7 @@ class LocalSunroom:
         hostname: Callable[[], str] = socket.gethostname,
         ip: Callable[[], str | None] = local_ip,
         free: Callable[[int], bool] = port_free,
+        on_a_pi: Callable[[], bool] = is_pi,
     ) -> None:
         self.run = runner
         self.http = http or (
@@ -425,6 +444,10 @@ class LocalSunroom:
         self.hostname = hostname
         self.ip = ip
         self.free = free
+        self.on_a_pi = on_a_pi
+        self.outcome: list[
+            str
+        ] = []  # the last update's, when it went back: ["went-back", new, old]
         self._awake: asyncio.subprocess.Process | None = None
         self._zeroconf: Any = None
 
@@ -450,6 +473,14 @@ class LocalSunroom:
 
     def installed(self) -> bool:
         return self.places.state.is_file() and self.service.present()
+
+    def behind(self, own: str) -> bool:
+        """Whether Sunroom here is older than ``own``, unless ``own`` already went back here. From
+        what was remembered, not from asking it: after a computer's restart Sunroom Screen may be
+        up first, and it would have nothing to say yet."""
+        saved = self.remembered()
+        at = saved.get("release")
+        return isinstance(at, str) and newer(own, at) and saved.get("went_back") != own
 
     def remembered(self) -> dict[str, Any]:
         try:
@@ -618,9 +649,16 @@ class LocalSunroom:
             await asyncio.sleep(2)
         return False
 
+    def _wait_s(self) -> float:
+        """How long a version may take to answer, its migration included, before it has failed."""
+        if self.system == "linux" and self.on_a_pi():
+            return ANSWERS_WITHIN_ON_A_PI_S
+        return ANSWERS_WITHIN_S
+
     async def update(self, release: str) -> bool:
-        """Sunroom here at ``release``, kept only if it answers as that within five minutes;
-        otherwise the version before it is put back."""
+        """Sunroom here at ``release``, kept once it answers as that. One that never does goes:
+        the version before it comes back, and it isn't tried again by itself (``behind``)."""
+        self.outcome = []
         if not self.installed():
             return False
         before = self.remembered().get("release")
@@ -629,17 +667,79 @@ class LocalSunroom:
         except PlatformError as error:
             log.info("Sunroom %s didn't download: %s", release, error)
             return False
+        revision = await asyncio.to_thread(database_revision, self.places.data / "sunroom.db")
         log.info("Updating Sunroom on this computer to %s.", release)
-        if await self._swap(wheel, constraints) and await self.answers_as(release):
-            self._remember(release=release)
+        swapped = await self._swap(wheel, constraints)
+        if swapped and await self.answers_as(release, self._wait_s()):
+            self._remember(release=release, went_back=None)
             return True
+        if not isinstance(before, str) or before == release:
+            return False
         log.info("Sunroom %s didn't answer; putting %s back.", release, before)
-        if isinstance(before, str):
-            kept = self.places.wheels / server_wheel(before)
-            if kept.is_file():
-                again = self.places.wheels / constraints_name(before)
-                await self._swap(kept, again if again.is_file() else None)
+        back = await self._put_back(before, revision)
+        if swapped:  # it did run, and never answered: not a failed download's try again
+            self._remember(went_back=release)
+            if back:
+                self.outcome = ["went-back", release, before]
         return False
+
+    async def _put_back(self, release: str, revision: str | None) -> bool:
+        """``release`` running here again, after a newer one that never started; whether it
+        answers. Stopped first, so nothing holds the database or can still migrate it."""
+        try:
+            wheel, constraints = await self.fetch(release)
+        except PlatformError as error:
+            log.info("Sunroom %s can't come back: %s", release, error)
+            return False
+        await self.service.stop()
+        try:
+            await self.install(wheel, constraints)
+            await self._database_back(revision)
+        except PlatformError as error:
+            log.info("Sunroom %s didn't install again: %s", release, error)
+        settings = self.remembered()
+        port, address = settings.get("port"), settings.get("advertised")
+        if not isinstance(port, int):
+            return False
+        try:
+            # Not restart: a Mac's stop unloads it, and only this loads it again.
+            await self.service.install(
+                self.command(),
+                self.environment(
+                    port, address if isinstance(address, str) else f"http://localhost:{port}"
+                ),
+            )
+        except PlatformError as error:
+            log.info("Sunroom %s didn't start again: %s", release, error)
+            return False
+        return await self.answers_as(release, self._wait_s())
+
+    async def _database_back(self, revision: str | None) -> None:
+        """The database as it was at ``revision``, if a migration moved it on. The older version
+        would refuse the newer database (exit 65), and each migration is one transaction, so
+        either nothing changed or all of it did, and nothing has written since: the server never
+        answered. The copy is the one it took before migrating (docs/RESTORE.md)."""
+        database = self.places.data / "sunroom.db"
+        if revision is None or await asyncio.to_thread(database_revision, database) == revision:
+            return
+        folder = self.places.data / "backups" / "pre-migrate"
+        copies = [
+            path
+            for path in folder.glob(f"sunroom.{revision}.*.db")
+            if not path.name.endswith(".partial.db")
+        ]
+        if not copies:
+            log.info("There's no copy of the database from before that version.")
+            return
+        copy = max(copies, key=lambda path: path.stat().st_mtime)
+        log.info("That version changed the database; putting back the copy from before it.")
+        restored = await self.run(
+            [self.command()[0], "restore", str(copy)],
+            limit=RESTORE_LIMIT_S,
+            env={"DATA_DIR": str(self.places.data)},
+        )
+        if not restored.ok:
+            log.info("The copy didn't go back: %s", restored.first_line())
 
     def _prime(self) -> None:
         """Windows: what the service starts, from what was remembered (Sunroom Screen may have

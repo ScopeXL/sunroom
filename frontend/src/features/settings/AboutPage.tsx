@@ -4,8 +4,9 @@ import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { formatTime } from "../../lib/dates";
 import { useSettings, useUpdateSettings } from "../../lib/household";
-import { t, useT } from "../../lib/lang";
+import { t, tSaid, useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
+import { showToast } from "../../lib/toast";
 import { Button } from "../../ui/Button";
 import { LiveStatusIcon } from "../../ui/LiveStatus";
 import { useShell } from "../../ui/shell";
@@ -77,8 +78,8 @@ export function AboutPage() {
   );
 }
 
-/** Updates (PLAN §13.6): off until a parent turns it on, because it asks GitHub. */
-function UpdatesGroup() {
+/** Updates (PLAN §13.6, ADR 0046): on by default, with a switch, because it asks GitHub. */
+export function UpdatesGroup() {
   const t = useT();
   const display = useShell() === "display";
   const queryClient = useQueryClient();
@@ -92,12 +93,22 @@ function UpdatesGroup() {
     mutationFn: async () => asParent(async () => unwrap(await api.POST("/api/admin/update/check"))),
     onSuccess: (fresh) => {
       queryClient.setQueryData(qk.update(), fresh);
+      void queryClient.invalidateQueries({ queryKey: qk.problems() });
+    },
+  });
+  const updateNow = useMutation({
+    mutationFn: async () => asParent(async () => unwrap(await api.POST("/api/admin/update"))),
+    onSuccess: () => {
+      showToast(t("settings.about.updates.now.toast"));
     },
   });
   if (!settings || !status) return null;
-  // `how` and `problem` are the server's words.
+  // `problem` is the server's words.
   const line = status.available
-    ? t("settings.about.updates.available", { version: status.latest ?? "", how: status.how })
+    ? t("settings.about.updates.available", {
+        version: status.latest ?? "",
+        how: tSaid(status.how, status.how_key),
+      })
     : (status.problem ??
       (status.checked_at
         ? t("settings.about.updates.latest", {
@@ -113,6 +124,7 @@ function UpdatesGroup() {
     >
       <Switch
         label={t("settings.about.updates.daily.label")}
+        hint={t("settings.about.updates.daily.hint")}
         checked={settings.update_check}
         disabled={status.locked}
         onChange={(value) => {
@@ -121,6 +133,7 @@ function UpdatesGroup() {
             {
               onSuccess: () => {
                 void queryClient.invalidateQueries({ queryKey: qk.update() });
+                void queryClient.invalidateQueries({ queryKey: qk.problems() });
               },
             },
           );
@@ -143,17 +156,31 @@ function UpdatesGroup() {
                 <Text soft>{line}</Text>
               )
             ) : null}
+            {status.updater ? <Text soft>{t("settings.about.updates.overnight")}</Text> : null}
             {check.isError ? <Text soft>{errorMessage(check.error)}</Text> : null}
+            {updateNow.isError ? <Text soft>{errorMessage(updateNow.error)}</Text> : null}
           </div>
-          <Button
-            variant="secondary"
-            pending={check.isPending}
-            onClick={() => {
-              check.mutate();
-            }}
-          >
-            {t("settings.about.updates.check.action")}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            {status.update_now ? (
+              <Button
+                pending={updateNow.isPending}
+                onClick={() => {
+                  updateNow.mutate();
+                }}
+              >
+                {t("settings.about.updates.now.action")}
+              </Button>
+            ) : null}
+            <Button
+              variant="secondary"
+              pending={check.isPending}
+              onClick={() => {
+                check.mutate();
+              }}
+            >
+              {t("settings.about.updates.check.action")}
+            </Button>
+          </div>
         </div>
       ) : null}
     </Group>

@@ -204,7 +204,7 @@ async function pretendAgent(page: Page, data: Set<string>): Promise<void> {
     session: "wayland",
     capabilities: ["restart", "shutdown", "update", "wifi", "rotate", "brightness"],
     sunroom: {
-      url: "http://192.168.1.20:8080",
+      url: "http://192.168.1.20:7867",
       id: "00000000-0000-7000-8000-0000000000e1",
       name: "The Sample Family",
       found: "discovered",
@@ -218,8 +218,7 @@ async function pretendAgent(page: Page, data: Set<string>): Promise<void> {
       latest: "0.18.1",
       checked_at: null,
       message: null,
-      needs_terminal:
-        "curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash",
+      needs_terminal: "curl -fsSL https://sunroom.day/install.sh | bash",
     },
     display: { rotation: 0, brightness_method: "ddc" },
     open_url: `${ORIGIN}/display?dimmer=screen&screen=7800`,
@@ -315,7 +314,7 @@ test("the wall in the pseudo language says only what lang/ holds", async ({
   await expect(page.getByRole("dialog")).toBeHidden();
 
   await page
-    .getByRole("button", { name: /^Vet, / })
+    .getByRole("button", { name: /\bVet, / })
     .first()
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -441,7 +440,7 @@ test("the screen's own pages in the pseudo language say only what lang/ holds", 
   }
   await request.post(`${screen}/api/screen/_test/fake`, {
     headers: change,
-    data: { sunroom: "http://198.51.100.20:8080" },
+    data: { sunroom: "http://198.51.100.20:7867" },
   });
   await page.goto(`${screen}/cant-reach`);
   await expect(page.getByRole("heading").first()).toBeVisible();

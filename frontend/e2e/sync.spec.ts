@@ -125,7 +125,9 @@ test("an account's calendar shows on the wall in its person's color, and changes
   await syncNow(request, account);
   await mapToMia(request, account);
   const week = await board(page);
-  const trip = week.getByRole("button", { name: /^Field trip, 9:00 AM to 1:00 PM, Mia, Thursday/ });
+  const trip = week.getByRole("button", {
+    name: /^9:00 AM Field trip, Mia, until 1:00 PM, Thursday/,
+  });
   await expect(trip).toBeVisible({ timeout: 15_000 });
   // On the Hours grid (a new household's layout, ADR 0042) the block inside wears the color.
   await expect(trip.locator("[data-person]").first()).toHaveAttribute("data-person", "rose");
@@ -138,7 +140,7 @@ test("an account's calendar shows on the wall in its person's color, and changes
   const editor = page.getByRole("dialog", { name: "Change" });
   await editor.getByLabel("Title").fill("Field trip to the farm");
   await editor.getByRole("button", { name: "Save Changes" }).click();
-  await expect(week.getByRole("button", { name: /^Field trip to the farm, / })).toBeVisible();
+  await expect(week.getByRole("button", { name: /\bField trip to the farm, / })).toBeVisible();
 
   // The server gets it within the next push (every minute, or a few seconds after an edit).
   await expect(async () => {
@@ -185,7 +187,7 @@ test("a title names its people, on top of the calendar's person, in all their co
   // Ana's calendar: the swim is hers, and Mia's and Leo's, whom its title names (ADR 0034).
   await mapTo(request, account, "Ana");
   const week = await board(page);
-  const swim = week.getByRole("button", { name: /^Mia & Leo's swim, .*, Ana, Mia, Leo, / });
+  const swim = week.getByRole("button", { name: /\bMia & Leo's swim, Ana, Mia, Leo, / });
   await expect(swim).toBeVisible({ timeout: 15_000 });
   // A neutral tint, and the bar in the three people's colors.
   await expect(swim.locator(".edge-3")).toHaveCount(1);
@@ -206,7 +208,7 @@ test("a refused password shows the attention icon, and the sheet names the accou
   await syncNow(request, account);
   await mapToMia(request, account);
   const week = await board(page);
-  await expect(week.getByRole("button", { name: /^Field trip, / })).toBeVisible({
+  await expect(week.getByRole("button", { name: /\bField trip, / })).toBeVisible({
     timeout: 15_000,
   });
   // Nothing wrong: no icon at all (ADR 0034).
@@ -222,7 +224,7 @@ test("a refused password shows the attention icon, and the sheet names the accou
   await expect(attention).toBeVisible({ timeout: 15_000 });
   await expect(attention).toHaveAccessibleName("Needs attention: 1 thing");
   // The events stay.
-  await expect(week.getByRole("button", { name: /^Field trip, / })).toBeVisible();
+  await expect(week.getByRole("button", { name: /\bField trip, / })).toBeVisible();
   await attention.click();
   const sheet = page.getByRole("dialog", { name: "Needs Attention" });
   await expect(sheet).toContainText("Test server needs its password again.");

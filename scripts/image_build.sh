@@ -12,7 +12,11 @@ if docker buildx imagetools inspect "$IMAGE:$V" >/dev/null 2>&1; then
   exit 1
 fi
 echo "Building and pushing $IMAGE:$V (linux/amd64, linux/arm64) from $REF…"
+# From 1.0 a household can pin how far an update goes (ADR 0046): :1 takes minors and patches, :1.0
+# patches only, and the updater companion follows whichever is written.
+TAGS=(-t "$IMAGE:$V" -t "$IMAGE:${V%.*}" -t "$IMAGE:latest")
+[ "${V%%.*}" -ge 1 ] && TAGS+=(-t "$IMAGE:${V%%.*}")
 git archive --format=tar "$REF" | docker buildx build "${ARGS[@]}" \
   --platform linux/amd64,linux/arm64 --provenance=mode=min --sbom=false \
-  -t "$IMAGE:$V" -t "$IMAGE:${V%.*}" -t "$IMAGE:latest" --push -
-echo "Pushed $IMAGE:$V, :${V%.*} and :latest."
+  "${TAGS[@]}" --push -
+echo "Pushed ${TAGS[*]//-t /}."

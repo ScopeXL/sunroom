@@ -6,6 +6,51 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- A screen whose update starts but misbehaves can go back: for a week after an update, This Screen has
+  Go Back to the version before, and the overnight update then leaves the newer one alone until the
+  one after it.
+- Sunroom on This Computer now updates as dependably as the rest: a slow update on a Raspberry Pi
+  gets ten minutes instead of being undone, a version that never starts puts the one before back, with
+  your data as it was, and says so on the wall, and a restart in the middle of an update can't leave
+  Sunroom behind.
+- The install line is now `curl -fsSL https://sunroom.day/install.sh | bash` (on Windows, `irm
+  https://sunroom.day/install.ps1 | iex`) and stays that, always the newest release. Running it again
+  now keeps everything the screen has: its rotation, connector, dimming and screen helper stay unless
+  you give an option to change them. Everything it downloads is checked before it's used.
+- Sunroom's port is now 7867, so it no longer competes for a port many other programs want. A
+  Sunroom already running: before you update, change the `ports:` line in its docker-compose.yml to
+  `"7867:7867"` and point any proxy at 7867, then give your devices and screens the new address.
+- With Docker Compose, new versions now install themselves overnight, a day after they come out, or
+  with Update Now in About. The updater in the compose example does it: add it to your own file, or
+  leave it out and update as before (docs/DEPLOY.md). Every page says "Sunroom is updating. Back in a
+  minute." and comes back by itself.
+- When a screen can't reach Sunroom, it now says why: "Sunroom is updating. This screen comes back by
+  itself.", or that the computer running Sunroom may be off.
+- Sunroom can now be added to CasaOS and ZimaOS from its own app store, and its Unraid template is
+  ready for Community Applications; README says how on each, and on Synology.
+- A Raspberry Pi running Sunroom in Docker now looks after itself: a download that fails is tried
+  again, a version that doesn't start puts the one before back by itself and says so on the wall, a
+  version you pinned stays, and This Screen has Update Sunroom while it's behind. A Pi with only
+  Sunroom updates itself each morning. These two install options leave the README for
+  docs/KIOSK.md, where they keep working.
+- Sunroom now tells you when a new version is out: Needs Attention says so, and About says how to
+  update. It asks GitHub once a day, which lets GitHub see your server's address; turn it off in
+  Settings → About → Tell me about new versions. This is on for every household from this version.
+- With a screen reader or voice control, buttons now start with what they show, so you can say what
+  you see: an event is "4:00 PM Soccer practice, Mia, until 5:00 PM, Thursday October 9", a day is
+  "Thu 8, October", a row is "Edit Mia, Child, Pink", and the wall keyboard's key is "123, numbers
+  and symbols".
+
+### Fixed
+
+- Running the installer again on a Raspberry Pi keeps the port Sunroom has (it went back to the
+  default).
+- Behind the scenes: Sunroom Screen's tests no longer assume a Linux computer or a Mac.
+- Behind the scenes: every library Sunroom is built on is up to date, including security fixes for
+  reading photos, and GitHub now checks them for known problems once a week.
+
 ## [0.18.1] - 2026-11-03
 
 ### Fixed
@@ -758,7 +803,7 @@ Everything that changes in Sunroom, written in plain English. The format follows
 
 - The instructions for running Sunroom on a server now start from a `docker-compose.yml` in a
   folder of its own, started with `docker compose up -d` (a Portainer stack still works). They
-  also cover running it next to another app that already uses port 8080, and using a host folder
+  also cover running it next to another app that already uses its port, and using a host folder
   instead of the `sunroom_data` volume.
 
 ## [0.1.0] - 2026-10-08

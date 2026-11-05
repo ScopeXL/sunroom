@@ -40,7 +40,7 @@ dev:
     wait
 
 # Load the synthetic "Sample Family" into the running dev server (fake data only)
-seed PORT="8080":
+seed PORT="7867":
     curl -fsS -X POST "http://127.0.0.1:{{PORT}}/api/_test/seed" \
       -H 'X-Sunroom: 1' -H 'Content-Type: application/json' -d '{}' \
       && echo "Seeded the Sample Family. Household password: e2e-household-passphrase"
@@ -70,12 +70,12 @@ kiosk-lint:
     cd kiosk/agent && uv run --quiet ruff check . && uv run --quiet ruff format --check . && uv run --quiet pyright
 
 # Sunroom Screen's pages in development: the pretend agent on 7800 (finding `just dev`'s Sunroom on
-# 8080) and Vite's screen shell on http://127.0.0.1:5174
+# 7867) and Vite's screen shell on http://127.0.0.1:5174
 kiosk-dev:
     #!/usr/bin/env bash
     set -euo pipefail
     trap 'kill 0' EXIT
-    (cd kiosk/agent && uv run sunroom-kiosk run --fake pi --dev --fake-sunroom http://127.0.0.1:8080) &
+    (cd kiosk/agent && uv run sunroom-kiosk run --fake pi --dev --fake-sunroom http://127.0.0.1:7867) &
     (cd frontend && pnpm dev:screen) &
     wait
 
@@ -166,7 +166,11 @@ release-meta-check:
     {{py}} scripts/check_release_meta.py
 
 # Everything a commit must pass
-check: lint typecheck lang test kiosk-test api-types-check migrations-check release-meta-check
+check: lint typecheck lang test kiosk-test api-types-check migrations-check release-meta-check deploy-check
+
+# The files people install from say the same thing, and the updater keeps its schedule
+deploy-check:
+    uv run --quiet --no-project --python 3.14 --with pyyaml scripts/check_deploy_files.py
 
 # ---- build, end-to-end, screenshots ------------------------------------------------------------
 
@@ -233,6 +237,22 @@ scan:
     {{py}} scripts/private_scan.py tree
     {{py}} scripts/private_scan.py history
 
+# Known vulnerabilities in what ships: both Python lockfiles and the frontend's production packages.
+# Not in `check`: weekly in CI, where a finding opens an issue, not a red release (audit.yml)
+audit:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    status=0
+    tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+    for project in backend kiosk/agent; do
+      echo "== $project"
+      (cd "$project" && uv export --quiet --frozen --no-dev --no-emit-project --no-hashes --output-file "$tmp/requirements.txt") || status=1
+      uvx --quiet pip-audit --requirement "$tmp/requirements.txt" --no-deps --disable-pip --progress-spinner off || status=1
+    done
+    echo "== frontend"
+    (cd frontend && pnpm audit --prod) || status=1
+    exit "$status"
+
 hook-pre-commit:
     gitleaks git --pre-commit --staged --redact --no-banner .
     {{py}} scripts/private_scan.py staged
@@ -248,6 +268,10 @@ hook-pre-push RANGE:
 # Build an amd64 image from git, run it and probe it (setup through the API on an empty volume)
 smoke-image REF="HEAD":
     scripts/smoke_image.sh {{REF}}
+
+# The compose example for real: Sunroom and its updater, a real update on one volume (opt-in; network)
+smoke-compose OLD="0.18.0":
+    scripts/smoke_compose.sh {{OLD}}
 
 # The full release gate; stamps the tree it passed on
 preflight:

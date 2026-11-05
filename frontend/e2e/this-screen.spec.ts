@@ -33,7 +33,7 @@ function state(overrides: Record<string, unknown> = {}): Record<string, unknown>
     session: "wayland",
     capabilities: ["restart", "shutdown", "update", "wifi", "rotate", "brightness"],
     sunroom: {
-      url: "http://192.168.1.20:8080",
+      url: "http://192.168.1.20:7867",
       id: "00000000-0000-7000-8000-0000000000e1",
       name: "The Sample Family",
       found: "discovered",
@@ -98,6 +98,7 @@ class FakeAgent {
         latest: version,
         checked_at: null,
         message: null,
+        go_back_to: "0.13.0",
         last_result: {
           version,
           ok: true,
@@ -175,8 +176,8 @@ class FakeAgent {
         hostname: "sunroom",
         ip: "192.168.1.30",
         uptime_s: 7200,
-        sunroom_url: "http://192.168.1.20:8080",
-        log: ["Oct 20 09:00:00 Sunroom at http://192.168.1.20:8080 answers."],
+        sunroom_url: "http://192.168.1.20:7867",
+        log: ["Oct 20 09:00:00 Sunroom at http://192.168.1.20:7867 answers."],
       });
     }
     return json(202, { ok: true });
@@ -193,10 +194,11 @@ async function openThisScreen(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { name: "This Screen", level: 2 })).toBeVisible();
   await expect(page.getByText("These settings are for this screen only")).toBeVisible();
   const nav = page.getByRole("navigation", { name: "Settings" });
-  const link = nav.getByRole("link", { name: "This Screen", exact: true });
-  await expect(nav.getByRole("link").first()).toHaveAccessibleName("This Screen");
+  const link = nav.getByRole("link", { name: /^This Screen,/ });
+  await expect(nav.getByRole("link").first()).toHaveAccessibleName(
+    "This Screen, Network, updates and power",
+  );
   await expect(link).toHaveAttribute("aria-current", "page");
-  await expect(link).toHaveAccessibleDescription("Network, updates and power");
   await expect(nav.getByText("Sample Family’s Sunroom")).toBeVisible();
 }
 
@@ -218,7 +220,7 @@ test("This Screen restarts, shuts down, joins Wi-Fi, turns and updates the scree
   await openThisScreen(page);
 
   await expect(page.getByText("Wi-Fi: HomeNet, strong")).toBeVisible();
-  await expect(page.getByText("http://192.168.1.20:8080 · on another computer")).toBeVisible();
+  await expect(page.getByText("http://192.168.1.20:7867 · on another computer")).toBeVisible();
   await expect(page.getByText("0.14.0 is ready")).toBeVisible();
   await check(page, "This Screen");
 
@@ -288,6 +290,15 @@ test("This Screen restarts, shuts down, joins Wi-Fi, turns and updates the scree
   await expect(page.getByText("Sunroom Screen 0.14.0 · up to date")).toBeVisible();
   expect(agent.calls).toContain("POST /api/screen/update/seen");
   await expect(page.getByRole("button", { name: "Reinstall…" })).toBeVisible();
+
+  // A version that starts but misbehaves can go back, for a week (ADR 0046): asked, then asked for.
+  await page.getByRole("button", { name: "Go Back to 0.13.0…" }).click();
+  const goingBack = page.getByRole("dialog", { name: "Go Back to 0.13.0?" });
+  await expect(goingBack).toContainText("0.14.0 isn't installed again by itself.");
+  await check(page, "This Screen's Go Back sheet");
+  await goingBack.getByRole("button", { name: "Go Back", exact: true }).click();
+  await expect(toast(page, "Going back… this takes a few minutes")).toBeVisible();
+  expect(agent.calls).toContain("POST /api/screen/go-back");
 
   // Help: what the screen runs, for whoever helps the family.
   await page.getByRole("button", { name: "Help", exact: true }).click();
@@ -374,7 +385,7 @@ test("a wall opened without ?screen= has no This Screen, and asks no agent", asy
   for (const digit of PIN) await pin.getByRole("button", { name: digit, exact: true }).click();
   const pages = page.getByRole("navigation", { name: "Settings" });
   await expect(pages.getByRole("link", { name: "Display", exact: true })).toBeVisible();
-  await expect(pages.getByRole("link", { name: "This Screen", exact: true })).toHaveCount(0);
+  await expect(pages.getByRole("link", { name: /^This Screen,/ })).toHaveCount(0);
   // Settings opens on Family, with no device box and no caption over the household's pages.
   await expect(page.getByRole("heading", { name: "Family", level: 2 })).toBeVisible();
   await expect(pages.getByText("Sample Family’s Sunroom")).toHaveCount(0);

@@ -6588,6 +6588,17 @@
             ],
             "title": "Detail"
           },
+          "detail_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail Key"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -10097,6 +10108,10 @@
             "title": "How",
             "type": "string"
           },
+          "how_key": {
+            "title": "How Key",
+            "type": "string"
+          },
           "latest": {
             "anyOf": [
               {
@@ -10122,6 +10137,14 @@
               }
             ],
             "title": "Problem"
+          },
+          "update_now": {
+            "title": "Update Now",
+            "type": "boolean"
+          },
+          "updater": {
+            "title": "Updater",
+            "type": "boolean"
           }
         },
         "required": [
@@ -10132,7 +10155,10 @@
           "available",
           "checked_at",
           "problem",
-          "how"
+          "how",
+          "how_key",
+          "updater",
+          "update_now"
         ],
         "title": "UpdateOut",
         "type": "object"
@@ -10811,6 +10837,26 @@
           }
         },
         "summary": "Update Status",
+        "tags": [
+          "meta"
+        ]
+      },
+      "post": {
+        "description": "Update Now in About: the companion pulls the new image, stops Sunroom and starts it again\non the same volume. Every page says so meanwhile, and reloads when it's back (ADR 0046).",
+        "operationId": "update_now_api_admin_update_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Update Now",
         "tags": [
           "meta"
         ]

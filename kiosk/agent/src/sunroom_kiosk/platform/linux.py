@@ -61,9 +61,7 @@ log = logs.get("platform")
 ROOT_HELPER = "/usr/local/sbin/sunroom-kiosk-root"
 # The installer's one line (README's Install): what a screen whose root helper is from before
 # 0.18.0 needs once more, in a terminal, to finish its updates by itself (ADR 0044).
-INSTALL_COMMAND = (
-    "curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash"
-)
+INSTALL_COMMAND = "curl -fsSL https://sunroom.day/install.sh | bash"
 APPLY_SYSTEM_LIMIT_S = 1800.0  # packages may download for minutes
 VERSION_LINE = re.compile(r"\d+\.\d+\.\d+\S*")
 DESKTOP_WAIT_S = 2.0

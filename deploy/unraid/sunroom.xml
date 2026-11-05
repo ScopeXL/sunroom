@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- Sunroom for Unraid's Community Applications (docs/DEPLOY.md). Unraid's Check for Updates, then its
+     Update button, keep it up to date. The submission is a step after 1.0 (docs/V1.md §10). -->
+<Container version="2">
+  <Name>Sunroom</Name>
+  <Repository>scopexl/sunroom:latest</Repository>
+  <Registry>https://hub.docker.com/r/scopexl/sunroom</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://sunroom.day</Support>
+  <Project>https://sunroom.day</Project>
+  <Overview>A family wall calendar for a shared screen at home, with everyone's own devices as the second screen. Calendars, lists, tasks, meals, countdowns and photos, on your own server, with no accounts anywhere. Open it, then set up your household.</Overview>
+  <Category>Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:7867]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/ScopeXL/sunroom/main/deploy/unraid/sunroom.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/ScopeXL/sunroom/main/frontend/public/icons/icon-512.png</Icon>
+  <ExtraParams>--user 99:100</ExtraParams>
+  <Config Name="Web page" Target="7867" Default="7867" Mode="tcp" Description="The port your devices open Sunroom on." Type="Port" Display="always" Required="true" Mask="false">7867</Config>
+  <Config Name="Sunroom's data" Target="/data" Default="/mnt/user/appdata/sunroom" Mode="rw" Description="The calendar, the nightly backups and the photos all live here." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/sunroom</Config>
+  <Config Name="Time zone" Target="TZ" Default="" Mode="" Description="The household's time zone, for example America/New_York. It can be set in the app too." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Install kind" Target="SUNROOM_INSTALL_KIND" Default="unraid" Mode="" Description="How Sunroom words the way to update it." Type="Variable" Display="advanced-hide" Required="true" Mask="false">unraid</Config>
+</Container>

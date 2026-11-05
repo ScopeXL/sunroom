@@ -5,7 +5,7 @@
 
 ## Context
 
-- Google rejects OAuth redirect URIs that are plain HTTP, raw IP addresses or non-public hostnames; `localhost` is the one exception. A Sunroom reached as `http://sunroom.local:8080` or `http://192.168.1.20:8080` can't complete Google's web sign-in.
+- Google rejects OAuth redirect URIs that are plain HTTP, raw IP addresses or non-public hostnames; `localhost` is the one exception. A Sunroom reached as `http://sunroom.local:7867` or `http://192.168.1.20:7867` can't complete Google's web sign-in.
 - The device-code flow, made for TVs and other devices without a keyboard, does not allow Calendar scopes.
 - Both facts were checked against Google's docs on 2026-10-07 (PLAN §3, §8.1).
 - Most households start on a plain-HTTP LAN (PLAN §13.8).

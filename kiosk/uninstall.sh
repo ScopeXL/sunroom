@@ -322,7 +322,7 @@ remove_root_files_from_screen() {
 		fi
 	done
 	warn "the root helper couldn't take its files off, so it emptied the browser's policy." \
-		"The rest goes with:  curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash -s -- --uninstall"
+		"The rest goes with:  curl -fsSL https://sunroom.day/install.sh | bash -s -- --uninstall"
 }
 
 # The screen helper's system files: the udev rule that lets the video group switch the
@@ -513,6 +513,9 @@ purge_server() {
 		sudo docker rm -f sunroom >/dev/null 2>&1 || true
 		sudo docker volume rm sunroom_data >/dev/null 2>&1 || true
 	fi
+	sudo systemctl disable --now sunroom-update.timer >/dev/null 2>&1 || true
+	sudo rm -f /etc/systemd/system/sunroom-update.service /etc/systemd/system/sunroom-update.timer
+	sudo systemctl daemon-reload >/dev/null 2>&1 || true
 	sudo rm -rf "$SERVER_DIR"
 	sudo rm -f "$AVAHI_SERVICE"
 	note "Deleted Sunroom, its data and $SERVER_DIR. Docker itself is still installed."

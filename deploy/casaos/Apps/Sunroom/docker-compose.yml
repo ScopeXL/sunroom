@@ -1,0 +1,53 @@
+# Sunroom in CasaOS's and ZimaOS's app store (docs/DEPLOY.md). CasaOS keeps it up to date: the store
+# is rebuilt with each release, and its Update mark shows when the image has moved. The volume, not an
+# AppData folder: Sunroom's user must be able to write there, and a named volume is right by itself.
+name: sunroom
+services:
+  sunroom:
+    image: scopexl/sunroom:latest
+    container_name: sunroom
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-}
+      SUNROOM_INSTALL_KIND: casaos
+    ports:
+      - target: 7867
+        published: "7867"
+        protocol: tcp
+    volumes:
+      - sunroom_data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 30s
+volumes:
+  sunroom_data:
+    name: sunroom_data
+x-casaos:
+  id: day.sunroom.sunroom
+  main: sunroom
+  index: /
+  port_map: "7867"
+  scheme: http
+  icon: icon.png
+  title:
+    en_US: Sunroom
+  tagline:
+    en_US: A family wall calendar
+  description:
+    en_US: >-
+      A family wall calendar for a shared screen at home, with everyone's own devices as the second
+      screen. Calendars, lists, tasks, meals, countdowns and photos, on your own server, with no
+      accounts anywhere. Open it, then set up your household.
+  author: ScopeXL
+  developer: ScopeXL
+  category: Productivity
+  architectures:
+    - amd64
+    - arm64
+  # The release workflow writes the version here as it builds the store (casaos-store.yml).
+  version: "0.0.0"
+  website: https://sunroom.day
+  repo: https://github.com/ScopeXL/sunroom

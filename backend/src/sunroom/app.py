@@ -7,6 +7,7 @@ from collections.abc import AsyncGenerator, Callable, Mapping
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import FastAPI
@@ -160,9 +161,14 @@ def create_app(
         db.publisher = hub.publish
         household, auth = await load_household(db, settings)
 
+        # The updater companion is a container on the compose network (ADR 0046): the one address
+        # the server's own settings name, allowed as a parent's allowlist row would be.
+        updater = urlsplit(settings.sunroom_updater_url or "").hostname
+
         async def allowlist() -> list[str]:
             async with db.read() as session:
-                return list(await session.scalars(select(NetworkAllowEntry.target)))
+                entries = list(await session.scalars(select(NetworkAllowEntry.target)))
+            return [*entries, updater] if updater else entries
 
         guard = NetGuard(
             resolver=resolver,

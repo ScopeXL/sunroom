@@ -25,7 +25,7 @@ vi.mock("./route", async (original) => ({
 }));
 const { openSunroom } = await import("./route");
 
-const SUNROOM = "http://192.168.1.20:8080";
+const SUNROOM = "http://192.168.1.20:7867";
 
 function state(overrides: Partial<ScreenState> = {}): ScreenState {
   return {
@@ -44,6 +44,9 @@ function state(overrides: Partial<ScreenState> = {}): ScreenState {
       checked_at: null,
       message: null,
       sunroom_outdated: false,
+      sunroom_can_update: false,
+      sunroom_pinned: null,
+      go_back_to: null,
     },
     display: { rotation: 0, brightness_method: "none" },
     open_url: null,
@@ -59,6 +62,7 @@ const chosen = (reachable: boolean) =>
       name: "The Sample Family",
       found: "discovered",
       reachable,
+      updating: false,
     },
     open_url: `${SUNROOM}/display?dimmer=page&screen=7800`,
   });
@@ -246,7 +250,7 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
           older: false,
         },
         {
-          url: "http://192.168.1.21:8080",
+          url: "http://192.168.1.21:7867",
           id: null,
           name: null,
           version: "0.11.0",
@@ -309,7 +313,7 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
       expect(checks()).toHaveLength(2);
     });
     // Typing again puts the button back to rest.
-    fireEvent.change(field, { target: { value: "192.168.1.20:8080" } });
+    fireEvent.change(field, { target: { value: "192.168.1.20:7867" } });
     expect(within(elsewhere).getByRole("button", { name: "Check Address" })).toBeTruthy();
   });
 
@@ -329,7 +333,7 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
     draw(<FindPage state={state({ capabilities: ["restart"] })} />);
     const elsewhere = screen.getByRole("region", { name: "Somewhere Else" });
     const field = within(elsewhere).getByLabelText(/^Sunroom address/);
-    fireEvent.change(field, { target: { value: "192.168.1.20:8080" } });
+    fireEvent.change(field, { target: { value: "192.168.1.20:7867" } });
     fireEvent.submit(field); // ↵, or the wall keyboard's enter key
     const found = await within(elsewhere).findByRole("button", { name: "Found" });
     expect(within(elsewhere).getByRole("status").textContent).toBe(
@@ -394,6 +398,21 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
     cleanup();
     draw(<CantReachPage state={chosen(true)} />);
     expect(openSunroom).toHaveBeenCalledWith(`${SUNROOM}/display?dimmer=page&screen=7800`);
+  });
+
+  it("Can't Reach says why Sunroom is away, when it knows", () => {
+    const state = chosen(false);
+    draw(<CantReachPage state={state} />);
+    expect(screen.getByRole("status").textContent).toBe(
+      "The computer that runs Sunroom may be off or restarting. This screen keeps trying.",
+    );
+    cleanup();
+    const sunroom = state.sunroom;
+    if (sunroom === null) throw new Error("a chosen Sunroom");
+    draw(<CantReachPage state={{ ...state, sunroom: { ...sunroom, updating: true } }} />);
+    expect(screen.getByRole("status").textContent).toBe(
+      "Sunroom is updating. This screen comes back by itself.",
+    );
   });
 
   it("offers This Screen's update and Reinstall… on its own Settings page too (ADR 0044)", () => {

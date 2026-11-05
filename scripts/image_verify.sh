@@ -10,11 +10,13 @@ platforms="$(docker buildx imagetools inspect --raw "$IMAGE:$V" \
 [ "$platforms" = "linux/amd64 linux/arm64 " ] || { echo "unexpected platforms: $platforms" >&2; exit 1; }
 digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
 D="$(digest "$IMAGE:$V")"
-for tag in "${V%.*}" latest; do
+CHECK=("${V%.*}" latest)
+[ "${V%%.*}" -ge 1 ] && CHECK+=("${V%%.*}")
+for tag in "${CHECK[@]}"; do
   [ "$(digest "$IMAGE:$tag")" = "$D" ] || { echo "$IMAGE:$tag does not point at $D" >&2; exit 1; }
 done
 NAME="sunroom-verify"
-PORT=18081
+PORT=17868
 JAR="$(mktemp)"
 trap 'docker rm -f "$NAME" >/dev/null 2>&1 || true; docker volume rm "$NAME" >/dev/null 2>&1 || true; rm -f "$JAR"' EXIT
 for arch in amd64 arm64; do
@@ -22,7 +24,7 @@ for arch in amd64 arm64; do
   docker volume rm "$NAME" >/dev/null 2>&1 || true
   docker pull --quiet --platform "linux/$arch" "$IMAGE@$D" >/dev/null
   docker volume create "$NAME" >/dev/null
-  docker run -d --name "$NAME" --platform "linux/$arch" -p "127.0.0.1:$PORT:8080" -v "$NAME:/data" \
+  docker run -d --name "$NAME" --platform "linux/$arch" -p "127.0.0.1:$PORT:7867" -v "$NAME:/data" \
     "$IMAGE@$D" >/dev/null
   wait_healthy "$NAME" 120
   probe "$PORT" "$V"

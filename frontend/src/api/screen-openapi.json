@@ -596,6 +596,11 @@
             "title": "Reachable",
             "type": "boolean"
           },
+          "updating": {
+            "default": false,
+            "title": "Updating",
+            "type": "boolean"
+          },
           "url": {
             "title": "Url",
             "type": "string"
@@ -655,6 +660,17 @@
               }
             ],
             "title": "Checked At"
+          },
+          "go_back_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Go Back To"
           },
           "installed": {
             "title": "Installed",
@@ -724,10 +740,26 @@
           "state": {
             "$ref": "#/components/schemas/ScreenUpdateState"
           },
+          "sunroom_can_update": {
+            "default": false,
+            "title": "Sunroom Can Update",
+            "type": "boolean"
+          },
           "sunroom_outdated": {
             "default": false,
             "title": "Sunroom Outdated",
             "type": "boolean"
+          },
+          "sunroom_pinned": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sunroom Pinned"
           }
         },
         "required": [
@@ -1060,6 +1092,58 @@
           }
         },
         "summary": "Display",
+        "tags": [
+          "screen"
+        ]
+      }
+    },
+    "/api/screen/go-back": {
+      "post": {
+        "description": "Go Back\u2026: the version an update replaced, for a week after it (ADR 0046).",
+        "operationId": "go_back_api_screen_go_back_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenAcceptedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Go Back",
         "tags": [
           "screen"
         ]
@@ -1601,6 +1685,58 @@
           }
         },
         "summary": "Check Address",
+        "tags": [
+          "screen"
+        ]
+      }
+    },
+    "/api/screen/sunroom/updating": {
+      "post": {
+        "description": "The wall's page heard Sunroom say it's updating: Can't Reach says so, if it comes to that.",
+        "operationId": "sunroom_updating_api_screen_sunroom_updating_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenAcceptedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Sunroom Updating",
         "tags": [
           "screen"
         ]

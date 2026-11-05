@@ -22,13 +22,13 @@ describe("a week of days to pick from", () => {
     );
     const cells = screen.getAllByRole("button");
     expect(cells.map((cell) => cell.getAttribute("aria-label"))).toEqual([
-      "Sun, Oct 4",
-      "Mon, Oct 5",
-      "Tue, Oct 6",
-      "Wed, Oct 7, today",
-      "Thu, Oct 8",
-      "Fri, Oct 9",
-      "Sat, Oct 10",
+      "Sun 4, October",
+      "Mon 5, October",
+      "Tue 6, October",
+      "Wed 7, October, today",
+      "Thu 8, October",
+      "Fri 9, October",
+      "Sat 10, October",
     ]);
     expect(cells.map((cell) => cell.getAttribute("aria-pressed"))).toEqual([
       "false",
@@ -39,8 +39,8 @@ describe("a week of days to pick from", () => {
       "false",
       "false",
     ]);
-    expect(cells[3]?.textContent).toBe("Wed7");
-    fireEvent.click(screen.getByRole("button", { name: "Fri, Oct 9" }));
+    expect(cells[3]?.textContent).toBe("Wed 7");
+    fireEvent.click(screen.getByRole("button", { name: "Fri 9, October" }));
     expect(onChange).toHaveBeenCalledWith("2026-10-09");
   });
 
@@ -57,7 +57,7 @@ describe("a week of days to pick from", () => {
       />,
     );
     const cells = screen.getAllByRole<HTMLButtonElement>("button");
-    expect(cells[0]?.getAttribute("aria-label")).toBe("Mon, Oct 5");
+    expect(cells[0]?.getAttribute("aria-label")).toBe("Mon 5, October");
     expect(cells.map((cell) => cell.disabled)).toEqual([
       true,
       true,
@@ -67,7 +67,7 @@ describe("a week of days to pick from", () => {
       false,
       false,
     ]);
-    fireEvent.click(screen.getByRole("button", { name: "Mon, Oct 5" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mon 5, October" }));
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -97,13 +97,13 @@ describe("which weekdays", () => {
     render(<WeekdayPicker label="On" weekStartsOn={6} value={[1, 3]} onChange={onChange} />);
     const cells = screen.getAllByRole("button");
     expect(cells.map((cell) => cell.getAttribute("aria-label"))).toEqual([
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
+      "Sun, Sunday",
+      "Mon, Monday",
+      "Tue, Tuesday",
+      "Wed, Wednesday",
+      "Thu, Thursday",
+      "Fri, Friday",
+      "Sat, Saturday",
     ]);
     expect(cells.map((cell) => cell.textContent)).toEqual([
       "Sun",
@@ -114,13 +114,13 @@ describe("which weekdays", () => {
       "Fri",
       "Sat",
     ]);
-    expect(screen.getByRole("button", { name: "Tuesday" }).getAttribute("aria-pressed")).toBe(
+    expect(screen.getByRole("button", { name: "Tue, Tuesday" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
     // Sunday is weekday 6: the value stays sorted Monday first, whatever the order on screen.
-    fireEvent.click(screen.getByRole("button", { name: "Sunday" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sun, Sunday" }));
     expect(onChange).toHaveBeenLastCalledWith([1, 3, 6]);
-    fireEvent.click(screen.getByRole("button", { name: "Thursday" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thu, Thursday" }));
     expect(onChange).toHaveBeenLastCalledWith([1]);
   });
 
@@ -129,12 +129,12 @@ describe("which weekdays", () => {
     const { rerender } = render(
       <WeekdayPicker label="On" weekStartsOn={0} value={[2]} onChange={onChange} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Wednesday" }));
+    fireEvent.click(screen.getByRole("button", { name: "Wed, Wednesday" }));
     expect(onChange).not.toHaveBeenCalled();
     rerender(
       <WeekdayPicker label="On" weekStartsOn={0} value={[2]} onChange={onChange} minOne={false} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Wednesday" }));
+    fireEvent.click(screen.getByRole("button", { name: "Wed, Wednesday" }));
     expect(onChange).toHaveBeenCalledWith([]);
   });
 });

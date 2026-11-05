@@ -16,7 +16,7 @@ from sunroom_kiosk.config import Config
 INSTALLER = """\
 # Written by the Sunroom installer (kiosk/install.sh 0.12.0). Running it again replaces this file.
 # Read by ~/.local/bin/sunroom-kiosk and ~/.local/bin/sunroom-screen at every start.
-SUNROOM_URL=http://192.168.1.20:8080
+SUNROOM_URL=http://192.168.1.20:7867
 SUNROOM_SESSION=wayland
 SUNROOM_OUTPUT=HDMI-A-1
 SUNROOM_ROTATE=90
@@ -32,7 +32,7 @@ SUNROOM_LABEL=Sample\\ Street\\ kitchen
 def test_reads_the_installers_file() -> None:
     read = config.from_values(config.parse_values(INSTALLER))
     assert read == Config(
-        url="http://192.168.1.20:8080",
+        url="http://192.168.1.20:7867",
         session="wayland",
         output="HDMI-A-1",
         rotate=90,
@@ -94,7 +94,7 @@ BASH = shutil.which("bash")
 def test_bash_still_sources_it(tmp_path: Path) -> None:
     """kiosk/install.sh and the uninstaller read it with `.`: quoting must survive."""
     path = tmp_path / "config"
-    config.save(path, Config(url="http://192.168.1.20:8080", output="HDMI-A-1"))
+    config.save(path, Config(url="http://192.168.1.20:7867", output="HDMI-A-1"))
     assert BASH is not None
     printed = subprocess.run(  # noqa: S603 - a fixed command on a test file
         [
@@ -108,4 +108,4 @@ def test_bash_still_sources_it(tmp_path: Path) -> None:
         text=True,
         check=True,
     ).stdout
-    assert printed == "http://192.168.1.20:8080|HDMI-A-1|"
+    assert printed == "http://192.168.1.20:7867|HDMI-A-1|"

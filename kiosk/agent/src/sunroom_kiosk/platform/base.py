@@ -15,7 +15,7 @@ import socket
 import subprocess
 import sys
 import time
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -45,12 +45,21 @@ class CommandResult:
 
 class Runner(Protocol):
     async def __call__(
-        self, argv: Sequence[str], *, limit: float = COMMAND_TIMEOUT_S, stdin: str | None = None
+        self,
+        argv: Sequence[str],
+        *,
+        limit: float = COMMAND_TIMEOUT_S,
+        stdin: str | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> CommandResult: ...
 
 
 async def run_command(
-    argv: Sequence[str], *, limit: float = COMMAND_TIMEOUT_S, stdin: str | None = None
+    argv: Sequence[str],
+    *,
+    limit: float = COMMAND_TIMEOUT_S,
+    stdin: str | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> CommandResult:
     """Run a command without a shell: its exit status (127: not installed, 124: too slow) and
     what it printed."""
@@ -61,6 +70,7 @@ async def run_command(
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             creationflags=NO_WINDOW,
+            env={**os.environ, **env} if env is not None else None,
         )
     except FileNotFoundError:
         return CommandResult(127, f"{argv[0]} isn't installed")
@@ -279,6 +289,15 @@ class Platform:
     async def update_sunroom(self) -> bool:
         """Update the Sunroom that runs on this machine (an all-in-one Pi)."""
         return False
+
+    def sunroom_update_outcome(self) -> list[str]:
+        """How the last update of an all-in-one Pi's Sunroom ended (update.sh's last-update):
+        ["went-back", new, old], ["left-alone", version], ["updated", version] or ["failed"]."""
+        return []
+
+    def sunroom_pinned(self) -> str | None:
+        """The version an all-in-one Pi's own Sunroom is pinned to, if the family pinned one."""
+        return None
 
     # ------------------------------------------------------------------ the system's part
 

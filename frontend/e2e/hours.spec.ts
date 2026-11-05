@@ -99,7 +99,7 @@ test("the Hours layout fits the day, zooms, keeps the time on a drop and adds at
   const fit = day.height;
   // A one-hour event: a 56 px button holding a block as tall as its hour.
   const soccer = board.getByRole("button", {
-    name: /^Soccer practice, 4:00 to 5:00 PM, .*Thursday/,
+    name: /^4:00 PM Soccer practice, .*until 5:00 PM, Thursday/,
   });
   const block = soccer.locator(":scope > span");
   expect(Math.round((await boxOf(soccer)).height)).toBe(56);
@@ -185,13 +185,13 @@ test("the Hours layout fits the day, zooms, keeps the time on a drop and adds at
     .toBeLessThanOrEqual(1.5);
 
   // A drop on another day keeps the time of day.
-  const vet = board.getByRole("button", { name: /^Vet, 9:00 to 9:30 AM, Ana, Wednesday/ });
+  const vet = board.getByRole("button", { name: /^9:00 AM Vet, Ana, until 9:30 AM, Wednesday/ });
   await vet.scrollIntoViewIfNeeded();
   await drag(page, vet, board.locator('[data-day="2026-10-09"] h2'));
   await expect(toast(page, "Moved Vet to Fri")).toBeVisible();
   await expect(toast(page, "Moved Vet to Fri").getByRole("button", { name: "Undo" })).toBeVisible();
   await expect(
-    board.getByRole("button", { name: /^Vet, 9:00 to 9:30 AM, Ana, Friday October 9/ }),
+    board.getByRole("button", { name: /^9:00 AM Vet, Ana, until 9:30 AM, Friday October 9/ }),
   ).toBeAttached();
 
   // A tap on an empty spot adds an event at that time, on that day.
@@ -208,7 +208,7 @@ test("the Hours layout fits the day, zooms, keeps the time on a drop and adds at
   await expect(
     add
       .getByRole("group", { name: "Day", exact: true })
-      .getByRole("button", { name: "Fri, Oct 9" }),
+      .getByRole("button", { name: "Fri 9, October" }),
   ).toHaveAttribute("aria-pressed", "true");
 });
 

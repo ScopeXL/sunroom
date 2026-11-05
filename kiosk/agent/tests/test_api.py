@@ -125,7 +125,7 @@ async def test_another_page_gets_no_cors_and_changes_nothing(
 async def test_a_new_address_moves_the_allowed_origin(
     client: httpx.AsyncClient, agent: Agent
 ) -> None:
-    old = "http://192.168.1.21:8080"
+    old = "http://192.168.1.21:7867"
     agent.save(Config(url=old, found="typed"))
     assert (await client.get("/api/screen", headers={"Origin": old})).headers.get(
         "access-control-allow-origin"
@@ -276,16 +276,16 @@ async def test_an_address_is_checked_in_plain_words(
 ) -> None:
     found = (
         await client.post(
-            "/api/screen/sunroom/check", json={"url": "192.168.1.20:8080"}, headers=CHANGE
+            "/api/screen/sunroom/check", json={"url": "192.168.1.20:7867"}, headers=CHANGE
         )
     ).json()
     assert found["ok"] is True
     assert found["sunroom"]["url"] == SUNROOM  # a number: http first
     assert found["sunroom"]["name"] == "The Sample Family"
-    sunrooms.older["http://192.168.1.22:8080"] = "0.11.0"
+    sunrooms.older["http://192.168.1.22:7867"] = "0.11.0"
     older = (
         await client.post(
-            "/api/screen/sunroom/check", json={"url": "http://192.168.1.22:8080"}, headers=CHANGE
+            "/api/screen/sunroom/check", json={"url": "http://192.168.1.22:7867"}, headers=CHANGE
         )
     ).json()
     assert older["sunroom"]["older"] is True and older["sunroom"]["version"] == "0.11.0"
@@ -339,6 +339,7 @@ async def test_saving_a_sunroom_restarts_nothing_and_says_so_at_once(
         "name": "The Sample Family",
         "found": "discovered",
         "reachable": True,
+        "updating": False,
         "version": "0.13.0",
         "language": None,  # this pretend Sunroom doesn't say (one before 0.18.0)
     }
@@ -379,7 +380,7 @@ async def test_forgetting_the_address_keeps_the_rest(
 async def test_a_scan_streams_what_it_finds(
     client: httpx.AsyncClient, agent: Agent, sunrooms: FakeSunrooms
 ) -> None:
-    sunrooms.older["http://192.168.1.22:8080"] = "0.11.0"
+    sunrooms.older["http://192.168.1.22:7867"] = "0.11.0"
     seen: list[bytes] = []
 
     async def listen() -> None:
@@ -397,7 +398,7 @@ async def test_a_scan_streams_what_it_finds(
         for c in seen
         if c.startswith(b"event: discovery.found")
     ]
-    assert {f["url"] for f in found} == {SUNROOM, "http://192.168.1.22:8080"}
+    assert {f["url"] for f in found} == {SUNROOM, "http://192.168.1.22:7867"}
     listed = (await client.get("/api/screen/sunrooms")).json()
     assert listed["scanning"] is False and len(listed["found"]) == 2
 
@@ -468,6 +469,27 @@ async def test_reinstall_starts_and_says_how_it_ended_once(
     assert (await client.get("/api/screen")).json()["update"]["last_result"] is None
 
 
+async def test_go_back_is_there_after_an_update_and_says_how_it_ended(
+    client: httpx.AsyncClient, agent: Agent
+) -> None:
+    refused = await client.post("/api/screen/go-back", headers=CHANGE)
+    assert refused.status_code == 409
+    assert refused.json()["error"]["key"] == "agent.update.cant_go_back"
+
+    before = (await client.get("/api/screen")).json()["update"]["installed"]
+    await client.get("/api/screen/update")
+    assert (await client.post("/api/screen/update", headers=CHANGE)).status_code == 202
+    update = await update_when(client, lambda update: update["last_result"] is not None)
+    assert update["go_back_to"] == before
+    await client.post("/api/screen/update/seen", headers=CHANGE)
+
+    assert (await client.post("/api/screen/go-back", headers=CHANGE)).status_code == 202
+    update = await update_when(client, lambda update: update["last_result"] is not None)
+    assert update["last_result"]["message"] == f"Went back to Sunroom Screen {before}"
+    assert update["go_back_to"] is None
+    assert update["state"] == "available"
+
+
 async def test_the_update_policy_is_kept(client: httpx.AsyncClient, config_path: Path) -> None:
     body = (
         await client.put("/api/screen/update-policy", json={"check": "off"}, headers=CHANGE)
@@ -502,10 +524,14 @@ async def test_the_test_reset_puts_the_pretend_screen_back(
     await client.put("/api/screen/display", json={"rotation": 90}, headers=CHANGE)
     await client.post("/api/screen/_test/fake", json={"kind": "desktop"}, headers=CHANGE)
     assert "quit" in (await client.get("/api/screen")).json()["capabilities"]
+    await client.post("/api/screen/sunroom/updating", headers=CHANGE)
     assert (await client.post("/api/screen/_test/reset", headers=CHANGE)).status_code == 204
     body = (await client.get("/api/screen")).json()
     assert body["sunroom"] is None and body["platform"] == "pi"
     assert platform.calls == [] and platform.rotation == 0
+    # What the last test heard about Sunroom updating isn't the next one's.
+    await client.post("/api/screen/_test/fake", json={"sunroom": SUNROOM}, headers=CHANGE)
+    assert (await client.get("/api/screen")).json()["sunroom"]["updating"] is False
 
 
 def test_the_test_routes_exist_only_with_fake(make_agent: Callable[..., Agent]) -> None:
@@ -514,17 +540,18 @@ def test_the_test_routes_exist_only_with_fake(make_agent: Callable[..., Agent]) 
     assert not any(path.startswith("/api/screen/_test") for path in paths)
 
 
-async def test_the_schema_has_every_route(app: FastAPI) -> None:
+async def test_the_schema_has_every_route(app: FastAPI, tmp_path: Path) -> None:
     from sunroom_kiosk.cli import main
 
-    assert main(["openapi", "--out", "/dev/null"]) == 0
+    assert main(["openapi", "--out", str(tmp_path / "schema.json")]) == 0
     from fastapi.openapi.utils import get_openapi
 
     from sunroom_kiosk.app import router
 
     paths = get_openapi(title="t", version="0", routes=router.routes)["paths"]
     # 0.17.0: no open-network-settings, and uninstall (ADR 0042); 0.18.0: reinstall and
-    # update/seen (ADR 0044).
-    assert len(paths) == 21
+    # update/seen (ADR 0044); sunroom/updating and go-back (ADR 0046).
+    assert len(paths) == 23
     assert "/api/screen/reinstall" in paths and "/api/screen/update/seen" in paths
+    assert "/api/screen/go-back" in paths
     assert not any("_test" in path for path in paths)

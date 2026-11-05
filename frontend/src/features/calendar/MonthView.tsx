@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+
 import { useArrived } from "../../lib/arrivals";
 import {
   dayNumber,
@@ -7,7 +9,7 @@ import {
   type MonthGrid,
 } from "../../lib/dates";
 import type { Member } from "../../lib/household";
-import { useT } from "../../lib/lang";
+import { t, useT } from "../../lib/lang";
 import { arrivalKey, PeopleEdge } from "./EventChip";
 import { byDay, shownFor } from "./layout";
 import { coreOverlayOf, useOverlayOf } from "./overlays";
@@ -65,7 +67,7 @@ export function MonthView({
               .filter((o) => shownFor(o, filter));
             const isToday = day === today;
             const inMonth = day.slice(0, 7) === month;
-            const titles = entries.map((o) => o.title).join(", ");
+            const titles = cellWords(entries);
             return (
               <button
                 key={day}
@@ -94,9 +96,11 @@ export function MonthView({
                   >
                     {dayNumber(day)}
                   </span>
-                </span>
+                </span>{" "}
                 {entries.slice(0, SHOWN).map((occurrence) => (
-                  <MonthEntry key={occurrence.key} occurrence={occurrence} members={members} />
+                  <Fragment key={occurrence.key}>
+                    <MonthEntry occurrence={occurrence} members={members} />{" "}
+                  </Fragment>
                 ))}
                 {entries.length > SHOWN ? (
                   <span className="px-1 text-d-caption font-semibold text-ink-soft">
@@ -110,6 +114,26 @@ export function MonthView({
       </div>
     </div>
   );
+}
+
+/** The time a month cell shows for an event: "8 AM", or none for an all-day one. */
+function entryTime(occurrence: Occurrence): string | null {
+  return !occurrence.all_day && occurrence.start_local
+    ? formatWallTime(occurrence.start_local, { compact: true })
+    : null;
+}
+
+/**
+ * What a month cell's name lists: what it shows, in that order ("8 AM Vet, +2 more", for voice
+ * control: WCAG 2.5.3), then the events it had no room for, which only the ear gets.
+ */
+function cellWords(entries: Occurrence[]): string {
+  const shown = entries
+    .slice(0, SHOWN)
+    .map((o) => [entryTime(o), o.title].filter(Boolean).join(" "));
+  const rest = entries.slice(SHOWN).map((o) => o.title);
+  if (rest.length === 0) return shown.join(", ");
+  return `${[...shown, t("dates.more", { n: rest.length })].join(", ")}: ${rest.join(", ")}`;
 }
 
 function MonthEntry({ occurrence, members }: { occurrence: Occurrence; members: Member[] }) {
@@ -131,10 +155,7 @@ function MonthEntry({ occurrence, members }: { occurrence: Occurrence; members: 
   }
   const people = members.filter((m) => occurrence.member_ids.includes(m.id));
   const color = occurrence.color ?? (people.length === 1 ? people[0]?.color : null) ?? "everyone";
-  const time =
-    !occurrence.all_day && occurrence.start_local
-      ? formatWallTime(occurrence.start_local, { compact: true })
-      : null;
+  const time = entryTime(occurrence);
   const initial = people.length === 1 ? (people[0]?.name.charAt(0) ?? "") : "";
   const Mark = coreOverlayOf(occurrence)?.icon;
   // Several people and no color of its own: the 4 px bar in each of their colors (ADR 0034).
@@ -152,8 +173,14 @@ function MonthEntry({ occurrence, members }: { occurrence: Occurrence; members: 
       {several ? (
         <PeopleEdge colors={people.map((person) => person.color)} className="w-1 rounded-sm" />
       ) : null}
-      {initial ? <span className="font-bold text-p-text">{initial}</span> : null}
-      {time ? <span className="font-semibold whitespace-nowrap">{time}</span> : null}
+      {/* CSS content, as on an avatar: decoration beside the words, not part of them. */}
+      {initial ? (
+        <span
+          data-initial={initial}
+          className="font-bold text-p-text before:content-[attr(data-initial)]"
+        />
+      ) : null}
+      {time ? <span className="font-semibold whitespace-nowrap">{time}</span> : null}{" "}
       {Mark ? <Mark className="size-4 shrink-0" strokeWidth={2.25} /> : null}
       <span className="min-w-0 truncate">{occurrence.title}</span>
     </span>

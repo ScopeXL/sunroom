@@ -1,9 +1,10 @@
 """Updates of Sunroom Screen itself (docs/M7.md T9).
 
-* **Check:** GitHub's list of the repository's tags (as Sunroom's own check, ADR 0032) gives the
-  newest version; that version's Release gives ``SHA256SUMS``, which must list its wheel. An
-  update is "available" only then. One request to api.github.com and one to github.com: they see
-  this screen's public address (the setup page says so).
+* **Check:** sunroom.day's ``version.json``, or GitHub's latest Release when that doesn't answer
+  (as Sunroom's own check, ADR 0046), gives the newest version; that version's Release gives
+  ``SHA256SUMS``, which must list its wheel. An update is "available" only then. One request to
+  sunroom.day and one to github.com: they see this screen's public address (the setup page says
+  so).
 * **Install:** the wheel is downloaded, its sha256 checked against ``SHA256SUMS`` (a mismatch
   stops everything), and kept beside the one running, under ``~/.local/share/sunroom-kiosk/
   wheels``, after the small files are copied aside (setup_files.back_up). Then a separate
@@ -54,10 +55,12 @@ if TYPE_CHECKING:
 log = logs.get("updater")
 
 REPO = "ScopeXL/sunroom"
-TAGS_URL = f"https://api.github.com/repos/{REPO}/tags?per_page=100"
+VERSION_URL = "https://sunroom.day/version.json"
+RELEASE_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 DOWNLOAD = f"https://github.com/{REPO}/releases/download"
 APPLY_UNIT = "sunroom-kiosk-update"
 NIGHTLY_DEFAULT = (3, 30)
+GO_BACK_FOR = timedelta(days=7)
 _VERSION = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 
 type UpdateState = Literal["unknown", "up_to_date", "available", "installing", "failed"]
@@ -86,6 +89,7 @@ class UpdaterLike(Protocol):
     async def check_now(self) -> UpdateStatus: ...
     async def install(self, agent: Agent) -> None: ...
     async def reinstall(self, agent: Agent) -> None: ...
+    async def go_back(self, agent: Agent) -> None: ...
     def seen(self) -> None: ...
     def setup_said(self) -> dict[str, Any]: ...
     def kept_wheel(self) -> Path | None: ...
@@ -125,17 +129,24 @@ def parse(text: str) -> tuple[int, int, int] | None:
     return major, minor, patch
 
 
-def newest(tags: object) -> str | None:
-    """The highest X.Y.Z among GitHub's tags (pre-releases and other names left out)."""
-    if not isinstance(tags, list):
+def _version(name: object) -> str | None:
+    parsed = parse(name) if isinstance(name, str) else None
+    return ".".join(map(str, parsed)) if parsed is not None else None
+
+
+def version_from_site(body: object) -> str | None:
+    """sunroom.day's version.json: {"version": "1.0.0", …}."""
+    return _version(cast(dict[str, Any], body).get("version")) if isinstance(body, dict) else None
+
+
+def version_from_release(body: object) -> str | None:
+    """GitHub's latest Release: {"tag_name": "v1.0.0", …}. Never a draft or a pre-release."""
+    if not isinstance(body, dict):
         return None
-    found: list[tuple[tuple[int, int, int], str]] = []
-    for tag in cast(list[Any], tags):
-        name = cast(dict[str, Any], tag).get("name") if isinstance(tag, dict) else None
-        parsed = parse(name) if isinstance(name, str) else None
-        if parsed is not None:
-            found.append((parsed, ".".join(map(str, parsed))))
-    return max(found)[1] if found else None
+    release = cast(dict[str, Any], body)
+    if release.get("draft") or release.get("prerelease"):
+        return None
+    return _version(release.get("tag_name"))
 
 
 def newer(candidate: str | None, current: str) -> bool:
@@ -264,7 +275,31 @@ class Updater:
         self.paths.state.write_text(json.dumps(merged, sort_keys=True), encoding="utf-8")
 
     def status(self, check: str) -> dict[str, Any]:
-        return {**self.current.out(check), "last_result": self.last_result()}
+        return {
+            **self.current.out(check),
+            "last_result": self.last_result(),
+            "go_back_to": self.go_back_to(),
+        }
+
+    def go_back_to(self) -> str | None:
+        """Go Back…'s version: the one an update replaced, for a version that starts but
+        misbehaves, for a week after that update and while its wheel is still here (ADR 0046)."""
+        replaced = self._saved().get("replaced")
+        if not isinstance(replaced, dict):
+            return None
+        fields = cast(dict[str, Any], replaced)
+        release, at = fields.get("version"), fields.get("at")
+        if not isinstance(release, str) or not isinstance(at, str):
+            return None
+        if fields.get("by") != self.installed or not newer(self.installed, release):
+            return None
+        try:
+            when = datetime.fromisoformat(at)
+        except ValueError:
+            return None
+        if datetime.now(UTC) - when > GO_BACK_FOR:
+            return None
+        return release if (self.paths.wheels / wheel_name(release)).is_file() else None
 
     def last_result(self) -> dict[str, Any] | None:
         """How the last update ended, until a page has shown it (ScreenUpdateResultOut)."""
@@ -277,7 +312,9 @@ class Updater:
         if not isinstance(release, str):
             return None
         ok = fields.get("ok") is True
-        if ok and fields.get("again") is True:
+        if ok and fields.get("back") is True:
+            message = said("agent.update.went_back", version=release)
+        elif ok and fields.get("again") is True:
             message = said("agent.update.reinstalled", version=release)
         elif ok:
             message = said("agent.update.updated", version=release)
@@ -327,9 +364,17 @@ class Updater:
     # ------------------------------------------------------------------ check
 
     async def _latest(self, client: httpx.AsyncClient) -> str | None:
-        response = await client.get(TAGS_URL, headers={"Accept": "application/vnd.github+json"})
+        try:
+            site = await client.get(VERSION_URL)
+            site.raise_for_status()
+            found = version_from_site(site.json())
+            if found is not None:
+                return found
+        except (httpx.HTTPError, ValueError) as error:
+            log.info("sunroom.day didn't say the newest version: %s.", type(error).__name__)
+        response = await client.get(RELEASE_URL, headers={"Accept": "application/vnd.github+json"})
         response.raise_for_status()
-        return newest(response.json())
+        return version_from_release(response.json())
 
     async def _sums(self, client: httpx.AsyncClient, release: str) -> dict[str, str]:
         response = await client.get(f"{DOWNLOAD}/v{release}/SHA256SUMS")
@@ -347,7 +392,7 @@ class Updater:
                     # Released but its files not up yet: not an update until they are.
                     ready = wheel_name(latest) in await self._sums(client, latest)
         except (httpx.HTTPError, ValueError) as error:
-            log.info("Couldn't ask GitHub for the newest version: %s.", type(error).__name__)
+            log.info("Couldn't find out the newest version: %s.", type(error).__name__)
             self.current = replace(
                 self.current,
                 checked_at=now_iso(),
@@ -386,7 +431,19 @@ class Updater:
         async with self._busy:
             await self._install(agent, again=True)
 
-    async def _install(self, agent: Agent, *, again: bool) -> None:
+    async def go_back(self, agent: Agent) -> None:
+        """Go Back…: the version this one replaced, with its own setup (ADR 0046)."""
+        if self._busy.locked():
+            return
+        async with self._busy:
+            release = self.go_back_to()
+            if release is None:
+                agent.toast("agent.update.cant_go_back")
+                agent.publish_state()
+                return
+            await self._install(agent, again=False, back_to=release)
+
+    async def _install(self, agent: Agent, *, again: bool, back_to: str | None = None) -> None:
         """The whole way (ADR 0044): the small files aside, the wheel downloaded and checked, then
         the apply step, which installs it, sets it up and starts it; its steps arrive here
         through the state file while this agent still runs."""
@@ -394,7 +451,10 @@ class Updater:
         async def say(percent: int, step: str) -> None:
             agent.hub.publish("update.progress", progress_out(percent, step))
 
-        if again:
+        was = self.current.state
+        if back_to is not None:
+            release = back_to
+        elif again:
             release = self.installed
         else:
             if self.current.state not in ("available", "failed") or self.current.latest is None:
@@ -413,9 +473,10 @@ class Updater:
             wheel = await self.download(release, lambda: say(30, "agent.update.step.checking"))
         except UpdateError as error:
             log.info("The update to %s stopped: %s", release, error)
-            self.current = replace(
-                self.current, state="up_to_date" if again else "available", message=error.said
+            after: UpdateState = (
+                was if back_to is not None else "up_to_date" if again else "available"
             )
+            self.current = replace(self.current, state=after, message=error.said)
             agent.publish_state()
             await say(100, "agent.update.step.stopped")
             return
@@ -423,11 +484,15 @@ class Updater:
         previous = self.paths.wheels / wheel_name(self.installed)
         kept = previous if await asyncio.to_thread(previous.exists) else None
         await asyncio.to_thread(self._remember, progress=None, last_seen=False)
-        argv = await asyncio.to_thread(self.apply_command, wheel, kept, force=again)
+        argv = await asyncio.to_thread(
+            self.apply_command, wheel, kept, force=again, back=back_to is not None
+        )
         log.info("Installing Sunroom Screen %s; it starts again in a moment.", release)
         if not await self.spawn(argv):
             self.current = replace(
-                self.current, state="available", message=said("agent.update.couldnt_start")
+                self.current,
+                state=was if back_to is not None else "available",
+                message=said("agent.update.couldnt_start"),
             )
             agent.publish_state()
             await say(100, "agent.update.step.stopped")
@@ -451,7 +516,7 @@ class Updater:
             said_last = now
 
     def apply_command(
-        self, wheel: Path, previous: Path | None, *, force: bool = False
+        self, wheel: Path, previous: Path | None, *, force: bool = False, back: bool = False
     ) -> list[str]:
         """How the apply step starts: this package's own command, or on Windows a copy of
         apply.py, run by the Python this environment was made from (its own files are locked
@@ -461,6 +526,8 @@ class Updater:
             tail += ["--previous", str(previous)]
         if force:
             tail.append("--force")
+        if back:
+            tail.append("--back")
         if self.system != "win32":
             return [sys.executable, "-m", "sunroom_kiosk", "update", *tail]
         script = self.paths.state.parent / "apply.py"
@@ -531,7 +598,12 @@ class Updater:
     async def nightly(self, agent: Agent) -> None:
         await self.check_now()
         agent.publish_state()
-        if agent.update_check() == "nightly" and self.current.state == "available":
+        # A version the family went back from stays away, until the one after (Update Now can).
+        if (
+            agent.update_check() == "nightly"
+            and self.current.state == "available"
+            and self.current.latest != self._saved().get("went_back_from")
+        ):
             await self.install(agent)
 
 
@@ -558,6 +630,9 @@ class NoUpdates:
         agent.toast("agent.update.nothing_here")
 
     async def reinstall(self, agent: Agent) -> None:
+        agent.toast("agent.update.nothing_here")
+
+    async def go_back(self, agent: Agent) -> None:
         agent.toast("agent.update.nothing_here")
 
     def seen(self) -> None:
@@ -590,17 +665,18 @@ class FakeUpdater:
         self.away_s = away_s
         self.current = UpdateStatus(state="unknown", installed=version())
         self.result: dict[str, Any] | None = None
+        self.replaced: str | None = None
 
     def reset(self) -> None:
         self.current = UpdateStatus(state="unknown", installed=version())
         self.result = None
+        self.replaced = None
 
     def status(self, check: str) -> dict[str, Any]:
         result = None
         if self.result is not None:
             release = cast(str, self.result["version"])
-            key = "agent.update.reinstalled" if self.result["again"] else "agent.update.updated"
-            message = said(key, version=release)
+            message = said(cast(str, self.result["key"]), version=release)
             result = {
                 "version": release,
                 "ok": True,
@@ -609,7 +685,7 @@ class FakeUpdater:
                 "message_key": message.key,
                 "message_params": message.params,
             }
-        return {**self.current.out(check), "last_result": result}
+        return {**self.current.out(check), "last_result": result, "go_back_to": self.replaced}
 
     def seen(self) -> None:
         self.result = None
@@ -629,6 +705,9 @@ class FakeUpdater:
     async def reinstall(self, agent: Agent) -> None:
         await self._install(agent, again=True)
 
+    async def go_back(self, agent: Agent) -> None:
+        await self._install(agent, again=False, back=True)
+
     async def check_now(self) -> UpdateStatus:
         state: UpdateState = "available" if self.current.installed != self.latest else "up_to_date"
         self.current = replace(self.current, state=state, latest=self.latest, checked_at=now_iso())
@@ -637,8 +716,12 @@ class FakeUpdater:
     async def install(self, agent: Agent) -> None:
         await self._install(agent, again=False)
 
-    async def _install(self, agent: Agent, *, again: bool) -> None:
-        release = self.current.installed if again else self.latest
+    async def _install(self, agent: Agent, *, again: bool, back: bool = False) -> None:
+        installed = self.current.installed
+        release = installed if again else self.latest
+        key = "agent.update.reinstalled" if again else "agent.update.updated"
+        if back and self.replaced is not None:
+            release, key = self.replaced, "agent.update.went_back"
         self.current = replace(self.current, state="installing")
         agent.publish_state()
         steps = (
@@ -653,9 +736,16 @@ class FakeUpdater:
             agent.hub.publish("update.progress", progress_out(percent, step))
         await agent.go_away(self.away_s)  # the pretend restart
         self.current = UpdateStatus(
-            state="up_to_date", installed=release, latest=self.latest, checked_at=now_iso()
+            state="available" if back else "up_to_date",
+            installed=release,
+            latest=self.latest,
+            checked_at=now_iso(),
         )
-        self.result = {"version": release, "at": now_iso(), "again": again}
+        self.result = {"version": release, "at": now_iso(), "key": key}
+        if back:
+            self.replaced = None
+        elif not again:
+            self.replaced = installed
         agent.publish_state()
 
     async def run(self, agent: Agent) -> None:

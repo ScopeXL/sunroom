@@ -83,7 +83,7 @@ test.describe("a phone", () => {
     }
   });
 
-  test("About says a new version is out once a parent turns the check on", async ({
+  test("About says a new version is out, with the check on until a parent turns it off", async ({
     page,
     request,
   }) => {
@@ -101,10 +101,7 @@ test.describe("a phone", () => {
     await expect(page.getByRole("heading", { name: "Updates", exact: true })).toBeVisible();
     await expect(page.getByText("Weather by Open-Meteo.")).toBeVisible();
     await expect(page.getByText(/Not affiliated/)).toHaveCount(0);
-    const daily = page.getByRole("switch", { name: "Check for updates daily" });
-    await expect(daily).not.toBeChecked();
-    await expect(page.getByRole("button", { name: "Check Now" })).toBeHidden();
-    await daily.click();
+    const daily = page.getByRole("switch", { name: /^Tell me about new versions/ });
     await expect(daily).toBeChecked();
     await page.getByRole("button", { name: "Check Now" }).click();
     await expect(page.getByRole("status").filter({ hasText: "is available" })).toHaveText(
@@ -203,6 +200,29 @@ test.describe("a phone", () => {
 test.describe("the wall screen", () => {
   test.beforeEach(() => {
     test.skip(!test.info().project.name.startsWith("display"), "the wall screen");
+  });
+
+  test("hears of a new version in Needs Attention the moment Sunroom does", async ({
+    page,
+    request,
+  }) => {
+    await seed(request);
+    await pairWall(page);
+    await page.goto("/display");
+    await expect(page.getByRole("region", { name: "This Week" })).toBeVisible();
+    await hearsLive(page);
+    const attention = page.getByRole("banner").getByRole("button", { name: /^Needs attention/ });
+    await expect(attention).toHaveCount(0);
+    // The test server never asks GitHub: it makes up the next minor version when it's asked.
+    const checked = await page.request.post("/api/admin/update/check", { headers: CSRF });
+    expect(checked.ok()).toBe(true);
+    const { latest } = (await checked.json()) as { latest: string };
+    await expect(attention).toHaveAccessibleName("Needs attention: 1 thing", { timeout: 5_000 });
+    await attention.click();
+    const sheet = page.getByRole("dialog", { name: "Needs Attention" });
+    await expect(sheet).toContainText(`Sunroom ${latest} is out.`);
+    await sheet.getByRole("button", { name: "Open About" }).click();
+    await expect(page).toHaveURL(/\/settings\/about$/);
   });
 
   test("lays out its rail or bottom bar, the board and Today", async ({ page, request }) => {
@@ -428,7 +448,7 @@ test.describe("the wall screen", () => {
       data: { title: "Library day", start_date: "2026-10-08" },
     });
     expect(added.status()).toBe(201);
-    await expect(board.getByRole("button", { name: /^Library day/ })).toBeVisible({
+    await expect(board.getByRole("button", { name: /\bLibrary day/ })).toBeVisible({
       timeout: 3_000,
     });
   });
@@ -920,7 +940,7 @@ test.describe("the wall screen", () => {
 
     // Letters only (ADR 0035): 123 reaches the numbers. The keys at their size and 8 px apart.
     await expect(keyboard.getByRole("button", { name: "1", exact: true })).toHaveCount(0);
-    await expect(keyboard.getByRole("button", { name: "Numbers and symbols" })).toBeVisible();
+    await expect(keyboard.getByRole("button", { name: "123, numbers and symbols" })).toBeVisible();
     const q = await keyboard.getByRole("button", { name: /^q$/i }).boundingBox();
     const w = await keyboard.getByRole("button", { name: /^w$/i }).boundingBox();
     if (!q || !w) throw new Error("no keys");

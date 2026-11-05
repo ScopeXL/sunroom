@@ -121,6 +121,8 @@ describe("event router", () => {
     const handle = createEventHandler(client, { onSignedOut: vi.fn(), onRestarting });
     handle({ type: "server.restarting", reason: "restore" });
     expect(onRestarting).toHaveBeenCalledWith("restore");
+    handle({ type: "server.updating" });
+    expect(onRestarting).toHaveBeenCalledWith("update");
   });
 
   it("signs out on session.expired and refetches everything on resync", () => {

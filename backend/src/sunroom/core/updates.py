@@ -1,19 +1,21 @@
-"""The opt-in daily check for a newer Sunroom (PLAN §13.6).
+"""The daily check for a newer Sunroom (PLAN §13.6, ADR 0046).
 
-Off unless a parent turns on Settings → About → "Check for updates daily", and pinned off by
-``SUNROOM_UPDATE_CHECK=0``: one request a day to GitHub's list of the repository's tags tells
-GitHub the server's address, so nothing goes out until someone asks for it. Tags, not Releases:
-every release is a tag (the deploy skill pushes one), and none is published as a GitHub Release,
-so the releases API answered 404 (ADR 0032). The answer lives in memory (one process
-serves the API); after a restart the next hourly tick asks again. How to update is worded by
-``SUNROOM_INSTALL_KIND``: the Pi's script, Compose, Portainer, or the screen that runs Sunroom as
-a program (ADR 0038).
+On by default, so every install hears the day a version comes out: Settings → About → "Tell me about
+new versions" turns it off, and ``SUNROOM_UPDATE_CHECK=0`` keeps it off. One request a day to
+sunroom.day's ``version.json``, or to GitHub's latest Release when that doesn't answer, tells them
+the server's address (PRIVACY.md says so). The site writes that file when a Release is published,
+and the deploy skill publishes that last, so nothing here names a version whose image and files
+aren't out yet. The answer lives in memory (one process serves the API); after a restart the next
+hourly tick asks again. How to update is worded by
+``SUNROOM_INSTALL_KIND``: Compose, Portainer, a NAS's own app, a Pi, or the screen that runs Sunroom
+as a program (ADR 0038).
 """
 
 from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import cast
@@ -21,31 +23,38 @@ from typing import cast
 from sunroom.core.config import InstallKind
 from sunroom.core.http import GuardedHttp, OutboundError
 
-# A hundred is every tag for years; the highest version among them is the newest release.
-TAGS_URL = "https://api.github.com/repos/ScopeXL/sunroom/tags?per_page=100"
+# Written by the site's release bot: {"version": "1.0.0", "published": "…", "notes": "…"}.
+# SUNROOM_UPDATE_URL points at a self-hoster's own copy.
+VERSION_URL = "https://sunroom.day/version.json"
+RELEASE_URL = "https://api.github.com/repos/ScopeXL/sunroom/releases/latest"
 CHECK_EVERY = timedelta(hours=24)
 TICK_S = 3600
 _VERSION = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 
-HOW: dict[InstallKind, str] = {
-    InstallKind.PI: "On the Pi, run sudo /opt/sunroom/update.sh",
-    InstallKind.DOCKER: (
-        "In Sunroom's folder on the server, run docker compose pull, then docker compose up -d"
-    ),
-    InstallKind.PORTAINER: "In Portainer, pull Sunroom's newest image and redeploy its stack",
-    InstallKind.HA: "Update it in Home Assistant, under Settings, then Add-ons",
-    InstallKind.COMPUTER: (
-        "The screen that runs it installs updates overnight, or at once with Settings, then"
-        " This Screen, then Update Now"
-    ),
+
+# The sentence in lang/en.json that says how to update each kind of install (ADR 0046).
+HOW_KEYS: dict[InstallKind, str] = {
+    InstallKind.DOCKER: "api.update.how.docker",
+    InstallKind.PORTAINER: "api.update.how.portainer",
+    InstallKind.UNRAID: "api.update.how.unraid",
+    InstallKind.CASAOS: "api.update.how.casaos",
+    InstallKind.SYNOLOGY: "api.update.how.synology",
+    InstallKind.OTHER: "api.update.how.other",
+    InstallKind.PI: "api.update.how.pi",
+    InstallKind.HA: "api.update.how.ha",
+    InstallKind.COMPUTER: "api.update.how.computer",
 }
 
 
 @dataclass
 class UpdateCheck:
-    latest: str | None = None  # "0.6.1", the highest version among the tags
+    latest: str | None = None  # "0.6.1", the latest Release's version
+    published: datetime | None = None  # when that came out, if the answer said
     checked_at: datetime | None = None
     problem: str | None = None  # plain English, when the last check didn't get an answer
+    # Whether the updater companion answered when last asked (meta/updates.py).
+    updater_seen: bool = False
+    updater_looked_at: datetime | None = None
 
     def due(self, now: datetime) -> bool:
         return self.checked_at is None or now - self.checked_at >= CHECK_EVERY
@@ -77,48 +86,76 @@ def newer(candidate: str | None, current: str) -> bool:
     return theirs is not None and ours is not None and theirs > ours
 
 
-async def check(http: GuardedHttp, current: str, now: datetime, into: UpdateCheck) -> None:
-    """Ask GitHub for the latest version; never raises (a quiet line in About says why)."""
+async def check(
+    http: GuardedHttp,
+    current: str,
+    now: datetime,
+    into: UpdateCheck,
+    *,
+    url: str = VERSION_URL,
+) -> None:
+    """Ask for the latest version; never raises (a quiet line in About says why not)."""
     into.checked_at = now
+    found = await _ask(http, url, current, _from_site) or await _ask(
+        http, RELEASE_URL, current, _from_release
+    )
+    if found is None:
+        into.problem = "Sunroom couldn't find out its latest version. It will try again tomorrow."
+        return
+    into.latest, into.published = found
+    into.problem = None
+
+
+type Found = tuple[str, datetime | None]
+
+
+async def _ask(
+    http: GuardedHttp, url: str, current: str, read: Callable[[dict[str, object]], Found | None]
+) -> Found | None:
     try:
         answer = await http.get(
-            TAGS_URL,
+            url,
             headers={
-                "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
+                "Accept": "application/json",
                 "User-Agent": f"Sunroom/{current}",
             },
             max_bytes=256 * 1024,
         )
     except OutboundError:
-        into.problem = "GitHub didn't answer. Sunroom will try again tomorrow."
-        return
+        return None
     if not answer.ok:
-        into.problem = "GitHub couldn't find Sunroom's versions. It will try again tomorrow."
-        return
-    latest = _latest_of(answer.content)
-    if latest is None:
-        into.problem = "GitHub's answer wasn't one Sunroom could read. It will try again tomorrow."
-        return
-    into.latest = latest
-    into.problem = None
-
-
-def _latest_of(content: bytes) -> str | None:
-    """The highest version among the repository's tags ([{"name": "v0.9.1", …}, …]), compared
-    as numbers (0.10.0 is above 0.9.1); a tag that isn't a version is skipped."""
+        return None
     try:
-        body: object = json.loads(content)
+        body: object = json.loads(answer.content)
     except ValueError:
         return None
-    if not isinstance(body, list):
+    return read(cast("dict[str, object]", body)) if isinstance(body, dict) else None
+
+
+def _from_site(body: dict[str, object]) -> Found | None:
+    """version.json: {"version": "1.0.0", "published": "2027-01-06T12:00:00Z", …}."""
+    return _found(body.get("version"), body.get("published"))
+
+
+def _from_release(body: dict[str, object]) -> Found | None:
+    """A Release: {"tag_name": "v0.9.1", "prerelease": false, "published_at": "…", …}. GitHub
+    answers with neither a draft nor a pre-release here; one that came anyway wouldn't count."""
+    if body.get("draft") or body.get("prerelease"):
         return None
-    versions: list[tuple[int, int, int]] = []
-    for tag in cast("list[object]", body):
-        name = cast("dict[str, object]", tag).get("name") if isinstance(tag, dict) else None
-        version = parse(name) if isinstance(name, str) else None
-        if version is not None:
-            versions.append(version)
-    if not versions:
+    return _found(body.get("tag_name"), body.get("published_at"))
+
+
+def _found(name: object, published: object) -> Found | None:
+    version = parse(name) if isinstance(name, str) else None
+    if version is None:
         return None
-    return ".".join(str(part) for part in max(versions))
+    return ".".join(str(part) for part in version), _when(published)
+
+
+def _when(value: object) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None

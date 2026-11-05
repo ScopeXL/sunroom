@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronRight, Lock, MonitorCog } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { api } from "../../api/client";
 import { qk } from "../../api/keys";
@@ -90,6 +90,10 @@ function Flag({ on }: { on: boolean }) {
 const flagName = (title: Key, on: boolean) =>
   on ? { "aria-label": t("settings.page.flagged.aria", { title: t(title) }) } : {};
 
+/** This Screen's row shows a hint under its title, so the hint is in its name too (WCAG 2.5.3). */
+const deviceRowName = (title: Key) =>
+  t("settings.this_screen.aria", { title: t(title), hint: t("settings.this_screen.hint") });
+
 /** Settings on a phone: the list of pages (UX §5), with the Sunroom Discord at the title's end. */
 export function SettingsIndex() {
   const t = useT();
@@ -144,7 +148,6 @@ export function SettingsPageScreen({ page }: { page?: string }) {
 function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
   const t = useT();
   const flagged = useFlagged();
-  const hintId = useId();
   const device = pages.filter((page) => page.key === THIS_SCREEN);
   const household = pages.filter((page) => page.key !== THIS_SCREEN);
   const queryClient = useQueryClient();
@@ -197,10 +200,9 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
                     params={{ page: page.key }}
                     aria-label={
                       flagged.has(page.key)
-                        ? t("settings.page.flagged.aria", { title: t(page.title) })
-                        : t(page.title)
+                        ? t("settings.page.flagged.aria", { title: deviceRowName(page.title) })
+                        : deviceRowName(page.title)
                     }
-                    aria-describedby={hintId}
                     aria-current={page.key === current.key ? "page" : undefined}
                     className="press-row flex min-h-20 items-center gap-4 rounded-button-d border-2 border-line px-4 py-2 text-ink-soft aria-[current=page]:border-ink aria-[current=page]:bg-surface aria-[current=page]:text-ink"
                   >
@@ -209,8 +211,8 @@ function DisplaySettings({ current, pages }: { current: Page; pages: Page[] }) {
                       <span className="flex items-center text-d-body font-semibold whitespace-nowrap">
                         {t(page.title)}
                         <Flag on={flagged.has(page.key)} />
-                      </span>
-                      <span id={hintId} className="text-d-caption text-ink-soft">
+                      </span>{" "}
+                      <span className="text-d-caption text-ink-soft">
                         {t("settings.this_screen.hint")}
                       </span>
                     </span>

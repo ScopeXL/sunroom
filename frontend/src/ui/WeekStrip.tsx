@@ -2,14 +2,23 @@ import type { KeyboardEvent } from "react";
 
 import {
   dayNumber,
+  longMonth,
   orderedWeekdays,
-  shortDate,
   shortWeekday,
   weekdayLong,
   weekdayShort,
 } from "../lib/dates";
-import { useT } from "../lib/lang";
+import { t, useT } from "../lib/lang";
 import { useShell } from "./shell";
+
+/** A day cell's name, in the order it shows: "Thu 8, October" (voice control, WCAG 2.5.3). */
+export function cellDate(day: string): string {
+  return t("ui.week.day.aria", {
+    weekday: shortWeekday(day),
+    day: dayNumber(day),
+    month: longMonth(day),
+  });
+}
 
 /** Left and right arrows walk a row of cells, for laptops (a finger just taps). */
 function walkCells(event: KeyboardEvent<HTMLDivElement>): void {
@@ -28,7 +37,7 @@ const CELL =
  * One week of days to pick from, in the order it's given (the household's, from `weekOf`): the
  * weekday's name over the day's number, today's number on a sun disc. Seven equal cells across
  * the panel, so the row never wraps or scrolls. Each cell is named like a date in a sentence
- * ("Thu, Oct 8", with ", today" where it is).
+ * ("Thu 8, October", with ", today" where it is).
  */
 export function WeekStrip({
   label,
@@ -63,7 +72,7 @@ export function WeekStrip({
           type="button"
           aria-pressed={day === value}
           aria-label={
-            day === today ? t("ui.week.today.aria", { day: shortDate(day) }) : shortDate(day)
+            day === today ? t("ui.week.today.aria", { day: cellDate(day) }) : cellDate(day)
           }
           disabled={min !== undefined && day < min}
           onClick={() => {
@@ -75,7 +84,7 @@ export function WeekStrip({
               : "min-h-14 rounded-button text-caption"
           }`}
         >
-          <span>{shortWeekday(day)}</span>
+          <span>{shortWeekday(day)}</span>{" "}
           <span
             className={`flex items-center justify-center rounded-full font-bold ${
               display ? "size-9 text-d-body" : "size-7 text-body"
@@ -91,7 +100,7 @@ export function WeekStrip({
 
 /**
  * Which weekdays (a custom repeat's, a routine's): the seven days in the household's order,
- * Sunday or Monday first, any number chosen. Each cell is named by its full name ("Monday").
+ * Sunday or Monday first, any number chosen. Each cell says what it shows, then its full name ("Mon, Monday").
  * With `minOne` the last chosen day can't be taken off: a weekly rule needs one.
  */
 export function WeekdayPicker({
@@ -125,7 +134,10 @@ export function WeekdayPicker({
             key={weekday}
             type="button"
             aria-pressed={on}
-            aria-label={weekdayLong(weekday)}
+            aria-label={t("ui.week.weekday.aria", {
+              short: weekdayShort(weekday),
+              long: weekdayLong(weekday),
+            })}
             onClick={() => {
               if (on && minOne && value.length <= 1) return;
               const next = on ? value.filter((day) => day !== weekday) : [...value, weekday];

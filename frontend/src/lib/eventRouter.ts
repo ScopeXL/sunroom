@@ -116,6 +116,10 @@ export function createEventHandler(queryClient: QueryClient, handlers: EventHand
         invalidate(["calendar-sync"]);
         invalidate(qk.problems());
         break;
+      case "update.available":
+        invalidate(qk.update());
+        invalidate(qk.problems());
+        break;
       case "lists.changed":
         invalidate(["lists"]);
         break;
@@ -144,6 +148,9 @@ export function createEventHandler(queryClient: QueryClient, handlers: EventHand
         break;
       case "session.expired":
         handlers.onSignedOut();
+        break;
+      case "server.updating":
+        handlers.onRestarting?.("update");
         break;
       case "server.restarting":
         handlers.onRestarting?.(typeof event.reason === "string" ? event.reason : "restart");

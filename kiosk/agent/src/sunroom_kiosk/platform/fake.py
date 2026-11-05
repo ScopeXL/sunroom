@@ -39,10 +39,14 @@ def _networks() -> list[WifiNetwork]:
 
 
 class FakePlatform(Platform):
-    def __init__(self, kind: FakeKind = "pi", local_url: str = "http://localhost:8080") -> None:
+    def __init__(self, kind: FakeKind = "pi", local_url: str = "http://localhost:7867") -> None:
         super().__init__()
         self.kind: FakeKind = kind
         self.calls: list[str] = []  # what it was asked to do, in order
+        # An all-in-one Pi's own Sunroom: whether an update works, how it ended, what's pinned.
+        self.sunroom_updates = True
+        self.sunroom_outcome: list[str] = []
+        self.pinned_to: str | None = None
         self.networks = _networks()
         self.wired = False
         self.rotation = 0
@@ -160,7 +164,13 @@ class FakePlatform(Platform):
 
     async def update_sunroom(self) -> bool:
         self.calls.append("update_sunroom")
-        return True
+        return self.sunroom_updates
+
+    def sunroom_update_outcome(self) -> list[str]:
+        return self.sunroom_outcome
+
+    def sunroom_pinned(self) -> str | None:
+        return self.pinned_to
 
     async def uninstall(self, *, sunroom: bool, port: int) -> None:
         self.calls.append("uninstall and sunroom" if sunroom else "uninstall")

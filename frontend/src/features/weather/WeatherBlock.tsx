@@ -61,6 +61,16 @@ export function WeatherBlock({ place }: { place: RailPlace }) {
     .filter(Boolean)
     .join(". ");
   const label = t("weather.pill.aria", { facts });
+  // A phone shows the day's high and low too, so its name has them just as they show (WCAG 2.5.3).
+  const dayLine = [day ? `${degrees(day.high)} / ${degrees(day.low)}` : null, stale]
+    .filter(Boolean)
+    .join(" · ");
+  const phoneLabel = day
+    ? t("weather.pill.phone.aria", {
+        shown: `${degrees(data.current.temperature)} ${dayLine}`,
+        sky: t(words),
+      })
+    : label;
   const show = () => {
     setOpen(true);
   };
@@ -102,7 +112,7 @@ export function WeatherBlock({ place }: { place: RailPlace }) {
     <>
       <button
         type="button"
-        aria-label={label}
+        aria-label={phoneLabel}
         onClick={show}
         className="press flex min-h-11 items-center gap-3 self-start rounded-chip px-1 text-left"
       >
@@ -111,12 +121,10 @@ export function WeatherBlock({ place }: { place: RailPlace }) {
           <span className="text-title font-bold whitespace-nowrap">
             {degrees(data.current.temperature)}
           </span>
-        </span>
-        {day || stale ? (
+        </span>{" "}
+        {dayLine ? (
           <span className="text-secondary font-semibold whitespace-nowrap text-ink-soft">
-            {day ? `${degrees(day.high)} / ${degrees(day.low)}` : null}
-            {day && stale ? " · " : null}
-            {stale}
+            {dayLine}
           </span>
         ) : null}
       </button>

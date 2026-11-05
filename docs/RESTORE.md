@@ -148,7 +148,9 @@ deleted.
 ## 5. Start the right version
 
 Start an image **at or above** the version `restore` printed: in Sunroom's folder, set that
-version in `image:` if you pin one, then run `docker compose up -d`. Sunroom runs any newer
+version in `image:` if you pin one, then run `docker compose up -d`. To stay on an older version
+with the updater in your compose file, pin it in full in `image:` (`scopexl/sunroom:1.0.0`): the
+updater never moves a tag that doesn't move. Sunroom runs any newer
 migrations itself, after taking its own pre-upgrade copy. An image older than the backup's
 database refuses to start (exit 65) instead of guessing.
 

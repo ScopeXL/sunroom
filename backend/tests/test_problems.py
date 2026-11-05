@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable
 from datetime import timedelta
+from pathlib import Path
 from typing import Any, NamedTuple
 
 import httpx
@@ -15,6 +16,7 @@ from sunroom.app import create_app
 from sunroom.core.clock import FakeClock
 from sunroom.core.config import Settings
 from sunroom.core.lang import english, t_en
+from sunroom.core.version import build_info
 from sunroom.plugins.base import PluginStatus, Problem
 from sunroom.plugins.context import PluginContext
 from sunroom.plugins.registry import REGISTRY
@@ -24,6 +26,7 @@ from tests.support import (
     BASE_URL,
     CSRF,
     PASSWORD,
+    make_settings,
     run_setup,
     set_pin,
     startup_backup_done,
@@ -53,6 +56,12 @@ class Usage(NamedTuple):
 
 def plenty(_path: Any) -> Usage:
     return Usage(100 * 1024**3, 10 * 1024**3, 90 * 1024**3)
+
+
+@pytest.fixture
+def settings(data_dir: Path) -> Settings:
+    """The update check on, as a household has it (tests elsewhere keep it off)."""
+    return make_settings(data_dir, sunroom_update_check=None)
 
 
 @pytest.fixture(autouse=True)
@@ -100,6 +109,48 @@ async def test_a_backup_a_week_old_and_one_that_failed(
     assert paired.status_code == 200, paired.text
     [seen] = await problems(other)
     assert (seen["title"], seen["detail"]) == ("The last backup didn't complete.", None)
+
+
+async def test_a_new_version_is_for_a_parent_to_see(
+    app: FastAPI, parent: httpx.AsyncClient, other: httpx.AsyncClient
+) -> None:
+    """ADR 0046: the family hears of a new version here, and it goes once it's running."""
+    found = state_of(app).updates
+    found.latest = "99.0.0"
+    [update] = await problems(parent)
+    assert (update["id"], update["title"], update["page"], update["source"]) == (
+        "update:available",
+        "Sunroom 99.0.0 is out.",
+        "about",
+        "core",
+    )
+    assert (update["key"], update["params"]) == (
+        "api.problems.update_available",
+        {"version": "99.0.0"},
+    )
+    assert update["detail"].startswith("In Sunroom's folder on the server")
+    assert update["detail_key"] == "api.update.how.docker"
+    # A wall screen sees the sentence, never how to update (with a PIN set, it isn't a parent).
+    await set_pin(parent)
+    paired = await other.post(
+        "/api/auth/kiosk/pair-with-password", json={"password": PASSWORD}, headers=CSRF
+    )
+    assert paired.status_code == 200, paired.text
+    [seen] = await problems(other)
+    assert (seen["title"], seen["detail"], seen["detail_key"]) == (
+        "Sunroom 99.0.0 is out.",
+        None,
+        None,
+    )
+    # A household that turned the check off hears nothing.
+    off = await parent.patch("/api/settings", json={"update_check": False}, headers=CSRF)
+    assert off.status_code == 200, off.text
+    assert await problems(parent) == []
+    on = await parent.patch("/api/settings", json={"update_check": True}, headers=CSRF)
+    assert on.status_code == 200, on.text
+    # Gone once this is the newest.
+    found.latest = build_info().version
+    assert await problems(parent) == []
 
 
 async def test_a_server_short_of_room(

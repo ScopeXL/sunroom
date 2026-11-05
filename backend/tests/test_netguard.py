@@ -49,7 +49,7 @@ async def test_public_addresses_pass() -> None:
     "url",
     [
         "http://router.lan/admin",
-        "http://127.0.0.1:8080/api/export",
+        "http://127.0.0.1:7867/api/export",
         "http://[::1]/",
         "http://169.254.169.254/latest/meta-data",
         "https://sneaky.example.com/",

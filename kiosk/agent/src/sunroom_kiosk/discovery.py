@@ -5,7 +5,7 @@ Two ways, side by side, for about five seconds:
 1. **DNS-SD**: Sunroom servers that announce ``_sunroom._tcp`` (an all-in-one Pi does, through
    the avahi file ``kiosk/install.sh`` writes; a NAS can, with the four lines in KIOSK.md).
 2. **A sweep of this screen's own networks**: every address in each IPv4 subnet (at most 1024 of
-   them), ``GET /api/discover`` on ports 8080 (Sunroom's own), 80 and 443, with 300 ms to
+   them), ``GET /api/discover`` on ports 7867 (Sunroom's own), 80 and 443, with 300 ms to
    connect and 64 at a time. That finds the default Compose setup; a proxy that routes by name
    isn't found, and its household types the address instead.
 
@@ -31,7 +31,7 @@ from sunroom_kiosk.words import SaidError
 log = logs.get("discovery")
 
 SERVICE = "_sunroom._tcp.local."
-PORTS: tuple[tuple[int, str], ...] = ((8080, "http"), (80, "http"), (443, "https"))
+PORTS: tuple[tuple[int, str], ...] = ((7867, "http"), (80, "http"), (443, "https"))
 CONNECT_S = 0.3
 READ_S = 3.0
 IN_FLIGHT = 64
@@ -190,7 +190,7 @@ def interface_addresses() -> list[tuple[str, int]]:
 
 
 def targets(networks: Sequence[ipaddress.IPv4Network]) -> list[str]:
-    """Each host in the networks on each port, as base addresses: ``http://192.168.1.7:8080``."""
+    """Each host in the networks on each port, as base addresses: ``http://192.168.1.7:7867``."""
     bases: list[str] = []
     for network in networks:
         hosts = list(network.hosts()) if network.prefixlen < 31 else list(network)
@@ -370,7 +370,7 @@ async def _announced_by_nobody(seconds: float) -> list[str]:
 # ``--fake``'s made-up older Sunroom: TEST-NET-2, an address no network uses, so nothing real is
 # ever asked about it.
 OLDER = Found(
-    url="http://198.51.100.21:8080",
+    url="http://198.51.100.21:7867",
     id=None,
     name=None,
     version="0.11.0",

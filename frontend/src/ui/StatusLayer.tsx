@@ -1,10 +1,11 @@
-import { WifiOff } from "lucide-react";
+import { Download, WifiOff } from "lucide-react";
 import { useEffect } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 import { connection } from "../lib/connection";
 import { formatTime } from "../lib/dates";
 import { useT } from "../lib/lang";
+import { restarting } from "../lib/restart";
 import { useStore } from "../lib/store";
 
 const UPDATE_CHECK_MS = 60 * 60 * 1000;
@@ -16,11 +17,17 @@ const UPDATE_CHECK_MS = 60 * 60 * 1000;
 export function OfflinePill({ display = false }: { display?: boolean }) {
   const t = useT();
   const { showOffline, lastReachableAt } = useStore(connection);
-  if (!showOffline) return <div role="status" aria-live="polite" className="sr-only" />;
-  const text =
-    display && lastReachableAt
+  // Away because it's updating: says why, before and while it can't be reached (ADR 0046).
+  const updating = useStore(restarting) === "update";
+  if (!showOffline && !updating) {
+    return <div role="status" aria-live="polite" className="sr-only" />;
+  }
+  const text = updating
+    ? t("ui.updating.pill")
+    : display && lastReachableAt
       ? t("ui.offline.unreachable", { time: formatTime(new Date(lastReachableAt)) })
       : t("ui.offline.phone");
+  const Icon = updating ? Download : WifiOff;
   return (
     <div
       role="status"
@@ -32,7 +39,7 @@ export function OfflinePill({ display = false }: { display?: boolean }) {
           display ? "px-5 py-3 text-d-secondary" : "px-4 py-2 text-secondary"
         }`}
       >
-        <WifiOff aria-hidden="true" size={display ? 24 : 18} />
+        <Icon aria-hidden="true" size={display ? 24 : 18} />
         {text}
       </span>
     </div>

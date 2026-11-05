@@ -20,12 +20,11 @@ describe("a row you tap to open what it names", () => {
         />
       </ShellContext.Provider>,
     );
-    const row = screen.getByRole("button", { name: "Edit Mia" });
+    // What a tap does, then what else it shows: voice control goes by what's on the screen.
+    const row = screen.getByRole("button", { name: "Edit Mia, Child · Pink, 2 phones" });
     expect(row.textContent).toContain("Mia");
     expect(row.textContent).toContain("2 phones");
-    // The line under the title is read after the name.
-    const described = row.getAttribute("aria-describedby") ?? "";
-    expect(document.getElementById(described)?.textContent).toBe("Child · Pink");
+    expect(row.hasAttribute("aria-describedby")).toBe(false);
     expect(row.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
     // 64 px on the wall, whatever the text size.
     expect(row.className).toContain("min-h-tap-primary");
@@ -37,6 +36,5 @@ describe("a row you tap to open what it names", () => {
     render(<ListRow label="Edit Home" title="Home" />);
     const row = screen.getByRole("button", { name: "Edit Home" });
     expect(row.className).toContain("min-h-14");
-    expect(row.hasAttribute("aria-describedby")).toBe(false);
   });
 });

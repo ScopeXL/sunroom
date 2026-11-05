@@ -60,6 +60,8 @@ class ScreenSunroomOut(BaseModel):
     found: ScreenFoundHow
     reachable: bool  # its /api/health answered the last time the agent asked
     version: str | None = None  # what the Sunroom said it runs, when it said
+    # It's updating, or was within the last five minutes: why it's away, for Can't Reach (ADR 0046).
+    updating: bool = False
     # The household's language, when the Sunroom said (GET /api/discover): the screen's own
     # pages speak it (ADR 0043).
     language: str | None = None
@@ -96,7 +98,13 @@ class ScreenUpdateOut(BaseModel):
     # An all-in-one Pi: the Sunroom running on this screen is older than the newest release, and
     # this screen brings it along with its own update (ADR 0044).
     sunroom_outdated: bool = False
+    # The same Pi: Update Sunroom on This Screen, for a pull that failed overnight (ADR 0046), and
+    # the version the family pinned it to, which then stays.
+    sunroom_can_update: bool = False
+    sunroom_pinned: str | None = None
     last_result: ScreenUpdateResultOut | None = None
+    # Go Back…'s version: the one an update replaced, for a week after it (ADR 0046).
+    go_back_to: str | None = None
     # The installer's one line, when root's part can't be finished from here (ADR 0044): a
     # Linux or Pi screen whose root helper is from before 0.18.0.
     needs_terminal: str | None = None

@@ -25,7 +25,7 @@ import pytest
 from sunroom_kiosk import cli
 from sunroom_kiosk import screen as screen_helper
 
-URL = "http://192.168.1.20:8080"
+URL = "http://192.168.1.20:7867"
 
 Answer = dict[str, Any] | bytes | BaseException
 
@@ -204,7 +204,7 @@ def test_missing_or_odd_settings_fall_back_to_the_defaults() -> None:
     )
     defaults = screen_helper.Settings()
     assert screen_helper.settings_from(screen_helper.parse_config(odd)) == defaults
-    assert defaults.url == "http://localhost:8080"
+    assert defaults.url == "http://localhost:7867"
     assert (defaults.session, defaults.brightness, defaults.helper) == ("wayland", "auto", True)
 
 
@@ -279,8 +279,8 @@ def test_the_dimmer_is_the_screen_when_the_helper_sets_the_brightness(tmp_path: 
 def test_retargeting_follows_a_new_address_with_no_etag(tmp_path: Path) -> None:
     thread = screen_helper.ScreenThread(screen_helper.settings_from({}), root=tmp_path)
     thread.helper.etag = "e9"
-    thread.retarget("http://192.168.1.21:8080/")
-    assert thread.helper.settings.url == "http://192.168.1.21:8080"
+    thread.retarget("http://192.168.1.21:7867/")
+    assert thread.helper.settings.url == "http://192.168.1.21:7867"
     assert thread.helper.etag is None
 
 

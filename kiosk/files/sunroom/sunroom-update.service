@@ -1,0 +1,10 @@
+[Unit]
+Description=Update Sunroom to the newest version
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/sunroom/update.sh
+# 3: a new version didn't start, and update.sh put the one before back.
+SuccessExitStatus=3

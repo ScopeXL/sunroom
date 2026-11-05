@@ -14,16 +14,20 @@
 # on Linux the system's Chromium, or Google Chrome where that's a snap (Ubuntu); on a Mac,
 # Google Chrome.
 #
-#   curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash -s -- --with-sunroom
+#   curl -fsSL https://sunroom.day/install.sh | bash
+#   curl -fsSL https://sunroom.day/install.sh | bash -s -- --with-sunroom
+#
+# That address is the newest Release's copy of this file; so is its fallback, should the site be
+# away: https://github.com/ScopeXL/sunroom/releases/latest/download/install.sh (ADR 0046).
 #
 # The screen is Sunroom Screen, a program installed with uv from this version's GitHub
 # Release (its wheel checked against the Release's SHA256SUMS first), which runs the browser,
 # the screen's sleep and brightness and its own pages (docs/M7.md).
 #
 # Run it as your normal user, not root; it uses sudo where it must. Running it again is
-# safe: packages and Docker are installed only when missing, the files it owns are
-# rewritten with the same content, and its edits to shared files are recorded
+# safe, with no option at all: what the wall chose or an earlier run was told stays unless an
+# option says otherwise, packages and Docker are installed only when missing, the files it owns
+# are rewritten with the same content, and its edits to shared files are recorded
 # (~/.local/state/sunroom-kiosk/install-state) so kiosk/uninstall.sh can take them back.
 # Sunroom Screen's own start-up entries (its service, what the desktop starts at sign-in and
 # labwc's window rule, or a Mac's LaunchAgent, and the uninstaller's copy) are Sunroom Screen's
@@ -32,8 +36,8 @@
 # ~/.local/state/sunroom-kiosk/install.log.
 #
 # The rest of the kiosk/ folder (files/, labwc-rule.py, update.sh, uninstall.sh) is taken from
-# next to this script when present, otherwise downloaded from GitHub at this installer's own
-# release tag, so the files and Sunroom Screen always come from one release.
+# next to this script when present, otherwise downloaded from this installer's own GitHub Release
+# and checked against its SHA256SUMS, so the files and Sunroom Screen always come from one release.
 #
 # bash 3.2 (macOS's own) must run it: no associative arrays, no ${var,,}, and an array that may
 # be empty is expanded as ${a[@]+"${a[@]}"}.
@@ -48,13 +52,16 @@ KIOSK_VERSION="0.18.1" # Sunroom's VERSION (`just bump` sets it), written into e
 SUNROOM_REPO="ScopeXL/sunroom"
 SUNROOM_IMAGE="scopexl/sunroom"
 UV_VERSION="0.12.23" # the uv installer it fetches when uv is missing (astral.sh/uv/<version>)
+# That installer's sha256, checked before it runs. Change the two together, with install.ps1's: it's
+# also the sum of uv-installer.sh in uv's Release of that version.
+UV_INSTALLER_SHA256="b8e6c43099ee9f9a550984d3ad56948457c689e7a99c090b35377234ac241491"
 # Google Chrome, when a computer has no browser the screen can use (Google's own downloads).
 CHROME_LINUX_BASE="https://dl.google.com/linux/direct"
 CHROME_MAC_DMG="https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg"
 # Google's Developer ID: the Mac's copy of Chrome must be signed by it before it's installed.
 CHROME_MAC_REQUIREMENT='anchor apple generic and certificate leaf[subject.OU] = "EQHXZ8M8AV"'
 # Typed in a PowerShell window, never wrapped in `powershell -c`, which Defender stops (ADR 0041).
-WINDOWS_COMMAND="irm https://raw.githubusercontent.com/$SUNROOM_REPO/main/kiosk/install.ps1 | iex"
+WINDOWS_COMMAND="irm https://sunroom.day/install.ps1 | iex"
 
 SCRIPT_PATH="${BASH_SOURCE[0]:-}" # empty when the script is piped into bash
 
@@ -90,17 +97,22 @@ MODE="display" # display | all | server
 WANT_DISPLAY_ONLY=0
 WANT_WITH_SUNROOM=0
 WANT_SERVER_ONLY=0
+NO_AUTO_UPDATE=0
+AUTO_UPDATE_GIVEN=0
 KEPT_MODE=0 # a Pi that runs Sunroom from an earlier install keeps it (no option given)
 URL=""
 VERSION=""
-PORT=8080
+PORT=7867
 PORT_GIVEN=0
 OUTPUT=""
 OUTPUT_GIVEN=0
 ROTATE=0
+ROTATE_GIVEN=0
 BRIGHTNESS="auto"
+BRIGHTNESS_GIVEN=0
 FORCE_HDMI=""
 SCREEN_HELPER="yes"
+SCREEN_HELPER_GIVEN=0
 SCREEN_OPTIONS_GIVEN=0
 NO_REBOOT=0
 FORCE_X11=0
@@ -264,19 +276,22 @@ What to set up (with no option: the screen, which finds Sunroom on your network
 itself, or asks for its address on the screen):
   --url URL                 The address of your Sunroom, so the screen doesn't look for it:
                             the one you open on your other devices, for example
-                            http://192.168.1.20:8080 or https://calendar.example.com
+                            http://192.168.1.20:7867 or https://calendar.example.com
   --with-sunroom            A Pi only: Sunroom on this Pi too, shown on its screen
-  --server-only             A Pi only: Sunroom alone, no screen (Raspberry Pi OS Lite)
+  --server-only             A Pi only: Sunroom alone, no screen (Raspberry Pi OS Lite); it
+                            updates itself every morning
+  --no-auto-update          With --server-only: no morning update (--auto-update brings it back)
   --display-only            Only the screen, also on a Pi that runs Sunroom (a Pi
                             set up with --with-sunroom or --server-only keeps it when the
                             installer runs again with no option)
 
-Options:
+Options (running this again keeps what the screen has for any you leave out):
   --version X.Y.Z           With Sunroom on this Pi: run this version instead of the newest
                             (the screen's own software is always this installer's)
-  --port N                  With Sunroom on this Pi: the port your devices use (default 8080)
+  --port N                  With Sunroom on this Pi: the port your devices use (default 7867;
+                            running this again keeps the one it has)
   --output NAME             The screen's connector, for example HDMI-A-1
-                            (default: the one with a screen plugged in)
+                            (default: the one it has, or the one with a screen plugged in)
   --rotate 0|90|180|270     Turn the picture for a screen mounted on its side
                             (90 = left, 180 = upside down, 270 = right)
   --force-hdmi WIDTHxHEIGHT Always drive the screen at this size, even when it is off
@@ -288,7 +303,8 @@ Options:
                             none to leave it to the page; auto (the default) picks
   --no-screen-helper        Never switch the screen itself off or change its brightness;
                             the page goes black or dim instead (for monitors whose touch
-                            stops working while the screen is off)
+                            stops working while the screen is off); --screen-helper brings
+                            it back
   --x11                     Use the older X11 desktop instead of labwc (Wayland)
   --no-reboot               Don't offer to restart the Pi at the end
   --dry-run                 Say what it would do on this computer, and change nothing
@@ -302,8 +318,8 @@ Options:
   --help                    Show this help
 
 Examples:
-  curl -fsSL https://raw.githubusercontent.com/$SUNROOM_REPO/main/kiosk/install.sh | bash
-  curl -fsSL https://raw.githubusercontent.com/$SUNROOM_REPO/main/kiosk/install.sh | bash -s -- --with-sunroom
+  curl -fsSL https://sunroom.day/install.sh | bash
+  curl -fsSL https://sunroom.day/install.sh | bash -s -- --with-sunroom
   bash kiosk/install.sh --url https://calendar.example.com --rotate 90
 EOF
 }
@@ -318,9 +334,9 @@ need_value() {
 
 example_for() {
 	case $1 in
-	--url) printf 'http://192.168.1.20:8080' ;;
+	--url) printf 'http://192.168.1.20:7867' ;;
 	--version) printf '0.1.0' ;;
-	--port) printf '8081' ;;
+	--port) printf '7868' ;;
 	--output) printf 'HDMI-A-1' ;;
 	--rotate) printf '90' ;;
 	--brightness) printf 'auto' ;;
@@ -337,6 +353,14 @@ parse_args() {
 		--display-only) WANT_DISPLAY_ONLY=1 ;;
 		--with-sunroom) WANT_WITH_SUNROOM=1 ;;
 		--server-only) WANT_SERVER_ONLY=1 ;;
+		--no-auto-update)
+			NO_AUTO_UPDATE=1
+			AUTO_UPDATE_GIVEN=1
+			;;
+		--auto-update)
+			NO_AUTO_UPDATE=0
+			AUTO_UPDATE_GIVEN=1
+			;;
 		--url)
 			need_value "$@"
 			URL=$2
@@ -374,21 +398,25 @@ parse_args() {
 		--rotate)
 			need_value "$@"
 			ROTATE=$2
+			ROTATE_GIVEN=1
 			SCREEN_OPTIONS_GIVEN=1
 			shift
 			;;
 		--rotate=*)
 			ROTATE=${1#*=}
+			ROTATE_GIVEN=1
 			SCREEN_OPTIONS_GIVEN=1
 			;;
 		--brightness)
 			need_value "$@"
 			BRIGHTNESS=$2
+			BRIGHTNESS_GIVEN=1
 			SCREEN_OPTIONS_GIVEN=1
 			shift
 			;;
 		--brightness=*)
 			BRIGHTNESS=${1#*=}
+			BRIGHTNESS_GIVEN=1
 			SCREEN_OPTIONS_GIVEN=1
 			;;
 		--force-hdmi)
@@ -403,6 +431,12 @@ parse_args() {
 			;;
 		--no-screen-helper)
 			SCREEN_HELPER="no"
+			SCREEN_HELPER_GIVEN=1
+			SCREEN_OPTIONS_GIVEN=1
+			;;
+		--screen-helper)
+			SCREEN_HELPER="yes"
+			SCREEN_HELPER_GIVEN=1
 			SCREEN_OPTIONS_GIVEN=1
 			;;
 		--no-reboot) NO_REBOOT=1 ;;
@@ -487,7 +521,7 @@ validate_args() {
 		URL=$(lower "$URL")
 		if [[ ! $URL =~ ^https?://[a-z0-9.-]+(:[0-9]{1,5})?$ ]]; then
 			usage_error "\"$URL\" doesn't look like the address of Sunroom." \
-				"Use the address you open on your other devices, for example http://192.168.1.20:8080 or https://calendar.example.com"
+				"Use the address you open on your other devices, for example http://192.168.1.20:7867 or https://calendar.example.com"
 		fi
 	fi
 	if [[ -n $VERSION ]]; then
@@ -698,6 +732,9 @@ load_previous_state() {
 	CMDLINE_KEYS=${STATE_CMDLINE_KEYS:-}
 	BACKLIGHT_RULE_WRITTEN=${STATE_BACKLIGHT_RULE:-}
 	I2C_MODULES_WRITTEN=${STATE_I2C_MODULES:-}
+	if ((!AUTO_UPDATE_GIVEN)) && [[ ${STATE_NO_AUTO_UPDATE:-0} == 1 ]]; then
+		NO_AUTO_UPDATE=1
+	fi
 }
 
 # The install-state, which kiosk/uninstall.sh reads to put things back and Sunroom Screen's setup
@@ -718,6 +755,7 @@ save_state() {
 		printf 'STATE_CMDLINE_KEYS=%q\n' "$CMDLINE_KEYS"
 		printf 'STATE_BACKLIGHT_RULE=%q\n' "$BACKLIGHT_RULE_WRITTEN"
 		printf 'STATE_I2C_MODULES=%q\n' "$I2C_MODULES_WRITTEN"
+		printf 'STATE_NO_AUTO_UPDATE=%q\n' "$NO_AUTO_UPDATE"
 	} >"$ours"
 	{
 		printf '%s\n' "# What Sunroom's setup changed outside its own files, read by kiosk/uninstall.sh to put" \
@@ -956,6 +994,15 @@ detect_session() {
 	esac
 }
 
+# Whether this connector has a screen plugged in right now.
+output_connected() {
+	local status
+	for status in /sys/class/drm/card*-"$1"/status; do
+		[[ -r $status && $(<"$status") == connected ]] && return 0
+	done
+	return 1
+}
+
 # The connector with a screen plugged in, by its kernel name (HDMI-A-1, DSI-1, ...).
 detect_output() {
 	local status name pass
@@ -978,11 +1025,20 @@ detect_output() {
 	return 1
 }
 
+# OUTPUT is --output's, or the one the screen had (keep_screen_choices): that stays while a screen
+# is plugged in there, or while none can be seen anywhere (a monitor that's off). A cable moved to
+# the other socket moves it.
 resolve_output() {
+	local found
 	if ((OUTPUT_GIVEN)); then
 		note "Screen connector: $OUTPUT (as given)."
-	elif OUTPUT=$(detect_output); then
+	elif [[ -n $OUTPUT ]] && output_connected "$OUTPUT"; then
+		note "Screen connector: $OUTPUT (as it was)."
+	elif found=$(detect_output); then
+		OUTPUT=$found
 		note "Screen connector: $OUTPUT."
+	elif [[ -n $OUTPUT ]]; then
+		note "No screen detected right now; keeping $OUTPUT."
 	else
 		OUTPUT="HDMI-A-1"
 		note "No screen detected right now; assuming it will be on $OUTPUT."
@@ -1047,33 +1103,25 @@ has_kiosk_files() {
 		files/systemd/sunroom-kiosk.service files/labwc/autostart-block files/xdg/sunroom-kiosk.desktop \
 		files/udev/90-sunroom-kiosk-backlight.rules files/modules-load/sunroom-kiosk-i2c.conf \
 		files/NetworkManager/zz-sunroom-kiosk-wifi.conf files/sunroom/docker-compose.yml \
-		files/sunroom/env files/sudoers/sunroom-kiosk files/sunroom-kiosk-root \
+		files/sunroom/env files/sunroom/sunroom-update.service files/sunroom/sunroom-update.timer \
+		files/sudoers/sunroom-kiosk files/sunroom-kiosk-root \
 		files/launchd/app.sunroom.kiosk.plist; do
 		[[ -f $dir/$file ]] || return 1
 	done
 }
 
 download_kiosk_files() {
-	local ref url tarball args
-	# This installer's own version: its files and Sunroom Screen's wheel come from one release.
-	ref="refs/tags/v$KIOSK_VERSION"
-	url="https://codeload.github.com/$SUNROOM_REPO/tar.gz/$ref"
-	tarball="$TMP_DIR/kiosk.tar.gz"
-	args=""
+	local name="kiosk-$KIOSK_VERSION.tar.gz" args=""
 	if ((${#ORIGINAL_ARGS[@]})); then
 		args=$(printf ' %q' "${ORIGINAL_ARGS[@]}")
 	fi
 	note "Downloading the Sunroom Screen files (version $KIOSK_VERSION)..."
-	if ! curl -fsSL --retry 3 --connect-timeout 15 -o "$tarball" "$url" 2>>"$LOG_FILE"; then
-		die "I couldn't download the rest of the Sunroom Screen files from GitHub." \
-			"Either GitHub can't be reached right now, or version $KIOSK_VERSION isn't published yet." \
-			"Instead, copy the whole kiosk folder to $MACHINE (for example: scp -r kiosk YOUR-USER@sunroom.local:)" \
-			"and run the installer from that copy:" \
-			"  bash kiosk/install.sh${args}"
-	fi
+	fetch_release_file "$name" "the rest of the Sunroom Screen files" \
+		"Or copy the whole kiosk folder to $MACHINE (for example: scp -r kiosk YOUR-USER@sunroom.local:)" \
+		"and run the installer from that copy:" \
+		"  bash kiosk/install.sh${args}"
 	mkdir -p "$TMP_DIR/src"
-	# All of it: a Mac's tar has no --wildcards, and the repository is small.
-	if ! tar -xzf "$tarball" -C "$TMP_DIR/src" --strip-components=1 2>/dev/null; then
+	if ! tar -xzf "$TMP_DIR/$name" -C "$TMP_DIR/src" 2>/dev/null; then
 		die "The download from GitHub has no Sunroom Screen files in it, or it was damaged." \
 			"Run the installer again."
 	fi
@@ -1235,8 +1283,19 @@ existing_tag() {
 		}' "$SERVER_DIR/docker-compose.yml"
 }
 
+# The port an earlier install publishes, whatever the container's own was; empty when there is none.
+existing_port() {
+	sudo test -f "$SERVER_DIR/docker-compose.yml" || return 0
+	sudo sed -nE 's/^[[:space:]]*-[[:space:]]*"?([0-9]+):[0-9]+"?[[:space:]]*$/\1/p' "$SERVER_DIR/docker-compose.yml" | head -n 1
+}
+
 write_stack() {
-	local tz host previous
+	local tz host previous kept
+	# Every device has saved this address, so running the installer again never moves it.
+	if ((!PORT_GIVEN)); then
+		kept=$(existing_port || true)
+		PORT=${kept:-$PORT}
+	fi
 	previous=$(existing_tag || true)
 	if [[ -n $VERSION ]]; then
 		IMAGE_TAG=$VERSION
@@ -1318,7 +1377,7 @@ start_stack() {
 		printf '%s\n' "$output"
 		if grep -qiE 'address already in use|port is already allocated' <<<"$output"; then
 			die "Another program on this Pi already uses port $PORT." \
-				"Run the installer again with another port, for example: --port 8081"
+				"Run the installer again with another port, for example: --port 7868"
 		fi
 		if grep -qi 'is already in use by container' <<<"$output"; then
 			die "A container called sunroom already exists, perhaps from an earlier docker run." \
@@ -1353,6 +1412,25 @@ keep_uninstaller() {
 	install_stamped "$SRC_DIR/uninstall.sh" "$SHARE_DIR/uninstall.sh" 0755
 }
 
+# Sunroom alone has no Sunroom Screen to bring it along, so a timer does (ADR 0046), with
+# update.sh's own way back from a version that doesn't start.
+install_update_timer() {
+	if ((NO_AUTO_UPDATE)); then
+		if [[ -f /etc/systemd/system/sunroom-update.timer ]]; then
+			sudo systemctl disable --now sunroom-update.timer >/dev/null 2>&1 || true
+		fi
+		note "Leaving out the morning update, as asked. To update: sudo /opt/sunroom/update.sh"
+		return 0
+	fi
+	sudo install -m 0644 -o root -g root "$SRC_DIR/files/sunroom/sunroom-update.service" \
+		/etc/systemd/system/sunroom-update.service
+	sudo install -m 0644 -o root -g root "$SRC_DIR/files/sunroom/sunroom-update.timer" \
+		/etc/systemd/system/sunroom-update.timer
+	sudo systemctl daemon-reload
+	sudo systemctl enable --now sunroom-update.timer >/dev/null 2>&1 ||
+		warn "The morning update didn't switch on. To update: sudo /opt/sunroom/update.sh"
+}
+
 # ---------------------------------------------------------------------------- step 4: the screen, Sunroom Screen
 
 # uv installs Sunroom Screen and the Python it runs on (3.14, kept apart from the system's).
@@ -1368,6 +1446,10 @@ install_uv() {
 	note "Installing uv $UV_VERSION, which installs Sunroom Screen..."
 	curl -LsSf --retry 3 -o "$TMP_DIR/uv-install.sh" "https://astral.sh/uv/$UV_VERSION/install.sh" ||
 		die "Couldn't download uv's installer. Check the internet connection, then run this again."
+	if [[ $(sha256_of "$TMP_DIR/uv-install.sh") != "$UV_INSTALLER_SHA256" ]]; then
+		die "uv's installer didn't match its checksum, so it wasn't run." \
+			"Run this again; if it happens again, tell us on GitHub."
+	fi
 	quietly env UV_NO_MODIFY_PATH=1 UV_INSTALL_DIR="$BIN_DIR" sh "$TMP_DIR/uv-install.sh" ||
 		die "uv's installer didn't finish; its last messages are above. Running this again is safe."
 	UV="$BIN_DIR/uv"
@@ -1381,11 +1463,33 @@ sha256_of() {
 	fi
 }
 
-# Sunroom Screen's wheel: --agent-wheel's, or this version's from its GitHub Release, checked
-# against the Release's SHA256SUMS before anything installs it. Kept in $WHEELS_DIR, so an
-# update can go back to it.
+# A file of this version's GitHub Release into $TMP_DIR, checked against the Release's SHA256SUMS
+# before anything uses it. WHAT names it in a message; any lines after it follow a failed download.
+fetch_release_file() {
+	local name=$1 what=$2 base="https://github.com/$SUNROOM_REPO/releases/download/v$KIOSK_VERSION" expected actual
+	shift 2
+	if [[ ! -s $TMP_DIR/SHA256SUMS ]] &&
+		! curl -fsSL --retry 3 --connect-timeout 15 -o "$TMP_DIR/SHA256SUMS" "$base/SHA256SUMS" 2>>"$LOG_FILE"; then
+		die "Couldn't download Sunroom Screen $KIOSK_VERSION's checksums from GitHub." \
+			"Either GitHub can't be reached right now, or this version's files are still being published" \
+			"(it takes a few minutes after a release). Try again in a little while." "$@"
+	fi
+	expected=$(awk -v file="$name" '$2 == file || $2 == "*" file {print $1; exit}' "$TMP_DIR/SHA256SUMS")
+	[[ $expected =~ ^[0-9a-f]{64}$ ]] || die "Sunroom Screen $KIOSK_VERSION isn't in its release's checksums yet." \
+		"Try again in a little while; if it lasts, run the installer of another version."
+	curl -fsSL --retry 3 --connect-timeout 15 -o "$TMP_DIR/$name" "$base/$name" 2>>"$LOG_FILE" ||
+		die "Couldn't download $what from GitHub. Check the internet connection, then run this again." "$@"
+	actual=$(sha256_of "$TMP_DIR/$name")
+	if [[ $actual != "$expected" ]]; then
+		die "The download of $what didn't match its checksum, so it wasn't used." \
+			"Run the installer again; if it happens again, tell us on GitHub."
+	fi
+}
+
+# Sunroom Screen's wheel: --agent-wheel's, or this version's from its GitHub Release. Kept in
+# $WHEELS_DIR, so an update can go back to it.
 fetch_agent_wheel() {
-	local name="sunroom_kiosk-$KIOSK_VERSION-py3-none-any.whl" base expected actual
+	local name="sunroom_kiosk-$KIOSK_VERSION-py3-none-any.whl"
 	mkdir -p "$WHEELS_DIR"
 	if [[ -n $AGENT_WHEEL ]]; then
 		name=$(basename "$AGENT_WHEEL")
@@ -1394,22 +1498,7 @@ fetch_agent_wheel() {
 		note "Using Sunroom Screen from $(tidy "$AGENT_WHEEL") (--agent-wheel: not checked against a release)."
 		return 0
 	fi
-	base="https://github.com/$SUNROOM_REPO/releases/download/v$KIOSK_VERSION"
-	if ! curl -fsSL --retry 3 -o "$TMP_DIR/SHA256SUMS" "$base/SHA256SUMS" 2>>"$LOG_FILE"; then
-		die "Couldn't download Sunroom Screen $KIOSK_VERSION's checksums from GitHub." \
-			"Either GitHub can't be reached right now, or this version's files are still being published" \
-			"(it takes a few minutes after a release). Try again in a little while."
-	fi
-	expected=$(awk -v file="$name" '$2 == file || $2 == "*" file {print $1; exit}' "$TMP_DIR/SHA256SUMS")
-	[[ $expected =~ ^[0-9a-f]{64}$ ]] || die "Sunroom Screen $KIOSK_VERSION isn't in its release's checksums." \
-		"Try again in a little while; if it lasts, run the installer of another version."
-	curl -fsSL --retry 3 -o "$TMP_DIR/$name" "$base/$name" 2>>"$LOG_FILE" ||
-		die "Couldn't download Sunroom Screen $KIOSK_VERSION from GitHub. Check the internet connection, then run this again."
-	actual=$(sha256_of "$TMP_DIR/$name")
-	if [[ $actual != "$expected" ]]; then
-		die "The download of Sunroom Screen didn't match its checksum, so it wasn't installed." \
-			"Run the installer again; if it happens again, tell us on GitHub."
-	fi
+	fetch_release_file "$name" "Sunroom Screen $KIOSK_VERSION"
 	install -m 0644 "$TMP_DIR/$name" "$WHEELS_DIR/$name"
 	AGENT_WHEEL_PATH="$WHEELS_DIR/$name"
 	note "Downloaded Sunroom Screen $KIOSK_VERSION and checked it."
@@ -1491,6 +1580,40 @@ existing_setting() {
 	[[ -r $CONFIG_DIR/config ]] || return 0
 	# shellcheck disable=SC2016 # expanded by the child bash, not this one
 	bash -c 'set +u; . "$1" >/dev/null 2>&1; printf "%s" "${!2:-}"' _ "$CONFIG_DIR/config" "$1" 2>/dev/null || true
+}
+
+# What the wall chose in This Screen, or an earlier run was told: an option given this time wins,
+# and whatever is left out stays, so the bare line is always safe to run again. A value no option
+# would accept (a file edited by hand) is left behind. setup_brightness finds the bus and the
+# backlight again on a Pi; elsewhere only a hand can have set them.
+keep_screen_choices() {
+	local value
+	if ((!ROTATE_GIVEN)); then
+		value=$(existing_setting SUNROOM_ROTATE)
+		case $value in
+		0 | 90 | 180 | 270) ROTATE=$value ;;
+		esac
+	fi
+	if ((!BRIGHTNESS_GIVEN)); then
+		value=$(existing_setting SUNROOM_BRIGHTNESS)
+		case $value in
+		auto | ddc | sysfs | none) BRIGHTNESS=$value ;;
+		esac
+	fi
+	if ((!SCREEN_HELPER_GIVEN)); then
+		value=$(existing_setting SUNROOM_SCREEN_HELPER)
+		case $value in
+		yes | no) SCREEN_HELPER=$value ;;
+		esac
+	fi
+	if ((!OUTPUT_GIVEN)); then
+		value=$(existing_setting SUNROOM_OUTPUT)
+		if [[ $value =~ ^[A-Za-z0-9-]+$ ]]; then
+			OUTPUT=$value
+		fi
+	fi
+	DDC_BUS=$(existing_setting SUNROOM_DDC_BUS)
+	BACKLIGHT=$(existing_setting SUNROOM_BACKLIGHT)
 }
 
 # The screen's settings: the installer's keys, and the agent's kept. SUNROOM_CONFIG_VERSION is
@@ -2041,6 +2164,7 @@ run_uninstall() {
 	if [[ -z $script ]]; then
 		TMP_DIR=$(mktemp -d)
 		trap cleanup EXIT
+		mkdir -p "$STATE_DIR"
 		download_kiosk_files
 		script="$SRC_DIR/uninstall.sh"
 	fi
@@ -2552,6 +2676,7 @@ install_on_pi() {
 
 	if [[ $MODE == server ]]; then
 		keep_uninstaller
+		install_update_timer
 	else
 		step "Setting up the screen" "setting up the screen"
 		setup_kiosk
@@ -2636,6 +2761,7 @@ main() {
 		run_uninstall
 	fi
 	validate_args
+	keep_screen_choices
 	if ((DRY_RUN)); then
 		dry_run
 		exit 0

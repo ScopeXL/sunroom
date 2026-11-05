@@ -39,11 +39,11 @@ choose), or a Linux computer, a Mac with Apple silicon or a Windows computer.
 2. Open a terminal (on a Pi you can `ssh` in), and run the one command for it:
 
    ```sh
-   curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
+   curl -fsSL https://sunroom.day/install.sh | bash
    ```
 
    On Windows, open PowerShell (Start, then type PowerShell) and run this in its window:
-   `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex`.
+   `irm https://sunroom.day/install.ps1 | iex`.
    It installs what the screen needs and starts it (a Pi restarts first).
 3. **The screen asks where your family's Sunroom will run:** **On This Computer** is chosen; tap
    **Continue**. Setting Up Sunroom takes a few minutes. (On a Mac or Windows, if the computer asks
@@ -59,10 +59,8 @@ Rather set up on another device? Scan the QR code beside **Set Up Here**, or ope
 shows. The screen then shows a six-character code: on a signed-in device, open **Settings →
 Devices → Pair a Display** (under **More** on a phone) and type it.
 
-Keep that computer on and connected: your devices open Sunroom from it. On a Pi,
-`… | bash -s -- --with-sunroom` instead runs Sunroom in Docker, set up by the installer, which
-prints the address and QR code at the end. If a `.local` address doesn't open, use the numbered
-one: a device on a VPN, or a phone on mobile data, can't see `.local` names.
+Keep that computer on and connected: your devices open Sunroom from it. If a `.local` address
+doesn't open, use the numbered one: a device on a VPN, or a phone on mobile data, can't see `.local` names.
 The screen updates itself overnight, the whole way, or at once with Settings → This Screen →
 Update Now; [docs/KIOSK.md](docs/KIOSK.md) covers that, rotation, screens that stay blank and
 removal (on the screen itself: Settings → This Screen → Uninstall Sunroom Screen…).
@@ -75,13 +73,21 @@ everything in the `sunroom_data` volume.
 - **Docker Compose:** in a folder of its own on the server (for example `/opt/sunroom`), save
   [docker-compose.example.yml](docker-compose.example.yml) as `docker-compose.yml`, then run
   `docker compose up -d`. Keep the `volumes:` block at the end: it creates the `sunroom_data`
-  volume. Port 8080 already taken? Change only the left number, for example `"8081:8080"`.
+  volume. Port 7867 already taken? Change only the left number, for example `"7868:7867"`. New
+  versions install themselves overnight, a day after they come out, or with Update Now in About;
+  [docs/DEPLOY.md](docs/DEPLOY.md) says how that works and how to leave it out.
 - **Portainer:** Stacks → Add stack → Web editor, paste the same file, Deploy.
-- **Unraid, CasaOS, Synology:** add a container from the image `scopexl/sunroom:latest`, port
-  8080, and a volume (or folder) for `/data`. If you map a folder, it must be writable by the
-  container's user (`--user 99:100` on Unraid's appdata).
+- **CasaOS:** App Store → Add Source → paste
+  `https://scopexl.github.io/sunroom/casaos/store/main.zip`, then install Sunroom. CasaOS shows its own
+  Update mark when a new version is out. (On ZimaOS, the source is
+  `https://scopexl.github.io/sunroom/casaos`.)
+- **Synology:** Container Manager → Project → Create, and paste the same file, changing
+  `SUNROOM_INSTALL_KIND` to `synology`. The updater works there too.
+- **Unraid:** the same file in a Compose Manager stack, or a container from the image
+  `scopexl/sunroom:latest` with port 7867, `/data` mapped to `appdata/sunroom` and `--user 99:100`,
+  and `SUNROOM_INSTALL_KIND=unraid`. Check for Updates on the Docker tab brings new versions.
 
-Open `http://<server>:8080` on a phone or computer and set up the household: there is nothing to
+Open `http://<server>:7867` on a phone or computer and set up the household: there is nothing to
 configure first. Your own HTTPS proxy, Tailscale or Cloudflare work with nothing to set;
 [docs/REMOTE-ACCESS.md](docs/REMOTE-ACCESS.md) shows each way, and when to lock Sunroom to a name
 with `APP_ALLOWED_HOSTS`.
@@ -89,7 +95,7 @@ with `APP_ALLOWED_HOSTS`.
 Then set up the screen with one command. On the Pi (or another Linux computer, or a Mac):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
+curl -fsSL https://sunroom.day/install.sh | bash
 ```
 
 It installs what the screen needs, a browser too, and starts it (a Pi restarts first). On the
@@ -103,10 +109,10 @@ Devices → Pair a Display** (under **More** on a phone) and type it.
 ### c. Any computer, no Pi
 
 ```sh
-docker run -d --name sunroom --restart unless-stopped -p 8080:8080 -v sunroom_data:/data scopexl/sunroom:latest
+docker run -d --name sunroom --restart unless-stopped -p 7867:7867 -v sunroom_data:/data scopexl/sunroom:latest
 ```
 
-Open `http://<computer>:8080` on a phone or computer. Any browser shows the wall screen at
+Open `http://<computer>:7867` on a phone or computer. Any browser shows the wall screen at
 `/display`; an old tablet works as one (Android: Fully Kiosk Browser; iPad: Safari with Guided
 Access; see [docs/HARDWARE.md](docs/HARDWARE.md#an-old-tablet-instead)).
 
@@ -114,15 +120,15 @@ Access; see [docs/HARDWARE.md](docs/HARDWARE.md#an-old-tablet-instead)).
 
 | On | Command |
 |---|---|
-| A Pi, a Linux computer or a Mac: the screen | `curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh \| bash` |
-| Windows: the screen | `irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 \| iex`, in a PowerShell window |
-| A Pi: Sunroom (in Docker) and the screen | the first, ending `\| bash -s -- --with-sunroom` |
-| A Pi: only Sunroom, no screen | the first, ending `\| bash -s -- --server-only` |
+| A Pi, a Linux computer or a Mac: the screen | `curl -fsSL https://sunroom.day/install.sh \| bash` |
+| Windows: the screen | `irm https://sunroom.day/install.ps1 \| iex`, in a PowerShell window |
 
 Each installs what the screen needs (a browser too, when there's none) and starts it. The screen
 then asks where your family's Sunroom will run: **On This Computer** sets it up right there, and
 **Connect to a Sunroom** finds the one you have on your network by itself. `--url <address>` skips
-the search, and `--dry-run` (`-DryRun` on Windows) says what it would do first.
+the search, and `--dry-run` (`-DryRun` on Windows) says what it would do first. Running it again is
+always safe: whatever the screen has stays. Should sunroom.day be away, the same files are at
+`https://github.com/ScopeXL/sunroom/releases/latest/download/install.sh` and `install.ps1`.
 [docs/KIOSK.md](docs/KIOSK.md) has every option.
 
 ## Languages

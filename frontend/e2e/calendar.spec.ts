@@ -67,7 +67,7 @@ test("quick add on the wall, seen on a phone, changed and undone, dragged and pu
       "aria-pressed",
       "true",
     );
-  await pressed("Day", "Thu, Oct 8");
+  await pressed("Day", "Thu 8, October");
   await pressed("Who", "Mia");
   // Time, How long and Repeats each say what's chosen on one button (ADR 0030): no row of
   // likely times, no nine chips of repeats.
@@ -92,7 +92,7 @@ test("quick add on the wall, seen on a phone, changed and undone, dragged and pu
   await add.getByRole("button", { name: "Add Event" }).click();
   await expect(add).toBeHidden();
   const dentist = board.getByRole("button", {
-    name: "Dentist, 2:30 to 3:30 PM, Mia, Thursday October 8",
+    name: "2:30 PM Dentist, Mia, until 3:30 PM, Thursday October 8",
   });
   await expect(dentist).toBeVisible();
   // On the Hours grid (a new household's layout, ADR 0042) the block inside wears the color.
@@ -105,7 +105,9 @@ test("quick add on the wall, seen on a phone, changed and undone, dragged and pu
 
   // Change Thursday's soccer practice and the ones after; Tuesday's stays as it was.
   await board
-    .getByRole("button", { name: /^Soccer practice, 4:00 to 5:00 PM, Mia, Thursday October 8/ })
+    .getByRole("button", {
+      name: /^4:00 PM Soccer practice, Mia, until 5:00 PM, Thursday October 8/,
+    })
     .click();
   const sheet = page.getByRole("dialog", { name: "Soccer practice" });
   await expect(sheet).toContainText("Every week on Tue and Thu");
@@ -118,30 +120,30 @@ test("quick add on the wall, seen on a phone, changed and undone, dragged and pu
     .getByRole("button", { name: "This and the Ones After" })
     .click();
   await expect(
-    board.getByRole("button", { name: /^Soccer training, .*Thursday October 8/ }),
+    board.getByRole("button", { name: /\bSoccer training, .*Thursday October 8/ }),
   ).toBeVisible();
   await expect(
-    board.getByRole("button", { name: /^Soccer practice, .*Tuesday October 6/ }),
+    board.getByRole("button", { name: /\bSoccer practice, .*Tuesday October 6/ }),
   ).toBeVisible();
   await expect(thursdayOnPhone).toContainText("Soccer training", { timeout: 3_000 });
 
   // Undo puts the series back together.
   await toast(page, "Changes saved").getByRole("button", { name: "Undo" }).click();
   await expect(
-    board.getByRole("button", { name: /^Soccer practice, .*Thursday October 8/ }),
+    board.getByRole("button", { name: /\bSoccer practice, .*Thursday October 8/ }),
   ).toBeVisible();
-  await expect(board.getByRole("button", { name: /^Soccer training/ })).toHaveCount(0);
+  await expect(board.getByRole("button", { name: /\bSoccer training/ })).toHaveCount(0);
   await expect(thursdayOnPhone).not.toContainText("Soccer training", { timeout: 3_000 });
 
   // Drag the vet from Wednesday to Friday, then Undo moves it back.
-  const vet = board.getByRole("button", { name: /^Vet, 9:00 to 9:30 AM, Ana, Wednesday/ });
+  const vet = board.getByRole("button", { name: /^9:00 AM Vet, Ana, until 9:30 AM, Wednesday/ });
   await drag(page, vet, board.locator('[data-day="2026-10-09"]'));
   await expect(
-    board.getByRole("button", { name: /^Vet, 9:00 to 9:30 AM, Ana, Friday October 9/ }),
+    board.getByRole("button", { name: /^9:00 AM Vet, Ana, until 9:30 AM, Friday October 9/ }),
   ).toBeVisible();
   await toast(page, "Moved Vet to Fri").getByRole("button", { name: "Undo" }).click();
   await expect(
-    board.getByRole("button", { name: /^Vet, 9:00 to 9:30 AM, Ana, Wednesday October 7/ }),
+    board.getByRole("button", { name: /^9:00 AM Vet, Ana, until 9:30 AM, Wednesday October 7/ }),
   ).toBeVisible();
 
   await context.close();
@@ -189,12 +191,12 @@ test("the views, the event sheet and Recently Removed", async ({ page }) => {
 
   // Back to the week; remove the vet, then put it back from Settings.
   await pickView(page, "Week");
-  await board.getByRole("button", { name: /^Vet, / }).click();
+  await board.getByRole("button", { name: /\bVet, / }).click();
   const sheet = page.getByRole("dialog", { name: "Vet" });
   await sheet.getByRole("button", { name: "Remove" }).click();
   await expect(sheet).toBeHidden();
   await expect(toast(page, "Removed Vet")).toBeVisible();
-  await expect(board.getByRole("button", { name: /^Vet, / })).toHaveCount(0);
+  await expect(board.getByRole("button", { name: /\bVet, / })).toHaveCount(0);
   await page.getByRole("button", { name: "Settings" }).click();
   await page
     .getByRole("navigation", { name: "Settings" })
@@ -204,7 +206,7 @@ test("the views, the event sheet and Recently Removed", async ({ page }) => {
   await page.getByRole("button", { name: "Put back Vet" }).click();
   await expect(toast(page, "Put back Vet")).toBeVisible();
   await page.getByRole("link", { name: "Calendar", exact: true }).click();
-  await expect(board.getByRole("button", { name: /^Vet, / })).toBeVisible();
+  await expect(board.getByRole("button", { name: /\bVet, / })).toBeVisible();
 });
 
 test("People pages a day at a time and says which day (ADR 0036)", async ({ page }) => {
@@ -279,7 +281,7 @@ test("Filter is one button in the header: several people, a tap elsewhere, Every
   await page.goto("/display");
   const board = page.getByRole("region", { name: "This Week" });
   const header = page.getByRole("banner");
-  await expect(board.getByRole("button", { name: /^Vet, / })).toBeVisible();
+  await expect(board.getByRole("button", { name: /\bVet, / })).toBeVisible();
   // No row over the days any more: the board starts under the header.
   await expect(page.getByRole("group", { name: "Show" })).toHaveCount(0);
   // A chip that isn't one of the chosen people's fades; it keeps its words.
@@ -296,22 +298,22 @@ test("Filter is one button in the header: several people, a tap elsewhere, Every
   // Choosing a person keeps the menu open for the next, and the board already follows.
   await menu.getByRole("menuitemcheckbox", { name: "Mia" }).click();
   await expect(menu).toBeVisible();
-  await expect(faded(/^Vet, /)).toHaveCount(1);
-  await expect(faded(/^Soccer practice, /)).toHaveCount(0);
-  await expect(faded(/^Piano lesson, /)).toHaveCount(1);
+  await expect(faded(/\bVet, /)).toHaveCount(1);
+  await expect(faded(/\bSoccer practice, /)).toHaveCount(0);
+  await expect(faded(/\bPiano lesson, /)).toHaveCount(1);
   await menu.getByRole("menuitemcheckbox", { name: "Leo" }).click();
-  await expect(faded(/^Piano lesson, /)).toHaveCount(0);
+  await expect(faded(/\bPiano lesson, /)).toHaveCount(0);
   // Everyone's events always show (the seed's garbage night is nobody's in particular).
-  await expect(faded(/^Garbage night/)).toHaveCount(0);
+  await expect(faded(/\bGarbage night/)).toHaveCount(0);
   const chosen = header.getByRole("button", { name: "Filter: Mia, Leo" });
   await expect(chosen).toHaveAttribute("aria-expanded", "true");
   // A tap on the board closes the menu and does nothing else: no event sheet, no Add panel.
-  await board.getByRole("button", { name: /^Vet, / }).click();
+  await board.getByRole("button", { name: /\bVet, / }).click();
   await expect(menu).toBeHidden();
   await page.waitForTimeout(300);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   // The next tap is an ordinary one again.
-  await board.getByRole("button", { name: /^Vet, / }).click();
+  await board.getByRole("button", { name: /\bVet, / }).click();
   const sheet = page.getByRole("dialog", { name: "Vet" });
   await expect(sheet).toBeVisible();
   await sheet.getByRole("button", { name: "Close" }).click();
@@ -329,7 +331,7 @@ test("Filter is one button in the header: several people, a tap elsewhere, Every
   await everyone.click();
   await expect(menu).toBeHidden();
   await expect(header.getByRole("button", { name: "Filter", exact: true })).toBeVisible();
-  await expect(faded(/^Vet, /)).toHaveCount(0);
+  await expect(faded(/\bVet, /)).toHaveCount(0);
 });
 
 test("times follow the household's zone and its 12- or 24-hour clock", async ({
@@ -360,8 +362,8 @@ test("times follow the household's zone and its 12- or 24-hour clock", async ({
   // Back home, on the 24-hour clock: Thursday's soccer practice starts at 16:00. (On the Hours
   // grid, a new household's layout, an hour's block says its time only in its name.)
   await change({ timezone: "America/New_York", time_format: "24h" });
-  const soccer = board.getByRole("button", { name: /^Soccer practice, .*Thursday October 8/ });
-  await expect(soccer).toHaveAccessibleName(/^Soccer practice, 16:00 to 17:00, /, {
+  const soccer = board.getByRole("button", { name: /\bSoccer practice, .*Thursday October 8/ });
+  await expect(soccer).toHaveAccessibleName(/^16:00 Soccer practice, Mia, until 17:00, /, {
     timeout: 3_000,
   });
   await expect(nowLabel).toHaveText("now 10:00");
@@ -379,7 +381,7 @@ test("a birthday from Family is a chip in its person's color, and moves when it'
   const thursday = board.locator('[data-day="2026-10-08"]');
   const friday = board.locator('[data-day="2026-10-09"]');
   // The seed's: Mia's birthday is on Friday, in her color, with no plugin needed.
-  const onFriday = friday.getByRole("button", { name: /^Mia's birthday, all day, Mia/ });
+  const onFriday = friday.getByRole("button", { name: /^all day Mia's birthday, Mia/ });
   await expect(onFriday).toHaveAttribute("data-overlay", "birthdays");
   await expect(onFriday).toHaveAttribute("data-person", "rose");
 
@@ -391,9 +393,9 @@ test("a birthday from Family is a chip in its person's color, and moves when it'
   await phonePage.getByLabel("Birthday (optional)").fill("2017-10-08");
   await phonePage.getByRole("button", { name: "Save Changes" }).click();
   await expect(toast(phonePage, "Changes saved")).toBeVisible();
-  const onThursday = thursday.getByRole("button", { name: /^Mia's birthday/ });
+  const onThursday = thursday.getByRole("button", { name: /\bMia's birthday/ });
   await expect(onThursday).toBeVisible({ timeout: 3_000 });
-  await expect(friday.getByRole("button", { name: /^Mia's birthday/ })).toHaveCount(0);
+  await expect(friday.getByRole("button", { name: /\bMia's birthday/ })).toHaveCount(0);
 
   // A tap opens its sheet, read only, saying where it comes from.
   await onThursday.click();
@@ -413,7 +415,7 @@ test("an event added from a phone eases onto the wall, and one removed fades awa
   await pairWall(page);
   await page.goto("/display");
   const board = page.getByRole("region", { name: "This Week" });
-  await expect(board.getByRole("button", { name: /^Vet, / })).toBeVisible();
+  await expect(board.getByRole("button", { name: /\bVet, / })).toBeVisible();
   // Nothing arrives on first paint.
   await expect(board.locator("[data-arrive]")).toHaveCount(0);
   // Nor when the week is paged: the whole week slides in from its side instead.
@@ -425,7 +427,7 @@ test("an event added from a phone eases onto the wall, and one removed fades awa
   );
   await page.getByRole("button", { name: "This Week" }).click();
   await expect(body).toHaveAttribute("data-page", "prev");
-  await expect(board.getByRole("button", { name: /^Vet, / })).toBeVisible();
+  await expect(board.getByRole("button", { name: /\bVet, / })).toBeVisible();
   await expect(board.locator("[data-arrive]")).toHaveCount(0);
 
   // A parent's phone adds an event: its chip, and only it, eases in.
@@ -437,7 +439,7 @@ test("an event added from a phone eases onto the wall, and one removed fades awa
   });
   expect(added.status()).toBe(201);
   const { event } = (await added.json()) as { event: { id: string } };
-  const chip = board.getByRole("button", { name: /^Library day/ });
+  const chip = board.getByRole("button", { name: /\bLibrary day/ });
   await expect(chip).toHaveAttribute("data-arrive", "", { timeout: 3_000 });
   expect(await chip.evaluate((node) => getComputedStyle(node).animationName)).toBe("arrive");
   await expect(board.locator("[data-arrive]")).toHaveCount(1);
@@ -448,7 +450,7 @@ test("an event added from a phone eases onto the wall, and one removed fades awa
   await page.evaluate(() => {
     const seen = window as unknown as { faded?: boolean };
     seen.faded = false;
-    const chip = document.querySelector('[data-chip][aria-label^="Library day"]');
+    const chip = document.querySelector('[data-chip][aria-label*="Library day"]');
     const watch = () => {
       const box = chip?.parentElement?.parentElement;
       if (box && Number(getComputedStyle(box).opacity) < 1) seen.faded = true;
@@ -465,7 +467,7 @@ test("an event added from a phone eases onto the wall, and one removed fades awa
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { faded?: boolean }).faded))
     .toBe(true);
-  await expect(page.locator('[data-chip][aria-label^="Library day"]')).toHaveCount(0);
+  await expect(page.locator('[data-chip][aria-label*="Library day"]')).toHaveCount(0);
 
   // With Reduce motion on (Settings → Display), a newcomer has no animation at all.
   const calm = await phonePage.request.patch("/api/settings", {
@@ -479,7 +481,7 @@ test("an event added from a phone eases onto the wall, and one removed fades awa
     data: { title: "Dentist", start_date: "2026-10-08" },
   });
   expect(again.status()).toBe(201);
-  const calmChip = board.getByRole("button", { name: /^Dentist/ });
+  const calmChip = board.getByRole("button", { name: /\bDentist/ });
   await expect(calmChip).toBeVisible({ timeout: 3_000 });
   expect(await calmChip.evaluate((node) => getComputedStyle(node).animationName)).toBe("none");
   await context.close();
@@ -629,7 +631,7 @@ test("remind: an event opens with the reminder it holds, 30 min before (R1)", as
   await pairWall(page);
   await page.goto("/display");
   const board = page.getByRole("region", { name: "This Week" });
-  await board.getByRole("button", { name: /^Soccer practice, .*Thursday October 8/ }).click();
+  await board.getByRole("button", { name: /\bSoccer practice, .*Thursday October 8/ }).click();
   const sheet = page.getByRole("dialog", { name: "Soccer practice" });
   await sheet.getByRole("button", { name: "Change" }).click();
   const editor = page.getByRole("dialog", { name: "Change" });

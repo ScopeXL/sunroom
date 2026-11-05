@@ -13,7 +13,7 @@ services:
       SUNROOM_ADVERTISED_URL: "@ADVERTISED@"
       SUNROOM_INSTALL_KIND: "pi"
     ports:
-      - "@PORT@:8080"
+      - "@PORT@:7867"
     volumes:
       - sunroom_data:/data
     read_only: true

@@ -1,7 +1,7 @@
 # Remote access and HTTPS
 
 Sunroom works on your home network with nothing to set up: your devices open
-`http://sunroom.local:8080` (or the server's numbered address) and everything works. This page
+`http://sunroom.local:7867` (or the server's numbered address) and everything works. This page
 is for when you want more: Sunroom on your devices away from home, the app installed on Android,
 or Sign in with Google. Those need Sunroom at an `https://` address, and this page shows four ways
 to get one. The commands were checked against each tool's own documentation on 2026-10-08.
@@ -37,9 +37,9 @@ the old one).
 
 ## Stay at home (the default)
 
-- Nothing to set up. Devices on the home Wi-Fi use `http://sunroom.local:8080`, or the server's
+- Nothing to set up. Devices on the home Wi-Fi use `http://sunroom.local:7867`, or the server's
   numbered address (the Pi's installer prints it).
-- **Never forward port 8080 on your router.** That would put Sunroom on the internet over plain
+- **Never forward port 7867 on your router.** That would put Sunroom on the internet over plain
   http, and the household password would cross the internet unencrypted. Use one of the ways
   below instead.
 - If your router has its own VPN and your devices use it away from home, they can reach the server's
@@ -55,7 +55,7 @@ whether it runs on the same computer outside Docker, in Docker beside Sunroom, o
 machine at home. A connection from the internet is never believed. A `TRUSTED_PROXIES` line from
 an earlier version is ignored; the log says so.
 
-And by default Sunroom answers to any name, so `http://<server>:8080` works the moment it starts.
+And by default Sunroom answers to any name, so `http://<server>:7867` works the moment it starts.
 
 - **`APP_ALLOWED_HOSTS`** is an optional lock. With it set, Sunroom answers only to local names
   (`.local`, `.lan`, `.home`, `.home.arpa`, `.internal`, Tailscale's `.ts.net`, numbered
@@ -103,7 +103,7 @@ free Personal plan covers a family (up to six people when this was written).
 4. **Serve Sunroom on the tailnet:**
 
    ```sh
-   sudo tailscale serve --bg 8080
+   sudo tailscale serve --bg 7867
    ```
 
    If you changed the left number of Sunroom's `ports:` line, use that number. It prints the
@@ -131,8 +131,8 @@ it; only your device's browser comes back to it.
 If you already run one (Nginx Proxy Manager, Traefik, Caddy and so on), add Sunroom like any
 other app:
 
-- Forward your name to Sunroom's port on the server (`http://<server>:8080`), or to
-  `sunroom:8080` when the proxy and Sunroom share a Docker network.
+- Forward your name to Sunroom's port on the server (`http://<server>:7867`), or to
+  `sunroom:7867` when the proxy and Sunroom share a Docker network.
 - Pass the `Host` header through unchanged, and set `X-Forwarded-Proto` (and `X-Forwarded-For`).
   Every common proxy does all three by default.
 - Live updates stream from `/api/events`: they must not be buffered or compressed, and HTTP/2
@@ -162,7 +162,7 @@ own name, such as `calendar.example.com`, from any browser. You need:
 
    ```
    calendar.example.com {
-       reverse_proxy localhost:8080
+       reverse_proxy localhost:7867
    }
    ```
 
@@ -176,7 +176,7 @@ own name, such as `calendar.example.com`, from any browser. You need:
 
 Anyone on the internet can now reach Sunroom's sign-in page, so finish the setup first and use a
 long household password. If Caddy runs in Docker instead, put it on a network with Sunroom and use
-`reverse_proxy sunroom:8080`; nothing else changes.
+`reverse_proxy sunroom:7867`; nothing else changes.
 
 Caddy can also make an https address for the home network alone, without a domain
 (`tls internal`), but then every device has to be set up to trust Caddy's own certificate
@@ -203,7 +203,7 @@ ones.
    tunnel's password: don't share it or paste it anywhere public.
 2. **Route your name to Sunroom:** open the tunnel, then **Routes → Add route → Published
    application**. Enter a subdomain (`calendar`), choose your domain, set the service URL to
-   `http://localhost:8080`, and add the route.
+   `http://localhost:7867`, and add the route.
 3. **Lock Sunroom to the name** (recommended, the name is public): `APP_ALLOWED_HOSTS=
    calendar.example.com`; restart Sunroom.
 4. **Leave Rocket Loader off** for this name: Cloudflare's own documentation says it needs a looser

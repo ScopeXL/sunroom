@@ -15,7 +15,7 @@ from sunroom_kiosk.platform.fake import FakePlatform
 
 
 def test_an_address_is_taken_as_the_installers_take_it() -> None:
-    assert cli.clean_address("http://192.168.1.20:8080/display/") == "http://192.168.1.20:8080"
+    assert cli.clean_address("http://192.168.1.20:7867/display/") == "http://192.168.1.20:7867"
     assert cli.clean_address(" HTTPS://Calendar.Example.com ") == "https://calendar.example.com"
     for wrong in ("calendar.example.com", "ftp://example.com", "http://", "http://a b.example.com"):
         assert cli.clean_address(wrong) is None

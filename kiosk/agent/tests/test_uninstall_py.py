@@ -21,7 +21,7 @@ def places(tmp_path: Path, *, uv: bool = True) -> uninstall.Places:
     agent.write_text("")
     data = tmp_path / "AppData" / "Local" / "sunroom-kiosk"
     (data / "profile").mkdir(parents=True)
-    (data / "config").write_text("SUNROOM_URL=http://192.168.1.20:8080\n")
+    (data / "config").write_text("SUNROOM_URL=http://192.168.1.20:7867\n")
     shortcut = tmp_path / "Startup" / "Sunroom Screen.lnk"
     shortcut.parent.mkdir(parents=True)
     shortcut.write_text("")

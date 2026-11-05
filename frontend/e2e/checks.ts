@@ -127,7 +127,11 @@ export async function check(page: Page, where: string): Promise<void> {
       violation.impact === "critical",
   );
   for (const violation of results.violations) {
-    if (blocking.includes(violation)) continue;
+    if (blocking.includes(violation)) {
+      // A selector rarely says which element it was: the failure's list doesn't carry this.
+      for (const node of violation.nodes) console.log(`${where}: ${violation.id}: ${node.html}`);
+      continue;
+    }
     console.log(`${where}: ${violation.impact ?? "?"} ${violation.id}: ${violation.help}`);
   }
   expect(

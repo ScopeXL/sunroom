@@ -216,6 +216,9 @@ size limit.
 - The pretend agent's restart can't answer 503: an `EventSource` never retries after a refusal,
   only after a dropped connection. `Agent.go_away` ends the streams and the Guard holds requests
   until it's back.
+- A test errored only on Windows, at setup and teardown, before its body ran: pytest puts a test's
+  id in `PYTEST_CURRENT_TEST`, a parametrized value goes in the id, and Windows refuses a variable
+  over 32,767 characters. Give long values `ids=`.
 
 ## The board
 
@@ -236,6 +239,17 @@ size limit.
 
 ## End-to-end tests
 
+- axe (`label-content-name-mismatch`, WCAG 2.5.3, on since 4.14) failed buttons whose names plainly
+  held their words: it reads on-screen text with no spaces between elements ("7:00 PMBook club"),
+  `aria-hidden` included, and wants all of it unbroken inside the `aria-label`. So: a `{" "}` between
+  neighbouring text elements (flex ignores it), names that start with what shows, and decoration as
+  CSS content (`Avatar`'s initial), never text. Its stops at the first failure hide the rest of a
+  journey: `expect.soft` in `checks.ts`, for one run, lists them all.
+- Playwright 1.64's WebKit (27.2) fails the CSP guard on any `<select>`: `style-src-attr inline`, the
+  moment one exists. It's the browser's own insides: a blank page with none of our scripts does it,
+  1.63's WebKit and Chromium don't, and the pixels match with and without the CSP (tried 2026-11-05;
+  opening a phone's native picker can't be tried here). `fixtures.ts` lets that one through on
+  WebKit only, since Chromium still watches every `<select>`. Take it out when a later WebKit stops.
 - A run in one worktree tested another's build: every checkout's `just e2e` uses ports 4173 and
   4174, and `reuseExistingServer` quietly takes a server that's already up. With sessions working
   side by side, run `CI=1 just e2e …`, which refuses a busy port instead.
@@ -368,3 +382,12 @@ size limit.
   patterns write ’ as `\u2019`. A test that loops a parser thousands of times finds it; one parse
   doesn't.
 
+## The session's own tools
+
+- A CI log read with `gh run view --log` or `--log-failed` ended at pytest's ERRORS header with no
+  failures in it, and `gh api` refused the log for its terminal escape codes. All of it comes with
+  `gh api --allow-escape-sequences repos/ScopeXL/sunroom/actions/jobs/<id>/logs` into a file, with
+  the codes stripped before reading.
+- A loop over `$LIST`, or a `$command` holding its arguments, quietly did the wrong thing: the
+  sessions' shell is zsh, which doesn't split a variable into words. Write the list out, or put the
+  script in a file that bash runs.

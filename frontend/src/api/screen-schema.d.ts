@@ -55,6 +55,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/screen/go-back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Go Back
+         * @description Go Back…: the version an update replaced, for a week after it (ADR 0046).
+         */
+        post: operations["go_back_api_screen_go_back_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/screen/keep-pairing": {
         parameters: {
             query?: never;
@@ -213,6 +233,26 @@ export interface paths {
         put?: never;
         /** Check Address */
         post: operations["check_address_api_screen_sunroom_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/screen/sunroom/updating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sunroom Updating
+         * @description The wall's page heard Sunroom say it's updating: Can't Reach says so, if it comes to that.
+         */
+        post: operations["sunroom_updating_api_screen_sunroom_updating_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -576,6 +616,11 @@ export interface components {
             name: string | null;
             /** Reachable */
             reachable: boolean;
+            /**
+             * Updating
+             * @default false
+             */
+            updating: boolean;
             /** Url */
             url: string;
             /** Version */
@@ -596,6 +641,8 @@ export interface components {
             check: components["schemas"]["ScreenUpdateCheck"];
             /** Checked At */
             checked_at: string | null;
+            /** Go Back To */
+            go_back_to?: string | null;
             /** Installed */
             installed: string;
             last_result?: components["schemas"]["ScreenUpdateResultOut"] | null;
@@ -613,10 +660,17 @@ export interface components {
             needs_terminal?: string | null;
             state: components["schemas"]["ScreenUpdateState"];
             /**
+             * Sunroom Can Update
+             * @default false
+             */
+            sunroom_can_update: boolean;
+            /**
              * Sunroom Outdated
              * @default false
              */
             sunroom_outdated: boolean;
+            /** Sunroom Pinned */
+            sunroom_pinned?: string | null;
         };
         /** ScreenUpdatePolicyIn */
         ScreenUpdatePolicyIn: {
@@ -801,6 +855,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenStateOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+        };
+    };
+    go_back_api_screen_go_back_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenAcceptedOut"];
                 };
             };
             /** @description Forbidden */
@@ -1283,6 +1384,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenCheckOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+        };
+    };
+    sunroom_updating_api_screen_sunroom_updating_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenAcceptedOut"];
                 };
             };
             /** @description Forbidden */

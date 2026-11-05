@@ -16,7 +16,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   forbidOnly: ci,
-  retries: ci ? 1 : 0,
+  retries: 0, // a test that fails once gets fixed, not retried
   // GitHub's 4-CPU runner is several times slower than the build Mac: the long journeys (each
   // marks itself slow, three times this) timed out at Playwright's default 30 s there.
   timeout: 60_000,

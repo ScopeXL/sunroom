@@ -8,7 +8,7 @@ into this repository. Portainer, if you use it, can show the logs and stop or st
 it doesn't need to manage it.
 
 On a plain home network you can skip the proxy entirely: leave every variable empty and open
-`http://<server>:8080`. Sunroom answers to local names and addresses on its own.
+`http://<server>:7867`. Sunroom answers to local names and addresses on its own.
 
 ## What you need
 
@@ -44,8 +44,8 @@ On a plain home network you can skip the proxy entirely: leave every variable em
    `sunroom_data` volume, where the database, the nightly backups and the photos live, with the
    right ownership by itself (and the commands in RESTORE.md find it by that name). To use a host
    folder instead, see *Troubleshooting*.
-4. Another app already uses port 8080 on this server? Change only the left number of the
-   `ports:` line, for example `"8081:8080"`, and point the proxy at that port.
+4. Another app already uses port 7867 on this server? Change only the left number of the
+   `ports:` line, for example `"7868:7867"`, and point the proxy at that port.
 5. Start it:
 
    ```sh
@@ -59,7 +59,7 @@ On a plain home network you can skip the proxy entirely: leave every variable em
 
 - Forward your subdomain to the server on the host port from the `ports:` line (or put the
   container on the proxy's Docker network, remove the `ports:` lines, and forward to
-  `sunroom:8080`). The proxy must pass the `Host` header through unchanged and set
+  `sunroom:7867`). The proxy must pass the `Host` header through unchanged and set
   `X-Forwarded-Proto` (every common proxy does both by default).
 - Turn on **HTTP/2** for the host. Browsers allow only six HTTP/1.1 connections per site, and
   the live-update stream keeps one open on every device and screen.
@@ -122,7 +122,7 @@ or a Mac (Windows: [KIOSK.md](KIOSK.md#windows)), one command sets up the screen
 included:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
+curl -fsSL https://sunroom.day/install.sh | bash
 ```
 
 Then (on a Pi, after its restart) the screen looks for Sunroom on its network and lists what it
@@ -133,10 +133,10 @@ under **Settings → Devices → Pair a Display** (under **More** on a phone). [
 the details.
 
 **Optional: let screens find this server by name.** A Sunroom screen looking for Sunroom checks
-every address on its network on port 8080, which finds this setup as it is. A server that runs
+every address on its network on port 7867, which finds this setup as it is. A server that runs
 avahi (most Linux machines do; `systemctl status avahi-daemon`) can also announce Sunroom, which
 a screen hears even when Sunroom is on another port. Put this in
-`/etc/avahi/services/sunroom.service` (change `8080` to the port you publish); avahi picks it up
+`/etc/avahi/services/sunroom.service` (change `7867` to the port you publish); avahi picks it up
 by itself:
 
 ```xml
@@ -144,30 +144,66 @@ by itself:
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
 <service-group>
   <name replace-wildcards="yes">Sunroom on %h</name>
-  <service><type>_sunroom._tcp</type><port>8080</port></service>
+  <service><type>_sunroom._tcp</type><port>7867</port></service>
 </service-group>
 ```
 
 ## Updating
 
-Each release prints these steps. In Sunroom's folder on the server:
+With the compose example, you don't: **the updater** in that file installs new versions overnight,
+at about 4:30 AM, a day after they come out, so a bad one can be pulled back before it reaches you.
+**Update Now** in Settings → About does it at once, from a version's second day on. Every open page
+says "Sunroom is updating. Back in a minute." and comes back by itself.
 
-1. `docker compose pull && docker compose up -d` (if you pinned a version in `image:`, change it
-   to the new one first).
+The updater is [Watchtower](https://watchtower.nickfedor.com/), the maintained continuation, watching
+Sunroom alone (the label on its service). It's the one part that touches Docker, so it has the Docker
+socket; Sunroom never does. It publishes no port, and only Sunroom can reach it. It talks to Docker Hub.
+To change the hour, edit `WATCHTOWER_SCHEDULE` (seconds first). To go without it, delete the
+`sunroom-updater` service, the two `SUNROOM_UPDATER` lines and the label, and update by hand:
+
+1. In Sunroom's folder on the server: `docker compose pull && docker compose up -d` (if you pinned a
+   version in `image:`, change it to the new one first).
 2. Wait for **healthy** (`docker compose ps`), then check `<your address>/api/version` shows the
    new version.
 
-To hear about new versions, turn on **Settings → About → Check for updates daily**: once a
-day Sunroom asks GitHub for its latest version (GitHub sees your server's address) and About
-says when one is out, with these steps. It's off until you turn it on.
+For a stricter setup, put [docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy)
+between the updater and the socket: replace the updater's `volumes:` with `DOCKER_HOST:
+tcp://docker-socket-proxy:2375` in its environment, and add this service, joined to the updater on an
+internal network of their own (`just smoke-compose` was run through exactly this):
+
+```yaml
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    restart: unless-stopped
+    environment: { POST: 1, CONTAINERS: 1, IMAGES: 1, NETWORKS: 1 }
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+```
+
+How far an update goes is yours to choose in `image:`: `scopexl/sunroom:1` takes every 1.x, `:1.0`
+takes only fixes, and `:1.0.0` never moves. The updater follows whichever you write.
+
+Sunroom tells you about new versions by itself: once a day it asks sunroom.day for its latest
+version, or GitHub if that doesn't answer (they see your server's address; `SUNROOM_UPDATE_URL`
+points it at your own copy of `version.json`), and Needs Attention and About say when one is out, with
+how it will arrive. To stop it, turn off **Settings → About → Tell me about new versions**, or keep
+it off for the whole server with `SUNROOM_UPDATE_CHECK=0`.
 
 Before migrating, Sunroom copies the database into `/data/backups/pre-migrate/`. If a migration
 fails, it refuses to start and the data is left exactly as it was. Every open wall screen and
 device refreshes itself within a minute of the update; a screen in the middle of an edit waits
 for it.
 
+**On a NAS,** its own app keeps Sunroom up to date. CasaOS and ZimaOS: the store in `deploy/casaos` is
+rebuilt with each release, and their Update mark shows when the image has moved. Synology: the
+updater works in a Container Manager project; without it, the Image tab's Update available, then
+rebuild the project. Unraid: Check for Updates on the Docker tab. The Unraid template is
+`deploy/unraid/sunroom.xml`, until it's listed in Community Applications.
+
 **If Portainer manages it instead** (a stack pasted from the example): update the stack with
-**Re-pull image and redeploy** switched on.
+**Re-pull image and redeploy** switched on. Add `SUNROOM_INSTALL_KIND=portainer` to the stack's
+environment variables, so About words it that way (`unraid`, `casaos`, `synology` and `other` do the
+same for those).
 
 ## Backups
 

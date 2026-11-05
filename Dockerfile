@@ -61,12 +61,12 @@ ENV PATH=/app/.venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     HOME=/tmp \
     DATA_DIR=/data \
-    PORT=8080 \
+    PORT=7867 \
     SUNROOM_STATIC_DIR=/app/static \
     SUNROOM_CONTAINER=1 \
     SUNROOM_BUILD_INFO=/app/build-info.json
 USER 10001:10001
-EXPOSE 8080
+EXPOSE 7867
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --start-interval=2s --retries=3 \
   CMD ["python", "-m", "sunroom.healthcheck"]
 ENTRYPOINT ["sunroom"]

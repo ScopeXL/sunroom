@@ -54,6 +54,8 @@ DOWN_BEFORE_REFIND_S = 120.0
 WATCH_EVERY_S = 30.0
 NO_SUNROOM_FOR_S = 120.0
 ABOUT_EVERY_S = 600.0
+BEHIND_EVERY_S = 3600.0
+UPDATING_FOR_S = 300.0
 ACTION_DELAY_S = 1.5  # a restart or shut down waits this long, so its toast shows first
 RUN_SUNROOM_TRIES = 150  # a new Sunroom answering, 2 s apart: five minutes
 RUN_SUNROOM_PAUSE_S = 2.0
@@ -141,6 +143,9 @@ class Agent:
         self.screen: screen.ScreenThread | None = None
         self._tasks: list[asyncio.Task[None]] = []
         self._down_since: float | None = None
+        self._behind_looked_at = time.monotonic()
+        self._updating_until = 0.0
+        self._sunroom_updating = False
         self._no_sunroom_since: float | None = None
         self.network = ScreenNetworkOut(kind="none", ssid=None, ip=None, strength=None)
 
@@ -192,10 +197,15 @@ class Agent:
                 reachable=self.reachable,
                 version=self.known.version,
                 language=self.known.language,
+                updating=time.monotonic() < self._updating_until,
             )
         status = {
             **self.updater.status(self.update_check()),
             "sunroom_outdated": self._outdated(),
+            "sunroom_can_update": (
+                self._docker_here() and self._outdated() and not self.platform.sunroom_pinned()
+            ),
+            "sunroom_pinned": self.platform.sunroom_pinned() if self._docker_here() else None,
             "needs_terminal": self.needs_terminal,
         }
         if self.finishing:
@@ -361,12 +371,12 @@ class Agent:
                 helper, report.needs_root, self.platform.install_command()
             )
             self.publish_state()
-        if self._docker_sunroom_behind():
+        if self._docker_sunroom_behind() or self._local_sunroom_behind():
             self.hub.publish(
                 "update.progress", progress_out(92, "agent.update.step.updating_sunroom")
             )
             shown = True
-            await self.update_sunroom()
+            await self.update_sunroom(release=version())
         if reboot and self.updater.rebooted_for() != version():
             log.info("Restarting the computer to finish the update to %s.", version())
             self.toast("agent.update.restarting")
@@ -382,15 +392,26 @@ class Agent:
         if shown:
             self.hub.publish("update.progress", progress_out(100, "agent.update.step.done"))
 
-    def _docker_sunroom_behind(self) -> bool:
-        """An all-in-one Pi whose own Sunroom (Docker, update.sh) is older than this version."""
+    def _docker_here(self) -> bool:
+        """An all-in-one Pi: its own Sunroom runs in Docker, through update.sh."""
         return (
             self.config.mode == "all"
             and (self.local is None or not self.local.installed())
             and "update_sunroom" in self.capabilities()
+        )
+
+    def _docker_sunroom_behind(self) -> bool:
+        """That Sunroom is older than this version, and no version is pinned."""
+        return (
+            self._docker_here()
             and self.known.version is not None
             and newer(version(), self.known.version)
+            and self.platform.sunroom_pinned() is None
         )
+
+    def _local_sunroom_behind(self) -> bool:
+        """Sunroom run here as a program is older than this version."""
+        return self.local is not None and self.local.installed() and self.local.behind(version())
 
     def away_for(self) -> float:
         """How long this agent still pretends to be away (``go_away``), in seconds."""
@@ -499,6 +520,11 @@ class Agent:
             self._down_since = None
             if now - self.known.asked_at > ABOUT_EVERY_S:
                 await self.ask_sunroom()
+            # A download that failed is tried again (a bad night's internet), quietly (ADR 0046).
+            if now - self._behind_looked_at >= BEHIND_EVERY_S:
+                self._behind_looked_at = now
+                if self._docker_sunroom_behind() or self._local_sunroom_behind():
+                    self.spawn(self.update_sunroom(quiet=True, release=version()))
             return
         self._down_since = self._down_since or now
         if (
@@ -689,8 +715,7 @@ class Agent:
 
     async def look_after_local(self) -> None:
         """Sunroom run here, as Sunroom Screen starts: the computer kept awake, Sunroom
-        announced, started again on Windows, and brought to Sunroom Screen's own version (which
-        an update of Sunroom Screen changed)."""
+        announced, and started again on Windows. ``finish_update`` brings it to this version."""
         local = self.local
         if local is None:
             return
@@ -698,12 +723,6 @@ class Agent:
         await local.announce()
         if self.sunroom_here() and not self.reachable:
             await local.ensure_running()
-        own = version()
-        if self.known.version is not None and newer(own, self.known.version):
-            log.info("Bringing Sunroom on this computer up to %s.", own)
-            if await local.update(own):
-                await self.ask_sunroom()
-                self.publish_state()
 
     async def later(self, action: Callable[[], Awaitable[None]]) -> None:
         """Run ``action`` a moment from now, after the answer (and its toast) went out."""
@@ -718,20 +737,47 @@ class Agent:
 
         self.spawn(go())
 
-    async def update_sunroom(self) -> None:
-        """The Sunroom on this machine: run here as a program, to the newest version (ADR 0038),
-        or an all-in-one Pi's through update.sh (minutes either way)."""
+    def note_sunroom_updating(self) -> None:
+        """Sunroom is updating, as this screen's own update or the wall's page says (it heard
+        ``server.updating``): if it's away for the next few minutes, that's why."""
+        self._updating_until = time.monotonic() + UPDATING_FOR_S
+        self.publish_state()
+
+    async def update_sunroom(self, *, quiet: bool = False, release: str | None = None) -> None:
+        """The Sunroom on this machine: run here as a program, to ``release`` or else the newest
+        version (ADR 0038), or an all-in-one Pi's through update.sh (minutes either way). ``quiet``
+        is a try on its own (a download that failed last time): the wall hears only that a version
+        went back. One at a time: a second ask while it's updating has nothing to add."""
+        if self._sunroom_updating:
+            log.info("The Sunroom on this screen is already updating.")
+            return
+        self._sunroom_updating = True
+        try:
+            await self._update_sunroom(quiet=quiet, release=release)
+        finally:
+            self._sunroom_updating = False
+
+    async def _update_sunroom(self, *, quiet: bool, release: str | None) -> None:
         log.info("Updating the Sunroom on this screen.")
+        self.note_sunroom_updating()
+        outcome: list[str] = []
         if self.local is not None and self.local.installed():
             latest = self.updater.status(self.update_check()).get("latest")
-            updated = await self.local.update(latest if isinstance(latest, str) else version())
+            newest = latest if isinstance(latest, str) else version()
+            updated = await self.local.update(release or newest)
+            outcome = self.local.outcome
         else:
             updated = await self.platform.update_sunroom()
+            outcome = self.platform.sunroom_update_outcome()
         if updated:
             await self.ask_sunroom()
-            self.toast("agent.toast.sunroom_up_to_date")
-        else:
-            self.toast("agent.toast.sunroom_didnt_update")
+        if outcome[:1] == ["went-back"] and len(outcome) == 3:
+            await self.ask_sunroom()
+            self.toast("agent.toast.sunroom_went_back", new=outcome[1], old=outcome[2])
+        elif not quiet and outcome[:1] != ["left-alone"]:
+            self.toast(
+                "agent.toast.sunroom_up_to_date" if updated else "agent.toast.sunroom_didnt_update"
+            )
         self.publish_state()
 
     async def rotate(self, rotation: int) -> None:
@@ -787,6 +833,7 @@ class Agent:
         self.known = Known()
         self.needs_terminal = None
         self.reachable = False
+        self._updating_until = 0.0  # what a test before heard stays with that test
         self.discovery.found = []
         await self.refresh_network()
         self.publish_state()

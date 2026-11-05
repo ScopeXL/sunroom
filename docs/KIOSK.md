@@ -31,9 +31,11 @@ root; it asks for `sudo` itself.
 
 | You want | Command |
 |---|---|
-| The screen on this Pi; Sunroom runs elsewhere | `curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh \| bash` |
-| Sunroom and the screen, both on this Pi | the same, ending `\| bash -s -- --with-sunroom` |
-| Only Sunroom, no screen (Pi OS Lite) | the same, ending `\| bash -s -- --server-only` |
+| The screen, with Sunroom on this computer or elsewhere | `curl -fsSL https://sunroom.day/install.sh \| bash` |
+
+The address is the newest Release's own installer, so the line never changes. Should sunroom.day be
+away, the same file is at `https://github.com/ScopeXL/sunroom/releases/latest/download/install.sh`
+(and `install.ps1`, for Windows).
 
 The installer finishes by saying what's next (with Sunroom on the Pi, the address your devices
 open and a QR code), then offers to restart.
@@ -42,7 +44,7 @@ On the screen's first page, tap **Connect to a Sunroom**, then **Continue** (ADR
 screen looks for Sunroom on your network and lists what it finds: tap **Use This Sunroom**, or
 type the address you open on your other devices under **Sunroom address**; it's checked as soon as
 you leave the field (**Check Address** tries again), and **Use This Sunroom** shows beside it once
-it's found. `--url https://calendar.example.com` (or `http://192.168.1.20:8080`) gives it the
+it's found. `--url https://calendar.example.com` (or `http://192.168.1.20:7867`) gives it the
 address and skips the search. Then the screen shows a six-character code: on a device signed in to
 Sunroom, open **Settings → Devices → Pair a Display** (under **More** on a phone) and type it. A
 Sunroom that isn't set up yet shows **Set Up Sunroom** instead: **Set Up Here** sets the household
@@ -70,7 +72,8 @@ Other options (`--help` lists them all):
 - `--brightness auto|ddc|sysfs|none` picks how the screen is dimmed in the evening (see "Sleep
   and dimming" below); `auto` is right for most screens.
 - `--no-screen-helper` leaves the screen itself on all night; the page still goes black or dim.
-  It's for monitors whose touch stops working while the screen is off.
+  It's for monitors whose touch stops working while the screen is off. `--screen-helper` brings
+  it back.
 - `--version X.Y.Z` runs that Sunroom version on the Pi (with `--with-sunroom`) instead of the
   newest. The screen's own software is always the installer's version.
 - `--x11` uses the older X11 desktop instead of labwc.
@@ -84,8 +87,11 @@ Wi-Fi, brightness and start-up settings). Last it notes what it changed, for the
 and starts the screen: a Pi offers to restart; another Linux computer offers only when Sunroom
 Screen's setup says what the desktop starts has changed (its report's `needs_reboot`).
 
-Running the installer again is safe: it keeps what is already right (the address the screen
-found, its pairing, its Updates choice) and replaces only its own files. Its log is
+Running the installer again is always safe, and needs no option: what the screen has stays (the
+address it found, its pairing, its Updates choice, and the rotation, connector, dimming and screen
+helper that the wall chose or an earlier run was told). An option given this time changes that one
+thing, and only the installer's own files are replaced. A connector stays while a screen is plugged
+in there; a cable moved to the other socket moves it. Its log is
 `~/.local/state/sunroom-kiosk/install.log`.
 
 ## What it changes
@@ -99,8 +105,9 @@ found, its pairing, its Updates choice) and replaces only its own files. Its log
   `/etc/avahi/services/sunroom.service`, which lets Sunroom screens on the network find this Pi
   by themselves (`--purge` removes it with Sunroom).
 - **Sunroom Screen:** `uv` in `~/.local/bin` when there is no uv yet (a pinned version, from its
-  makers' site), then Sunroom Screen itself with uv, from the same Sunroom release as the
-  installer on GitHub, checked against the release's `SHA256SUMS` before anything installs it.
+  makers' site, its installer checked against a pinned checksum before it runs), then Sunroom
+  Screen itself with uv, from the same Sunroom release as the installer on GitHub, checked against
+  the release's `SHA256SUMS` before anything installs it.
   uv gives it its own Python, apart from the system's. Its command is `~/.local/bin/sunroom-kiosk`;
   the copy it was installed from stays in `~/.local/share/sunroom-kiosk/wheels`, for updates to
   fall back on.
@@ -166,10 +173,31 @@ keeping the other's. The files the installer and Sunroom Screen's setup copy are
 
 ### A Pi set up before Sunroom 0.13.0
 
-Run the installer again with the options you used the first time (for example `--display-only
---url …`), then let it restart the Pi. It replaces the old launcher, the screen helper and their
+Run the installer again, with no option, then let it restart the Pi. It replaces the old launcher, the screen helper and their
 services with Sunroom Screen (the log says so), and keeps the address and the pairing. `update.sh`
 alone doesn't do this: it updates Sunroom, not the Pi's screen setup.
+
+## Advanced: Sunroom in Docker on the Pi
+
+These two still work, and are left out of the README: **On This Computer** does the same with
+less to keep up.
+
+| You want | Command |
+|---|---|
+| Sunroom in Docker and the screen, both on this Pi | the install line, ending `\| bash -s -- --with-sunroom` |
+| Only Sunroom in Docker, no screen (Pi OS Lite) | the same, ending `\| bash -s -- --server-only` |
+
+**They keep themselves up to date.** With a screen, the screen brings Sunroom along overnight, tries
+a failed download again within the hour, and This Screen shows **Update Sunroom** while it's behind.
+Sunroom alone gets a timer, every morning at about 5:00 (`--no-auto-update` leaves it out). Either way
+runs `sudo /opt/sunroom/update.sh`:
+
+- A new version that never turns healthy goes back by itself to the one before, restoring the
+  database copy if it had changed the database, and stays there until something newer is out. The
+  wall says "Sunroom 1.1.0 didn't start, so 1.0.0 is back."
+- A Pi installed with `--version X.Y.Z` stays on that version, and This Screen says so. `sudo
+  /opt/sunroom/update.sh latest` follows the newest again, and `sudo /opt/sunroom/update.sh 1.0.0`
+  moves the pin.
 
 ## Another Linux computer
 
@@ -177,7 +205,7 @@ On a Linux computer that isn't a Raspberry Pi, sign in to its desktop as the per
 runs for, and in a terminal run the same command:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
+curl -fsSL https://sunroom.day/install.sh | bash
 ```
 
 It sets up the screen only, and needs systemd and a desktop. **The browser:** it uses Chromium,
@@ -208,7 +236,7 @@ On Windows 10 or 11, sign in as the person the screen runs for, open PowerShell 
 PowerShell), and run this in its window:
 
 ```powershell
-irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1 | iex
+irm https://sunroom.day/install.ps1 | iex
 ```
 
 Type it in the window itself. Wrapped in a second PowerShell (`powershell -c "…"`), or typed in
@@ -244,7 +272,7 @@ With options (`-Url https://calendar.example.com`, `-DryRun`, `-AgentWheel FILE`
 run the same download as a script block, in the PowerShell window too:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.ps1))) -Url https://calendar.example.com
+& ([scriptblock]::Create((irm https://sunroom.day/install.ps1))) -Url https://calendar.example.com
 ```
 
 or save the file and run `powershell -ExecutionPolicy Bypass -File install.ps1 -Url …`.
@@ -258,7 +286,7 @@ Uninstall Sunroom Screen…** does the same without a terminal (ADR 0042).
 On a Mac, sign in as the person the screen runs for, and in Terminal run the same command:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash
+curl -fsSL https://sunroom.day/install.sh | bash
 ```
 
 It needs no administrator. With no Google Chrome, Chromium or Microsoft Edge in `/Applications`
@@ -324,7 +352,7 @@ missing; a tap may not wake the screen then, so install it with `sudo apt instal
 ### When touch stops working while the screen is off
 
 A few monitors switch their touch off together with the picture, so a tap can't wake them before
-the morning. Run the installer again with `--no-screen-helper`: at night the page still goes black
+the morning. Run the installer once with `--no-screen-helper`: at night the page still goes black
 or shows the dim clock, and the screen itself stays on (**Dim clock** suits these screens best).
 
 ### If Sunroom can't be reached
@@ -339,7 +367,7 @@ than a lit one. As soon as Sunroom answers again, the screen follows the schedul
 `journalctl --user -u sunroom-kiosk` has one line per change, for example:
 
 ```text
-Following the screen's sleep times from http://localhost:8080; brightness through DDC/CI on I2C bus 20.
+Following the screen's sleep times from http://localhost:7867; brightness through DDC/CI on I2C bus 20.
 Brightness 40%: evening dim.
 Screen off: sleep time.
 Screen on: tapped awake for 2 minutes.
@@ -375,14 +403,17 @@ with **Try Again**.
   from going to sleep while Sunroom runs, and the screen still sleeps on its schedule. A Linux
   desktop may refuse (Sunroom Screen's log says so): then turn off automatic suspend in its power
   settings, so your devices reach Sunroom at night.
-- **Your devices:** Sunroom answers on port 8080 (or the next free one), at
-  `http://<computer>.local:8080` on a Mac and on Linux with avahi, else at the computer's numbered
+- **Your devices:** Sunroom answers on port 7867 (or the next free one), at
+  `http://<computer>.local:7867` on a Mac and on Linux with avahi, else at the computer's numbered
   address; the QR codes on Set Up Sunroom and on setup's last page have it. Sunroom Screen
   announces it on the network, so other screens find it too. On a Mac or Windows the first start
   may ask whether Sunroom may accept connections: choose Allow, or your devices can't reach it.
 - **Updates:** it stays at Sunroom Screen's version: when Sunroom Screen updates itself (Update
   Now, or overnight), Sunroom follows, and This Screen says under Software when it's behind; a
-  version that doesn't answer within five minutes is put back.
+  version that never answers, within ten minutes on a Pi and five elsewhere, goes by itself: the one
+  before comes back, with the database as it was if a migration ran, the wall says so, and that
+  version isn't tried again until a newer one is out (**Update Sunroom** still can). A download that
+  failed is tried again within the hour, and a computer's restart can't leave Sunroom behind.
 - **The household password, lost:** `DATA_DIR=~/.local/share/sunroom ~/.local/bin/sunroom
   reset-password` (the data folder above for a Mac or Windows).
 - **Removing it:** This Screen's **Uninstall Sunroom Screen…** takes Sunroom and its data too
@@ -393,7 +424,7 @@ with **Try Again**.
 ## Letting screens find a Sunroom on a NAS or server
 
 A Sunroom screen that isn't told an address looks for Sunroom on its network: it asks every
-address on its own network on ports 8080, 80 and 443, which finds a server set up as
+address on its own network on ports 7867, 80 and 443, which finds a server set up as
 [DEPLOY.md](DEPLOY.md) shows. It also listens for Sunrooms that announce themselves, which an
 all-in-one Pi does. To announce one on another Linux machine that runs avahi, put this in
 `/etc/avahi/services/sunroom.service` (with the port you publish); it's optional:
@@ -403,7 +434,7 @@ all-in-one Pi does. To announce one on another Linux machine that runs avahi, pu
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
 <service-group>
   <name replace-wildcards="yes">Sunroom on %h</name>
-  <service><type>_sunroom._tcp</type><port>8080</port></service>
+  <service><type>_sunroom._tcp</type><port>7867</port></service>
 </service-group>
 ```
 
@@ -439,6 +470,10 @@ part of its setup on a Pi or a Linux computer, and Sunroom where it runs on that
   data.
 - **Reinstall…** (quiet, under Software, when there's no update to offer) runs the installed
   version's setup again, whole, for a screen that misbehaves; the pairing and the settings stay.
+- **Go Back to 0.17.0…** (quiet, beside it, for a week after an update) puts the version that update
+  replaced back, with its own setup, for a version that starts but misbehaves: "Went back to Sunroom
+  Screen 0.17.0". The overnight update then leaves the version you went back from alone until the
+  one after it; **Update Now** still offers it. Only Sunroom Screen goes back: Sunroom stays as it is.
   `sunroom-kiosk setup --check` in a terminal says what differs from this version's setup.
 - **A Pi or a Linux screen set up before 0.18.0** has a root helper that can't take an update's
   system part yet: after its first update, Software says "To finish updates on this computer, run

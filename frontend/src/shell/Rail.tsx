@@ -139,7 +139,7 @@ export function Rail({
       <button
         type="button"
         onClick={onLock}
-        aria-label={t("settings.title")}
+        aria-label={lock === "unlocked" ? t("shell.rail.unlocked.aria") : t("settings.title")}
         aria-current={room === "settings" ? "page" : undefined}
         data-icon={lock === "locked" ? "lock" : "gear"}
         className="press-row flex shrink-0 items-center justify-center font-semibold text-ink-soft aria-[current=page]:bg-wall aria-[current=page]:text-ink landscape:h-tap landscape:border-t landscape:border-line landscape:px-3 landscape:text-d-secondary portrait:h-24 portrait:w-32 portrait:flex-col portrait:gap-1 portrait:text-d-caption"

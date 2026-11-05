@@ -36,9 +36,9 @@ def events() -> tuple[list[tuple[str, Any]], Callable[[str, Any], None]]:
     ("typed", "tries"),
     [
         ("calendar.example.com", ["https://calendar.example.com", "http://calendar.example.com"]),
-        ("192.168.1.20:8080", ["http://192.168.1.20:8080", "https://192.168.1.20:8080"]),
-        ("sunroom.local:8080/", ["http://sunroom.local:8080", "https://sunroom.local:8080"]),
-        ("nas:8080", ["http://nas:8080", "https://nas:8080"]),
+        ("192.168.1.20:7867", ["http://192.168.1.20:7867", "https://192.168.1.20:7867"]),
+        ("sunroom.local:7867/", ["http://sunroom.local:7867", "https://sunroom.local:7867"]),
+        ("nas:7867", ["http://nas:7867", "https://nas:7867"]),
         ("https://calendar.example.com/", ["https://calendar.example.com"]),
         ("HTTP://192.168.1.20", ["HTTP://192.168.1.20"]),
         ("ftp://192.168.1.20", []),
@@ -51,10 +51,10 @@ def test_what_a_typed_address_becomes(typed: str, tries: list[str]) -> None:
 
 
 async def test_a_new_and_an_older_sunroom_are_both_recognised(sunrooms: FakeSunrooms) -> None:
-    sunrooms.older["http://192.168.1.22:8080"] = "0.11.0"
+    sunrooms.older["http://192.168.1.22:7867"] = "0.11.0"
     async with sunrooms.client() as client:
         new = await check(client, SUNROOM)
-        older = await check(client, "192.168.1.22:8080")
+        older = await check(client, "192.168.1.22:7867")
     assert (new.id, new.name, new.version, new.older) == (
         SUNROOM_ID,
         "The Sample Family",
@@ -96,10 +96,10 @@ def test_the_sweep_looks_at_this_screens_networks_only() -> None:
 def test_each_host_is_asked_on_three_ports() -> None:
     bases = targets([ipaddress.IPv4Network("192.168.1.0/30")])
     assert bases == [
-        "http://192.168.1.1:8080",
+        "http://192.168.1.1:7867",
         "http://192.168.1.1",
         "https://192.168.1.1",
-        "http://192.168.1.2:8080",
+        "http://192.168.1.2:7867",
         "http://192.168.1.2",
         "https://192.168.1.2",
     ]
@@ -108,7 +108,7 @@ def test_each_host_is_asked_on_three_ports() -> None:
 async def test_a_scan_finds_each_sunroom_once_and_says_when_its_done(
     sunrooms: FakeSunrooms,
 ) -> None:
-    sunrooms.older["http://192.168.1.22:8080"] = "0.11.0"
+    sunrooms.older["http://192.168.1.22:7867"] = "0.11.0"
     seen, publish = events()
 
     async def announced(seconds: float) -> list[str]:
@@ -121,7 +121,7 @@ async def test_a_scan_finds_each_sunroom_once_and_says_when_its_done(
         announced=announced,
     )
     found = await discovery.scan()
-    assert sorted(f.url for f in found) == [SUNROOM, "http://192.168.1.22:8080"]
+    assert sorted(f.url for f in found) == [SUNROOM, "http://192.168.1.22:7867"]
     kinds = [kind for kind, _ in seen]
     assert kinds[0] == "discovery.started" and kinds[-1] == "discovery.done"
     assert kinds.count("discovery.found") == 2
@@ -131,7 +131,7 @@ async def test_a_scan_finds_each_sunroom_once_and_says_when_its_done(
 async def test_the_advertised_address_wins_when_it_is_the_same_sunroom(
     sunrooms: FakeSunrooms,
 ) -> None:
-    name = "http://sunroom.local:8080"
+    name = "http://sunroom.local:7867"
     sunrooms.new[SUNROOM]["url"] = name
     sunrooms.new[name] = dict(sunrooms.new[SUNROOM])
     _, publish = events()
@@ -142,8 +142,8 @@ async def test_the_advertised_address_wins_when_it_is_the_same_sunroom(
 
 
 async def test_an_advertised_address_of_another_server_is_ignored(sunrooms: FakeSunrooms) -> None:
-    sunrooms.new[SUNROOM]["url"] = "http://elsewhere.local:8080"
-    sunrooms.new["http://elsewhere.local:8080"] = {
+    sunrooms.new[SUNROOM]["url"] = "http://elsewhere.local:7867"
+    sunrooms.new["http://elsewhere.local:7867"] = {
         **sunrooms.new[SUNROOM],
         "id": "00000000-0000-7000-8000-0000000000e2",
     }
@@ -154,7 +154,7 @@ async def test_an_advertised_address_of_another_server_is_ignored(sunrooms: Fake
 
 
 async def test_a_moved_sunroom_is_found_again_by_its_id(sunrooms: FakeSunrooms) -> None:
-    moved = "http://192.168.1.44:8080"
+    moved = "http://192.168.1.44:7867"
     sunrooms.new[moved] = sunrooms.new.pop(SUNROOM)
     _, publish = events()
     discovery = Discovery(publish, client=sunrooms.client, addresses=lambda: [("192.168.1.30", 24)])
@@ -170,9 +170,9 @@ async def test_the_fake_finds_what_it_is_given_and_an_older_one(sunrooms: FakeSu
     fake.client = sunrooms.client
     fake.pause_s = 0
     found = await fake.scan()
-    assert [f.url for f in found] == [SUNROOM, "http://198.51.100.21:8080"]
+    assert [f.url for f in found] == [SUNROOM, "http://198.51.100.21:7867"]
     assert found[1].older and found[1].version == "0.11.0"
-    assert (await fake.check("http://198.51.100.21:8080/")).older
+    assert (await fake.check("http://198.51.100.21:7867/")).older
 
 
 async def _none(seconds: float) -> list[str]:

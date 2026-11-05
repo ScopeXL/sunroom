@@ -115,14 +115,13 @@ function LibraryRow({ library, onOpen }: { library: PhotoLibrary; onOpen: () => 
     <ListRow
       label={t("photos.library.edit.aria", { name: library.name })}
       title={library.name}
-      subtitle={
+      subtitle={line.text}
+      subtitleShown={
         line.trouble ? (
           <span role="status" className="font-semibold text-alert">
             {line.text}
           </span>
-        ) : (
-          line.text
-        )
+        ) : undefined
       }
       onClick={onOpen}
     />

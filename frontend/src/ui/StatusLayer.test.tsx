@@ -14,12 +14,32 @@ vi.mock("virtual:pwa-register/react", () => ({
 const { OfflinePill, ToastRegion, UpdatePrompt } = await import("./StatusLayer");
 const { connection } = await import("../lib/connection");
 const { anchorToasts, showToast, toasts } = await import("../lib/toast");
+const { forgetRestart, restarting } = await import("../lib/restart");
 
 afterEach(() => {
   cleanup();
   sw.needRefresh = false;
   connection.set({ server: "unknown", showOffline: false, lastReachableAt: null });
   toasts.set([]);
+  forgetRestart();
+});
+
+describe("the quiet pill", () => {
+  it("says Sunroom is updating, before it goes and while it's away", () => {
+    restarting.set("update");
+    render(<OfflinePill />);
+    expect(screen.getByRole("status").textContent).toBe("Sunroom is updating. Back in a minute.");
+    act(() => {
+      connection.set({ server: "unreachable", showOffline: true, lastReachableAt: null });
+    });
+    expect(screen.getByRole("status").textContent).toBe("Sunroom is updating. Back in a minute.");
+  });
+
+  it("stays quiet for a restore, which says so its own way", () => {
+    restarting.set("restore");
+    render(<OfflinePill />);
+    expect(screen.getByRole("status").textContent).toBe("");
+  });
 });
 
 describe("the update prompt", () => {

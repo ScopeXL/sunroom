@@ -34,11 +34,12 @@ function piState(overrides: Partial<ScreenState> = {}): ScreenState {
     session: "wayland",
     capabilities: ["restart", "shutdown", "update", "wifi", "rotate", "brightness"],
     sunroom: {
-      url: "http://192.168.1.20:8080",
+      url: "http://192.168.1.20:7867",
       id: "00000000-0000-7000-8000-0000000000e1",
       name: "The Sample Family",
       found: "discovered",
       reachable: true,
+      updating: false,
     },
     network: { kind: "wifi", ssid: "HomeNet", ip: "192.168.1.30", strength: 82 },
     update: {
@@ -49,9 +50,12 @@ function piState(overrides: Partial<ScreenState> = {}): ScreenState {
       checked_at: null,
       message: null,
       sunroom_outdated: false,
+      sunroom_can_update: false,
+      sunroom_pinned: null,
+      go_back_to: null,
     },
     display: { rotation: 0, brightness_method: "ddc" },
-    open_url: "http://192.168.1.20:8080/display?dimmer=screen&screen=7800",
+    open_url: "http://192.168.1.20:7867/display?dimmer=screen&screen=7800",
     ...overrides,
   };
 }
@@ -153,7 +157,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
   it("says what this screen is on, shows, runs and can do", () => {
     draw();
     expect(screen.getByText("Wi-Fi: HomeNet, strong")).toBeTruthy();
-    expect(screen.getByText("http://192.168.1.20:8080 · on another computer")).toBeTruthy();
+    expect(screen.getByText("http://192.168.1.20:7867 · on another computer")).toBeTruthy();
     // Found on the network: the one way it still differs from a typed one (ADR 0042).
     expect(
       screen.getByText("Found on your network: this screen follows it if its address changes."),
@@ -182,6 +186,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
           name: null,
           found: "typed",
           reachable: true,
+          updating: false,
         },
       }),
     );
@@ -265,6 +270,9 @@ describe("Settings → This Screen (ADR 0035)", () => {
           checked_at: null,
           message: null,
           sunroom_outdated: false,
+          sunroom_can_update: false,
+          sunroom_pinned: null,
+          go_back_to: null,
         },
       }),
     );
@@ -319,16 +327,93 @@ describe("Settings → This Screen (ADR 0035)", () => {
     ]);
   });
 
+  it("goes back to the version an update replaced, after asking, for a week", async () => {
+    const update = piState().update;
+    draw(piState({ update: { ...update, go_back_to: "0.12.0" } }));
+    fireEvent.click(screen.getByRole("button", { name: "Go Back to 0.12.0…" }));
+    const asking = screen.getByRole("dialog", { name: "Go Back to 0.12.0?" });
+    expect(asking.textContent).toContain(
+      "For a version that misbehaves. Sunroom Screen goes back to 0.12.0 and starts again, and " +
+        "0.13.0 isn't installed again by itself. The pairing, the settings and your family's " +
+        "data stay.",
+    );
+    fireEvent.click(within(asking).getByRole("button", { name: "Cancel" }));
+    expect(calls).toEqual([]);
+    fireEvent.click(screen.getByRole("button", { name: "Go Back to 0.12.0…" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Go Back to 0.12.0?" })).getByRole("button", {
+        name: "Go Back",
+      }),
+    );
+    await waitFor(() => {
+      expect(said()).toEqual(["Going back… this takes a few minutes"]);
+    });
+    expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual([
+      "POST /api/screen/go-back",
+    ]);
+  });
+
+  it("has no Go Back with nothing to go back to, or mid-update", () => {
+    draw();
+    expect(screen.queryByRole("button", { name: /Go Back/ })).toBeNull();
+    const update = piState().update;
+    draw(piState({ update: { ...update, state: "installing", go_back_to: "0.12.0" } }));
+    expect(screen.queryByRole("button", { name: /Go Back/ })).toBeNull();
+  });
+
+  it("offers Update Sunroom on a Pi left behind by a pull that failed, and says when it's pinned", () => {
+    const update = {
+      check: "nightly",
+      state: "up_to_date",
+      installed: "0.14.0",
+      latest: "0.14.0",
+      checked_at: null,
+      message: null,
+      sunroom_outdated: true,
+      sunroom_can_update: false,
+      sunroom_pinned: null,
+      go_back_to: null,
+    } as const;
+    const sunroom = {
+      url: "http://localhost:7867",
+      id: "00000000-0000-7000-8000-0000000000e1",
+      name: "The Sample Family",
+      found: "local",
+      reachable: true,
+      updating: false,
+      version: "0.13.0",
+    } as const;
+    draw(
+      piState({
+        capabilities: ["restart", "shutdown", "update", "update_sunroom"],
+        sunroom,
+        update: { ...update, sunroom_can_update: true },
+      }),
+    );
+    expect(screen.getByRole("button", { name: "Update Sunroom" })).toBeTruthy();
+    cleanup();
+    draw(
+      piState({
+        capabilities: ["restart", "shutdown", "update", "update_sunroom"],
+        sunroom,
+        update: { ...update, sunroom_outdated: false, sunroom_pinned: "0.13.0" },
+      }),
+    );
+    expect(screen.queryByRole("button", { name: "Update Sunroom" })).toBeNull();
+    expect(screen.getByText("Sunroom here is pinned to 0.13.0.")).toBeTruthy();
+  });
+
   it("says when Sunroom on this computer is behind; the update brings it along", () => {
     draw(
       piState({
         capabilities: ["restart", "shutdown", "update", "update_sunroom"],
         sunroom: {
-          url: "http://localhost:8080",
+          url: "http://localhost:7867",
           id: "00000000-0000-7000-8000-0000000000e1",
           name: "The Sample Family",
           found: "local",
           reachable: true,
+          updating: false,
           version: "0.13.0",
         },
         update: {
@@ -339,10 +424,13 @@ describe("Settings → This Screen (ADR 0035)", () => {
           checked_at: null,
           message: null,
           sunroom_outdated: true,
+          sunroom_can_update: false,
+          sunroom_pinned: null,
+          go_back_to: null,
         },
       }),
     );
-    expect(screen.getByText("http://localhost:8080 · on this computer")).toBeTruthy();
+    expect(screen.getByText("http://localhost:7867 · on this computer")).toBeTruthy();
     expect(
       screen.getByText("Sunroom on this computer is 0.13.0; the update brings it to 0.14.0"),
     ).toBeTruthy();
@@ -350,8 +438,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
   });
 
   it("shows the install command when this screen's helper can't finish an update", () => {
-    const command =
-      "curl -fsSL https://raw.githubusercontent.com/ScopeXL/sunroom/main/kiosk/install.sh | bash";
+    const command = "curl -fsSL https://sunroom.day/install.sh | bash";
     draw(piState({ update: { ...piState().update, needs_terminal: command } }));
     expect(
       screen.getByText(

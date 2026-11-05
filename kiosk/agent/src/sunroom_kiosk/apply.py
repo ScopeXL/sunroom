@@ -10,11 +10,13 @@ be replaced there). Windows locks a running program's files, so there the agent 
 out of its environment and runs it with the Python that environment was made from, and this asks
 the running agent to quit (This Screen's own Quit) before uv replaces anything:
 
-    python apply.py --apply WHEEL --port 7800 [--previous WHEEL] [--force]
+    python apply.py --apply WHEEL --port 7800 [--previous WHEEL] [--force | --back]
 
-``--force`` is Reinstall…: the version already installed, its setup rewritten whole. What it's
-doing goes into the state file's ``progress`` (the agent still running shows it), and how it
-ended into ``last``, which the new version shows once ("Updated to 0.18.0").
+``--force`` is Reinstall…: the version already installed, its setup rewritten whole. ``--back`` is
+Go Back…: the version this one replaced (ADR 0046). What it's doing goes into the state file's
+``progress`` (the agent still running shows it), how it ended into ``last``, which the new version
+shows once ("Updated to 0.18.0"), the version an update replaced into ``replaced``, and the one
+gone back from into ``went_back_from``, which the overnight update leaves alone.
 """
 
 from __future__ import annotations
@@ -210,6 +212,7 @@ def apply(
     port: int,
     *,
     force: bool = False,
+    back: bool = False,
     install: Callable[[Path], bool] | None = None,
     stop: Callable[[], bool] | None = None,
     setup: Callable[[bool], Report | None] = run_setup,
@@ -246,13 +249,21 @@ def apply(
             halt()
             put(previous)
             restart(setup(False))
-        note_failure(the_paths, release, before, again=force)
+        note_failure(the_paths, release, before, again=force or back)
         return 1
-    for old in the_paths.wheels.glob("sunroom_kiosk-*.whl"):
-        if old not in (wheel, previous):
-            old.unlink(missing_ok=True)
-    last = {"version": release, "ok": True, "at": _now(), "again": force}
-    _note(the_paths, progress=None, last=last)
+    if not force:  # a Reinstall… leaves which versions are here as they were: Go Back… still can
+        for old in the_paths.wheels.glob("sunroom_kiosk-*.whl"):
+            if old not in (wheel, previous):
+                old.unlink(missing_ok=True)
+    at = _now()
+    last = {"version": release, "ok": True, "at": at, "again": force, "back": back}
+    if back:
+        _note(the_paths, progress=None, last=last, replaced=None, went_back_from=before)
+    elif force:
+        _note(the_paths, progress=None, last=last)
+    else:
+        replaced = {"version": before, "by": release, "at": at} if before else None
+        _note(the_paths, progress=None, last=last, replaced=replaced, went_back_from=None)
     print(f"Sunroom Screen {release} is running.")
     return 0
 
@@ -275,12 +286,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--previous", type=Path, default=None, help="the wheel to go back to")
     parser.add_argument("--port", type=int, default=7800)
     parser.add_argument("--force", action="store_true", help="Reinstall…: every file rewritten")
+    parser.add_argument("--back", action="store_true", help="Go Back…: the version it replaced")
     args = parser.parse_args(argv)
     return apply(
         cast(Path, args.apply),
         cast(Path | None, args.previous),
         cast(int, args.port),
         force=cast(bool, args.force),
+        back=cast(bool, args.back),
     )
 
 

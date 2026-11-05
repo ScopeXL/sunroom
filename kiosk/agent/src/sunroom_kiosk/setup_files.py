@@ -621,7 +621,7 @@ def root_pieces(machine: Machine) -> list[FilePiece]:
     if machine.settings.mode in ("all", "server") and have is not None:
         port = re.search(r"<port>(\d+)</port>", have)
         note = header_comment(release).removeprefix("# ").rstrip("\n")
-        values = {"PORT": port[1] if port else "8080", "VERSION": release, "NOTE": note}
+        values = {"PORT": port[1] if port else "7867", "VERSION": release, "NOTE": note}
         pieces.append(FilePiece("avahi", avahi, render(template("avahi/sunroom.service"), values)))
     return pieces
 

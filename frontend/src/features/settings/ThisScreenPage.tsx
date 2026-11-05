@@ -22,7 +22,7 @@ import { Digits } from "../../ui/Digits";
 import { Segmented } from "../../ui/Segmented";
 import { Sheet } from "../../ui/Sheet";
 import { TextField } from "../../ui/TextField";
-import { agent, answer, refusal, reinstall } from "./agentCalls";
+import { agent, answer, goBack, refusal, reinstall } from "./agentCalls";
 import { Group, Row, Text } from "./parts";
 import { UninstallSheet } from "./UninstallSheet";
 
@@ -96,7 +96,7 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
   const [wifiOpen, setWifiOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [asking, setAsking] = useState<
-    "shutdown" | "address" | "uninstall" | "update" | "reinstall" | null
+    "shutdown" | "address" | "uninstall" | "update" | "reinstall" | "go_back" | null
   >(null);
 
   const refresh = async () => {
@@ -125,6 +125,16 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
       showToast(refusal(error));
     },
   });
+  const back = useMutation({
+    mutationFn: goBack,
+    onSuccess: () => {
+      setAsking(null);
+      showToast(t("settings.this_screen.go_back.toast"));
+    },
+    onError: (error) => {
+      showToast(refusal(error));
+    },
+  });
   const rotate = useMutation({
     mutationFn: async (rotation: Rotation) => {
       return answer(await agent().PUT("/api/screen/display", { body: { rotation } }));
@@ -134,6 +144,17 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
     },
     onError: (error) => {
       showToast(t("settings.this_screen.rotation.error", { why: refusal(error) }));
+    },
+  });
+  const updateSunroom = useMutation({
+    mutationFn: async () => {
+      answer(await agent().POST("/api/screen/update-sunroom"));
+    },
+    onSuccess: () => {
+      showToast(t("settings.this_screen.software.update_sunroom.toast"));
+    },
+    onError: (error) => {
+      showToast(refusal(error));
     },
   });
   const policy = useMutation({
@@ -184,8 +205,9 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
             percent,
           })
         : tRich("settings.this_screen.software.updating", { percent });
-  const behind =
-    update.sunroom_outdated && state.sunroom?.version
+  const behind = update.sunroom_pinned
+    ? t("settings.this_screen.software.sunroom_pinned", { version: update.sunroom_pinned })
+    : update.sunroom_outdated && state.sunroom?.version
       ? t("settings.this_screen.software.sunroom_behind", {
           sunroom: state.sunroom.version,
           version: update.latest ?? update.installed,
@@ -260,6 +282,18 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
               {t("settings.this_screen.update.action")}
             </Button>
           ) : null}
+          {/* An all-in-one Pi's Sunroom, left behind by a pull that failed (ADR 0046). */}
+          {update.sunroom_can_update && !installing ? (
+            <Button
+              variant="secondary"
+              pending={updateSunroom.isPending}
+              onClick={() => {
+                updateSunroom.mutate();
+              }}
+            >
+              {t("settings.this_screen.software.update_sunroom.action")}
+            </Button>
+          ) : null}
           {/* For a screen that misbehaves: the version it runs, set up again (ADR 0044). An
               update does the same on its way, so it's offered only without one. */}
           {can("update") && update.state !== "available" && !installing ? (
@@ -270,6 +304,17 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
               }}
             >
               {t("settings.this_screen.reinstall.open.action")}
+            </Button>
+          ) : null}
+          {/* For a version that starts but misbehaves: for a week, the one it replaced (ADR 0046). */}
+          {can("update") && update.go_back_to && !installing ? (
+            <Button
+              variant="quiet"
+              onClick={() => {
+                setAsking("go_back");
+              }}
+            >
+              {t("settings.this_screen.go_back.open.action", { version: update.go_back_to })}
             </Button>
           ) : null}
         </Row>
@@ -414,6 +459,30 @@ export function ThisScreenPage({ onForgot }: { onForgot?: () => void } = {}) {
           pending={again.isPending}
           onAct={() => {
             again.mutate();
+          }}
+          onKeep={() => {
+            setAsking(null);
+          }}
+        />
+      </Sheet>
+      <Sheet
+        open={asking === "go_back"}
+        title={t("settings.this_screen.go_back.title", { version: update.go_back_to ?? "" })}
+        onClose={() => {
+          setAsking(null);
+        }}
+      >
+        <Confirm
+          tone="primary"
+          text={t("settings.this_screen.go_back.body", {
+            version: update.go_back_to ?? "",
+            installed: update.installed,
+          })}
+          act={t("settings.this_screen.go_back.action")}
+          keep={t("app.action.cancel")}
+          pending={back.isPending}
+          onAct={() => {
+            back.mutate();
           }}
           onKeep={() => {
             setAsking(null);

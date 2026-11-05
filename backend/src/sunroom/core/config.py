@@ -24,13 +24,17 @@ _ALLOWED_HOST = re.compile(r"^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z
 
 
 class InstallKind(StrEnum):
-    """Only changes how the update pill words its instructions (PLAN §13.6)."""
+    """Only changes how Sunroom words the way to update this install (PLAN §13.6, ADR 0046)."""
 
     DOCKER = "docker"
     PI = "pi"
     PORTAINER = "portainer"
     HA = "ha"
     COMPUTER = "computer"  # run as a program for a computer's user by Sunroom Screen (ADR 0038)
+    UNRAID = "unraid"
+    CASAOS = "casaos"
+    SYNOLOGY = "synology"
+    OTHER = "other"  # any other app that runs containers
 
 
 class ConfigError(Exception):
@@ -58,13 +62,18 @@ class Settings(BaseSettings):
     # unset, any Host is answered.
     app_allowed_hosts: Annotated[tuple[str, ...], NoDecode] = ()
     tz: str | None = None
-    port: int = Field(default=8080, ge=1024, le=65535)
+    port: int = Field(default=7867, ge=1024, le=65535)
     log_level: str = "INFO"
     data_dir: Path = Path("/data")
     data_dir_unsafe_fs_ok: bool = False
     sunroom_advertised_url: str | None = None
     sunroom_install_kind: InstallKind = InstallKind.DOCKER
     sunroom_update_check: bool | None = None
+    # A self-hoster's own copy of version.json (core/updates.py).
+    sunroom_update_url: str | None = None
+    # The updater companion, when the compose file has one (ADR 0046).
+    sunroom_updater_url: str | None = None
+    sunroom_updater_token: SecretStr | None = None
     sunroom_allow_private_urls: bool = False
     sunroom_test_mode: bool = False
     # Optional (ADR 0042): where Send Feedback posts; unset, the project's relay
@@ -141,7 +150,7 @@ class Settings(BaseSettings):
             return None
         parts = urlsplit(value.strip())
         if parts.scheme not in {"http", "https"} or not parts.hostname:
-            raise ValueError("must be an address like http://sunroom.local:8080")
+            raise ValueError("must be an address like http://sunroom.local:7867")
         if parts.path not in {"", "/"} or parts.query or parts.fragment:
             raise ValueError("must be an address only, with no path, query or fragment")
         return f"{parts.scheme}://{parts.netloc}"
@@ -210,7 +219,12 @@ class Settings(BaseSettings):
         """Exact secret values from the environment, so log redaction can scrub them anywhere."""
         values = [
             secret.get_secret_value()
-            for secret in (self.app_secret_key, self.app_password, self.sunroom_feedback_url)
+            for secret in (
+                self.app_secret_key,
+                self.app_password,
+                self.sunroom_feedback_url,
+                self.sunroom_updater_token,
+            )
             if secret is not None
         ]
         return [v for v in values if v]
