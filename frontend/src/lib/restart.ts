@@ -12,7 +12,7 @@ import { showToast } from "./toast";
 import { createStore, useStore } from "./store";
 import { reloadFresh } from "./update";
 
-/** Why the server is restarting ("restore"), once it said so; null otherwise. */
+/** Why the server is restarting ("restore", "update"), once it said so; null otherwise. */
 export const restarting = createStore<string | null>(null);
 
 /** The page that asked for the restart says so itself, in its own sheet: no toast there too. */
@@ -80,15 +80,24 @@ export async function waitForServer({
   }
 }
 
-/** Both shells mount this: when the server says it is restarting, say so, wait, and reload. */
+/** An update pulls its image first, so the server may stay a good while before it goes. */
+const UPDATE_GOES_WITHIN_MS = 180_000;
+
+/**
+ * Both shells mount this: when the server says it is restarting, say so, wait, and reload. An
+ * update says so in the quiet pill instead (ui/StatusLayer), and signs no one out.
+ */
 export function useServerRestart(refresh: () => Promise<void> = reloadFresh): void {
   const reason = useStore(restarting);
   useEffect(() => {
     if (!reason || waiting) return;
     waiting = true;
-    if (!askedHere) showToast(t("app.restarting.toast"));
-    void waitForServer({ afterGoingAway: true, forMs: Number.POSITIVE_INFINITY }).then(() =>
-      refresh(),
-    );
+    const update = reason === "update";
+    if (!askedHere && !update) showToast(t("app.restarting.toast"));
+    void waitForServer({
+      afterGoingAway: true,
+      forMs: Number.POSITIVE_INFINITY,
+      ...(update ? { goneWithinMs: UPDATE_GOES_WITHIN_MS } : {}),
+    }).then(() => refresh());
   }, [reason, refresh]);
 }

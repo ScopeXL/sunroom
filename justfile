@@ -265,6 +265,10 @@ hook-pre-push RANGE:
 smoke-image REF="HEAD":
     scripts/smoke_image.sh {{REF}}
 
+# The compose example for real: Sunroom and its updater, a real update on one volume (opt-in; network)
+smoke-compose OLD="0.18.0":
+    scripts/smoke_compose.sh {{OLD}}
+
 # The full release gate; stamps the tree it passed on
 preflight:
     #!/usr/bin/env bash

@@ -52,6 +52,9 @@ class UpdateCheck:
     published: datetime | None = None  # when that came out, if the answer said
     checked_at: datetime | None = None
     problem: str | None = None  # plain English, when the last check didn't get an answer
+    # Whether the updater companion answered when last asked (meta/updates.py).
+    updater_seen: bool = False
+    updater_looked_at: datetime | None = None
 
     def due(self, now: datetime) -> bool:
         return self.checked_at is None or now - self.checked_at >= CHECK_EVERY

@@ -224,7 +224,12 @@ export interface paths {
         /** Update Status */
         get: operations["update_status_api_admin_update_get"];
         put?: never;
-        post?: never;
+        /**
+         * Update Now
+         * @description Update Now in About: the companion pulls the new image, stops Sunroom and starts it again
+         *     on the same volume. Every page says so meanwhile, and reloads when it's back (ADR 0046).
+         */
+        post: operations["update_now_api_admin_update_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5865,6 +5870,10 @@ export interface components {
             locked: boolean;
             /** Problem */
             problem: string | null;
+            /** Update Now */
+            update_now: boolean;
+            /** Updater */
+            updater: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -6335,6 +6344,26 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateOut"];
+                };
+            };
+        };
+    };
+    update_now_api_admin_update_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -10,7 +10,9 @@ platforms="$(docker buildx imagetools inspect --raw "$IMAGE:$V" \
 [ "$platforms" = "linux/amd64 linux/arm64 " ] || { echo "unexpected platforms: $platforms" >&2; exit 1; }
 digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
 D="$(digest "$IMAGE:$V")"
-for tag in "${V%.*}" latest; do
+CHECK=("${V%.*}" latest)
+[ "${V%%.*}" -ge 1 ] && CHECK+=("${V%%.*}")
+for tag in "${CHECK[@]}"; do
   [ "$(digest "$IMAGE:$tag")" = "$D" ] || { echo "$IMAGE:$tag does not point at $D" >&2; exit 1; }
 done
 NAME="sunroom-verify"

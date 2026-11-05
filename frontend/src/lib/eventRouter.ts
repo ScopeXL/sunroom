@@ -149,6 +149,9 @@ export function createEventHandler(queryClient: QueryClient, handlers: EventHand
       case "session.expired":
         handlers.onSignedOut();
         break;
+      case "server.updating":
+        handlers.onRestarting?.("update");
+        break;
       case "server.restarting":
         handlers.onRestarting?.(typeof event.reason === "string" ? event.reason : "restart");
         break;

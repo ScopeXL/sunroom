@@ -35,8 +35,17 @@ class FakeGitHub:
         self.status = 200
         self.site: object | None = None  # version.json, when the site has one
         self.site_requests: list[httpx.Request] = []
+        # The updater companion: its answers, and what it was asked.
+        self.updater_ready = 200
+        self.updater_status = 202
+        self.updater_requests: list[httpx.Request] = []
 
     def handle(self, request: httpx.Request) -> httpx.Response:
+        if request.headers["host"].startswith("sunroom-updater"):
+            if request.url.path == "/readyz":
+                return httpx.Response(self.updater_ready)
+            self.updater_requests.append(request)
+            return httpx.Response(self.updater_status)
         if request.headers["host"] != "api.github.com":
             self.site_requests.append(request)
             return httpx.Response(404) if self.site is None else httpx.Response(200, json=self.site)
@@ -54,7 +63,8 @@ class FakeGitHub:
 
 
 async def resolve(host: str, port: int) -> list[str]:
-    return [PUBLIC]
+    # The updater is a container on the compose network: a private address, as it really is.
+    return ["172.18.0.3"] if host == "sunroom-updater" else [PUBLIC]
 
 
 @pytest.fixture
@@ -294,6 +304,137 @@ async def test_the_test_server_makes_up_its_answer_and_sends_nothing(
     assert (body["latest"], body["available"]) == (made_up(build_info().version), True)
     assert made_up("0.6.0") == "0.7.0"
     assert made_up("not a version") is None
+
+
+@pytest.fixture
+async def with_updater(
+    data_dir: Path, clock: FakeClock, github: FakeGitHub
+) -> AsyncIterator[tuple[FastAPI, httpx.AsyncClient]]:
+    """A household whose compose file has the updater companion, and a parent's phone."""
+    app = build(
+        data_dir,
+        clock,
+        github,
+        sunroom_updater_url="http://sunroom-updater:8080",
+        sunroom_updater_token="the-updaters-token",
+    )
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as http:
+            assert (await run_setup(http)).status_code == 201
+            yield app, http
+
+
+def a_version_is_out(app: FastAPI, clock: FakeClock, *, days_ago: float = 2) -> None:
+    found = state_of(app).updates
+    found.latest = "99.0.0"
+    found.published = clock.now() - timedelta(days=days_ago)
+
+
+async def test_update_now_asks_the_updater_and_every_page_hears(
+    with_updater: tuple[FastAPI, httpx.AsyncClient], github: FakeGitHub, clock: FakeClock
+) -> None:
+    app, phone = with_updater
+    a_version_is_out(app, clock)
+    body = await status(phone)
+    assert (body["updater"], body["update_now"]) == (True, True)
+    assert body["how"] == "It installs itself tonight, or tap Update Now."
+    assert body["how_key"] == "api.update.how.companion"
+    heard: list[str] = []
+    state_of(app).hub.listeners.append(lambda event_type, _payload: heard.append(event_type))
+    answer = await phone.post("/api/admin/update", headers=CSRF)
+    assert answer.status_code == 202, answer.text
+    [sent] = github.updater_requests
+    assert sent.method == "POST"
+    assert (sent.url.path, sent.url.params["async"]) == ("/v1/update", "true")
+    assert sent.headers["authorization"] == "Bearer the-updaters-token"
+    assert "server.updating" in heard
+
+
+async def test_a_version_waits_out_its_first_day_as_the_updater_does(
+    with_updater: tuple[FastAPI, httpx.AsyncClient], github: FakeGitHub, clock: FakeClock
+) -> None:
+    """The companion's cooldown gates /v1/update too, and no request can ask it not to: a button
+    here would do nothing, so About says what will happen instead."""
+    app, phone = with_updater
+    a_version_is_out(app, clock, days_ago=0.1)
+    body = await status(phone)
+    assert (body["available"], body["updater"], body["update_now"]) == (True, True, False)
+    assert body["how"] == "It installs itself overnight, a day after it comes out."
+    refused = await phone.post("/api/admin/update", headers=CSRF)
+    assert refused.status_code == 409
+    assert refused.json()["error"]["code"] == "too_new"
+    assert github.updater_requests == []
+    clock.advance(hours=24)
+    assert (await status(phone))["update_now"] is True
+
+
+async def test_about_only_promises_what_the_updater_can_do(
+    with_updater: tuple[FastAPI, httpx.AsyncClient], github: FakeGitHub, clock: FakeClock
+) -> None:
+    """Deleted from the compose file, stopped, or cut off from Docker: back to the plain words."""
+    app, phone = with_updater
+    a_version_is_out(app, clock)
+    github.updater_ready = 503
+    state_of(app).updates.updater_looked_at = None
+    body = await status(phone)
+    assert (body["updater"], body["update_now"]) == (False, False)
+    assert body["how_key"] == "api.update.how.docker"
+    refused = await phone.post("/api/admin/update", headers=CSRF)
+    assert (refused.status_code, refused.json()["error"]["code"]) == (409, "no_updater")
+    # Back again: seen within the minute.
+    github.updater_ready = 200
+    clock.advance(minutes=1, seconds=1)
+    assert (await status(phone))["updater"] is True
+
+
+async def test_an_updater_that_refuses_says_so_and_no_page_waits(
+    with_updater: tuple[FastAPI, httpx.AsyncClient], github: FakeGitHub, clock: FakeClock
+) -> None:
+    app, phone = with_updater
+    a_version_is_out(app, clock)
+    heard: list[str] = []
+    state_of(app).hub.listeners.append(lambda event_type, _payload: heard.append(event_type))
+    github.updater_status = 500
+    failed = await phone.post("/api/admin/update", headers=CSRF)
+    assert (failed.status_code, failed.json()["error"]["message"]) == (
+        502,
+        "Couldn't reach the updater. It still installs updates overnight.",
+    )
+    assert "server.updating" not in heard
+    # Busy with an update already: that's what was asked for.
+    github.updater_status = 429
+    assert (await phone.post("/api/admin/update", headers=CSRF)).status_code == 202
+    assert "server.updating" in heard
+
+
+async def test_with_no_updater_in_the_compose_file_there_is_no_update_now(
+    server: FastAPI, phone: httpx.AsyncClient, clock: FakeClock
+) -> None:
+    a_version_is_out(server, clock)
+    body = await status(phone)
+    assert (body["updater"], body["update_now"]) == (False, False)
+    assert body["how_key"] == "api.update.how.docker"
+    refused = await phone.post("/api/admin/update", headers=CSRF)
+    assert (refused.status_code, refused.json()["error"]["code"]) == (409, "no_updater")
+
+
+async def test_update_now_needs_a_new_version_and_a_parent(
+    with_updater: tuple[FastAPI, httpx.AsyncClient], github: FakeGitHub
+) -> None:
+    app, phone = with_updater
+    assert (await status(phone))["update_now"] is False
+    current = await phone.post("/api/admin/update", headers=CSRF)
+    assert (current.status_code, current.json()["error"]["code"]) == (409, "up_to_date")
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as stranger:
+        assert (await stranger.post("/api/admin/update", headers=CSRF)).status_code == 401
+    assert github.updater_requests == []
+
+
+def test_the_updaters_token_is_scrubbed_from_logs(data_dir: Path) -> None:
+    settings = make_settings(data_dir, sunroom_updater_token="the-updaters-token")
+    assert "the-updaters-token" in settings.secret_literals()
 
 
 def test_every_install_kind_says_how_to_update() -> None:

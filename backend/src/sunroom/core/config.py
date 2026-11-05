@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     sunroom_update_check: bool | None = None
     # A self-hoster's own copy of version.json (core/updates.py).
     sunroom_update_url: str | None = None
+    # The updater companion, when the compose file has one (ADR 0046).
+    sunroom_updater_url: str | None = None
+    sunroom_updater_token: SecretStr | None = None
     sunroom_allow_private_urls: bool = False
     sunroom_test_mode: bool = False
     # Optional (ADR 0042): where Send Feedback posts; unset, the project's relay
@@ -216,7 +219,12 @@ class Settings(BaseSettings):
         """Exact secret values from the environment, so log redaction can scrub them anywhere."""
         values = [
             secret.get_secret_value()
-            for secret in (self.app_secret_key, self.app_password, self.sunroom_feedback_url)
+            for secret in (
+                self.app_secret_key,
+                self.app_password,
+                self.sunroom_feedback_url,
+                self.sunroom_updater_token,
+            )
             if secret is not None
         ]
         return [v for v in values if v]

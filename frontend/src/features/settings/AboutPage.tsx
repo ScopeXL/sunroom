@@ -6,6 +6,7 @@ import { formatTime } from "../../lib/dates";
 import { useSettings, useUpdateSettings } from "../../lib/household";
 import { t, tSaid, useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
+import { showToast } from "../../lib/toast";
 import { Button } from "../../ui/Button";
 import { LiveStatusIcon } from "../../ui/LiveStatus";
 import { useShell } from "../../ui/shell";
@@ -95,6 +96,12 @@ export function UpdatesGroup() {
       void queryClient.invalidateQueries({ queryKey: qk.problems() });
     },
   });
+  const updateNow = useMutation({
+    mutationFn: async () => asParent(async () => unwrap(await api.POST("/api/admin/update"))),
+    onSuccess: () => {
+      showToast(t("settings.about.updates.now.toast"));
+    },
+  });
   if (!settings || !status) return null;
   // `problem` is the server's words.
   const line = status.available
@@ -149,17 +156,31 @@ export function UpdatesGroup() {
                 <Text soft>{line}</Text>
               )
             ) : null}
+            {status.updater ? <Text soft>{t("settings.about.updates.overnight")}</Text> : null}
             {check.isError ? <Text soft>{errorMessage(check.error)}</Text> : null}
+            {updateNow.isError ? <Text soft>{errorMessage(updateNow.error)}</Text> : null}
           </div>
-          <Button
-            variant="secondary"
-            pending={check.isPending}
-            onClick={() => {
-              check.mutate();
-            }}
-          >
-            {t("settings.about.updates.check.action")}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            {status.update_now ? (
+              <Button
+                pending={updateNow.isPending}
+                onClick={() => {
+                  updateNow.mutate();
+                }}
+              >
+                {t("settings.about.updates.now.action")}
+              </Button>
+            ) : null}
+            <Button
+              variant="secondary"
+              pending={check.isPending}
+              onClick={() => {
+                check.mutate();
+              }}
+            >
+              {t("settings.about.updates.check.action")}
+            </Button>
+          </div>
         </div>
       ) : null}
     </Group>

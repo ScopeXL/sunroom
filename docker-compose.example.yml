@@ -19,6 +19,11 @@ services:
       APP_SECRET_KEY: ${APP_SECRET_KEY:-}
       # How Sunroom words the way to update it: docker, portainer, unraid, casaos, synology or other.
       SUNROOM_INSTALL_KIND: ${SUNROOM_INSTALL_KIND:-docker}
+      # How Sunroom reaches the updater below.
+      SUNROOM_UPDATER_URL: ${SUNROOM_UPDATER_URL:-http://sunroom-updater:8080}
+      SUNROOM_UPDATER_TOKEN: ${SUNROOM_UPDATER_TOKEN:-sunroom-updater}
+    labels:
+      com.centurylinklabs.watchtower.enable: "true" # the only container the updater touches
     volumes:
       # The sunroom_data volume (the volumes: block at the end creates it): correct ownership with
       # no extra steps. The database, nightly backups and photos all live here, so back up the
@@ -36,6 +41,32 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Installs new versions overnight, a day after they come out, and when a parent taps Update Now
+  # in About. It's the one part that touches Docker, so it has the socket; Sunroom never does. It
+  # publishes no port. Don't want it? Delete this service, the two SUNROOM_UPDATER lines and the
+  # label above, and Sunroom tells you how to update by hand (docs/DEPLOY.md).
+  sunroom-updater:
+    image: nickfedor/watchtower:1.24.0@sha256:e96976bcbeaf0a9adeddc9016a539c27a2245ef6bb7d3ca97ed106783350d387
+    container_name: sunroom-updater
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-}
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_SCHEDULE: "0 30 4 * * *" # 4:30 AM (seconds first). Change the hour here.
+      WATCHTOWER_COOLDOWN_DELAY: "24h" # a new version waits a day, so a bad one can be pulled back
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_HTTP_API_ENDPOINTS: "update,health"
+      WATCHTOWER_HTTP_API_PERIODIC_POLLS: "true" # keeps the schedule: the API alone turns it off
+      WATCHTOWER_HTTP_API_TOKEN: ${SUNROOM_UPDATER_TOKEN:-sunroom-updater}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    security_opt: ["no-new-privileges:true"]
     logging:
       driver: json-file
       options:
