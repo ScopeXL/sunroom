@@ -1,9 +1,10 @@
 """Updates of Sunroom Screen itself (docs/M7.md T9).
 
-* **Check:** GitHub's list of the repository's tags (as Sunroom's own check, ADR 0032) gives the
-  newest version; that version's Release gives ``SHA256SUMS``, which must list its wheel. An
-  update is "available" only then. One request to api.github.com and one to github.com: they see
-  this screen's public address (the setup page says so).
+* **Check:** sunroom.day's ``version.json``, or GitHub's latest Release when that doesn't answer
+  (as Sunroom's own check, ADR 0046), gives the newest version; that version's Release gives
+  ``SHA256SUMS``, which must list its wheel. An update is "available" only then. One request to
+  sunroom.day and one to github.com: they see this screen's public address (the setup page says
+  so).
 * **Install:** the wheel is downloaded, its sha256 checked against ``SHA256SUMS`` (a mismatch
   stops everything), and kept beside the one running, under ``~/.local/share/sunroom-kiosk/
   wheels``, after the small files are copied aside (setup_files.back_up). Then a separate
@@ -54,7 +55,8 @@ if TYPE_CHECKING:
 log = logs.get("updater")
 
 REPO = "ScopeXL/sunroom"
-TAGS_URL = f"https://api.github.com/repos/{REPO}/tags?per_page=100"
+VERSION_URL = "https://sunroom.day/version.json"
+RELEASE_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 DOWNLOAD = f"https://github.com/{REPO}/releases/download"
 APPLY_UNIT = "sunroom-kiosk-update"
 NIGHTLY_DEFAULT = (3, 30)
@@ -125,17 +127,24 @@ def parse(text: str) -> tuple[int, int, int] | None:
     return major, minor, patch
 
 
-def newest(tags: object) -> str | None:
-    """The highest X.Y.Z among GitHub's tags (pre-releases and other names left out)."""
-    if not isinstance(tags, list):
+def _version(name: object) -> str | None:
+    parsed = parse(name) if isinstance(name, str) else None
+    return ".".join(map(str, parsed)) if parsed is not None else None
+
+
+def version_from_site(body: object) -> str | None:
+    """sunroom.day's version.json: {"version": "1.0.0", …}."""
+    return _version(cast(dict[str, Any], body).get("version")) if isinstance(body, dict) else None
+
+
+def version_from_release(body: object) -> str | None:
+    """GitHub's latest Release: {"tag_name": "v1.0.0", …}. Never a draft or a pre-release."""
+    if not isinstance(body, dict):
         return None
-    found: list[tuple[tuple[int, int, int], str]] = []
-    for tag in cast(list[Any], tags):
-        name = cast(dict[str, Any], tag).get("name") if isinstance(tag, dict) else None
-        parsed = parse(name) if isinstance(name, str) else None
-        if parsed is not None:
-            found.append((parsed, ".".join(map(str, parsed))))
-    return max(found)[1] if found else None
+    release = cast(dict[str, Any], body)
+    if release.get("draft") or release.get("prerelease"):
+        return None
+    return _version(release.get("tag_name"))
 
 
 def newer(candidate: str | None, current: str) -> bool:
@@ -327,9 +336,17 @@ class Updater:
     # ------------------------------------------------------------------ check
 
     async def _latest(self, client: httpx.AsyncClient) -> str | None:
-        response = await client.get(TAGS_URL, headers={"Accept": "application/vnd.github+json"})
+        try:
+            site = await client.get(VERSION_URL)
+            site.raise_for_status()
+            found = version_from_site(site.json())
+            if found is not None:
+                return found
+        except (httpx.HTTPError, ValueError) as error:
+            log.info("sunroom.day didn't say the newest version: %s.", type(error).__name__)
+        response = await client.get(RELEASE_URL, headers={"Accept": "application/vnd.github+json"})
         response.raise_for_status()
-        return newest(response.json())
+        return version_from_release(response.json())
 
     async def _sums(self, client: httpx.AsyncClient, release: str) -> dict[str, str]:
         response = await client.get(f"{DOWNLOAD}/v{release}/SHA256SUMS")
@@ -347,7 +364,7 @@ class Updater:
                     # Released but its files not up yet: not an update until they are.
                     ready = wheel_name(latest) in await self._sums(client, latest)
         except (httpx.HTTPError, ValueError) as error:
-            log.info("Couldn't ask GitHub for the newest version: %s.", type(error).__name__)
+            log.info("Couldn't find out the newest version: %s.", type(error).__name__)
             self.current = replace(
                 self.current,
                 checked_at=now_iso(),

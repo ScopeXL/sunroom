@@ -157,9 +157,10 @@ Each release prints these steps. In Sunroom's folder on the server:
 2. Wait for **healthy** (`docker compose ps`), then check `<your address>/api/version` shows the
    new version.
 
-Sunroom tells you about new versions by itself: once a day it asks GitHub for its latest version
-(GitHub sees your server's address), and Needs Attention and About say when one is out, with these
-steps. To stop it, turn off **Settings → About → Tell me about new versions**, or keep it off for
+Sunroom tells you about new versions by itself: once a day it asks sunroom.day for its latest
+version, or GitHub if that doesn't answer (they see your server's address; `SUNROOM_UPDATE_URL`
+points it at your own copy of `version.json`), and Needs Attention and About say when one is out, with
+these steps. To stop it, turn off **Settings → About → Tell me about new versions**, or keep it off for
 the whole server with `SUNROOM_UPDATE_CHECK=0`.
 
 Before migrating, Sunroom copies the database into `/data/backups/pre-migrate/`. If a migration

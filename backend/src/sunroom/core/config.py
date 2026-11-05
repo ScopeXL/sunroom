@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     sunroom_advertised_url: str | None = None
     sunroom_install_kind: InstallKind = InstallKind.DOCKER
     sunroom_update_check: bool | None = None
+    # A self-hoster's own copy of version.json (core/updates.py).
+    sunroom_update_url: str | None = None
     sunroom_allow_private_urls: bool = False
     sunroom_test_mode: bool = False
     # Optional (ADR 0042): where Send Feedback posts; unset, the project's relay

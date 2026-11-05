@@ -20,8 +20,13 @@
   buildable. Only the owner's install exists yet; the CHANGELOG says so and the switch is in About.
 - **Nothing goes out before setup:** jobs run at start, and a server nobody has set up has no reason
   to tell GitHub its address.
-- **It reads the latest Release**, which the deploy skill publishes last, so a version counts once its
-  image and files are out. A draft or a pre-release never counts.
+- **It reads `sunroom.day/version.json`, then the latest Release**: the site writes that file when a
+  Release is published, and the deploy skill publishes the Release last, so a version counts once its
+  image and files are out. A draft or a pre-release never counts. Uptime Kuma, Immich and Home
+  Assistant do the same: no rate limit, and the only address that sees a household's request is the
+  project's own. GitHub stands behind it when the site doesn't answer, and `SUNROOM_UPDATE_URL`
+  points at a self-hoster's own copy. Sunroom Screen reads the same way; its files still come from
+  GitHub, checked against `SHA256SUMS`.
 - **A new version reaches the family in Needs Attention** (`update:available`, page About; how to
   update is a parent's, as other details are), announced by `update.available` on the live stream.
 - **The test server answers only when a test asks** (Check Now), or a version it made up would stand

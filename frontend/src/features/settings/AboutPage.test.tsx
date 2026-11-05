@@ -44,9 +44,9 @@ describe("Settings → About → Updates (ADR 0046)", () => {
     const daily = screen.getByRole("switch", { name: /^Tell me about new versions/ });
     expect((daily as HTMLInputElement).checked).toBe(true);
     expect(
-      screen.getByText("Checked once a day. Turn it off to keep Sunroom from asking GitHub."),
+      screen.getByText("Checked once a day. Turn it off to keep Sunroom from asking."),
     ).toBeTruthy();
-    expect(screen.getByText(/GitHub sees your server's address/)).toBeTruthy();
+    expect(screen.getByText(/They see your server's address/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Check Now" })).toBeTruthy();
   });
 

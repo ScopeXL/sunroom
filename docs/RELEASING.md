@@ -20,8 +20,9 @@ does the rest. This page explains the pieces, and how to release without Claude.
   (`sunroom-X.Y.Z-constraints.txt`, from `backend/uv.lock`) for Sunroom run as a program on a
   computer (ADR 0038), `install.sh` and `install.ps1`, and `SHA256SUMS`, uploaded last. The
   installers and Sunroom Screen's own updates take the wheels from there and check them against
-  `SHA256SUMS`; nothing is uploaded from the Mac. Sunroom's own update check reads the latest Release
-  (ADR 0046), so a version counts once its Release is out.
+  `SHA256SUMS`; nothing is uploaded from the Mac. Sunroom's own update check reads `sunroom.day/version.json`, which
+  the site writes when a Release is published, or the latest Release when that doesn't answer (ADR 0046),
+  so a version counts once its Release is out.
 - **Sunroom Screen's wheel carries its setup** (ADR 0044): `kiosk/files/`, with `uninstall.sh`,
   `labwc-rule.py` and `update.sh`, goes in as `sunroom_kiosk/files/` (hatchling's
   `force-include` in `kiosk/agent/pyproject.toml`), and the release workflow refuses a wheel

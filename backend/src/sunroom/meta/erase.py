@@ -23,6 +23,7 @@ from sqlalchemy import select, update
 from sunroom.auth.models import Device
 from sunroom.calendar.models import Calendar, Event
 from sunroom.core.logging import get_logger
+from sunroom.core.updates import UpdateCheck
 from sunroom.db import backup
 from sunroom.db.models import Base
 from sunroom.household import service as household_service
@@ -83,7 +84,7 @@ def forget(state: AppState, epoch: int, signed_out: Collection[str] = ()) -> Non
     state.uploads.clear()
     state.calendar.cache.clear()
     # What lives only in memory: the update check's last answer, and a wall screen's wake.
-    state.updates.latest = state.updates.checked_at = state.updates.problem = None
+    state.updates = UpdateCheck()
     state.screen.awake_until = None
     state.screen.notify()
     state.household.setup_complete = False

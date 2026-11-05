@@ -5,7 +5,7 @@ a switch to turn it off. A stand-in GitHub answers through MockTransport; no soc
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -26,13 +26,20 @@ PUBLIC = "140.82.112.6"  # a made-up public address for api.github.com in these 
 
 
 class FakeGitHub:
+    """GitHub, and sunroom.day beside it, which by default hasn't written its file yet."""
+
     def __init__(self) -> None:
         self.requests: list[httpx.Request] = []
         self.release = "v99.0.0"  # the latest Release's tag
         self.body: object | None = None  # an answer of another shape
         self.status = 200
+        self.site: object | None = None  # version.json, when the site has one
+        self.site_requests: list[httpx.Request] = []
 
     def handle(self, request: httpx.Request) -> httpx.Response:
+        if request.headers["host"] != "api.github.com":
+            self.site_requests.append(request)
+            return httpx.Response(404) if self.site is None else httpx.Response(200, json=self.site)
         self.requests.append(request)
         if self.status != 200:
             return httpx.Response(self.status)
@@ -148,6 +155,41 @@ async def test_a_household_can_turn_it_off(
     assert refused.json()["error"]["message"] == "Turn on Tell me about new versions first."
 
 
+async def test_it_asks_the_site_first_and_github_only_when_that_doesnt_answer(
+    server: FastAPI, phone: httpx.AsyncClient, github: FakeGitHub, clock: FakeClock
+) -> None:
+    github.site = {"version": "98.0.0", "published": "2026-10-07T12:00:00Z", "notes": "ignored"}
+    await updates.tick(state_of(server))
+    assert len(github.site_requests) == 1
+    assert github.site_requests[0].headers["host"] == "sunroom.day"
+    assert github.requests == []  # the only address that sees the request is the project's own
+    assert (await status(phone))["latest"] == "98.0.0"
+    assert state_of(server).updates.published == datetime(2026, 10, 7, 12, tzinfo=UTC)
+
+    # A site that's down, or a file it can't read: GitHub's Release instead.
+    for answer in (None, {"version": "nonsense"}, ["not", "an", "object"]):
+        github.site = answer
+        github.requests.clear()
+        clock.advance(hours=24)
+        await updates.tick(state_of(server))
+        assert len(github.requests) == 1, answer
+        assert (await status(phone))["latest"] == "99.0.0"
+
+
+async def test_a_self_hoster_can_point_it_at_their_own_copy(
+    data_dir: Path, clock: FakeClock, github: FakeGitHub
+) -> None:
+    app = build(data_dir, clock, github, sunroom_update_url="https://mirror.example.com/v.json")
+    github.site = {"version": "97.0.0"}
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as http:
+            await run_setup(http)
+            await updates.tick(state_of(app))
+            assert (await status(http))["latest"] == "97.0.0"
+    assert github.site_requests[0].headers["host"] == "mirror.example.com"
+
+
 async def test_a_failed_check_says_so_and_check_now_waits_a_minute(
     phone: httpx.AsyncClient, github: FakeGitHub, clock: FakeClock
 ) -> None:
@@ -155,7 +197,7 @@ async def test_a_failed_check_says_so_and_check_now_waits_a_minute(
     checked = await phone.post("/api/admin/update/check", headers=CSRF)
     assert checked.status_code == 200, checked.text
     assert checked.json()["problem"] == (
-        "GitHub couldn't find Sunroom's versions. It will try again tomorrow."
+        "Sunroom couldn't find out its latest version. It will try again tomorrow."
     )
     assert checked.json()["available"] is False
     again = await phone.post("/api/admin/update/check", headers=CSRF)
@@ -176,17 +218,17 @@ async def test_it_reads_the_latest_release(
     checked = await phone.post("/api/admin/update/check", headers=CSRF)
     assert (checked.json()["latest"], checked.json()["problem"]) == ("0.10.0", None)
 
-    unreadable = "GitHub's answer wasn't one Sunroom could read. It will try again tomorrow."
-    answers: list[tuple[int, object, str]] = [
-        (404, None, "GitHub couldn't find Sunroom's versions. It will try again tomorrow."),
-        (200, [], unreadable),
-        (200, {"name": "nothing we know"}, unreadable),
-        (200, {"tag_name": "nightly"}, unreadable),
-        (200, {"tag_name": "v1.0.0-rc.1"}, unreadable),
-        (200, {"tag_name": "v1.0.0", "prerelease": True}, unreadable),
-        (200, {"tag_name": "v1.0.0", "draft": True}, unreadable),
+    said = "Sunroom couldn't find out its latest version. It will try again tomorrow."
+    answers: list[tuple[int, object]] = [
+        (404, None),
+        (200, []),
+        (200, {"name": "nothing we know"}),
+        (200, {"tag_name": "nightly"}),
+        (200, {"tag_name": "v1.0.0-rc.1"}),
+        (200, {"tag_name": "v1.0.0", "prerelease": True}),
+        (200, {"tag_name": "v1.0.0", "draft": True}),
     ]
-    for status_code, body, said in answers:
+    for status_code, body in answers:
         clock.advance(minutes=1, seconds=1)
         github.status, github.body = status_code, body
         answer = await phone.post("/api/admin/update/check", headers=CSRF)

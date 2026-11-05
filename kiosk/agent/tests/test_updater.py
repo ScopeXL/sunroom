@@ -1,7 +1,7 @@
 """Updates of Sunroom Screen itself (updater.py, docs/M7.md T9) against a pretend GitHub: the
-newest tag, an update only once its wheel is in the Release's SHA256SUMS, a download that doesn't
-match its checksum refused, the apply step keeping a version that answers and putting the
-previous one back when it doesn't, and the nightly time. No network. Synthetic data only."""
+newest release, an update only once its wheel is in the Release's SHA256SUMS, a download that
+doesn't match its checksum refused, the apply step keeping a version that answers and putting
+the previous one back when it doesn't, and the nightly time. No network. Synthetic data only."""
 
 from __future__ import annotations
 
@@ -21,25 +21,29 @@ import pytest
 from sunroom_kiosk import updater
 from sunroom_kiosk.apply import Paths, apply, note_progress
 from sunroom_kiosk.events import EventHub
-from sunroom_kiosk.updater import Updater, newest, sums_from
+from sunroom_kiosk.updater import Updater, sums_from, version_from_release, version_from_site
 from sunroom_kiosk.words import said
 
 WHEEL = b"sample wheel bytes"
 
 
 class GitHub:
-    """Tags and one Release's files, by URL."""
+    """The releases so far, oldest first, and one Release's files, by URL. sunroom.day beside it
+    hasn't written its file unless ``site`` says what's in it."""
 
     def __init__(self, tags: list[str], files: dict[str, bytes] | None = None) -> None:
         self.tags = tags
+        self.site: object | None = None
         self.files = files or {}
         self.asked: list[str] = []
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         url = str(request.url)
         self.asked.append(url)
-        if url == updater.TAGS_URL:
-            return httpx.Response(200, json=[{"name": tag} for tag in self.tags])
+        if url == updater.VERSION_URL and self.site is not None:
+            return httpx.Response(200, json=self.site)
+        if url == updater.RELEASE_URL and self.tags:
+            return httpx.Response(200, json={"tag_name": self.tags[-1], "prerelease": False})
         for name, data in self.files.items():
             if url.endswith(f"/{name}"):
                 return httpx.Response(200, content=data)
@@ -60,10 +64,27 @@ def paths(tmp_path: Path) -> Paths:
     return Paths(wheels=tmp_path / "wheels", state=tmp_path / "state" / "update.json")
 
 
-def test_the_newest_tag_wins_and_odd_ones_are_left_out() -> None:
-    tags: list[Any] = [{"name": n} for n in ("v0.9.1", "v0.13.0", "v0.12.10", "v1.0.0-rc1", "x")]
-    assert newest(tags) == "0.13.0"
-    assert newest([]) is None and newest({"not": "a list"}) is None
+def test_the_site_or_the_latest_release_names_the_version() -> None:
+    assert version_from_site({"version": "1.0.0", "published": "2027-01-06"}) == "1.0.0"
+    assert version_from_site({"version": "nonsense"}) is None
+    assert version_from_site(["not", "an", "object"]) is None
+    assert version_from_release({"tag_name": "v0.13.0"}) == "0.13.0"
+    assert version_from_release({"tag_name": "v1.0.0-rc1"}) is None
+    assert version_from_release({"tag_name": "v1.0.0", "prerelease": True}) is None
+    assert version_from_release({"tag_name": "v1.0.0", "draft": True}) is None
+    assert version_from_release([]) is None
+
+
+async def test_it_asks_the_site_first_and_github_only_when_that_doesnt_answer(paths: Paths) -> None:
+    github = GitHub(["v0.13.0"])
+    github.site = {"version": "0.14.0"}
+    site_first = Updater(http=github.client, paths=paths, current="0.12.0")
+    assert (await site_first.check_now()).latest == "0.14.0"
+    assert updater.RELEASE_URL not in github.asked
+    github.site = None
+    github.asked.clear()
+    assert (await site_first.check_now()).latest == "0.13.0"
+    assert github.asked[:2] == [updater.VERSION_URL, updater.RELEASE_URL]
 
 
 def test_checksums_are_read_as_sha256sum_writes_them() -> None:
@@ -99,7 +120,10 @@ async def test_github_not_answering_is_said_plainly(paths: Paths) -> None:
     )
     status = await check.check_now()
     assert status.message is not None
-    assert status.message.message == "GitHub didn't answer. This screen asks again tomorrow."
+    assert (
+        status.message.message
+        == "Sunroom's website and GitHub didn't answer. This screen asks again tomorrow."
+    )
 
 
 async def test_a_download_that_doesnt_match_its_checksum_is_refused(paths: Paths) -> None:

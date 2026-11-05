@@ -54,7 +54,7 @@ async def update_out(state: AppState) -> UpdateOut:
 
 
 async def tick(state: AppState) -> None:
-    """Hourly: ask GitHub once a day, for a household that's set up and hasn't turned it off.
+    """Hourly: ask once a day, for a household that's set up and hasn't turned it off.
     Nothing goes out before setup. The test server answers only when a test asks (Check Now): a
     version it made up by itself would stand in every test's Needs Attention."""
     if state.settings.update_check_forced_off or state.settings.sunroom_test_mode:
@@ -67,14 +67,15 @@ async def tick(state: AppState) -> None:
 
 
 async def ask(state: AppState, current: str, now: datetime) -> None:
-    """Ask GitHub for the newest release. The test server never does: it makes up the next minor
+    """Ask for the newest release. The test server never does: it makes up the next minor
     version (core/updates.py ``made_up``), as the weather makes up its forecast."""
     found = state.updates
     known = found.latest
     if state.settings.sunroom_test_mode:
         found.latest, found.checked_at, found.problem = updates.made_up(current), now, None
     else:
-        await updates.check(state.http, current, now, found)
+        url = state.settings.sunroom_update_url or updates.VERSION_URL
+        await updates.check(state.http, current, now, found, url=url)
     if found.latest != known and updates.newer(found.latest, current):
         state.hub.publish("update.available", {"version": found.latest})
 
