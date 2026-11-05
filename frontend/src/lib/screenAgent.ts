@@ -131,6 +131,13 @@ export function keepPairing(): void {
   agent.POST("/api/screen/keep-pairing").catch(() => undefined);
 }
 
+/** Sunroom said it's updating: Sunroom Screen's Can't Reach page says so, if it comes to that. */
+export function tellAgentUpdating(): void {
+  const agent = screenClient();
+  if (agent === null) return;
+  agent.POST("/api/screen/sunroom/updating").catch(() => undefined);
+}
+
 /** Where a fresh reload goes on a screen with an agent: the launcher's own address. */
 export function screenReloadUrl(dimmer: string): string | null {
   return port === null ? null : `/display?dimmer=${dimmer}&screen=${String(port)}`;

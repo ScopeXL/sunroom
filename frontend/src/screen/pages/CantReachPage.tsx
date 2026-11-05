@@ -65,7 +65,7 @@ export function CantReachPage({ state }: { state: ScreenState }) {
     <div className="flex w-full max-w-4xl flex-col items-center gap-8">
       <h1 className="text-d-glance font-bold">{t("screen.cant_reach.title", { name })}</h1>
       <p className="text-d-body text-ink-soft" role="status">
-        {t("screen.cant_reach.trying")}
+        {t(sunroom?.updating ? "screen.cant_reach.updating" : "screen.cant_reach.away")}
       </p>
       {tryAgain.isError ? (
         <p role="alert" className="text-d-body font-semibold text-alert">

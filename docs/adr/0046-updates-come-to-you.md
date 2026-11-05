@@ -70,6 +70,10 @@
   user must be able to write there. `just deploy-check` keeps them all saying the same thing, and fails
   a compose file whose updater would lose its schedule.
 
+- **A screen says why Sunroom is away.** Can't Reach says "Sunroom is updating. This screen comes back
+  by itself." for five minutes after it hears so, from the wall's page (`server.updating`) or its own
+  update, and otherwise "The computer that runs Sunroom may be off or restarting."
+
 ## Consequences
 
 - One request a day from each install, which GitHub can see. The tests keep the check off unless they

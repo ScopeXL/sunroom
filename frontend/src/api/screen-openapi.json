@@ -596,6 +596,11 @@
             "title": "Reachable",
             "type": "boolean"
           },
+          "updating": {
+            "default": false,
+            "title": "Updating",
+            "type": "boolean"
+          },
           "url": {
             "title": "Url",
             "type": "string"
@@ -1617,6 +1622,58 @@
           }
         },
         "summary": "Check Address",
+        "tags": [
+          "screen"
+        ]
+      }
+    },
+    "/api/screen/sunroom/updating": {
+      "post": {
+        "description": "The wall's page heard Sunroom say it's updating: Can't Reach says so, if it comes to that.",
+        "operationId": "sunroom_updating_api_screen_sunroom_updating_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenAcceptedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Sunroom Updating",
         "tags": [
           "screen"
         ]

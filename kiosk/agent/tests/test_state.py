@@ -426,6 +426,19 @@ async def test_an_all_in_one_pi_tries_a_failed_pull_again_quietly_within_the_hou
     assert said == []  # on its own, a failed try or a good one says nothing
 
 
+async def test_the_screen_knows_sunroom_is_updating_for_five_minutes(
+    make_agent: Callable[..., Agent], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    agent = make_agent(platform=Helped("0.18.0"), updater=updater_at(tmp_path))
+    agent.save(Config(url="http://localhost:7867", found="local", mode="all"))
+    assert agent.snapshot().sunroom.updating is False  # type: ignore[union-attr]
+    agent.note_sunroom_updating()
+    assert agent.snapshot().sunroom.updating is True  # type: ignore[union-attr]
+    later = time.monotonic() + agent_module.UPDATING_FOR_S + 1
+    monkeypatch.setattr(agent_module.time, "monotonic", lambda: later)
+    assert agent.snapshot().sunroom.updating is False  # type: ignore[union-attr]
+
+
 async def test_a_version_that_went_back_says_so(
     make_agent: Callable[..., Agent], tmp_path: Path
 ) -> None:

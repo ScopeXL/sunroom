@@ -60,6 +60,8 @@ class ScreenSunroomOut(BaseModel):
     found: ScreenFoundHow
     reachable: bool  # its /api/health answered the last time the agent asked
     version: str | None = None  # what the Sunroom said it runs, when it said
+    # It's updating, or was within the last five minutes: why it's away, for Can't Reach (ADR 0046).
+    updating: bool = False
     # The household's language, when the Sunroom said (GET /api/discover): the screen's own
     # pages speak it (ADR 0043).
     language: str | None = None

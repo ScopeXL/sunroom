@@ -219,6 +219,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/screen/sunroom/updating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sunroom Updating
+         * @description The wall's page heard Sunroom say it's updating: Can't Reach says so, if it comes to that.
+         */
+        post: operations["sunroom_updating_api_screen_sunroom_updating_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/screen/sunrooms": {
         parameters: {
             query?: never;
@@ -576,6 +596,11 @@ export interface components {
             name: string | null;
             /** Reachable */
             reachable: boolean;
+            /**
+             * Updating
+             * @default false
+             */
+            updating: boolean;
             /** Url */
             url: string;
             /** Version */
@@ -1290,6 +1315,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenCheckOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenErrorOut"];
+                };
+            };
+        };
+    };
+    sunroom_updating_api_screen_sunroom_updating_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenAcceptedOut"];
                 };
             };
             /** @description Forbidden */

@@ -339,6 +339,7 @@ async def test_saving_a_sunroom_restarts_nothing_and_says_so_at_once(
         "name": "The Sample Family",
         "found": "discovered",
         "reachable": True,
+        "updating": False,
         "version": "0.13.0",
         "language": None,  # this pretend Sunroom doesn't say (one before 0.18.0)
     }
@@ -524,7 +525,7 @@ async def test_the_schema_has_every_route(app: FastAPI, tmp_path: Path) -> None:
 
     paths = get_openapi(title="t", version="0", routes=router.routes)["paths"]
     # 0.17.0: no open-network-settings, and uninstall (ADR 0042); 0.18.0: reinstall and
-    # update/seen (ADR 0044).
-    assert len(paths) == 21
+    # update/seen (ADR 0044); sunroom/updating (ADR 0046).
+    assert len(paths) == 22
     assert "/api/screen/reinstall" in paths and "/api/screen/update/seen" in paths
     assert not any("_test" in path for path in paths)

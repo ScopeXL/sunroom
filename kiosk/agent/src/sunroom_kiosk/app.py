@@ -271,6 +271,13 @@ async def update_seen(agent: AgentDep) -> ScreenAcceptedOut:
     return ScreenAcceptedOut()
 
 
+@router.post("/sunroom/updating", status_code=202)
+async def sunroom_updating(agent: AgentDep) -> ScreenAcceptedOut:
+    """The wall's page heard Sunroom say it's updating: Can't Reach says so, if it comes to that."""
+    agent.note_sunroom_updating()
+    return ScreenAcceptedOut()
+
+
 @router.post("/update-sunroom", status_code=202)
 async def update_sunroom(agent: AgentDep) -> ScreenAcceptedOut:
     """An all-in-one Pi: the Sunroom on this screen too (it runs /opt/sunroom/update.sh)."""

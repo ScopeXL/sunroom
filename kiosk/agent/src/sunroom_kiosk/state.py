@@ -55,6 +55,7 @@ WATCH_EVERY_S = 30.0
 NO_SUNROOM_FOR_S = 120.0
 ABOUT_EVERY_S = 600.0
 BEHIND_EVERY_S = 3600.0
+UPDATING_FOR_S = 300.0
 ACTION_DELAY_S = 1.5  # a restart or shut down waits this long, so its toast shows first
 RUN_SUNROOM_TRIES = 150  # a new Sunroom answering, 2 s apart: five minutes
 RUN_SUNROOM_PAUSE_S = 2.0
@@ -143,6 +144,7 @@ class Agent:
         self._tasks: list[asyncio.Task[None]] = []
         self._down_since: float | None = None
         self._behind_looked_at = time.monotonic()
+        self._updating_until = 0.0
         self._no_sunroom_since: float | None = None
         self.network = ScreenNetworkOut(kind="none", ssid=None, ip=None, strength=None)
 
@@ -194,6 +196,7 @@ class Agent:
                 reachable=self.reachable,
                 version=self.known.version,
                 language=self.known.language,
+                updating=time.monotonic() < self._updating_until,
             )
         status = {
             **self.updater.status(self.update_check()),
@@ -736,11 +739,18 @@ class Agent:
 
         self.spawn(go())
 
+    def note_sunroom_updating(self) -> None:
+        """Sunroom is updating, as this screen's own update or the wall's page says (it heard
+        ``server.updating``): if it's away for the next few minutes, that's why."""
+        self._updating_until = time.monotonic() + UPDATING_FOR_S
+        self.publish_state()
+
     async def update_sunroom(self, *, quiet: bool = False) -> None:
         """The Sunroom on this machine: run here as a program, to the newest version (ADR 0038),
         or an all-in-one Pi's through update.sh (minutes either way). ``quiet`` is a try on its
         own (a pull that failed last time): the wall hears only that a version went back."""
         log.info("Updating the Sunroom on this screen.")
+        self.note_sunroom_updating()
         outcome: list[str] = []
         if self.local is not None and self.local.installed():
             latest = self.updater.status(self.update_check()).get("latest")

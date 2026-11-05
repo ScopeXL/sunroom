@@ -184,7 +184,13 @@ test("Can't Reach waits with every way out, and goes back to Sunroom by itself",
   await fake(request, { sunroom: "http://127.0.0.1:9" });
   await page.goto(`${AGENT}/cant-reach`);
   await expect(page.getByRole("heading", { name: "Can’t Reach Sunroom" })).toBeVisible();
-  await expect(page.getByText("Trying again every 10 seconds…")).toBeVisible();
+  await expect(page.getByText(/may be off or restarting/)).toBeVisible();
+  // The wall's page heard Sunroom say it's updating: the page says why it's away, at once.
+  const heard = await request.post(`${AGENT}/api/screen/sunroom/updating`, { headers: CHANGE });
+  expect(heard.ok()).toBe(true);
+  await expect(
+    page.getByText("Sunroom is updating. This screen comes back by itself."),
+  ).toBeVisible();
   const desktop = test.info().project.name === "desktop";
   for (const name of ["Try Again", "Change Address", "Restart"]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeVisible();

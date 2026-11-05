@@ -61,6 +61,7 @@ const chosen = (reachable: boolean) =>
       name: "The Sample Family",
       found: "discovered",
       reachable,
+      updating: false,
     },
     open_url: `${SUNROOM}/display?dimmer=page&screen=7800`,
   });
@@ -396,6 +397,21 @@ describe("the screen's own pages (ADR 0035, ADR 0038)", () => {
     cleanup();
     draw(<CantReachPage state={chosen(true)} />);
     expect(openSunroom).toHaveBeenCalledWith(`${SUNROOM}/display?dimmer=page&screen=7800`);
+  });
+
+  it("Can't Reach says why Sunroom is away, when it knows", () => {
+    const state = chosen(false);
+    draw(<CantReachPage state={state} />);
+    expect(screen.getByRole("status").textContent).toBe(
+      "The computer that runs Sunroom may be off or restarting. This screen keeps trying.",
+    );
+    cleanup();
+    const sunroom = state.sunroom;
+    if (sunroom === null) throw new Error("a chosen Sunroom");
+    draw(<CantReachPage state={{ ...state, sunroom: { ...sunroom, updating: true } }} />);
+    expect(screen.getByRole("status").textContent).toBe(
+      "Sunroom is updating. This screen comes back by itself.",
+    );
   });
 
   it("offers This Screen's update and Reinstall… on its own Settings page too (ADR 0044)", () => {

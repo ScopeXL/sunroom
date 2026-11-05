@@ -39,6 +39,7 @@ function piState(overrides: Partial<ScreenState> = {}): ScreenState {
       name: "The Sample Family",
       found: "discovered",
       reachable: true,
+      updating: false,
     },
     network: { kind: "wifi", ssid: "HomeNet", ip: "192.168.1.30", strength: 82 },
     update: {
@@ -184,6 +185,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
           name: null,
           found: "typed",
           reachable: true,
+          updating: false,
         },
       }),
     );
@@ -341,6 +343,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
       name: "The Sample Family",
       found: "local",
       reachable: true,
+      updating: false,
       version: "0.13.0",
     } as const;
     draw(
@@ -373,6 +376,7 @@ describe("Settings → This Screen (ADR 0035)", () => {
           name: "The Sample Family",
           found: "local",
           reachable: true,
+          updating: false,
           version: "0.13.0",
         },
         update: {
