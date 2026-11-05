@@ -833,6 +833,7 @@ class Agent:
         self.known = Known()
         self.needs_terminal = None
         self.reachable = False
+        self._updating_until = 0.0  # what a test before heard stays with that test
         self.discovery.found = []
         await self.refresh_network()
         self.publish_state()

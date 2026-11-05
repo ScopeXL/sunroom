@@ -524,10 +524,14 @@ async def test_the_test_reset_puts_the_pretend_screen_back(
     await client.put("/api/screen/display", json={"rotation": 90}, headers=CHANGE)
     await client.post("/api/screen/_test/fake", json={"kind": "desktop"}, headers=CHANGE)
     assert "quit" in (await client.get("/api/screen")).json()["capabilities"]
+    await client.post("/api/screen/sunroom/updating", headers=CHANGE)
     assert (await client.post("/api/screen/_test/reset", headers=CHANGE)).status_code == 204
     body = (await client.get("/api/screen")).json()
     assert body["sunroom"] is None and body["platform"] == "pi"
     assert platform.calls == [] and platform.rotation == 0
+    # What the last test heard about Sunroom updating isn't the next one's.
+    await client.post("/api/screen/_test/fake", json={"sunroom": SUNROOM}, headers=CHANGE)
+    assert (await client.get("/api/screen")).json()["sunroom"]["updating"] is False
 
 
 def test_the_test_routes_exist_only_with_fake(make_agent: Callable[..., Agent]) -> None:
