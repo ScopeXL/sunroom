@@ -129,6 +129,7 @@ async def test_a_new_version_is_for_a_parent_to_see(
         {"version": "99.0.0"},
     )
     assert update["detail"].startswith("In Sunroom's folder on the server")
+    assert update["detail_key"] == "api.update.how.docker"
     # A wall screen sees the sentence, never how to update (with a PIN set, it isn't a parent).
     await set_pin(parent)
     paired = await other.post(
@@ -136,7 +137,11 @@ async def test_a_new_version_is_for_a_parent_to_see(
     )
     assert paired.status_code == 200, paired.text
     [seen] = await problems(other)
-    assert (seen["title"], seen["detail"]) == ("Sunroom 99.0.0 is out.", None)
+    assert (seen["title"], seen["detail"], seen["detail_key"]) == (
+        "Sunroom 99.0.0 is out.",
+        None,
+        None,
+    )
     # A household that turned the check off hears nothing.
     off = await parent.patch("/api/settings", json={"update_check": False}, headers=CSRF)
     assert off.status_code == 200, off.text

@@ -24,13 +24,17 @@ _ALLOWED_HOST = re.compile(r"^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z
 
 
 class InstallKind(StrEnum):
-    """Only changes how the update pill words its instructions (PLAN §13.6)."""
+    """Only changes how Sunroom words the way to update this install (PLAN §13.6, ADR 0046)."""
 
     DOCKER = "docker"
     PI = "pi"
     PORTAINER = "portainer"
     HA = "ha"
     COMPUTER = "computer"  # run as a program for a computer's user by Sunroom Screen (ADR 0038)
+    UNRAID = "unraid"
+    CASAOS = "casaos"
+    SYNOLOGY = "synology"
+    OTHER = "other"  # any other app that runs containers
 
 
 class ConfigError(Exception):

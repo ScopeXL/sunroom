@@ -26,6 +26,9 @@
   update is a parent's, as other details are), announced by `update.available` on the live stream.
 - **The test server answers only when a test asks** (Check Now), or a version it made up would stand
   in every test's Needs Attention.
+- **Every install kind has true words** (`api.update.how.*`, each sent with its key): Compose,
+  Portainer, Unraid, CasaOS, Synology, any other app, a Pi, a computer, and Home Assistant's add-on
+  to come. The compose example sets `SUNROOM_INSTALL_KIND` from a variable, so a Portainer stack can.
 
 ## Consequences
 

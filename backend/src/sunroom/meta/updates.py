@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sunroom.auth.deps import ActorDep, ParentDep
 from sunroom.core import updates
 from sunroom.core.errors import AppError
+from sunroom.core.lang import t_en
 from sunroom.core.version import build_info
 from sunroom.household import service
 from sunroom.state import AppState, StateDep
@@ -29,6 +30,7 @@ class UpdateOut(BaseModel):
     checked_at: datetime | None
     problem: str | None  # why the last check got no answer
     how: str  # how to update this server, in plain words
+    how_key: str  # that sentence in lang/en.json, for the page to say in the family's language
 
 
 async def update_out(state: AppState) -> UpdateOut:
@@ -37,6 +39,7 @@ async def update_out(state: AppState) -> UpdateOut:
     locked = state.settings.update_check_forced_off
     current = build_info().version
     found = state.updates
+    how_key = updates.HOW_KEYS[state.settings.sunroom_install_kind]
     return UpdateOut(
         enabled=home.update_check and not locked,
         locked=locked,
@@ -45,7 +48,8 @@ async def update_out(state: AppState) -> UpdateOut:
         available=updates.newer(found.latest, current),
         checked_at=found.checked_at,
         problem=found.problem,
-        how=updates.HOW[state.settings.sunroom_install_kind],
+        how=t_en(how_key),
+        how_key=how_key,
     )
 
 

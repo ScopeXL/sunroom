@@ -16,7 +16,8 @@ from fastapi import FastAPI
 from sunroom.app import create_app
 from sunroom.core.clock import FakeClock
 from sunroom.core.config import InstallKind
-from sunroom.core.updates import made_up, newer, parse
+from sunroom.core.lang import t_en
+from sunroom.core.updates import HOW_KEYS, made_up, newer, parse
 from sunroom.core.version import build_info
 from sunroom.meta import updates
 from tests.support import BASE_URL, CSRF, make_settings, run_setup, state_of
@@ -122,7 +123,7 @@ async def test_it_is_on_by_default_and_asks_once_a_day(
     )
     assert body["current"] == build_info().version
     assert body["how"] == (
-        "In Sunroom's folder on the server, run docker compose pull, then docker compose up -d"
+        "In Sunroom's folder on the server, run docker compose pull, then docker compose up -d."
     )
 
     await updates.tick(state)  # not again the same day
@@ -214,7 +215,10 @@ async def test_the_server_can_keep_it_off_and_say_how_to_update_a_pi(
             assert github.requests == []
             body = (await http.get("/api/admin/update")).json()
             assert (body["enabled"], body["locked"]) == (False, True)
-            assert body["how"] == "On the Pi, run sudo /opt/sunroom/update.sh"
+            assert body["how"] == (
+                "This screen installs it tonight, or tap Update Sunroom under This Screen."
+            )
+            assert body["how_key"] == "api.update.how.pi"
             refused = await http.post("/api/admin/update/check", headers=CSRF)
             assert refused.status_code == 409
             assert refused.json()["error"]["message"] == "This server keeps update checks off."
@@ -251,8 +255,13 @@ async def test_the_test_server_makes_up_its_answer_and_sends_nothing(
 
 
 def test_every_install_kind_says_how_to_update() -> None:
+    """In the family's words, each with a key, and a NAS's own Update button where it has one."""
+    assert set(HOW_KEYS) == set(InstallKind)
+    for kind, key in HOW_KEYS.items():
+        assert t_en(key).endswith("."), kind
     # Sunroom run as a program (ADR 0038) is updated from the screen that runs it.
-    from sunroom.core.updates import HOW
-
-    assert set(HOW) == set(InstallKind)
-    assert "Update Now" in HOW[InstallKind.COMPUTER]
+    assert "Update Now" in t_en(HOW_KEYS[InstallKind.COMPUTER])
+    assert "Unraid" in t_en(HOW_KEYS[InstallKind.UNRAID])
+    assert "CasaOS" in t_en(HOW_KEYS[InstallKind.CASAOS])
+    assert "Container Manager" in t_en(HOW_KEYS[InstallKind.SYNOLOGY])
+    assert "Re-pull image" in t_en(HOW_KEYS[InstallKind.PORTAINER])

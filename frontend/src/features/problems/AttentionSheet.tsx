@@ -57,7 +57,9 @@ export function AttentionSheet({
                 {tSaid(problem.title, problem.key, problem.params)}
               </p>
               {problem.since ? <p className={soft}>{sinceWords(problem.since, now)}</p> : null}
-              {problem.detail ? <p className={soft}>{problem.detail}</p> : null}
+              {problem.detail ? (
+                <p className={soft}>{tSaid(problem.detail, problem.detail_key)}</p>
+              ) : null}
               {problem.page && page ? (
                 <div className="mt-2">
                   <Button

@@ -6588,6 +6588,17 @@
             ],
             "title": "Detail"
           },
+          "detail_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail Key"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -10097,6 +10108,10 @@
             "title": "How",
             "type": "string"
           },
+          "how_key": {
+            "title": "How Key",
+            "type": "string"
+          },
           "latest": {
             "anyOf": [
               {
@@ -10132,7 +10147,8 @@
           "available",
           "checked_at",
           "problem",
-          "how"
+          "how",
+          "how_key"
         ],
         "title": "UpdateOut",
         "type": "object"

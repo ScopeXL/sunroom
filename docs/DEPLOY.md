@@ -168,7 +168,9 @@ device refreshes itself within a minute of the update; a screen in the middle of
 for it.
 
 **If Portainer manages it instead** (a stack pasted from the example): update the stack with
-**Re-pull image and redeploy** switched on.
+**Re-pull image and redeploy** switched on. Add `SUNROOM_INSTALL_KIND=portainer` to the stack's
+environment variables, so About words it that way (`unraid`, `casaos`, `synology` and `other` do the
+same for those).
 
 ## Backups
 

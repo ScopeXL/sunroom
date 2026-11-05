@@ -4,7 +4,7 @@ import { api, errorMessage, unwrap } from "../../api/client";
 import { qk } from "../../api/keys";
 import { formatTime } from "../../lib/dates";
 import { useSettings, useUpdateSettings } from "../../lib/household";
-import { t, useT } from "../../lib/lang";
+import { t, tSaid, useT } from "../../lib/lang";
 import { asParent } from "../../lib/parent";
 import { Button } from "../../ui/Button";
 import { LiveStatusIcon } from "../../ui/LiveStatus";
@@ -96,9 +96,12 @@ export function UpdatesGroup() {
     },
   });
   if (!settings || !status) return null;
-  // `how` and `problem` are the server's words.
+  // `problem` is the server's words.
   const line = status.available
-    ? t("settings.about.updates.available", { version: status.latest ?? "", how: status.how })
+    ? t("settings.about.updates.available", {
+        version: status.latest ?? "",
+        how: tSaid(status.how, status.how_key),
+      })
     : (status.problem ??
       (status.checked_at
         ? t("settings.about.updates.latest", {

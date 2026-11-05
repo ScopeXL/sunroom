@@ -6,8 +6,8 @@ GitHub's latest Release tells GitHub the server's address (PRIVACY.md says so). 
 only once its Release exists, and the deploy skill publishes that last, so nothing here names a
 version whose image and files aren't out yet. The answer lives in memory (one process serves the
 API); after a restart the next hourly tick asks again. How to update is worded by
-``SUNROOM_INSTALL_KIND``: the Pi's script, Compose, Portainer, or the screen that runs Sunroom as
-a program (ADR 0038).
+``SUNROOM_INSTALL_KIND``: Compose, Portainer, a NAS's own app, a Pi, or the screen that runs Sunroom
+as a program (ADR 0038).
 """
 
 from __future__ import annotations
@@ -26,17 +26,18 @@ CHECK_EVERY = timedelta(hours=24)
 TICK_S = 3600
 _VERSION = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 
-HOW: dict[InstallKind, str] = {
-    InstallKind.PI: "On the Pi, run sudo /opt/sunroom/update.sh",
-    InstallKind.DOCKER: (
-        "In Sunroom's folder on the server, run docker compose pull, then docker compose up -d"
-    ),
-    InstallKind.PORTAINER: "In Portainer, pull Sunroom's newest image and redeploy its stack",
-    InstallKind.HA: "Update it in Home Assistant, under Settings, then Add-ons",
-    InstallKind.COMPUTER: (
-        "The screen that runs it installs updates overnight, or at once with Settings, then"
-        " This Screen, then Update Now"
-    ),
+
+# The sentence in lang/en.json that says how to update each kind of install (ADR 0046).
+HOW_KEYS: dict[InstallKind, str] = {
+    InstallKind.DOCKER: "api.update.how.docker",
+    InstallKind.PORTAINER: "api.update.how.portainer",
+    InstallKind.UNRAID: "api.update.how.unraid",
+    InstallKind.CASAOS: "api.update.how.casaos",
+    InstallKind.SYNOLOGY: "api.update.how.synology",
+    InstallKind.OTHER: "api.update.how.other",
+    InstallKind.PI: "api.update.how.pi",
+    InstallKind.HA: "api.update.how.ha",
+    InstallKind.COMPUTER: "api.update.how.computer",
 }
 
 

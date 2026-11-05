@@ -17,6 +17,8 @@ services:
       # characters), and a secret key (generated on the volume when left empty).
       APP_PASSWORD: ${APP_PASSWORD:-}
       APP_SECRET_KEY: ${APP_SECRET_KEY:-}
+      # How Sunroom words the way to update it: docker, portainer, unraid, casaos, synology or other.
+      SUNROOM_INSTALL_KIND: ${SUNROOM_INSTALL_KIND:-docker}
     volumes:
       # The sunroom_data volume (the volumes: block at the end creates it): correct ownership with
       # no extra steps. The database, nightly backups and photos all live here, so back up the

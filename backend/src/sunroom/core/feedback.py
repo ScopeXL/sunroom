@@ -32,6 +32,10 @@ INSTALL_WORDS: dict[InstallKind, str] = {
     InstallKind.PORTAINER: "Portainer",
     InstallKind.HA: "Home Assistant",
     InstallKind.COMPUTER: "a computer",
+    InstallKind.UNRAID: "Unraid",
+    InstallKind.CASAOS: "CasaOS",
+    InstallKind.SYNOLOGY: "a Synology",
+    InstallKind.OTHER: "another app",
 }
 
 # A line of color down the message's side, one per kind, as Discord takes it (an RGB number).

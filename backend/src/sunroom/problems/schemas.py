@@ -13,6 +13,7 @@ class ProblemOut(BaseModel):
     key: str  # that sentence in lang/en.json, for the page to say in the family's language
     params: dict[str, str | int | float]  # its {name} values
     detail: str | None  # a quiet second line, for parents only
+    detail_key: str | None = None  # that line in lang/en.json, when it has one
     since: datetime | None
     page: str | None  # the Settings page that fixes it
     source: str  # "core", or the plugin's id

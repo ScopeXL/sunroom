@@ -4804,6 +4804,8 @@ export interface components {
         ProblemOut: {
             /** Detail */
             detail: string | null;
+            /** Detail Key */
+            detail_key?: string | null;
             /** Id */
             id: string;
             /** Key */
@@ -5855,6 +5857,8 @@ export interface components {
             enabled: boolean;
             /** How */
             how: string;
+            /** How Key */
+            how_key: string;
             /** Latest */
             latest: string | null;
             /** Locked */

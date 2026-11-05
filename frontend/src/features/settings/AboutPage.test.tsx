@@ -20,7 +20,8 @@ const STATUS = {
   available: false,
   checked_at: "2026-10-07T14:00:00Z",
   problem: null,
-  how: "In Sunroom's folder on the server, run docker compose pull, then docker compose up -d",
+  how: "In Sunroom's folder on the server, run docker compose pull, then docker compose up -d.",
+  how_key: "api.update.how.docker",
 };
 
 function draw(status: Partial<typeof STATUS> = {}, settings = { update_check: true }) {

@@ -114,11 +114,14 @@ async def collect(state: AppState, actor: Actor) -> list[ProblemOut]:
                 key="api.problems.update_available",
                 params=params,
                 detail=update.how,
+                detail_key=update.how_key,
                 since=None,
                 page="about",
                 source="core",
             )
         )
     if not actor.is_parent:
-        found = [problem.model_copy(update={"detail": None}) for problem in found]
+        found = [
+            problem.model_copy(update={"detail": None, "detail_key": None}) for problem in found
+        ]
     return found
