@@ -291,7 +291,7 @@ async def test_a_browser_that_wont_close_is_closed_by_force_after_the_wait(
 ) -> None:
     monkeypatch.setattr(browser_module, "STOP_WAIT_S", 0.2)
     log = tmp_path / "log"
-    script = pretend_browser(tmp_path, f'echo not closing >> "{log}"')
+    script = pretend_browser(tmp_path, ":")  # it hears the request and carries on
     supervisor = Supervisor(
         Browser("chromium", str(script), "Pretend"),
         profile=tmp_path / "profile",
@@ -301,7 +301,8 @@ async def test_a_browser_that_wont_close_is_closed_by_force_after_the_wait(
     running = await started_once(supervisor, log)
     await supervisor.stop()
     running.cancel()
-    assert "not closing" in log.read_text()
+    # That it was asked is the test above's. Whether its shell reached the trap inside this short
+    # wait is up to the machine (a busy macOS runner didn't), so this one looks only at the kill.
     assert supervisor.process is not None and supervisor.process.returncode == -9
 
 
